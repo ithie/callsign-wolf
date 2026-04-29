@@ -1,5 +1,4 @@
 import { CampaignExport, MissionData } from '@/shared/types';
-export { COMMANDER_SVG } from './commander-svg';
 import Tutorial from './campaigns/tutorial.json';
 import FreeFlight from './campaigns/freeFlight.json';
 import ArchipelDemo from './campaigns/archipeldemo.json';

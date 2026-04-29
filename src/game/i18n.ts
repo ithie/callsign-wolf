@@ -12,10 +12,13 @@ const _detectLang = (): 'de' | 'en' => {
         const stored = localStorage.getItem(LANG_PREF_KEY);
         if (stored === 'de' || stored === 'en') return stored;
         return navigator.language?.toLowerCase().startsWith('de') ? 'de' : 'en';
-    } catch { return 'de'; }
+    } catch {
+        return 'de';
+    }
 };
 
 const _DE = {
+    DONE: 'abgeschlossen',
     OUT_OF_FUEL: 'KEIN TREIBSTOFF!',
     MAX_ALTITUDE: 'MAX. HÖHE',
     CARGO_SECURED: 'FRACHT GESICHERT!',
@@ -37,30 +40,32 @@ const _DE = {
     MENU_TITLE: 'SAR: CALLSIGN WOLF',
     MENU_SUBTITLE: 'MAIN SYSTEM',
     MENU_START: 'SPIEL STARTEN',
-    ...(!_IS_APP ? {
-        MENU_MULTIPLAYER: 'MULTIPLAYER',
-        MP_SUBTITLE: 'KOOP-EINSATZ',
-        MP_CREATE: 'SPIEL ERSTELLEN',
-        MP_JOIN: 'BEITRETEN',
-        MP_GENERATING: 'GENERIERE...',
-        MP_WAIT_ANSWER: 'WARTE AUF ANTWORT...',
-        MP_WAIT_CONNECT: 'WARTE AUF VERBINDUNG...',
-        MP_CONNECTING: 'VERBINDE...',
-        MP_CONNECTED: 'VERBUNDEN',
-        MP_ERROR: 'FEHLER – BITTE ERNEUT VERSUCHEN',
-        MP_READY_PROMPT: 'BEREIT ZUM EINSATZ?',
-        MP_READY_BTN: 'BEREIT',
-        MP_WAIT_READY: 'WARTE AUF MITSPIELER...',
-        MP_COPY: 'KOPIEREN',
-        MP_CONNECT: 'VERBINDEN',
-        MP_GEN_ANSWER: 'ANTWORT GENERIEREN',
-        MP_STEP1_HOST: 'Schritt 1: Diesen Code an deinen Mitspieler senden:',
-        MP_STEP2_HOST: 'Schritt 2: Antwort des Mitspielers einfügen:',
-        MP_STEP1_GUEST: 'Code des Gastgebers einfügen:',
-        MP_STEP2_GUEST: 'Diesen Code an den Gastgeber senden:',
-        MP_PASTE_HINT: 'Code hier einfügen…',
-        CRASH_REMOTE_HELI: 'KOLLISION MIT MITSPIELER',
-    } : {}),
+    ...(!_IS_APP
+        ? {
+              MENU_MULTIPLAYER: 'MULTIPLAYER',
+              MP_SUBTITLE: 'KOOP-EINSATZ',
+              MP_CREATE: 'SPIEL ERSTELLEN',
+              MP_JOIN: 'BEITRETEN',
+              MP_GENERATING: 'GENERIERE...',
+              MP_WAIT_ANSWER: 'WARTE AUF ANTWORT...',
+              MP_WAIT_CONNECT: 'WARTE AUF VERBINDUNG...',
+              MP_CONNECTING: 'VERBINDE...',
+              MP_CONNECTED: 'VERBUNDEN',
+              MP_ERROR: 'FEHLER – BITTE ERNEUT VERSUCHEN',
+              MP_READY_PROMPT: 'BEREIT ZUM EINSATZ?',
+              MP_READY_BTN: 'BEREIT',
+              MP_WAIT_READY: 'WARTE AUF MITSPIELER...',
+              MP_COPY: 'KOPIEREN',
+              MP_CONNECT: 'VERBINDEN',
+              MP_GEN_ANSWER: 'ANTWORT GENERIEREN',
+              MP_STEP1_HOST: 'Schritt 1: Diesen Code an deinen Mitspieler senden:',
+              MP_STEP2_HOST: 'Schritt 2: Antwort des Mitspielers einfügen:',
+              MP_STEP1_GUEST: 'Code des Gastgebers einfügen:',
+              MP_STEP2_GUEST: 'Diesen Code an den Gastgeber senden:',
+              MP_PASTE_HINT: 'Code hier einfügen…',
+              CRASH_REMOTE_HELI: 'KOLLISION MIT MITSPIELER',
+          }
+        : {}),
     MENU_HELI: 'HELIKOPTER',
     MENU_SETTINGS: 'EINSTELLUNGEN',
     MENU_CREDITS: 'CREDITS',
@@ -72,6 +77,7 @@ const _DE = {
 
     CAMPAIGN_SELECT_TITLE: 'KAMPAGNE WÄHLEN',
     CAMPAIGN_SELECT_SUB: 'EINSATZGEBIET',
+    CAMPAIGN_SELECT_MISSIONS: 'Missionen',
 
     MISSION_SELECT_SUB: 'EINSÄTZE',
     MISSION_LOCKED: '[ GESPERRT ]',
@@ -134,9 +140,7 @@ const _DE = {
     WHATS_NEW_VERSION: 'v26.4.0',
     WHATS_NEW_TITLE: 'iOS App',
     WHATS_NEW_HINT: 'KLICKEN ZUM FORTFAHREN',
-    WHATS_NEW_ITEMS: [
-        'Jetzt als native iOS App spielbar',
-    ],
+    WHATS_NEW_ITEMS: ['Jetzt als native iOS App spielbar'],
 
     PILOT_HEADING: 'PROFIL',
     PILOT_CALLSIGN: 'RUFZEICHEN (MAX. 8 ZEICHEN, A–Z)',
@@ -155,6 +159,7 @@ const _DE = {
     LANGUAGE_HEADING: 'SPRACHE',
     CAMPAIGN_SWITCH_PROGRESS_WARN: 'Der Fortschritt der aktiven Kampagne wird gelöscht.',
     RANKUP_HELI_UNLOCK: 'NEUES LUFTFAHRZEUG FREIGESCHALTET',
+    RANKUP_TITLE: 'Beförderung',
 
     MADE_WITH: 'MADE WITH ♥ IN JAVASCRIPT',
     COPYRIGHT: '© 2026 i.thie softworks — Alle Rechte vorbehalten.',
@@ -167,6 +172,7 @@ const _DE = {
 } as const;
 
 const _EN = {
+    DONE: 'complete',
     OUT_OF_FUEL: 'OUT OF FUEL!',
     MAX_ALTITUDE: 'MAX. ALTITUDE',
     CARGO_SECURED: 'CARGO SECURED!',
@@ -188,30 +194,32 @@ const _EN = {
     MENU_TITLE: 'SAR: CALLSIGN WOLF',
     MENU_SUBTITLE: 'MAIN SYSTEM',
     MENU_START: 'START GAME',
-    ...(!_IS_APP ? {
-        MENU_MULTIPLAYER: 'MULTIPLAYER',
-        MP_SUBTITLE: 'CO-OP MISSION',
-        MP_CREATE: 'CREATE GAME',
-        MP_JOIN: 'JOIN',
-        MP_GENERATING: 'GENERATING...',
-        MP_WAIT_ANSWER: 'WAITING FOR ANSWER...',
-        MP_WAIT_CONNECT: 'WAITING FOR CONNECTION...',
-        MP_CONNECTING: 'CONNECTING...',
-        MP_CONNECTED: 'CONNECTED',
-        MP_ERROR: 'ERROR – PLEASE TRY AGAIN',
-        MP_READY_PROMPT: 'READY FOR DEPLOYMENT?',
-        MP_READY_BTN: 'READY',
-        MP_WAIT_READY: 'WAITING FOR OTHER PLAYER...',
-        MP_COPY: 'COPY',
-        MP_CONNECT: 'CONNECT',
-        MP_GEN_ANSWER: 'GENERATE ANSWER',
-        MP_STEP1_HOST: 'Step 1: Send this code to your co-pilot:',
-        MP_STEP2_HOST: 'Step 2: Paste your co-pilot\'s answer:',
-        MP_STEP1_GUEST: 'Paste the host\'s code:',
-        MP_STEP2_GUEST: 'Send this code to the host:',
-        MP_PASTE_HINT: 'Paste code here…',
-        CRASH_REMOTE_HELI: 'COLLISION WITH CO-PILOT',
-    } : {}),
+    ...(!_IS_APP
+        ? {
+              MENU_MULTIPLAYER: 'MULTIPLAYER',
+              MP_SUBTITLE: 'CO-OP MISSION',
+              MP_CREATE: 'CREATE GAME',
+              MP_JOIN: 'JOIN',
+              MP_GENERATING: 'GENERATING...',
+              MP_WAIT_ANSWER: 'WAITING FOR ANSWER...',
+              MP_WAIT_CONNECT: 'WAITING FOR CONNECTION...',
+              MP_CONNECTING: 'CONNECTING...',
+              MP_CONNECTED: 'CONNECTED',
+              MP_ERROR: 'ERROR – PLEASE TRY AGAIN',
+              MP_READY_PROMPT: 'READY FOR DEPLOYMENT?',
+              MP_READY_BTN: 'READY',
+              MP_WAIT_READY: 'WAITING FOR OTHER PLAYER...',
+              MP_COPY: 'COPY',
+              MP_CONNECT: 'CONNECT',
+              MP_GEN_ANSWER: 'GENERATE ANSWER',
+              MP_STEP1_HOST: 'Step 1: Send this code to your co-pilot:',
+              MP_STEP2_HOST: "Step 2: Paste your co-pilot's answer:",
+              MP_STEP1_GUEST: "Paste the host's code:",
+              MP_STEP2_GUEST: 'Send this code to the host:',
+              MP_PASTE_HINT: 'Paste code here…',
+              CRASH_REMOTE_HELI: 'COLLISION WITH CO-PILOT',
+          }
+        : {}),
     MENU_HELI: 'HELICOPTER',
     MENU_SETTINGS: 'SETTINGS',
     MENU_CREDITS: 'CREDITS',
@@ -223,6 +231,7 @@ const _EN = {
 
     CAMPAIGN_SELECT_TITLE: 'SELECT CAMPAIGN',
     CAMPAIGN_SELECT_SUB: 'AREA OF OPERATION',
+    CAMPAIGN_SELECT_MISSIONS: 'Missions',
 
     MISSION_SELECT_SUB: 'MISSIONS',
     MISSION_LOCKED: '[ LOCKED ]',
@@ -281,13 +290,11 @@ const _EN = {
     CRASH_SUBMARINE: 'SUBMARINE COLLISION',
     CRASH_TREE: 'TREE CONTACT',
 
-    WHATS_NEW_HEADLINE: 'WHAT\'S NEW',
+    WHATS_NEW_HEADLINE: "WHAT'S NEW",
     WHATS_NEW_VERSION: 'v26.4.0',
     WHATS_NEW_TITLE: 'iOS App',
     WHATS_NEW_HINT: 'CLICK TO CONTINUE',
-    WHATS_NEW_ITEMS: [
-        'Now available as a native iOS app',
-    ],
+    WHATS_NEW_ITEMS: ['Now available as a native iOS app'],
 
     PILOT_HEADING: 'PROFILE',
     PILOT_CALLSIGN: 'CALLSIGN (MAX. 8 CHARS, A–Z)',
@@ -306,6 +313,7 @@ const _EN = {
     LANGUAGE_HEADING: 'LANGUAGE',
     CAMPAIGN_SWITCH_PROGRESS_WARN: 'Progress of the active campaign will be deleted.',
     RANKUP_HELI_UNLOCK: 'NEW AIRCRAFT UNLOCKED',
+    RANKUP_TITLE: 'Promotion',
 
     MADE_WITH: 'MADE WITH ♥ IN JAVASCRIPT',
     COPYRIGHT: '© 2026 i.thie softworks — All rights reserved.',
@@ -333,7 +341,9 @@ export const onLanguageChange = (cb: () => void): void => {
 
 /** Change the active language, persist the choice, and notify all listeners. */
 export const setLanguage = (lang: 'de' | 'en'): void => {
-    try { localStorage.setItem(LANG_PREF_KEY, lang); } catch {}
+    try {
+        localStorage.setItem(LANG_PREF_KEY, lang);
+    } catch {}
     LANG = lang;
     I18N = (lang === 'de' ? _DE : _EN) as typeof _DE;
     _langCallbacks.forEach(cb => cb());
@@ -343,5 +353,5 @@ export const setLanguage = (lang: 'de' | 'en'): void => {
 export const localize = (ls: string | { de: string; en?: string } | undefined): string => {
     if (!ls) return '';
     if (typeof ls === 'string') return ls;
-    return (LANG === 'en' && ls.en) ? ls.en : ls.de;
+    return LANG === 'en' && ls.en ? ls.en : ls.de;
 };

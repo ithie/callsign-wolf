@@ -21,12 +21,7 @@ export const mountCampaignSelect = () => {
 export const showCampaignSelect = (deps: CampaignSelectDeps) => {
     const { session, campaigns, onSelect, onBack } = deps;
 
-    const body = mountScreenShell(
-        'campaign-select',
-        I18N.CAMPAIGN_SELECT_TITLE,
-        I18N.CAMPAIGN_SELECT_SUB,
-        onBack,
-    );
+    const body = mountScreenShell('campaign-select', I18N.CAMPAIGN_SELECT_TITLE, I18N.CAMPAIGN_SELECT_SUB, onBack);
 
     const grid = document.createElement('div');
     grid.className = 'campaign-grid';
@@ -51,9 +46,9 @@ export const showCampaignSelect = (deps: CampaignSelectDeps) => {
         if (isTutorial) tile.style.borderColor = '#ff9900';
 
         let sublines = campaignSublines.map(s => `<div class="box-sub">${localize(s)}</div>`).join('');
-        sublines += `<div class="box-sub">Missionen: ${levels.length}</div>`;
+        sublines += `<div class="box-sub">${I18N.CAMPAIGN_SELECT_MISSIONS}: ${levels.length}</div>`;
         if (isActive && completedCount > 0) {
-            sublines += `<div class="box-sub" style="color:#8af">${completedCount}/${levels.length} abgeschlossen</div>`;
+            sublines += `<div class="box-sub" style="color:#8af">${completedCount}/${levels.length} ${I18N.DONE}</div>`;
         }
 
         tile.innerHTML =

@@ -12,7 +12,7 @@ export const rankBadgeHtml = (rank: Rank): string =>
 export const mountRankup = (): void => {
     const el = ensureEl('rankup-overlay');
     el.innerHTML = `
-        <div id="rankup-label">BEFÖRDERUNG</div>
+        <div id="rankup-label">${I18N.RANKUP_TITLE}</div>
         <div id="rankup-badge"></div>
         <div id="rankup-title"></div>
         <div id="rankup-address"></div>
@@ -27,8 +27,10 @@ export const mountRankup = (): void => {
 export const showRankUp = (rank: Rank, playerName: string, unlockedHeli?: string): void => {
     (document.getElementById('rankup-badge') as HTMLElement).innerHTML = rankBadgeHtml(rank);
     (document.getElementById('rankup-title') as HTMLElement).textContent = rank.name.toUpperCase();
-    (document.getElementById('rankup-address') as HTMLElement).textContent =
-        I18N.PILOT_ADDRESS(rank.name, playerName).toUpperCase();
+    (document.getElementById('rankup-address') as HTMLElement).textContent = I18N.PILOT_ADDRESS(
+        rank.name,
+        playerName
+    ).toUpperCase();
     const heliEl = document.getElementById('rankup-heli') as HTMLElement;
     if (unlockedHeli) {
         (heliEl.querySelector('.rankup-heli-name') as HTMLElement).textContent = unlockedHeli;

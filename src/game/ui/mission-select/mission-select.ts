@@ -43,8 +43,8 @@ export const showMissionSelect = (deps: MissionSelectDeps) => {
                 done && bestTime !== null
                     ? `<div class="box-sub mission-time">${I18N.BEST_TIME(bestTime)}</div>`
                     : done
-                    ? `<div class="box-sub mission-done">✓ ABGESCHLOSSEN</div>`
-                    : '',
+                      ? `<div class="box-sub mission-done">✓ ${I18N.DONE}</div>`
+                      : '',
             ].join('');
             tile.innerHTML = `
                 <div class="box-label${done ? ' mission-done' : ''}">${localize(level.headline)}</div>
