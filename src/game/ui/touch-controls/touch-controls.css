@@ -26,6 +26,7 @@
     padding-left: max(16px, env(safe-area-inset-left));
     padding-right: max(16px, env(safe-area-inset-right));
     pointer-events: none;
+    will-change: transform;
 }
 #touch-pad-left {
     display: flex;
@@ -35,7 +36,7 @@
 }
 #touch-top-row {
     display: flex;
-    gap: 8px;
+    justify-content: space-between;
     align-items: flex-end;
 }
 
@@ -187,6 +188,7 @@
     position: relative;
     touch-action: none;
     pointer-events: all;
+    will-change: transform;
 }
 .joystick-knob {
     width: 52px;
@@ -201,6 +203,7 @@
     transform: translate(-50%, -50%);
     pointer-events: none;
     transition: transform 0.12s ease-out;
+    will-change: transform;
 }
 .js-n, .js-s, .js-w, .js-e {
     position: absolute;

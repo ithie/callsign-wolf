@@ -117,7 +117,6 @@ export const initMpGame = (deps: MpGameDeps): void => {
             G.heli.angle = 0;
             G.heli.engineOn = false;
             G.heli.rotorRPM = 0;
-            zstate.introActive = false;
             zstate.cam.x = (G.heli.x - G.heli.y) * (tileW / 2);
             zstate.cam.y = (G.heli.x + G.heli.y) * (tileH / 2);
             mpState.spawnX = G.heli.x;
@@ -152,7 +151,6 @@ export const initMpGame = (deps: MpGameDeps): void => {
         resetMpState();
         zstate.crashed = false;
         zstate.gameStarted = false;
-        zstate.introActive = false;
         G.particles = [];
         G.debris = [];
         setTouchVisible(false);
@@ -258,7 +256,7 @@ export const mpTickAndHUD = (
 ): void => {
     if (!mpState.active) return;
 
-    if (!zstate.introActive) {
+    {
         const cd = Math.max(0, Math.ceil(mpState.countdown));
         const mins = Math.floor(cd / 60);
         const secs = cd % 60;

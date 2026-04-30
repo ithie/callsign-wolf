@@ -69,8 +69,7 @@ import {
 } from './ui/heli-select/heli-select';
 import { I18N, localize, onLanguageChange } from './i18n';
 import { mountCookieBanner, notifyConsent } from './ui/cookie-banner/cookie-banner';
-import { mountBriefing, initBriefing, showBriefing as _showBriefing, hideBriefing } from './ui/briefing/briefing';
-import { renderMissionPreview } from '../shared/render-mission-map';
+import { mountBriefing, showBriefingOverlay, hideBriefing } from './ui/briefing/briefing';
 import { mountSettings, initSettings, toSettings } from './ui/settings/settings';
 import { mountRankup, showRankUp } from './ui/rankup/rankup';
 import { mountMuteButton, refreshMuteButton } from './ui/mute-button/mute-button';
@@ -203,8 +202,8 @@ function isVisible(objX: number, objY: number, margin = 16) {
         const viewCY = zstate.cam.y / tileH - zstate.cam.x / tileW;
         return Math.abs(objX - viewCX) < margin && Math.abs(objY - viewCY) < margin;
     }
-    const rx = zstate.introActive ? G.START_POS.x : G.heli.x;
-    const ry = zstate.introActive ? G.START_POS.y : G.heli.y;
+    const rx = G.heli.x;
+    const ry = G.heli.y;
     return Math.abs(objX - rx) < margin && Math.abs(objY - ry) < margin;
 }
 
@@ -215,6 +214,7 @@ function triggerCrash(reason: string) {
     soundHandler.play(musicConfig.defeat || 'final', false);
     spawnExplosion(G.heli, G.particles, G.debris, G.points, G.CARRIER);
     zstate.crashed = true;
+    _showRainOverlay(false);
     setTimeout(() => {
         cancelAnimationFrame(_rafId);
         _rafId = 0;
@@ -223,32 +223,9 @@ function triggerCrash(reason: string) {
     }, 1800); // Explosion erst austoben lassen
 }
 
-const showBriefing = () => {
-    const { headline, sublines, briefing, objects, night, payloads, foliage } = campaignHandler.getCurrentMissionData();
-    const { terrain, gridSize } = campaignHandler.getTerrain();
-    const rank = getRank(_session, _getRankMissions());
-    const address = I18N.BRIEFING_ADDRESS(rank.name, _session.playerName).toUpperCase();
-    const renderPreview = (canvas: HTMLCanvasElement) =>
-        renderMissionPreview(canvas, {
-            terrain,
-            gridSize,
-            objects,
-            night,
-            payloads,
-            foliage: Array.isArray(foliage) ? foliage : decompressFoliage(foliage as string),
-        });
-    _showBriefing(headline, sublines, briefing, renderPreview, address);
-    const briefingSong = campaignHandler.getActiveCampaignMusic().briefing;
-    if (briefingSong) soundHandler.play(briefingSong, true);
-};
-
-const dismissBriefing = async () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    hideBriefing();
-    await launchMission();
-};
 
 function missionComplete() {
+    _showRainOverlay(false);
     destroyTutorial();
     const { campaignType } = campaignHandler.getCurrentMissionData();
     const isTutorial = campaignType === 'tutorial';
@@ -352,8 +329,6 @@ function missionComplete() {
 
 const _resetHeliState = () => {
     zstate.crashed = false;
-    zstate.introActive = false;
-    zstate.introProgress = 0;
     G.heli.fuel = 100;
     G.heli.onboard = 0;
     G.heli.engineOn = false;
@@ -494,10 +469,9 @@ const selectMission = (missionIndex: number) => {
     animateHeliPreviews();
 };
 
-function startGame(type: string) {
+const startGame = (type: string): void => {
     if (zstate.gameStarted) return;
     stopMenuParticles();
-    soundHandler.play(campaignHandler.getActiveCampaignMusic().ingame || 'clike', false);
     G.heli.type = type;
     const _heliType = getHeliType(type);
     G.heli.maxLoad = _heliType.maxLoad;
@@ -507,14 +481,8 @@ function startGame(type: string) {
     G.heli.fuelRate = _heliType.fuelRate;
     G.heli.liftPower = _heliType.liftPower;
     G.heli.cargoResist = _heliType.cargoResist;
-    const _sgObjs = (campaignHandler.getCurrentMissionData().objects || []) as any[];
-    generateTerrain(G.points, _sgObjs.find((o: any) => o.type === 'pad') ? G.PAD : null);
-    initCarrierFromMission();
-    initBoatsFromMission();
-    initSubmarinesFromMission();
-    showScreen(null);
-    showBriefing();
-}
+    void launchMission();
+};
 
 const _tick = (): Promise<void> => new Promise(r => setTimeout(r, 0));
 
@@ -553,6 +521,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
 
     // Step 3 — environment
     initFoliageFromMission();
+    _buildTreeSprites();
     initBirds();
     G.deliverMode = false;
     initPayloadsFromMission();
@@ -567,16 +536,8 @@ const launchMission = async (showLoader = true): Promise<void> => {
     G.heli.winch = 0;
     zstate.crashed = false;
     zstate.gameStarted = true;
-    _missionStartTime = Date.now();
-    setTouchVisible(true);
-
-    if (_lmd.campaignType === 'tutorial') {
-        initTutorial(_selectedMissionIndex, _isTouchDevice(), G, missionComplete);
-    }
 
     if (isStartsOnCarrier()) {
-        zstate.introActive = false;
-        zstate.introProgress = 1;
         G.heli.x = G.CARRIER.x;
         G.heli.y = G.CARRIER.y - 1;
         G.heli.z = G.CARRIER.zDeck + 0.1;
@@ -589,17 +550,56 @@ const launchMission = async (showLoader = true): Promise<void> => {
         G.heli.rotorRPM = 0;
         zstate.cam.x = (G.heli.x - G.heli.y) * (tileW / 2);
         zstate.cam.y = (G.heli.x + G.heli.y) * (tileH / 2);
-        showMsg(I18N.SYSTEM_READY);
     } else {
-        zstate.introActive = true;
-        zstate.introProgress = 0;
+        G.heli.x = G.START_POS.x;
+        G.heli.y = G.START_POS.y;
+        G.heli.z = G.PAD?.z ?? 0.5;
+        G.heli.vx = 0;
+        G.heli.vy = 0;
+        G.heli.vz = 0;
+        G.heli.inAir = false;
+        G.heli.engineOn = false;
+        G.heli.rotorRPM = 0;
         zstate.cam.x = (G.START_POS.x - G.START_POS.y) * (tileW / 2);
         zstate.cam.y = (G.START_POS.x + G.START_POS.y) * (tileH / 2);
     }
 
+    // Tutorial mission 1 (Nachtanken): start airborne away from pad, engine already running
+    if (_lmd.campaignType === 'tutorial' && _selectedMissionIndex === 1) {
+        G.heli.x = G.PAD.xMin - 15;
+        G.heli.y = G.PAD.yMin - 15;
+        G.heli.z = 8;
+        G.heli.vx = 0;
+        G.heli.vy = 0;
+        G.heli.vz = 0;
+        G.heli.inAir = true;
+        G.heli.engineOn = true;
+        G.heli.rotorRPM = 1.0;
+        zstate.cam.x = (G.heli.x - G.heli.y) * (tileW / 2);
+        zstate.cam.y = (G.heli.x + G.heli.y) * (tileH / 2) - G.heli.z * stepH;
+    }
+
+    _showRainOverlay(_missionRain, _lmd.windDir ?? 225, _lmd.windStr ?? 1);
     cancelAnimationFrame(_rafId);
     initHeliSound(G.heli.type);
+    _briefingActive = true;
     _rafId = requestAnimationFrame(drawScene);
+
+    const rank = getRank(_session, _getRankMissions());
+    const address = I18N.BRIEFING_ADDRESS(rank.name, _session.playerName).toUpperCase();
+    const briefingSong = campaignHandler.getActiveCampaignMusic().briefing;
+    if (briefingSong) soundHandler.play(briefingSong, true);
+
+    showBriefingOverlay({ headline: _lmd.headline, sublines: _lmd.sublines, briefing: _lmd.briefing, address }, () => {
+        _briefingActive = false;
+        _missionStartTime = Date.now();
+        soundHandler.play(campaignHandler.getActiveCampaignMusic().ingame || 'clike', false);
+        setTouchVisible(true);
+        if (_lmd.campaignType === 'tutorial') {
+            initTutorial(_selectedMissionIndex, _isTouchDevice(), G, missionComplete);
+        }
+        showMsg(I18N.SYSTEM_READY);
+    });
 };
 
 //
@@ -647,49 +647,27 @@ function drawScene() {
     const gridSize = _missionGridSize;
 
     if (!zstate.gameStarted) return;
-    if (!zstate.crashed) updatePhysics(dt, _physicsCtx);
+    if (!zstate.crashed && !_briefingActive) updatePhysics(dt, _physicsCtx);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (!zstate.introActive) {
-        const tx = (G.heli.x - G.heli.y) * (tileW / 2);
-        if (_isTouchDevice()) {
-            // Mobile: snap camera to heli incl. altitude so terrain shifts with height
-            const ty = (G.heli.x + G.heli.y) * (tileH / 2) - G.heli.z * stepH;
-            zstate.cam.x = tx;
-            zstate.cam.y = ty;
-        } else {
-            // Desktop: smooth-follow ground point only — camera doesn't rise with heli
-            const ty = (G.heli.x + G.heli.y) * (tileH / 2);
-            zstate.cam.x += (tx - zstate.cam.x) * 0.1 * dt;
-            zstate.cam.y += (ty - zstate.cam.y) * 0.1 * dt;
-        }
+    const tx = (G.heli.x - G.heli.y) * (tileW / 2);
+    if (_isTouchDevice()) {
+        // Mobile: snap camera to heli incl. altitude so terrain shifts with height
+        const ty = (G.heli.x + G.heli.y) * (tileH / 2) - G.heli.z * stepH;
+        zstate.cam.x = tx;
+        zstate.cam.y = ty;
     } else {
-        zstate.introProgress += 0.005 * dt;
-        let hX = G.PAD.xMin + 3,
-            hY = G.PAD.yMin + 3;
-        G.heli.x = hX + (G.START_POS.x - hX) * zstate.introProgress;
-        G.heli.y = hY + (G.START_POS.y - hY) * zstate.introProgress;
-        G.heli.z = G.PAD.z;
-        G.heli.angle = -Math.PI / 4;
-        G.heli.rotorRPM = 0;
-        if (zstate.introProgress >= 1) {
-            zstate.introActive = false;
-            G.heli.engineOn = false;
-            G.heli.rotorRPM = 0;
-            G.heli.x = G.START_POS.x;
-            G.heli.y = G.START_POS.y;
-            showMsg(I18N.SYSTEM_READY);
-        }
+        // Desktop: smooth-follow ground point only — camera doesn't rise with heli
+        const ty = (G.heli.x + G.heli.y) * (tileH / 2);
+        zstate.cam.x += (tx - zstate.cam.x) * 0.1 * dt;
+        zstate.cam.y += (ty - zstate.cam.y) * 0.1 * dt;
     }
 
     const camX = zstate.cam.x,
         camY = zstate.cam.y;
 
     let rx: number, ry: number;
-    if (zstate.introActive) {
-        rx = G.START_POS.x;
-        ry = G.START_POS.y;
-    } else if (_isTouchDevice()) {
+    if (_isTouchDevice()) {
         // Mobile: derive tile center from camera (includes z-shift)
         rx = camX / tileW + camY / tileH;
         ry = camY / tileH - camX / tileW;
@@ -721,20 +699,18 @@ function drawScene() {
     if (hasPad()) drawPadLights(camX, camY, G.PAD.z, false);
     if (hasPad() && isVisible(G.PAD.xMin, G.PAD.yMin)) drawWindsock(camX, camY); // pad always in range if visible
 
-    // Test-Bäume
+    // Bäume als vorgerenderte Sprites (1 drawImage statt ~240 canvas ops pro Baum)
+    const _swayPx = Math.sin(Date.now() / 400) * (_missionWindStr * 3);
     G.TREES_MAP.forEach((t: any) => {
-        if (isVisible(t.x, t.y))
-            drawTree(
-                t.x,
-                t.y,
-                camX,
-                camY,
-                t.s,
-                t.gz,
-                t.type || 'pine',
-                G.wind,
-                !_IS_APP && _partyMode && t.type !== 'dead'
-            );
+        if (!isVisible(t.x, t.y)) return;
+        if (!_IS_APP && _partyMode) {
+            drawTree(t.x, t.y, camX, camY, t.s, t.gz, t.type || 'pine', G.wind, t.type !== 'dead');
+            return;
+        }
+        const sprite = _treeSprites.get(`${t.type}_${t.s}`);
+        if (!sprite) return;
+        const p = isoFn(t.x, t.y, t.gz, camX, camY);
+        ctx.drawImage(sprite.canvas, Math.round(p.x - sprite.ox + _swayPx), Math.round(p.y - sprite.oy));
     });
 
     // Vögel
@@ -887,7 +863,7 @@ function drawScene() {
     } // end if (!zstate.crashed)
 
     // HUD
-    if (!zstate.introActive) {
+    {
         ctx.save();
         const cs = CANVAS_SCALE;
         const isTouch = _isTouchDevice();
@@ -1261,9 +1237,14 @@ function drawVectorCarrier(cx: number, cy: number) {
         angle,
         depth: towerWX + towerWY,
     });
+    // Radar depth 0.01 above tower so it sorts on top within the same flush
+    SceneRenderer.add(
+        applyParts(CARRIER_DEF, { radarAngle: Date.now() * 0.002 }, { only: ['radar_mast', 'radar_arm'] }),
+        { x: objX, y: objY, z: 0, angle, depth: towerWX + towerWY + 0.01 }
+    );
     SceneRenderer.flush(cx, cy);
 
-    // Antenna
+    // Antenna — direct draw after flush, always on top
     const antB = r(ix + iw * 0.5, iy + il * 0.25);
     const a0 = iso(antB.x, antB.y, deckZ + ih, cx, cy, { stepH, tileW, tileH, canvas });
     const a1 = iso(antB.x, antB.y, deckZ + ih + 0.6, cx, cy, { stepH, tileW, tileH, canvas });
@@ -1274,13 +1255,6 @@ function drawVectorCarrier(cx: number, cy: number) {
     ctx.moveTo(a0.x, a0.y);
     ctx.lineTo(a1.x, a1.y);
     ctx.stroke();
-
-    // Radar (DEF-based, rotateNode drives the arm)
-    SceneRenderer.add(
-        applyParts(CARRIER_DEF, { radarAngle: Date.now() * 0.002 }, { only: ['radar_mast', 'radar_arm'] }),
-        { x: objX, y: objY, z: 0, angle, depth: towerWX + towerWY + 0.01 }
-    );
-    SceneRenderer.flush(cx, cy);
 
     drawPadLights(cx, cy, G.CARRIER.zDeck, true);
 }
@@ -1440,6 +1414,31 @@ function initFoliageFromMission() {
     });
 }
 
+const _buildTreeSprites = () => {
+    _treeSprites.clear();
+    const seen = new Set<string>();
+    const neutralWind = { x: 0, y: 0, phase: 0 };
+    G.TREES_MAP.forEach((t: any) => {
+        const key = `${t.type}_${t.s}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        const s: number = t.s || 1.0;
+        const type: string = t.type || 'pine';
+        const w = Math.ceil(tileW * 2.5 * s);
+        const h = Math.ceil(stepH * 6 * s);
+        const ox = Math.round(w / 2);
+        const oy = h - 2;
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = w;
+        offCanvas.height = h;
+        const offCtx = offCanvas.getContext('2d')!;
+        const offDraw = createDrawObjects(offCtx, isoFn, tileW, tileH, SceneRenderer);
+        // Place the tree base at (ox, oy): iso(0,0,0,camX,camY).y = canvas.height/2 - camY → camY = canvas.height/2 - oy
+        offDraw.drawTree(0, 0, canvas.width / 2 - ox, canvas.height / 2 - oy, s, 0, type, neutralWind, false);
+        _treeSprites.set(key, { canvas: offCanvas, ox, oy });
+    });
+};
+
 function drawLighthouse(cx: number, cy: number) {
     const _lhObj = getObjectByType('lighthouse');
     if (!_lhObj) return;
@@ -1465,18 +1464,6 @@ function drawLighthouse(cx: number, cy: number) {
 
 function renderRain() {
     if (!_missionRain) return;
-    ctx.strokeStyle = 'rgba(150,200,255,0.4)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    let sx = (G.wind.x / tileW) * 4000,
-        sy = (G.wind.y / tileH) * 4000;
-    for (let i = 0; i < 40; i++) {
-        let rx = Math.random() * canvas.width,
-            ry = Math.random() * canvas.height;
-        ctx.moveTo(rx, ry);
-        ctx.lineTo(rx + sx, ry + 15 + Math.abs(sy));
-    }
-    ctx.stroke();
     if (Math.random() < 0.005) {
         const el = document.getElementById('flash-overlay')!;
         el.style.opacity = '0.8';
@@ -1763,7 +1750,7 @@ function handleCollisionBoxes() {
             drawCollisionBox(cx, cy, ca, -5.5, -1.0, 2.6, 4.1, deckZ, deckZ + 2.5, 'rgba(255,80,0,0.9)');
 
         // Tower-Kollision – nur wenn Heli in der Luft ist
-        if (!zstate.introActive && !zstate.crashed && G.heli.inAir) {
+        if (!zstate.crashed && G.heli.inAir) {
             if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, cx, cy, ca, -5.5, -1.0, 2.6, 4.1, deckZ, deckZ + 2.5)) {
                 _physicsCtx.triggerCrash(I18N.CRASH_CARRIER_TOWER);
             }
@@ -1793,7 +1780,7 @@ function handleCollisionBoxes() {
                     deckZ + 0.1 + hb.z2,
                     'rgba(0,255,100,0.8)'
                 );
-            if (!zstate.introActive && !zstate.crashed && G.heli.inAir) {
+            if (!zstate.crashed && G.heli.inAir) {
                 if (
                     checkCollisionBox(
                         G.heli.x,
@@ -1826,7 +1813,7 @@ function handleCollisionBoxes() {
         const hmx = hX + 2,
             hmy = hY + 1;
         if (showCollisionBoxes) drawCollisionBox(hmx, hmy, 0, -2, 2, -1, 1, hZ, hZ + 1.8, 'rgba(255,80,0,0.9)');
-        if (!zstate.introActive && !zstate.crashed && G.heli.inAir) {
+        if (!zstate.crashed && G.heli.inAir) {
             if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, hmx, hmy, 0, -2, 2, -1, 1, hZ, hZ + 1.8)) {
                 _physicsCtx.triggerCrash(I18N.CRASH_HANGAR);
             }
@@ -1839,7 +1826,7 @@ function handleCollisionBoxes() {
         const fZ = G.PAD.z;
         if (showCollisionBoxes)
             drawCollisionBox(ft.x, ft.y, ft.angle, 0, 2.2, -0.45, 0.45, fZ, fZ + 0.9, 'rgba(255,200,0,0.8)');
-        if (!zstate.introActive && !zstate.crashed && G.heli.inAir) {
+        if (!zstate.crashed && G.heli.inAir) {
             if (
                 checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, ft.x, ft.y, ft.angle, 0, 2.2, -0.45, 0.45, fZ, fZ + 0.9)
             ) {
@@ -1858,7 +1845,7 @@ function handleCollisionBoxes() {
             if (showCollisionBoxes)
                 drawCollisionBox(lh.x, lh.y, 0, -1.0, 1.0, -1.0, 1.0, 0.4, 8.0, 'rgba(255,80,0,0.9)');
 
-            if (!zstate.introActive && !zstate.crashed) {
+            if (!zstate.crashed) {
                 if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, lh.x, lh.y, 0, -1.0, 1.0, -1.0, 1.0, 0.4, 8.5)) {
                     _physicsCtx.triggerCrash(I18N.CRASH_LIGHTHOUSE);
                 }
@@ -1875,7 +1862,7 @@ function handleCollisionBoxes() {
         if (showCollisionBoxes)
             drawCollisionBox(b.x, b.y, b.angle, -0.4, -0.2, -0.1, 0.1, 0.35, 3.2, 'rgba(255,80,0,0.9)');
 
-        if (!zstate.introActive && !zstate.crashed) {
+        if (!zstate.crashed) {
             if (
                 checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -1.1, 1.3, -0.45, 0.45, 0, 0.35) ||
                 checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -0.4, -0.2, -0.1, 0.1, 0.35, 3.2)
@@ -1894,7 +1881,7 @@ function handleCollisionBoxes() {
         if (showCollisionBoxes)
             drawCollisionBox(s.x, s.y, s.angle, 0.8, 2.3, -0.32, 0.32, 0.3, 2.4, 'rgba(255,80,0,0.9)');
 
-        if (!zstate.introActive && !zstate.crashed) {
+        if (!zstate.crashed) {
             if (
                 checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, s.x, s.y, s.angle, -5.2, 5.6, -0.7, 0.7, 0, 0.3) ||
                 checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, s.x, s.y, s.angle, 0.8, 2.3, -0.32, 0.32, 0.3, 2.4)
@@ -1950,7 +1937,7 @@ function handleCollisionBoxes() {
         ctx.setLineDash([]);
         ctx.restore();
     }
-    if (!zstate.introActive && !zstate.crashed) {
+    if (!zstate.crashed) {
         G.TREES_MAP.forEach((t: any) => {
             if (!isVisible(t.x, t.y)) return;
             const r = 0.35 * t.s;
@@ -2010,6 +1997,8 @@ let _missionNight = false;
 let _missionWindStr = 1;
 let _missionWindDir = 0;
 let _missionWindVar = false;
+type _TreeSprite = { canvas: HTMLCanvasElement; ox: number; oy: number };
+let _treeSprites: Map<string, _TreeSprite> = new Map();
 let _lighthouseX = -1;
 let _lighthouseY = -1;
 let _missionGridSize = 28;
@@ -2217,6 +2206,7 @@ const _getRankMissions = (): number => {
 let _selectedCampaignIndex = 0;
 let _selectedMissionIndex = 0;
 let _missionStartTime = 0;
+let _briefingActive = false;
 let _pendingSwitchIndex = -1;
 let _unlockSeq = '';
 
@@ -2257,7 +2247,7 @@ window.onkeydown = e => {
             _unlockSeq = '';
             showMsg(I18N.UNLOCK_ALL!);
         }
-        if (zstate.gameStarted && !zstate.introActive) {
+        if (zstate.gameStarted) {
             _partySeq = (_partySeq + e.key.toUpperCase()).slice(-5);
             if (_partySeq === 'PARTY') {
                 _partyMode = !_partyMode;
@@ -2278,8 +2268,8 @@ document.addEventListener('selectstart', e => e.preventDefault());
 document.addEventListener('dragstart', e => e.preventDefault());
 const _resizeCanvas = () => {
     if (_IS_APP) {
-        // App bundle only: phone 2.0×, tablet (≥600px) 2.5× upscale — webapp path not included
-        const scale = window.innerWidth >= 600 ? 2.5 : 2.0;
+        // App bundle only: phone 2.0×, tablet (≥768px short-side) 2.5× upscale — landscape-safe
+        const scale = Math.min(screen.width, screen.height) >= 768 ? 2.5 : 2.0;
         canvas.width  = Math.round(window.innerWidth  / scale);
         canvas.height = Math.round(window.innerHeight / scale);
         canvas.style.width  = window.innerWidth  + 'px';
@@ -2484,7 +2474,21 @@ const setupTouchControls = () => {
 
 const _ensureEl = ensureEl;
 
+const _showRainOverlay = (active: boolean, windDir = 225, windStr = 1) => {
+    const el = document.getElementById('rain-overlay');
+    if (!el) return;
+    if (active) {
+        // Map wind direction to a visible tilt angle: convert compass degrees to CSS rotation
+        const angleDeg = -10 + ((windDir - 225) / 360) * 20 * windStr;
+        el.style.setProperty('--rain-angle', `${angleDeg.toFixed(1)}deg`);
+        el.style.display = 'block';
+    } else {
+        el.style.display = 'none';
+    }
+};
+
 const mountGameOverlays = () => {
+    _ensureEl('rain-overlay');
     _ensureEl('flash-overlay');
     _ensureEl('msg');
     if (!_IS_APP) {
@@ -2504,7 +2508,6 @@ const mountGameScreens = () => {
         'crash-screen',
         'mission-success-screen',
         'win-screen',
-        'mission-briefing',
         'campaign-complete-screen',
         'campaign-failed-screen',
     ].forEach(id => {
@@ -2595,8 +2598,6 @@ const _previewLaunch = !import.meta.env.DEV
           // Reset heli + state
           zstate.crashed = false;
           zstate.gameStarted = false;
-          zstate.introActive = false;
-          zstate.introProgress = 0;
           G.heli.fuel = 100;
           G.heli.onboard = 0;
           G.heli.engineOn = false;
@@ -2673,7 +2674,6 @@ window.onload = () => {
             });
             (document.getElementById('splash-version') as HTMLElement).textContent = `v${__APP_VERSION__}`;
             mountBriefing();
-            initBriefing(dismissBriefing);
             mountSettings();
             mountRankup();
             mountGameScreens();

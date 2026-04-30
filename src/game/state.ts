@@ -21,8 +21,6 @@ const createZstate = () => {
     const state = {
         gameStarted: false,
         crashed: false,
-        introActive: false,
-        introProgress: 0,
         missionType: '',
         goalCount: 0,
         totalRescued: 0,
@@ -99,7 +97,7 @@ export const G = {
         parkY: 0,
         parkAngle: 0,
         t: 0,
-        wps: null as null,
+        wps: null as { x: number; y: number }[] | null,
         wpI: 0,
         targetX: null as number | null,
         targetY: null as number | null,

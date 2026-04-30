@@ -41,6 +41,35 @@ body {
     mix-blend-mode: overlay;
     transition: opacity 0.1s;
 }
+#rain-overlay {
+    position: absolute;
+    top: -50%;
+    left: -25%;
+    width: 150%;
+    height: 200%;
+    pointer-events: none;
+    z-index: 99;
+    display: none;
+    transform: rotate(var(--rain-angle, -10deg));
+}
+#rain-overlay::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+        to bottom,
+        rgba(150, 200, 255, 0.28) 0,
+        rgba(150, 200, 255, 0.28) 1px,
+        transparent 1px,
+        transparent 20px
+    );
+    background-size: 12px 20px;
+    animation: rain-fall 0.3s linear infinite;
+}
+@keyframes rain-fall {
+    from { transform: translateY(0); }
+    to   { transform: translateY(20px); }
+}
 #audio-mute {
     position: absolute;
     top: 0;

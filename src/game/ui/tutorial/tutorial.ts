@@ -52,15 +52,8 @@ const _MISSIONS: readonly (readonly TutorialStep[])[] = [
     ],
 
     // ── Mission 1: Nachtanken ─────────────────────────────────────────────────
+    // Heli starts airborne with low fuel — no engine-start step needed
     [
-        {
-            text: {
-                de: { desktop: 'MOTOR STARTEN — DRÜCKE [W]', mobile: 'MOTOR STARTEN — LINKEN STICK NACH OBEN' },
-                en: { desktop: 'START ENGINE — PRESS [W]', mobile: 'START ENGINE — PUSH LEFT STICK UP' },
-            },
-            control: 'joystick-left',
-            condition: g => g.heli.engineOn,
-        },
         {
             text: {
                 de: { desktop: 'ZUM LANDEPLATZ FLIEGEN — MINIMAP NUTZEN', mobile: 'ZUM LANDEPLATZ FLIEGEN — MINIMAP NUTZEN' },

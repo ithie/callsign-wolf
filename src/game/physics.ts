@@ -836,6 +836,7 @@ export function updateFuelTruck(dt: number, ctx: PhysicsCtx) {
     const heli = G.heli;
 
     const SPEED = 0.045;
+    const SPEED_REV = 0.028;
     const MAX_STEER = 0.025;
     const STOP_DIST = 3.5;
 
@@ -873,7 +874,25 @@ export function updateFuelTruck(dt: number, ctx: PhysicsCtx) {
         return dist;
     }
 
+    // Reverse: front points away from target so rear tracks toward it; moves backward.
+    const reverseNavigate = (tx: number, ty: number): number => {
+        const dx = tx - ft.x, dy = ty - ft.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 0.01) return 0;
+        const desired = Math.atan2(dy, dx) + Math.PI;
+        const diff = ((desired - ft.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        ft.angle += Math.max(-MAX_STEER * dt, Math.min(MAX_STEER * dt, diff));
+        ft.x -= Math.cos(ft.angle) * SPEED_REV * dt;
+        ft.y -= Math.sin(ft.angle) * SPEED_REV * dt;
+        return dist;
+    };
+
     if (ft.state === 'DRIVING') {
+        if (!ft.wps) ft.wps = [];
+        const lastWp = ft.wps[ft.wps.length - 1];
+        if (!lastWp || Math.hypot(ft.x - lastWp.x, ft.y - lastWp.y) >= 1.5) {
+            ft.wps.push({ x: ft.x, y: ft.y });
+        }
         if (navigate(heli.x, heli.y) <= STOP_DIST) {
             ft.state = 'ARM_OUT';
             ft.t = 0;
@@ -904,11 +923,23 @@ export function updateFuelTruck(dt: number, ctx: PhysicsCtx) {
         if (ft.t >= 1) {
             ft.state = 'RETURNING';
             ft.t = 0;
+            ft.wpI = 0;
+            if (ft.wps) ft.wps.reverse();
         }
     } else if (ft.state === 'RETURNING') {
-        if (navigate(ft.parkX, ft.parkY) < 2.0) {
-            ft.state = 'PARKED';
-            ft.t = 0;
+        const wps = ft.wps;
+        if (wps && ft.wpI < wps.length) {
+            const wp = wps[ft.wpI];
+            if (reverseNavigate(wp.x, wp.y) < 1.5) ft.wpI++;
+        } else {
+            if (reverseNavigate(ft.parkX, ft.parkY) < 1.2) {
+                ft.x = ft.parkX;
+                ft.y = ft.parkY;
+                ft.angle = ft.parkAngle;
+                ft.wps = null;
+                ft.state = 'PARKED';
+                ft.t = 0;
+            }
         }
     }
 }
@@ -984,7 +1015,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
         onPad && ctx.hasPad && G.PAD ? G.PAD.z : onPad && ctx.hasCarrier ? G.CARRIER.zDeck : groundH;
 
     // engine
-    if (G.keys['KeyW'] && !G.heli.engineOn && G.heli.fuel > 0 && onPad && !zstate.introActive) G.heli.engineOn = true;
+    if (G.keys['KeyW'] && !G.heli.engineOn && G.heli.fuel > 0 && onPad) G.heli.engineOn = true;
     if (G.keys['KeyS'] && !G.heli.inAir && G.heli.engineOn) {
         G.heli.engineOn = false;
         const landObj = G.objectives.find((o: any) => o.type === 'land_at');
@@ -1334,19 +1365,17 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     }
 
     // crash detection
-    if (!zstate.introActive) {
-        if (!onPad && G.heli.z < 0.1 && getGround(G.heli.x, G.heli.y, G.points, G.CARRIER) < -0.2)
-            ctx.triggerCrash(I18N.CRASH_WATER);
-        if (G.heli.z < groundH + 0.25) {
-            if (!onPad && groundH > 0.1) ctx.triggerCrash(I18N.CRASH_BAD_ZONE);
-            else if (Math.hypot(G.heli.vx, G.heli.vy) > 0.12) ctx.triggerCrash(I18N.CRASH_TOO_FAST);
-            else if (G.heli.vz < -0.15) ctx.triggerCrash(I18N.CRASH_HARD_IMPACT);
-        }
-        // lighthouse collision – handled by handleCollisionBoxes() in game.ts
+    if (!onPad && G.heli.z < 0.1 && getGround(G.heli.x, G.heli.y, G.points, G.CARRIER) < -0.2)
+        ctx.triggerCrash(I18N.CRASH_WATER);
+    if (G.heli.z < groundH + 0.25) {
+        if (!onPad && groundH > 0.1) ctx.triggerCrash(I18N.CRASH_BAD_ZONE);
+        else if (Math.hypot(G.heli.vx, G.heli.vy) > 0.12) ctx.triggerCrash(I18N.CRASH_TOO_FAST);
+        else if (G.heli.vz < -0.15) ctx.triggerCrash(I18N.CRASH_HARD_IMPACT);
     }
+    // lighthouse collision – handled by handleCollisionBoxes() in game.ts
 
     // ── Heli-Heli collision (Multiplayer) ────────────────────────────────────
-    if (!zstate.introActive && G.remoteHeli) {
+    if (G.remoteHeli) {
         const dx = G.heli.x - G.remoteHeli.x;
         const dy = G.heli.y - G.remoteHeli.y;
         // Flatten z contribution so altitude offset doesn't entirely mask XY proximity
