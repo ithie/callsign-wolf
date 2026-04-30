@@ -6,8 +6,6 @@ import { tileW, tileH, stepH, CANVAS_SCALE } from '../../render-config';
 import { zstate } from '../../state';
 import { I18N } from '../../i18n';
 
-const _IS_APP = import.meta.env.VITE_TARGET === 'app';
-
 let _G: any;
 let _drawHeli: (...args: any[]) => void;
 
@@ -86,16 +84,12 @@ export const animateHeliPreviews = () => {
     _heliPreviewLoop();
 };
 
-export const buildHeliSelect = (campaignType: string, rankIndex: number) => {
+export const buildHeliSelect = (_campaignType: string, rankIndex: number) => {
     const container = document.getElementById('heli-options');
     if (!container) return;
     container.innerHTML = '';
-    const isGlider = !_IS_APP && campaignType === 'glider';
-    const types = (!_IS_APP && isGlider)
-        ? HELI_TYPES.filter(ht => ht.id === 'glider')
-        : (!_IS_APP ? HELI_TYPES.filter(ht => ht.id !== 'glider') : HELI_TYPES);
-    (document.querySelector('#heli-select .subtitle') as HTMLElement)!.textContent =
-        isGlider ? 'FLUGZEUG WÄHLEN' : 'HUBSCHRAUBER WÄHLEN';
+    const types = HELI_TYPES;
+    (document.querySelector('#heli-select .subtitle') as HTMLElement)!.textContent = 'HUBSCHRAUBER WÄHLEN';
     const visibleTypes = types.filter((ht: HeliType) => !(ht.hideWhenLocked && ht.minRankIndex > rankIndex));
     const cols = visibleTypes.length <= 1 ? 1 : visibleTypes.length === 4 ? 2 : 3;
     container.style.gridTemplateColumns = Array(cols).fill('1fr').join(' ');

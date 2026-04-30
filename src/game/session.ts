@@ -119,7 +119,7 @@ export const isCampaignUnlocked = (
 
     const regular = campaigns
         .map((c, i) => ({ type: c.type, i }))
-        .filter(c => (!_IS_APP ? c.type !== 'glider' : true) && (!_IS_APP ? c.type !== 'multiplayer' : true) && c.type !== 'tutorial' && c.type !== 'free-flight');
+        .filter(c => (!_IS_APP ? c.type !== 'multiplayer' : true) && c.type !== 'tutorial' && c.type !== 'free-flight');
     const pos = regular.findIndex(c => c.i === index);
     if (pos <= 0) return true;
     const prev = regular[pos - 1];

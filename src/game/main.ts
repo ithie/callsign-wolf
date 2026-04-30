@@ -2,7 +2,6 @@ import { CampaignExport, MissionData } from '@/shared/types';
 import Tutorial from './campaigns/tutorial.json';
 import FreeFlight from './campaigns/freeFlight.json';
 import ArchipelDemo from './campaigns/archipeldemo.json';
-import Glider from './campaigns/glider.json';
 import TransferDemo from './campaigns/transferdemo.json';
 import { MP_DEMO_CAMPAIGN } from './multiplayer/mp-mission';
 
@@ -77,8 +76,7 @@ const createCampaignHandler = () => {
         Tutorial as unknown as CampaignExport,
         ArchipelDemo as unknown as CampaignExport,
         FreeFlight as unknown as CampaignExport,
-        ...(!_IS_APP ? [Glider as unknown as CampaignExport] : []),
-        ...(!_IS_APP ? [MP_DEMO_CAMPAIGN] : []), // index 5 (web) / 4 (app) – matches MP_CAMPAIGN_INDEX in mp-mission.ts
+        ...(!_IS_APP ? [MP_DEMO_CAMPAIGN] : []), // index 4 (web) / 4 (app) – matches MP_CAMPAIGN_INDEX in mp-mission.ts
         TransferDemo as unknown as CampaignExport,
     ];
 

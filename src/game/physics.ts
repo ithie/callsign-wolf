@@ -1087,61 +1087,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     let inAir = G.heli.z > effectiveGroundH + 0.15;
     G.heli.inAir = inAir;
 
-    if (!_IS_APP && G.heli.type === 'glider') {
-        G.heli.inAir = true;
-        const dX = Math.cos(G.heli.angle),
-            dY = Math.sin(G.heli.angle);
-        const cruiseSpd = 0.1;
-
-        if (G.keys['ArrowUp']) {
-            G.heli.vz = Math.min(G.heli.vz + 0.003 * dt, 0.07);
-            G.heli.tilt += (0.25 - G.heli.tilt) * 0.04 * dt;
-        } else if (G.keys['ArrowDown']) {
-            G.heli.vz = Math.max(G.heli.vz - 0.002 * dt, -0.07);
-            G.heli.tilt += (-0.25 - G.heli.tilt) * 0.04 * dt;
-        } else {
-            G.heli.tilt += (0 - G.heli.tilt) * 0.03 * dt;
-        }
-
-        let turning = false;
-        const bankRate = 0.004;
-        if (G.keys['ArrowLeft']) {
-            G.heli.angle -= bankRate * dt;
-            G.heli.roll = Math.min(G.heli.roll + 0.015 * dt, 0.65);
-            turning = true;
-        }
-        if (G.keys['ArrowRight']) {
-            G.heli.angle += bankRate * dt;
-            G.heli.roll = Math.max(G.heli.roll - 0.015 * dt, -0.65);
-            turning = true;
-        }
-        if (G.keys['KeyA']) {
-            G.heli.angle -= 0.003 * dt;
-            G.heli.roll = Math.min(G.heli.roll + 0.008 * dt, 0.2);
-            turning = true;
-        }
-        if (G.keys['KeyD']) {
-            G.heli.angle += 0.003 * dt;
-            G.heli.roll = Math.max(G.heli.roll - 0.008 * dt, -0.2);
-            turning = true;
-        }
-        if (!turning) G.heli.roll *= Math.pow(0.988, dt);
-
-        G.heli.vx = dX * cruiseSpd;
-        G.heli.vy = dY * cruiseSpd;
-
-        G.heli.vz -= 0.0015 * dt;
-
-        const dhW =
-            getGround(G.heli.x - 0.5, G.heli.y, G.points, null) - getGround(G.heli.x + 0.5, G.heli.y, G.points, null);
-        G.heli.vz += Math.max(0, dhW * 0.08) * dt;
-
-        const gBelow = getGround(G.heli.x, G.heli.y, G.points, null);
-        if (gBelow > 4.0 && G.heli.z - gBelow < 10) G.heli.vz += 0.002 * dt;
-
-        G.heli.vz = Math.max(G.heli.vz, -0.08);
-        G.heli.vz = Math.min(G.heli.vz, 0.1);
-    } else if (inAir || (G.heli.engineOn && lift > 0)) {
+    if (inAir || (G.heli.engineOn && lift > 0)) {
         let spd = Math.hypot(G.heli.vx, G.heli.vy);
         let aero = Math.max(0.3, 1.0 - spd * 8.0);
         let mod = G.heli.rotorRPM * (1.0 - G.heli.onboard * 0.03);
@@ -1218,11 +1164,6 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     G.heli.x += G.heli.vx * dt;
     G.heli.y += G.heli.vy * dt;
     G.heli.z += G.heli.vz * dt;
-    if (!_IS_APP && G.heli.type === 'glider' && G.heli.z > 14) {
-        G.heli.z = 14;
-        G.heli.vz = Math.min(G.heli.vz, 0);
-    }
-
     const margin = 2;
     if (G.heli.x < margin) {
         G.heli.x = margin;

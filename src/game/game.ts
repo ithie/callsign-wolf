@@ -419,15 +419,6 @@ function toCampaignSelect() {
     _openCampaignSelect();
 }
 
-if (!_IS_APP) {
-    (window as any).launchEasterEgg = () => {
-        const index = campaignHandler.getCampaigns().findIndex(c => c.type === 'glider');
-        if (index < 0) return;
-        toCampaignSelect();
-        _doSelectCampaign(index);
-    };
-}
-
 function setHover(type: string, state: boolean) {
     G.menuHover[type] = state;
 }
@@ -583,21 +574,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
         initTutorial(_selectedMissionIndex, _isTouchDevice(), G, missionComplete);
     }
 
-    if (!_IS_APP && G.heli.type === 'glider') {
-        zstate.introActive = false;
-        G.heli.x = G.START_POS.x;
-        G.heli.y = G.START_POS.y;
-        G.heli.z = getGround(G.START_POS.x, G.START_POS.y, G.points, G.CARRIER) + 5;
-        G.heli.vx = Math.cos(G.heli.angle) * 0.1;
-        G.heli.vy = Math.sin(G.heli.angle) * 0.1;
-        G.heli.vz = 0.0;
-        G.heli.tilt = 0.0;
-        G.heli.engineOn = false;
-        G.heli.rotorRPM = 0;
-        zstate.cam.x = (G.heli.x - G.heli.y) * (tileW / 2);
-        zstate.cam.y = (G.heli.x + G.heli.y) * (tileH / 2);
-        showMsg(I18N.SOARING);
-    } else if (isStartsOnCarrier()) {
+    if (isStartsOnCarrier()) {
         zstate.introActive = false;
         zstate.introProgress = 1;
         G.heli.x = G.CARRIER.x;
@@ -908,18 +885,6 @@ function drawScene() {
         // hanging payload figures drawn after heli (no rope, that's done above)
         drawPayloadObjects(true, false);
     } // end if (!zstate.crashed)
-
-    // Glider HUD
-    if (!_IS_APP && !zstate.introActive && G.heli.type === 'glider') {
-        const agl = Math.max(0, G.heli.z - getGround(G.heli.x, G.heli.y, G.points, null));
-        const cs = CANVAS_SCALE;
-        const lh = Math.round(18 * cs);
-        ctx.font = `bold ${Math.round(13 * cs)}px monospace`;
-        ctx.fillStyle = agl < 3 ? '#f44' : '#8ef';
-        ctx.fillText(`ALT  ${Math.round(agl * 10)}m`, Math.round(20 * cs), canvas.height - lh * 2);
-        ctx.fillStyle = '#aaa';
-        ctx.fillText('↑↓ PITCH   ←→ BANK', Math.round(20 * cs), canvas.height - lh);
-    }
 
     // HUD
     if (!zstate.introActive) {

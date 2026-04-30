@@ -7,10 +7,7 @@ import type { DEF } from './defs';
 import COASTHAWK_DEF from './models/coasthawk.zdef';
 import DOLPHIN_DEF from './models/dolphin.zdef';
 import ATLAS_DEF from './models/atlas.zdef';
-import GLIDER_DEF from './models/glider.zdef';
 import ORNITHOPTER_RAW from './models/ornithopter.zdef';
-
-const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
 export interface HeliType {
     id: string;
@@ -144,28 +141,6 @@ export const HELI_TYPES: HeliType[] = [
         minRankIndex: 3,
         hideWhenLocked: true,
     },
-    ...(!_IS_APP ? [{
-        id: 'glider',
-        label: 'ASK-21',
-        def: GLIDER_DEF,
-        maxLoad: 0,
-        accel: 0,
-        friction: 0.9995,
-        tiltSpeed: 0.025,
-        fuelRate: 0,
-        liftPower: 0,
-        cargoResist: 0,
-        scale: 1.0,
-        previewScale: 2.0,
-        collisionBox: { xMin: -1.65, xMax: 1.0, yMin: -3.0, yMax: 3.0, zMax: 0.4 },
-        rotorOffsets: [],
-        extraRotorDebris: false,
-        canCarryCargo: false,
-        selectLabel: 'ASK-21 SEGLER',
-        selectSub: 'Motorlos / Thermisch',
-        selectCap: '✈ Easteregg',
-        minRankIndex: 0,
-    }] as HeliType[] : []),
 ];
 
 export function getHeliType(id: string): HeliType {

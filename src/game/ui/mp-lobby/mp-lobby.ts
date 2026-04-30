@@ -6,8 +6,6 @@ import { HELI_TYPES } from '../../heli-types';
 import type { MpChannels } from '../../multiplayer/rtc';
 import type { MpEvent } from '../../multiplayer/sync';
 
-const _IS_APP = import.meta.env.VITE_TARGET === 'app';
-
 export type MpLobbyCallbacks = {
     onConnected: (isHost: boolean, peerCallsign: string, channels: MpChannels, heliType: string) => void;
     onBack: () => void;
@@ -35,7 +33,7 @@ let _guestBackBtn: HTMLElement;
 
 export const mountMpLobby = (): void => {
     _ensureEl('mp-lobby-screen').classList.add('ui-screen');
-    const heliCards = (!_IS_APP ? HELI_TYPES.filter(h => h.id !== 'glider') : HELI_TYPES)
+    const heliCards = HELI_TYPES
         .map(h => `
             <div class="mp-heli-card" data-id="${h.id}">
                 <div class="mp-heli-card-label">${h.selectLabel}</div>

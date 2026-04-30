@@ -14,7 +14,6 @@ import type { IsoFn, SceneRenderer } from './scene-renderer';
 import { getHeliType } from './heli-types';
 import { applyParts } from './def-utils';
 
-const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 import FUEL_TRUCK_CHASSIS_DEF from './models/fuel_truck_chassis.zdef';
 import FUEL_TRUCK_TANK_DEF from './models/fuel_truck_tank.zdef';
 import FUEL_TRUCK_CAB_DEF from './models/fuel_truck_cab.zdef';
@@ -892,112 +891,6 @@ export function createDrawObjects(
                 actualCtx.moveTo(rR.x, rR.y);
                 actualCtx.lineTo(end.x, end.y);
                 actualCtx.stroke();
-            }
-        } else if (!_IS_APP && type === 'glider') {
-            if (isShadow) {
-                const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : hZ;
-                actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.3 - (hZ - groundZ) * 0.05)})`;
-
-                // Helper: project local coords to screen at ground level (z=0)
-                const ps = (lx: number, ly: number) => p(lx, ly, 0);
-
-                // Fuselage
-                const fuse = [ps(1.0, 0), ps(0.55, -0.1), ps(-1.2, -0.06), ps(-1.65, 0), ps(-1.2, 0.06), ps(0.55, 0.1)];
-                actualCtx.beginPath();
-                actualCtx.moveTo(fuse[0].x, fuse[0].y);
-                for (let i = 1; i < fuse.length; i++) actualCtx.lineTo(fuse[i].x, fuse[i].y);
-                actualCtx.closePath();
-                actualCtx.fill();
-
-                // Main wings
-                const wing = [ps(0.36, -3.0), ps(0.03, -3.0), ps(0.03, 3.0), ps(0.36, 3.0)];
-                actualCtx.beginPath();
-                actualCtx.moveTo(wing[0].x, wing[0].y);
-                for (let i = 1; i < wing.length; i++) actualCtx.lineTo(wing[i].x, wing[i].y);
-                actualCtx.closePath();
-                actualCtx.fill();
-
-                // Horizontal stabiliser
-                const hstab = [ps(-1.35, -0.65), ps(-1.55, -0.65), ps(-1.55, 0.65), ps(-1.35, 0.65)];
-                actualCtx.beginPath();
-                actualCtx.moveTo(hstab[0].x, hstab[0].y);
-                for (let i = 1; i < hstab.length; i++) actualCtx.lineTo(hstab[i].x, hstab[i].y);
-                actualCtx.closePath();
-                actualCtx.fill();
-            } else {
-                const wf = (lx: number, ly: number, lz: number) => ({
-                    x: lx * s * cosA - ly * s * sinA + hX,
-                    y: lx * s * sinA + ly * s * cosA + hY,
-                    z: hZ + (lz * s + ly * s * hRoll * 0.5 + lx * s * hTilt * 0.5),
-                });
-                const gliderFaces: { verts: [number, number, number][]; color: string }[] = [
-                    {
-                        verts: [
-                            [-1.4, 0.04, 0.2],
-                            [-1.65, 0.04, 0.2],
-                            [-1.65, 0.04, 0.5],
-                            [-1.4, 0.04, 0.32],
-                        ],
-                        color: '#cc3300',
-                    },
-                    {
-                        verts: [
-                            [-1.35, -0.65, 0.24],
-                            [-1.35, 0.65, 0.24],
-                            [-1.55, 0.65, 0.24],
-                            [-1.55, -0.65, 0.24],
-                        ],
-                        color: '#dddddd',
-                    },
-                    {
-                        verts: [
-                            [0.36, -0.1, 0.27],
-                            [0.03, -0.1, 0.27],
-                            [0.03, -3.0, 0.28],
-                            [0.36, -3.0, 0.28],
-                        ],
-                        color: '#e0e0e0',
-                    },
-                    {
-                        verts: [
-                            [1.0, 0, 0.2],
-                            [0.55, -0.1, 0.26],
-                            [-1.2, -0.06, 0.26],
-                            [-1.65, 0, 0.22],
-                            [-1.2, 0.06, 0.26],
-                            [0.55, 0.1, 0.26],
-                        ],
-                        color: '#f2f2f2',
-                    },
-                    {
-                        verts: [
-                            [0.36, 0.1, 0.27],
-                            [0.36, 3.0, 0.28],
-                            [0.03, 3.0, 0.28],
-                            [0.03, 0.1, 0.27],
-                        ],
-                        color: '#e0e0e0',
-                    },
-                    {
-                        verts: [
-                            [0.7, 0.07, 0.26],
-                            [0.7, -0.07, 0.26],
-                            [-0.16, -0.07, 0.36],
-                            [-0.16, 0.07, 0.36],
-                        ],
-                        color: '#112244',
-                    },
-                ];
-                for (const face of gliderFaces) {
-                    faceFn(
-                        face.verts.map(([lx, ly, lz]) => wf(lx, ly, lz)),
-                        face.color,
-                        null,
-                        0,
-                        camX,
-                        camY
-                    );
-                }
             }
         } else if (type === 'ornithopter') {
             const flapPhase = hRotor * 0.22 * flapRate;

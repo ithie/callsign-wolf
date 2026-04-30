@@ -17,7 +17,6 @@ describe('HELI_TYPES', () => {
         expect(ids).toContain('dolphin');
         expect(ids).toContain('coasthawk');
         expect(ids).toContain('atlas');
-        expect(ids).toContain('glider');
     });
 
     it('all scale values are > 0', () => {
@@ -77,13 +76,6 @@ describe('HELI_TYPES', () => {
         const dolphin = getHeliType('dolphin');
         const atlas = getHeliType('atlas');
         expect(atlas.accel).toBeLessThan(dolphin.accel);
-    });
-
-    it('glider has no fuel consumption', () => {
-        const glider = getHeliType('glider');
-        expect(glider.fuelRate).toBe(0);
-        expect(glider.accel).toBe(0);
-        expect(glider.liftPower).toBe(0);
     });
 
     it('tandem helis have multiple rotorOffsets', () => {
