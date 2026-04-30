@@ -18,8 +18,6 @@ const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 import FUEL_TRUCK_CHASSIS_DEF from './models/fuel_truck_chassis.zdef';
 import FUEL_TRUCK_TANK_DEF from './models/fuel_truck_tank.zdef';
 import FUEL_TRUCK_CAB_DEF from './models/fuel_truck_cab.zdef';
-import OSPREY_HELI_DEF from './models/osprey_heli.zdef';
-import OSPREY_PLANE_DEF from './models/osprey_plane.zdef';
 
 export interface WindState {
     x: number;
@@ -541,8 +539,7 @@ export function createDrawObjects(
 
         const cosA = Math.cos(hAngle),
             sinA = Math.sin(hAngle);
-        const _isOsprey = type === 'osprey' || type === 'osprey_plane';
-        const _baseScale = _isOsprey ? 1.0 : getHeliType(type).scale;
+        const _baseScale = getHeliType(type).scale;
         let s = _baseScale;
         if (scaleOverride > 0) s = scaleOverride * _baseScale;
 
@@ -1000,87 +997,6 @@ export function createDrawObjects(
                         camX,
                         camY
                     );
-                }
-            }
-        } else if (type === 'osprey' || type === 'osprey_plane') {
-            const def = type === 'osprey_plane' ? OSPREY_PLANE_DEF : OSPREY_HELI_DEF;
-            if (isShadow) {
-                const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : hZ;
-                actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.08)})`;
-                const sN = p(2.0, 0, 0),
-                    sFR = p(0, -2.8, 0),
-                    sT = p(-2.0, 0, 0),
-                    sFL = p(0, 2.8, 0);
-                actualCtx.beginPath();
-                actualCtx.moveTo(sN.x, sN.y);
-                actualCtx.lineTo(sFR.x, sFR.y);
-                actualCtx.lineTo(sT.x, sT.y);
-                actualCtx.lineTo(sFL.x, sFL.y);
-                actualCtx.closePath();
-                actualCtx.fill();
-            } else {
-                const wf = (lx: number, ly: number, lz: number) => ({
-                    x: lx * s * cosA - ly * s * sinA + hX,
-                    y: lx * s * sinA + ly * s * cosA + hY,
-                    z: hZ + (lz * s + ly * s * hRoll * 0.5 + lx * s * hTilt * 0.5),
-                });
-                // Depth-sort faces back-to-front so near faces draw over far faces
-                const sorted = [...def.faces]
-                    .map(face => {
-                        const pts = face.verts.map(([lx, ly, lz]: number[]) => wf(lx, ly, lz));
-                        const depth = pts.reduce((sum, p) => sum + p.x + p.y, 0) / pts.length;
-                        return { pts, color: face.color, stroke: face.stroke ?? null, depth };
-                    })
-                    .sort((a, b) => a.depth - b.depth);
-                for (const f of sorted) {
-                    faceFn(f.pts, f.color, f.stroke, 0, camX, camY);
-                }
-                // Tiltrotor blades — 3-blade, one disc per wingtip nacelle
-                actualCtx.strokeStyle = 'rgba(220,245,255,0.55)';
-                actualCtx.lineWidth = 3 * s;
-                actualCtx.lineCap = 'round';
-                if (type === 'osprey') {
-                    // Heli mode: nacelles tall (z=0.22–1.10) → rotors horizontal above at z=1.10
-                    // Nacelle center y=±2.88, x=0.11 (midpoint of trapezoid)
-                    const rHubR = p(0.11, -2.88, 1.12);
-                    for (let i = 0; i < 3; i++) {
-                        const a = hRotor + i * ((Math.PI * 2) / 3);
-                        const rEnd = p(0.11 + Math.cos(a) * 2.0, -2.88 + Math.sin(a) * 2.0, 1.12);
-                        actualCtx.beginPath();
-                        actualCtx.moveTo(rHubR.x, rHubR.y);
-                        actualCtx.lineTo(rEnd.x, rEnd.y);
-                        actualCtx.stroke();
-                    }
-                    const rHubL = p(0.11, 2.88, 1.12);
-                    for (let i = 0; i < 3; i++) {
-                        const a = -hRotor + i * ((Math.PI * 2) / 3);
-                        const lEnd = p(0.11 + Math.cos(a) * 2.0, 2.88 + Math.sin(a) * 2.0, 1.12);
-                        actualCtx.beginPath();
-                        actualCtx.moveTo(rHubL.x, rHubL.y);
-                        actualCtx.lineTo(lEnd.x, lEnd.y);
-                        actualCtx.stroke();
-                    }
-                } else {
-                    // Plane mode: nacelles horizontal (x=0–0.88) → props vertical at nacelle front (x=0.88)
-                    // Prop sweeps in local YZ plane
-                    const propHubR = p(0.88, -2.88, 0.44);
-                    for (let i = 0; i < 3; i++) {
-                        const a = hRotor * 2.5 + i * ((Math.PI * 2) / 3);
-                        const pEnd = p(0.88, -2.88 + Math.cos(a) * 2.0, 0.44 + Math.sin(a) * 2.0);
-                        actualCtx.beginPath();
-                        actualCtx.moveTo(propHubR.x, propHubR.y);
-                        actualCtx.lineTo(pEnd.x, pEnd.y);
-                        actualCtx.stroke();
-                    }
-                    const propHubL = p(0.88, 2.88, 0.44);
-                    for (let i = 0; i < 3; i++) {
-                        const a = -hRotor * 2.5 + i * ((Math.PI * 2) / 3);
-                        const pEndL = p(0.88, 2.88 + Math.cos(a) * 2.0, 0.44 + Math.sin(a) * 2.0);
-                        actualCtx.beginPath();
-                        actualCtx.moveTo(propHubL.x, propHubL.y);
-                        actualCtx.lineTo(pEndL.x, pEndL.y);
-                        actualCtx.stroke();
-                    }
                 }
             }
         } else if (type === 'ornithopter') {

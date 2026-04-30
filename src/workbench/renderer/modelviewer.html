@@ -56,8 +56,6 @@
             import SUBMARINE_DEF from '/src/game/models/submarine.zdef';
             import CARRIER_HULL_DEF from '/src/game/models/carrier_hull.zdef';
             import CARRIER_TOWER_DEF from '/src/game/models/carrier_tower.zdef';
-            import OSPREY_HELI_DEF from '/src/game/models/osprey_heli.zdef';
-            import OSPREY_PLANE_DEF from '/src/game/models/osprey_plane.zdef';
             import ORNITHOPTER_DEF from '/src/game/models/ornithopter.zdef';
             import { createSceneRenderer } from '/src/game/scene-renderer.ts';
             import { createDrawObjects } from '/src/game/draw-objects.ts';
@@ -103,8 +101,6 @@
                 { id: 'tree_dead', type: 'foliage', x: 4, y: 50, color: '#8a6a4a', label: 'DEAD TREE' },
                 { id: 'fuel_truck', type: 'vehicle', x: 20, y: 50, color: '#4a7a4a', label: 'FUEL TRUCK' },
                 { id: 'glider', type: 'aircraft', x: 65, y: 0, color: '#eee', label: 'ASK-21 GLIDER' },
-                { id: 'osprey_heli', type: 'osprey', x: 5, y: 75, color: '#f60', label: 'V-22 OSPREY (HELI)' },
-                { id: 'osprey_plane', type: 'osprey', x: 30, y: 75, color: '#f60', label: 'V-22 OSPREY (PLANE)' },
                 { id: 'ornithopter', type: 'ornithopter', x: 55, y: 75, color: '#9ab', label: 'ORNITHOPTER' },
             ];
 
@@ -406,62 +402,6 @@
                 }
             }
 
-            function drawOspreyRotors(hX, hY, hZ, hAngle, hRotor, mode, camX, camY) {
-                const s = 1.1;
-                const cosA = Math.cos(hAngle),
-                    sinA = Math.sin(hAngle);
-                function p(lx, ly, lz) {
-                    lx *= s;
-                    ly *= s;
-                    lz *= s;
-                    return iso(lx * cosA - ly * sinA + hX, lx * sinA + ly * cosA + hY, hZ + lz, camX, camY);
-                }
-                ctx.lineCap = 'round';
-                ctx.strokeStyle = 'rgba(220,245,255,0.55)';
-                ctx.lineWidth = 3 * s;
-                if (mode === 'heli') {
-                    // Helicopter mode: rotors horizontal above tall nacelles (z=1.15)
-                    const rHubR = p(0.11, -2.92, 1.15);
-                    for (let i = 0; i < 3; i++) {
-                        const a = hRotor + i * ((Math.PI * 2) / 3);
-                        const rEnd = p(0.11 + Math.cos(a) * 2.1, -2.92 + Math.sin(a) * 2.1, 1.15);
-                        ctx.beginPath();
-                        ctx.moveTo(rHubR.x, rHubR.y);
-                        ctx.lineTo(rEnd.x, rEnd.y);
-                        ctx.stroke();
-                    }
-                    const rHubL = p(0.11, 2.92, 1.15);
-                    for (let i = 0; i < 3; i++) {
-                        const a = -hRotor + i * ((Math.PI * 2) / 3);
-                        const lEnd = p(0.11 + Math.cos(a) * 2.1, 2.92 + Math.sin(a) * 2.1, 1.15);
-                        ctx.beginPath();
-                        ctx.moveTo(rHubL.x, rHubL.y);
-                        ctx.lineTo(lEnd.x, lEnd.y);
-                        ctx.stroke();
-                    }
-                } else {
-                    // Plane mode: props vertical at nacelle fronts (x=0.88)
-                    const pHubR = p(0.88, -2.92, 0.5);
-                    for (let i = 0; i < 3; i++) {
-                        const a = hRotor * 2.5 + i * ((Math.PI * 2) / 3);
-                        const pEnd = p(0.88, -2.92 + Math.cos(a) * 2.1, 0.5 + Math.sin(a) * 2.1);
-                        ctx.beginPath();
-                        ctx.moveTo(pHubR.x, pHubR.y);
-                        ctx.lineTo(pEnd.x, pEnd.y);
-                        ctx.stroke();
-                    }
-                    const pHubL = p(0.88, 2.92, 0.5);
-                    for (let i = 0; i < 3; i++) {
-                        const a = -hRotor * 2.5 + i * ((Math.PI * 2) / 3);
-                        const pEndL = p(0.88, 2.92 + Math.cos(a) * 2.1, 0.5 + Math.sin(a) * 2.1);
-                        ctx.beginPath();
-                        ctx.moveTo(pHubL.x, pHubL.y);
-                        ctx.lineTo(pEndL.x, pEndL.y);
-                        ctx.stroke();
-                    }
-                }
-            }
-
             // (drawPerson is provided by createDrawObjects)
 
             // Draw the MiniMap UI
@@ -591,9 +531,7 @@
                               ? 4.5
                               : m.type === 'aircraft'
                                 ? 5.0
-                                : m.type === 'osprey'
-                                  ? 5.5
-                                  : m.type === 'vehicle'
+                                : m.type === 'vehicle'
                                     ? 3.5
                                     : m.type === 'foliage'
                                       ? 2.5
@@ -605,10 +543,6 @@
                     // Shadows
                     if (m.type === 'heli') {
                         drawHeli(m.id, m.x, m.y, 2, angle, 0, 0, time * 6, cam.x, cam.y, { isShadow: true });
-                    }
-                    if (m.type === 'osprey') {
-                        const oType = m.id === 'osprey_plane' ? 'osprey_plane' : 'osprey';
-                        drawHeli(oType, m.x, m.y, 2, angle, 0, 0, time * 6, cam.x, cam.y, { isShadow: true });
                     }
                 });
 
@@ -808,29 +742,6 @@
                 SceneRenderer.flush(cam.x, cam.y);
 
                 SceneRenderer.add(GLIDER_DEF, { x: 65, y: 0, z: 2, angle: spin });
-                SceneRenderer.flush(cam.x, cam.y);
-
-                // V-22 Osprey — use drawHeli directly (depth-sorted faces, same as in-game)
-                SceneRenderer.add(null, {
-                    x: 5,
-                    y: 75,
-                    z: 2,
-                    drawFn: (cx, cy) => {
-                        drawHeli('osprey', 5, 75, 2, spin, 0, 0, rotorAngle, cx, cy, { isShadow: true });
-                        drawHeli('osprey', 5, 75, 2, spin, 0, 0, rotorAngle, cx, cy);
-                    },
-                });
-                SceneRenderer.flush(cam.x, cam.y);
-
-                SceneRenderer.add(null, {
-                    x: 30,
-                    y: 75,
-                    z: 2,
-                    drawFn: (cx, cy) => {
-                        drawHeli('osprey_plane', 30, 75, 2, spin, 0, 0, rotorAngle, cx, cy, { isShadow: true });
-                        drawHeli('osprey_plane', 30, 75, 2, spin, 0, 0, rotorAngle, cx, cy);
-                    },
-                });
                 SceneRenderer.flush(cam.x, cam.y);
 
                 const theta = time * 9;

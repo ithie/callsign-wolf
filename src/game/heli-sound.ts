@@ -6,7 +6,6 @@ const BLADES: Record<string, number> = {
     dolphin: 4,
     coasthawk: 4,
     atlas: 3,
-    osprey: 3,
     ...(!_IS_APP ? { glider: 0 } : {}),
 };
 
@@ -17,7 +16,6 @@ const PRESETS: Record<string, [number, number, number]> = {
     dolphin: [3.0, 120, 2.5],
     coasthawk: [3.0, 110, 2.5],
     atlas: [4.0, 90, 3.0],
-    osprey: [3.5, 130, 2.2],
     ...(!_IS_APP ? { glider: [1.0, 200, 1.0] as [number, number, number] } : {}),
 };
 
