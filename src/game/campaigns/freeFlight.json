@@ -18,13 +18,7 @@
                 { "type": "person", "x": 160, "y": 44 },
                 { "type": "person", "x": 186, "y": 258 },
                 { "type": "person", "x": 61, "y": 268 },
-                { "type": "person", "x": 28, "y": 262 },
-                { "type": "person", "x": 29, "y": 192 },
-                { "type": "person", "x": 45, "y": 82 },
-                { "type": "person", "x": 70, "y": 48 },
-                { "type": "person", "x": 33, "y": 122 },
-                { "type": "person", "x": 265, "y": 219 },
-                { "type": "person", "x": 240, "y": 212 }
+                { "type": "person", "x": 28, "y": 262 }
             ],
             "rain": false,
             "night": false,
@@ -69,12 +63,7 @@
                 { "type": "person", "x": 220, "y": 17 },
                 { "type": "person", "x": 131, "y": 20 },
                 { "type": "person", "x": 96, "y": 124 },
-                { "type": "person", "x": 25, "y": 88 },
-                { "type": "person", "x": 274, "y": 283 },
-                { "type": "person", "x": 282, "y": 226 },
-                { "type": "person", "x": 146, "y": 198 },
-                { "type": "person", "x": 287, "y": 42 },
-                { "type": "person", "x": 16, "y": 237 }
+                { "type": "person", "x": 25, "y": 88 }
             ],
             "foliage": "",
             "rain": false,

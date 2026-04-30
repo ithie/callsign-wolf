@@ -12,12 +12,18 @@
   "author": "ithie <michel.peindre@googlemail.com>",
   "license": "MIT",
   "devDependencies": {
-    "cordova-ios": "^8.0.1"
+    "cordova-ios": "^8.0.1",
+    "cordova-plugin-wkwebview-engine": "^1.2.2"
   },
   "cordova": {
     "platforms": [
       "ios"
     ],
-    "plugins": {}
+    "plugins": {
+      "cordova-plugin-wkwebview-engine": {}
+    }
+  },
+  "dependencies": {
+    "cordova-res": "^0.15.4"
   }
 }
