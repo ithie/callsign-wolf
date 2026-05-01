@@ -46,11 +46,6 @@ npx @capacitor/assets generate --ios
 | Scheme / Hostname | `app` / `localhost`           |
 | Scroll            | deaktiviert                   |
 
-## Cordova (parallel)
-
-Das bestehende Cordova-Setup unter `ios-app/` bleibt unberührt:
-
 ```bash
-npm run build:ios            # Cordova-Build (ios-app/)
-npm run build:cap-ios        # Capacitor-Build (ios/)
+npm run build:ios
 ```
