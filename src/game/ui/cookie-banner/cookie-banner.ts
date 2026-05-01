@@ -1,15 +1,14 @@
 import './cookie-banner.css';
 import { LANG, setLanguage, onLanguageChange } from '../../i18n';
 import { STORAGE_KEY } from '../../session';
+import { storageGet } from '../../storage';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 import { ensureEl as _ensureEl } from '../dom-helpers';
 
 let _onConsent: (() => void) | null = null;
 
-const _hasExistingData = (): boolean => {
-    try { return localStorage.getItem(STORAGE_KEY) !== null; } catch { return false; }
-};
+const _hasExistingData = (): boolean => storageGet(STORAGE_KEY) !== null;
 
 const _html = (): string => {
     const de = LANG === 'de';

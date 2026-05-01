@@ -17,6 +17,7 @@ import {
     type PlayerSession,
     type Rank,
 } from './session';
+import { initAppStorage, storageGet, storageSet, storageRemove } from './storage';
 import { zstate } from './state';
 import { initHeliSound, updateHeliSound, stopHeliSound, setSfxEnabled, isSfxEnabled } from './heli-sound';
 
@@ -70,7 +71,7 @@ import {
     drawMenuHeli,
     animMainMenuBg,
 } from './ui/heli-select/heli-select';
-import { I18N, localize, onLanguageChange } from './i18n';
+import { I18N, LANG_PREF_KEY, localize, onLanguageChange, setLanguage } from './i18n';
 import { mountCookieBanner, notifyConsent } from './ui/cookie-banner/cookie-banner';
 import { mountBriefing, showBriefingOverlay, hideBriefing } from './ui/briefing/briefing';
 import { mountSettings, initSettings, toSettings } from './ui/settings/settings';
@@ -2225,7 +2226,7 @@ const approveCookies = () => {
 
 const declineCookies = () => {
     _session.cookieConsent = false;
-    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    storageRemove(STORAGE_KEY);
     (document.getElementById('cookie-banner') as HTMLElement).style.display = 'none';
     notifyConsent();
 };
@@ -2311,8 +2312,8 @@ const setTouchVisible = (v: boolean) => {
 
 const CTRL_MODE_KEY = 'zeewolf-ctrl-mode';
 const getControlMode = (): 'heading' | 'screen' =>
-    localStorage.getItem(CTRL_MODE_KEY) === 'screen' ? 'screen' : 'heading';
-const setControlMode = (m: 'heading' | 'screen') => localStorage.setItem(CTRL_MODE_KEY, m);
+    storageGet(CTRL_MODE_KEY) === 'screen' ? 'screen' : 'heading';
+const setControlMode = (m: 'heading' | 'screen') => storageSet(CTRL_MODE_KEY, m);
 
 const _setupJoystick = (id: string, up: string, down: string, left: string, right: string) => {
     const el = document.getElementById(id);
@@ -2648,6 +2649,19 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('preview') &
 
 window.onload = () => {
     requestAnimationFrame(() => {
+        void (async () => {
+            if (_IS_APP) {
+                await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, CTRL_MODE_KEY, 'zw_music', 'zw_sfx']);
+                _session = loadSession();
+                const _sl = storageGet(LANG_PREF_KEY);
+                if (_sl === 'de' || _sl === 'en') setLanguage(_sl);
+            }
+            _onloadMain();
+        })();
+    });
+};
+
+const _onloadMain = () => {
         assertDom();
         if (!_IS_APP) {
             initMpGame({
@@ -2687,18 +2701,10 @@ window.onload = () => {
         _mountScreens();
         zinit();
         const _getPref = (key: string, def: boolean) => {
-            try {
-                const v = localStorage.getItem(key);
-                return v === null ? def : v === '1';
-            } catch {
-                return def;
-            }
+            const v = storageGet(key);
+            return v === null ? def : v === '1';
         };
-        const _setPref = (key: string, v: boolean) => {
-            try {
-                localStorage.setItem(key, v ? '1' : '0');
-            } catch {}
-        };
+        const _setPref = (key: string, v: boolean) => storageSet(key, v ? '1' : '0');
 
         // Apply saved preferences on startup
         if (!_getPref('zw_music', true)) soundHandler.mute();
@@ -2787,7 +2793,6 @@ window.onload = () => {
             once: true,
         });
         drawMenuHeli();
-    }); // requestAnimationFrame
 };
 
 window.toCampaignSelect = toCampaignSelect;
@@ -2805,9 +2810,7 @@ if (!_IS_APP) {
     window.approveCookies = approveCookies;
     window.declineCookies = declineCookies;
     window.confirmDeleteSession = () => {
-        try {
-            localStorage.removeItem(STORAGE_KEY);
-        } catch {}
+        storageRemove(STORAGE_KEY);
         setTimeout(() => window.location.reload(), 1200);
     };
 }

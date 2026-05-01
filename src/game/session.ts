@@ -2,6 +2,8 @@ export const STORAGE_KEY = 'zeewolf_session';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
+import { storageGet, storageSet } from './storage';
+
 export const CONSENT_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 2 weeks
 
 /** Bump this whenever the privacy notice changes — forces the banner to re-appear. */
@@ -66,7 +68,7 @@ const _default = (): PlayerSession => ({
 
 export const loadSession = (): PlayerSession => {
     try {
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = storageGet(STORAGE_KEY);
         if (!raw) return _default();
         return { ..._default(), ...JSON.parse(raw) };
     } catch {
@@ -75,10 +77,12 @@ export const loadSession = (): PlayerSession => {
 };
 
 export const saveSession = (s: PlayerSession): void => {
+    if (_IS_APP) {
+        try { storageSet(STORAGE_KEY, JSON.stringify(s)); } catch {}
+        return;
+    }
     if (!s.cookieConsent) return;
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-    } catch {}
+    try { storageSet(STORAGE_KEY, JSON.stringify(s)); } catch {}
 };
 
 export const getMissionsDone = (s: PlayerSession): number =>

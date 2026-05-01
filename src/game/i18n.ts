@@ -1,15 +1,17 @@
 // ─── UI-Systemtexte ──────────────────────────────────────────────────────────
 // Alle spielersichtbaren Systemtexte werden hier zentral gepflegt.
 // Kampagnentexte (Headlines, Briefings) stehen in den jeweiligen JSON-Dateien.
-// Sprache wird beim Start via localStorage (Nutzerpräferenz) oder navigator.language ermittelt.
+// Sprache wird beim Start via storage (Nutzerpräferenz) oder navigator.language ermittelt.
 
 export const LANG_PREF_KEY = 'zeewolf_lang';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
+import { storageGet, storageSet } from './storage';
+
 const _detectLang = (): 'de' | 'en' => {
     try {
-        const stored = localStorage.getItem(LANG_PREF_KEY);
+        const stored = storageGet(LANG_PREF_KEY);
         if (stored === 'de' || stored === 'en') return stored;
         return navigator.language?.toLowerCase().startsWith('de') ? 'de' : 'en';
     } catch {
@@ -341,9 +343,7 @@ export const onLanguageChange = (cb: () => void): void => {
 
 /** Change the active language, persist the choice, and notify all listeners. */
 export const setLanguage = (lang: 'de' | 'en'): void => {
-    try {
-        localStorage.setItem(LANG_PREF_KEY, lang);
-    } catch {}
+    storageSet(LANG_PREF_KEY, lang);
     LANG = lang;
     I18N = (lang === 'de' ? _DE : _EN) as typeof _DE;
     _langCallbacks.forEach(cb => cb());

@@ -1,6 +1,7 @@
 import './settings.css';
 import { I18N, LANG, setLanguage } from '../../i18n';
 import { getRank, encodeSession, decodeSession, getCampaignsDone, getMissionsDone, STORAGE_KEY, type PlayerSession } from '../../session';
+import { storageRemove } from '../../storage';
 import { rankBadgeHtml } from '../rankup/rankup';
 
 type Deps = {
@@ -213,9 +214,7 @@ const deleteSessionData = () => {
 const _confirmDeleteSession = () => {
     const msg = document.getElementById('delete-session-msg') as HTMLElement;
     msg.textContent = I18N.SESSION_DELETED;
-    try {
-        localStorage.removeItem(STORAGE_KEY);
-    } catch {}
+    storageRemove(STORAGE_KEY);
     setTimeout(() => window.location.reload(), 1200);
 };
 
