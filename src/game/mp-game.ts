@@ -8,7 +8,9 @@ import { soundHandler, campaignHandler, musicConfig } from './main';
 import { stopMenuParticles } from './ui/menu-particles/menu-particles';
 import { initGrid, spawnExplosion } from './physics';
 import { getHeliType } from './heli-types';
-import { tileW, tileH } from './render-config';
+import { tileW as _tileW, tileH as _tileH, gameRenderScale } from './render-config';
+const tileW = Math.round(_tileW * gameRenderScale);
+const tileH = Math.round(_tileH * gameRenderScale);
 
 type MpGameDeps = {
     cancelRaf: () => void;

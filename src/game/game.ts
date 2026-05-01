@@ -45,7 +45,10 @@ import {
     updatePhysics,
 } from './physics';
 import { createDrawObjects } from './draw-objects';
-import { tileW, tileH, stepH, CANVAS_SCALE } from './render-config';
+import { tileW as _tileW, tileH as _tileH, stepH as _stepH, CANVAS_SCALE, gameRenderScale } from './render-config';
+const tileW = Math.round(_tileW * gameRenderScale);
+const tileH = Math.round(_tileH * gameRenderScale);
+const stepH = _stepH * gameRenderScale;
 import { mountCreditsScreen, toCredits } from './ui/credits-screen/credits-screen';
 import { createBackButton } from './ui/back-button/back-button';
 import { startMenuParticles, stopMenuParticles } from './ui/menu-particles/menu-particles';
@@ -2284,10 +2287,10 @@ const _resizeCanvas = () => {
             canvas.style.width  = window.innerWidth  + 'px';
             canvas.style.height = window.innerHeight + 'px';
         } else {
-            canvas.width  = window.innerWidth;
-            canvas.height = window.innerHeight;
-            canvas.style.width  = '';
-            canvas.style.height = '';
+            canvas.width  = Math.round(window.innerWidth  * gameRenderScale);
+            canvas.height = Math.round(window.innerHeight * gameRenderScale);
+            canvas.style.width  = window.innerWidth  + 'px';
+            canvas.style.height = window.innerHeight + 'px';
         }
     }
 };
