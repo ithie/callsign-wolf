@@ -111,6 +111,7 @@ const createCampaignHandler = () => {
 
     const setActiveMission = (index: number) => {
         campaignState.activeMission = index;
+        cachedTerrain = null;
     };
 
     const getCurrentMissionData = (): MissionData => {

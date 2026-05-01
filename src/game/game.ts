@@ -284,6 +284,7 @@ function missionComplete() {
     saveSession(_session);
     cancelAnimationFrame(_rafId);
     _rafId = 0;
+    stopHeliSound();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (allDone) {
