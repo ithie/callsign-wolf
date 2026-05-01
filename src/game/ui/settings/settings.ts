@@ -14,6 +14,7 @@ type Deps = {
     setMusicEnabled: (v: boolean) => void;
     isSfxEnabled: () => boolean;
     setSfxEnabled: (v: boolean) => void;
+    onBack: () => void;
 };
 
 let _deps: Deps;
@@ -181,6 +182,7 @@ export const toSettings = () => {
 
 export const fromSettings = () => {
     showScreen('main-menu');
+    _deps.onBack();
 };
 
 const applySaveCode = () => {

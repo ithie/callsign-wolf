@@ -62,6 +62,7 @@ const mockSettingsDeps = () => ({
     setMusicEnabled: vi.fn(),
     isSfxEnabled: () => true,
     setSfxEnabled: vi.fn(),
+    onBack: vi.fn(),
 });
 
 const noopCallbacks = {

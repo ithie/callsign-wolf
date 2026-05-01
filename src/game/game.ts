@@ -481,6 +481,7 @@ const startGame = (type: string): void => {
     G.heli.fuelRate = _heliType.fuelRate;
     G.heli.liftPower = _heliType.liftPower;
     G.heli.cargoResist = _heliType.cargoResist;
+    showScreen(null);
     void launchMission();
 };
 
@@ -700,7 +701,6 @@ function drawScene() {
     if (hasPad() && isVisible(G.PAD.xMin, G.PAD.yMin)) drawWindsock(camX, camY); // pad always in range if visible
 
     // Bäume als vorgerenderte Sprites (1 drawImage statt ~240 canvas ops pro Baum)
-    const _swayPx = Math.sin(Date.now() / 400) * (_missionWindStr * 3);
     G.TREES_MAP.forEach((t: any) => {
         if (!isVisible(t.x, t.y)) return;
         if (!_IS_APP && _partyMode) {
@@ -710,7 +710,7 @@ function drawScene() {
         const sprite = _treeSprites.get(`${t.type}_${t.s}`);
         if (!sprite) return;
         const p = isoFn(t.x, t.y, t.gz, camX, camY);
-        ctx.drawImage(sprite.canvas, Math.round(p.x - sprite.ox + _swayPx), Math.round(p.y - sprite.oy));
+        ctx.drawImage(sprite.canvas, Math.round(p.x - sprite.ox), Math.round(p.y - sprite.oy));
     });
 
     // Vögel
@@ -2740,6 +2740,7 @@ window.onload = () => {
                 _setPref('zw_sfx', v);
                 refreshMuteButton(_allMuted());
             },
+            onBack: animMainMenuBg,
         });
         if (!_IS_APP) mountWhatsNew();
         onLanguageChange(_mountScreens);

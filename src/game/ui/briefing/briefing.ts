@@ -43,7 +43,6 @@ export const showBriefingOverlay = (data: BriefingData, onDismiss: () => void): 
         : '';
     el.innerHTML = `
         <div id="briefing-panel">
-            <div id="briefing-commander-img">${_COMMODORE_SVG}</div>
             <div id="briefing-text">
                 <div id="briefing-address">${data.address}</div>
                 <div id="briefing-headline">${localize(data.headline) || 'MISSION BRIEFING'}</div>
@@ -51,6 +50,7 @@ export const showBriefingOverlay = (data: BriefingData, onDismiss: () => void): 
                 ${bodyHtml}
                 <button id="briefing-ok-btn">OKAY</button>
             </div>
+            <div id="briefing-commander-img">${_COMMODORE_SVG}</div>
         </div>`;
     document.getElementById('briefing-ok-btn')!.addEventListener('click', _dismiss);
     el.style.display = 'flex';
