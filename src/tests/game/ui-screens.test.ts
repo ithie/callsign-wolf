@@ -29,7 +29,6 @@ import { mountMuteButton } from '../../game/ui/mute-button/mute-button';
 import { initSettings, mountSettings } from '../../game/ui/settings/settings';
 import { mountRankup } from '../../game/ui/rankup/rankup';
 import { mountCreditsScreen } from '../../game/ui/credits-screen/credits-screen';
-import { mountHeliInfoScreen } from '../../game/ui/heli-info-screen/heli-info-screen';
 import { mountMpLobby } from '../../game/ui/mp-lobby/mp-lobby';
 import type { PlayerSession } from '../../game/session';
 
@@ -68,7 +67,6 @@ const mockSettingsDeps = () => ({
 const noopCallbacks = {
     onStart: vi.fn(),
     onMultiplayer: vi.fn(),
-    onHeli: vi.fn(),
     onSettings: vi.fn(),
     onCredits: vi.fn(),
     onSplashClick: vi.fn(),
@@ -124,11 +122,6 @@ describe('UI screen snapshots', () => {
     it('credits-screen', () => {
         mountCreditsScreen(vi.fn());
         snap('credits-screen');
-    });
-
-    it('heli-info-screen', () => {
-        mountHeliInfoScreen(vi.fn());
-        snap('heli-info');
     });
 
     it('mp-lobby-screen', () => {

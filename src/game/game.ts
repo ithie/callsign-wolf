@@ -63,11 +63,10 @@ import {
     mpGetMissionComplete,
     mpGetTriggerCrash,
 } from './mp-game';
-import { mountHeliInfoScreen, initHeliInfoScreen, toHeliInfo } from './ui/heli-info-screen/heli-info-screen';
 import {
     initHeliSelect,
-    buildHeliSelect,
-    animateHeliPreviews,
+    mountHeliSelect,
+    showHeliSelect,
     drawMenuHeli,
     animMainMenuBg,
 } from './ui/heli-select/heli-select';
@@ -108,7 +107,6 @@ const { drawTree, drawPerson, drawTractor, drawFuelTruck, drawHeli } = createDra
 
 const { parkedHelis } = G;
 
-initHeliInfoScreen(G, drawHeli);
 initHeliSelect(G, drawHeli);
 
 // ─── helper flags ────────────────────────────────────────────────────────────
@@ -399,10 +397,6 @@ function toCampaignSelect() {
     _openCampaignSelect();
 }
 
-function setHover(type: string, state: boolean) {
-    G.menuHover[type] = state;
-}
-
 function selectCampaign(index: string) {
     const idx = Number(index);
     const campaigns = campaignHandler.getCampaigns();
@@ -469,9 +463,11 @@ const selectMission = (missionIndex: number) => {
         return;
     }
 
-    buildHeliSelect(campaignType, RANKS.indexOf(getRank(_session, _getRankMissions())));
-    showScreen('heli-select');
-    animateHeliPreviews();
+    showHeliSelect({
+        rankIndex: RANKS.indexOf(getRank(_session, _getRankMissions())),
+        onSelect: startGame,
+        onBack: backFromHeliSelect,
+    });
 };
 
 const startGame = (type: string): void => {
@@ -1989,8 +1985,6 @@ function backFromHeliSelect() {
     _openMissionSelect();
 }
 
-buildHeliSelect('normal', 0); // initial build before session is loaded
-
 let _rafId = 0;
 
 // ─── mission-local cache (set once per launch, never changes mid-mission) ─────
@@ -2520,13 +2514,7 @@ const mountGameScreens = () => {
     });
     mountMissionSelect();
     mountCampaignSelect();
-
-    const heliSelectEl = document.getElementById('heli-select')!;
-    heliSelectEl.innerHTML = `
-        <div class="title">${I18N.HELI_SELECT_TITLE}</div>
-        <div class="subtitle">${I18N.HELI_SELECT_SUB}</div>
-        <div id="heli-options" class="grid-container"></div>`;
-    heliSelectEl.appendChild(createBackButton(backFromHeliSelect));
+    mountHeliSelect();
 
     document.getElementById('crash-screen')!.innerHTML = `
         <div class="title" style="color: #fff">${I18N.TERMINATED}</div>
@@ -2680,13 +2668,11 @@ const _onloadMain = () => {
             });
         }
         const _mountScreens = () => {
-            mountHeliInfoScreen(toMainMenu);
             mountCreditsScreen(toMainMenu);
             mountMainMenu({
                 onSplashClick: toMainMenu,
                 onStart: toCampaignSelect,
                 ...(!_IS_APP ? { onMultiplayer: toMpLobby } : {}),
-                onHeli: toHeliInfo,
                 onSettings: toSettings,
                 onCredits: toCredits,
             });
@@ -2797,14 +2783,12 @@ const _onloadMain = () => {
 
 window.toCampaignSelect = toCampaignSelect;
 window.toMainMenu = toMainMenu;
-window.toHeliInfo = toHeliInfo;
 window.toCredits = toCredits;
 window.backFromHeliSelect = backFromHeliSelect;
 window.returnToBase = returnToBase;
 window.selectCampaign = selectCampaign;
 window.selectMission = selectMission;
 window.startGame = startGame;
-window.setHover = setHover;
 window.toSettings = toSettings;
 if (!_IS_APP) {
     window.approveCookies = approveCookies;

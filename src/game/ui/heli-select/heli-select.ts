@@ -5,6 +5,10 @@ import { RANKS } from '../../session';
 import { tileW, tileH, stepH, CANVAS_SCALE } from '../../render-config';
 import { zstate } from '../../state';
 import { I18N } from '../../i18n';
+import { ensureEl } from '../dom-helpers';
+import { showScreen } from '../nav';
+import { mountScreenShell } from '../screen-shell/screen-shell';
+import { createSwipeCarousel } from '../swipe-carousel/swipe-carousel';
 
 let _G: any;
 let _drawHeli: (...args: any[]) => void;
@@ -49,31 +53,35 @@ export const drawMenuHeli = () => {
 };
 
 let _previewAnimRunning = false;
+let _activeHeliId: string | null = null;
+let _rotorPos = 0;
 
 const _heliPreviewLoop = () => {
     if (document.getElementById('heli-select')!.style.display === 'none') {
         _previewAnimRunning = false;
         return;
     }
+    _rotorPos += 0.18;
     HELI_TYPES.forEach(ht => {
-        if (_G.menuHover[ht.id]) {
-            _G.menuAngles[ht.id] += 0.012;
+        const isActive = ht.id === _activeHeliId;
+        if (isActive) {
+            _G.menuAngles[ht.id] += 0.009;
         } else {
             const diff = -0.075 - _G.menuAngles[ht.id];
-            _G.menuAngles[ht.id] += Math.abs(diff) > 0.01 ? diff * 0.1 : 0;
+            if (Math.abs(diff) > 0.001) _G.menuAngles[ht.id] += diff * 0.1;
         }
         const c = document.getElementById('icon-' + ht.id) as HTMLCanvasElement | null;
-        if (c) {
-            const cx = c.getContext('2d')!;
-            c.width = Math.round(300 * CANVAS_SCALE);
-            c.height = Math.round(200 * CANVAS_SCALE);
-            cx.clearRect(0, 0, c.width, c.height);
-            const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
-                iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
-            _drawHeli(ht.id, 0, 0, 0, _G.menuAngles[ht.id], 0, 0, 0, 0, 0, {
-                targetCtx: cx, targetIso: offIso, scaleOverride: ht.previewScale,
-            });
-        }
+        if (!c) return;
+        const cx = c.getContext('2d')!;
+        const tW = Math.round(260 * CANVAS_SCALE);
+        const tH = Math.round(160 * CANVAS_SCALE);
+        if (c.width !== tW || c.height !== tH) { c.width = tW; c.height = tH; }
+        else cx.clearRect(0, 0, c.width, c.height);
+        const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
+            iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
+        _drawHeli(ht.id, 0, 0, 0, _G.menuAngles[ht.id], 0, 0, isActive ? _rotorPos : 0, 0, 0, {
+            targetCtx: cx, targetIso: offIso, scaleOverride: ht.previewScale,
+        });
     });
     requestAnimationFrame(_heliPreviewLoop);
 };
@@ -81,35 +89,103 @@ const _heliPreviewLoop = () => {
 export const animateHeliPreviews = () => {
     if (_previewAnimRunning) return;
     _previewAnimRunning = true;
+    _rotorPos = 0;
+    _activeHeliId = null;
     _heliPreviewLoop();
 };
 
-export const buildHeliSelect = (_campaignType: string, rankIndex: number) => {
-    const container = document.getElementById('heli-options');
-    if (!container) return;
-    container.innerHTML = '';
-    const types = HELI_TYPES;
-    (document.querySelector('#heli-select .subtitle') as HTMLElement)!.textContent = 'HUBSCHRAUBER WÄHLEN';
-    const visibleTypes = types.filter((ht: HeliType) => !(ht.hideWhenLocked && ht.minRankIndex > rankIndex));
-    const cols = visibleTypes.length <= 1 ? 1 : visibleTypes.length === 4 ? 2 : 3;
-    container.style.gridTemplateColumns = Array(cols).fill('1fr').join(' ');
-    container.style.width = cols === 1 ? '350px' : cols === 2 ? '600px' : '900px';
-    visibleTypes.forEach((ht: HeliType) => {
-        const locked = ht.minRankIndex > rankIndex;
-        const div = document.createElement('div');
-        div.className = 'grid-box' + (locked ? ' locked' : '');
-        if (!locked) {
-            div.setAttribute('onclick', `startGame('${ht.id}')`);
-            div.setAttribute('onmouseenter', `setHover('${ht.id}', true)`);
-            div.setAttribute('onmouseleave', `setHover('${ht.id}', false)`);
-        }
-        const lockLabel = locked
-            ? `<div class="box-sub" style="color:#333">${I18N.HELI_LOCKED_FROM(RANKS[ht.minRankIndex].name.toUpperCase())}</div>`
-            : `<div class="box-sub" style="color: #aaa">${ht.selectCap}</div>`;
-        div.innerHTML = `<canvas id="icon-${ht.id}" class="mini-canvas" width="300" height="200"></canvas>
-            <div class="box-label">${ht.selectLabel}</div>
-            <div class="box-sub">${ht.selectSub}</div>
-            ${lockLabel}`;
-        container.appendChild(div);
+export const mountHeliSelect = () => {
+    ensureEl('heli-select');
+};
+
+type HeliSelectDeps = {
+    rankIndex: number;
+    onSelect: (heliId: string) => void;
+    onBack: () => void;
+};
+
+const _statBar = (label: string, pct: number): HTMLElement => {
+    const row = document.createElement('div');
+    row.className = 'heli-stat-row';
+    row.innerHTML = `
+        <span class="heli-stat-label">${label}</span>
+        <div class="heli-stat-bar"><div class="heli-stat-fill" style="width:0%" data-pct="${pct}"></div></div>`;
+    return row;
+};
+
+const _buildHeliDetail = (ht: HeliType, onSelect: (heliId: string) => void): HTMLElement => {
+    const spd = Math.min(100, Math.round(ht.accel / 0.00117 * 100));
+    const agi = Math.min(100, Math.round(ht.tiltSpeed / 0.05 * 100));
+    const cap = Math.min(100, Math.round(ht.maxLoad / 20 * 100));
+    const end = Math.min(100, Math.max(0, Math.round((0.012 - ht.fuelRate) / 0.012 * 90 + 10)));
+
+    const wrap = document.createElement('div');
+    wrap.className = 'heli-detail-wrap';
+
+    const header = document.createElement('div');
+    header.innerHTML = `
+        <div class="heli-detail-name">${ht.selectLabel}</div>
+        <div class="heli-detail-sub">${ht.selectSub}</div>
+        ${ht.description ? `<div class="heli-detail-fluff">${ht.description}</div>` : ''}
+        ${ht.canCarryCargo ? `<div class="heli-cargo-badge">✦ CARGOFÄHIG</div>` : ''}`;
+    wrap.appendChild(header);
+
+    wrap.appendChild(_statBar('GESCHW.', spd));
+    wrap.appendChild(_statBar('AGILITÄT', agi));
+    wrap.appendChild(_statBar('KAPAZITÄT', cap));
+    wrap.appendChild(_statBar('AUSDAUER', end));
+
+    const btn = document.createElement('button');
+    btn.className = 'heli-select-btn';
+    btn.textContent = I18N.HELI_SELECT_CONFIRM;
+    btn.addEventListener('click', () => {
+        _activeHeliId = null;
+        onSelect(ht.id);
     });
+    wrap.appendChild(btn);
+
+    requestAnimationFrame(() => {
+        wrap.querySelectorAll<HTMLElement>('.heli-stat-fill').forEach(el => {
+            el.style.width = (el.dataset.pct ?? '0') + '%';
+        });
+    });
+
+    return wrap;
+};
+
+export const showHeliSelect = (deps: HeliSelectDeps) => {
+    const { rankIndex, onSelect, onBack } = deps;
+
+    const body = mountScreenShell('heli-select', I18N.HELI_SELECT_TITLE, I18N.HELI_SELECT_SUB, onBack);
+
+    const visibleTypes = HELI_TYPES.filter(ht => !(ht.hideWhenLocked && ht.minRankIndex > rankIndex));
+
+    const carousel = createSwipeCarousel<HeliType>({
+        items: visibleTypes,
+        isLocked: ht => ht.minRankIndex > rankIndex,
+        renderCard: (ht, locked) => {
+            const card = document.createElement('div');
+            const lockLabel = locked
+                ? `<div class="box-sub heli-lock-label">${I18N.HELI_LOCKED_FROM(RANKS[ht.minRankIndex].name.toUpperCase())}</div>`
+                : `<div class="box-sub heli-cap-label">${ht.selectCap}</div>`;
+            card.innerHTML = `
+                <canvas id="icon-${ht.id}" class="heli-card-canvas"></canvas>
+                <div class="box-label">${ht.selectLabel}</div>
+                ${lockLabel}`;
+            return card;
+        },
+        renderDetail: ht => {
+            const locked = ht.minRankIndex > rankIndex;
+            if (locked) return null;
+            _activeHeliId = ht.id;
+            return _buildHeliDetail(ht, onSelect);
+        },
+        onDetailClose: () => {
+            _activeHeliId = null;
+        },
+    });
+
+    body.appendChild(carousel);
+    showScreen('heli-select');
+    animateHeliPreviews();
 };

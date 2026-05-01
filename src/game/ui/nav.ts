@@ -4,7 +4,6 @@ export const NAV_SCREENS = [
     'campaign-select',
     'mission-select',
     'heli-select',
-    'heli-info',
     'credits-screen',
     'settings-screen',
 ] as const;

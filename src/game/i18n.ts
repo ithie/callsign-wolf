@@ -95,6 +95,7 @@ const _DE = {
 
     HELI_SELECT_TITLE: 'HANGAR',
     HELI_SELECT_SUB: 'LUFTFAHRZEUG WÄHLEN',
+    HELI_SELECT_CONFIRM: 'AUSWÄHLEN',
     HELI_LOCKED_FROM: (rank: string) => `ab ${rank}`,
 
     TERMINATED: 'TERMINATED',
@@ -249,6 +250,7 @@ const _EN = {
 
     HELI_SELECT_TITLE: 'HANGAR',
     HELI_SELECT_SUB: 'SELECT AIRCRAFT',
+    HELI_SELECT_CONFIRM: 'SELECT',
     HELI_LOCKED_FROM: (rank: string) => `from ${rank}`,
 
     TERMINATED: 'TERMINATED',
