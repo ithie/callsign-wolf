@@ -1,4 +1,5 @@
 import './swipe-carousel.css';
+import { hapticImpact, ImpactStyle } from '../../haptics';
 
 export type SwipeCarouselOpts<T> = {
     items: T[];
@@ -91,7 +92,9 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
     };
 
     const _goTo = (i: number) => {
-        state.index = _clampIndex(i);
+        const next = _clampIndex(i);
+        if (next !== state.index) hapticImpact(ImpactStyle.Light);
+        state.index = next;
         _applyTransform();
     };
 

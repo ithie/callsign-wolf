@@ -2,6 +2,7 @@ import { campaignHandler } from './main';
 import { G, zstate } from './state';
 import { getHeliType } from './heli-types';
 import { I18N } from './i18n';
+import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from './haptics';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
@@ -1116,6 +1117,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     // flight
     let lift = G.heli.rotorRPM > 0.9 ? 1.0 : 0.0;
     let inAir = G.heli.z > effectiveGroundH + 0.15;
+    if (!inAir && G.heli.inAir) hapticImpact(ImpactStyle.Medium);
     G.heli.inAir = inAir;
 
     if (inAir || (G.heli.engineOn && lift > 0)) {
@@ -1326,6 +1328,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
                 p.rescued = true;
                 G.activePayload = null;
                 G.heli.onboard++;
+                hapticNotification(NotificationType.Success);
                 ctx.showMsg(I18N.ONBOARD(G.heli.onboard, G.heli.maxLoad));
             } else ctx.showMsg(I18N.CABIN_FULL);
         } else {
