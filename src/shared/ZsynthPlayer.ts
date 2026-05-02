@@ -74,7 +74,7 @@ const ZsynthPlayer = {
         ZsynthPlayer.masterGain.connect(ZsynthPlayer.ctx.destination);
     },
 
-    play: (key: string, crossfade: number = 0.5): void => {
+    play: (key: string, crossfade: number = 0.5, volume: number = 1.0): void => {
         if (!ZsynthPlayer.ctx || !ZsynthPlayer.masterGain) {
             console.error('ZSynthPlayer nicht initialisiert!');
             return;
@@ -119,7 +119,7 @@ const ZsynthPlayer = {
         };
 
         track.gainNode.gain.setValueAtTime(0.0001, startTime);
-        track.gainNode.gain.exponentialRampToValueAtTime(1.0, startTime + crossfade);
+        track.gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), startTime + crossfade);
         track.gainNode.connect(ZsynthPlayer.masterGain);
 
         ZsynthPlayer.currentTrack = track;

@@ -53,7 +53,7 @@ const soundHandler = (() => {
             state.isMuted = false;
             ZsynthPlayer.play(state.activeTheme);
         },
-        play: (theme: string, fade: boolean) => {
+        play: (theme: string, fade: boolean, volume: number = 1.0) => {
             if (!songList[theme]) {
                 return;
             }
@@ -61,7 +61,7 @@ const soundHandler = (() => {
             if (state.isMuted) {
                 return;
             }
-            ZsynthPlayer.play(theme, fade ? 0.25 : 0);
+            ZsynthPlayer.play(theme, fade ? 0.25 : 0, volume);
         },
         stop: () => {
             ZsynthPlayer.stop();

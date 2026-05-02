@@ -58,17 +58,32 @@ body {
     inset: 0;
     background-image: repeating-linear-gradient(
         to bottom,
-        rgba(150, 200, 255, 0.28) 0,
-        rgba(150, 200, 255, 0.28) 1px,
+        rgba(160, 210, 255, 0.18) 0,
+        rgba(160, 210, 255, 0.18) 1px,
         transparent 1px,
-        transparent 20px
+        transparent 55px
     );
-    background-size: 12px 20px;
-    animation: rain-fall 0.3s linear infinite;
+    background-size: 38px 55px;
+    animation: rain-fall 0.6s linear infinite;
+}
+#rain-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: repeating-linear-gradient(
+        to bottom,
+        rgba(160, 210, 255, 0.11) 0,
+        rgba(160, 210, 255, 0.11) 1px,
+        transparent 1px,
+        transparent 55px
+    );
+    background-size: 38px 55px;
+    background-position: 19px 27px;
+    animation: rain-fall 0.6s linear infinite 0.3s;
 }
 @keyframes rain-fall {
     from { transform: translateY(0); }
-    to   { transform: translateY(20px); }
+    to   { transform: translateY(55px); }
 }
 #audio-mute {
     position: absolute;

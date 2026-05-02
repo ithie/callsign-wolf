@@ -610,7 +610,7 @@ export function updateDebris() {
 export function initBirds() {
     G.flocks = [];
     const { gridSize } = campaignHandler.getTerrain();
-    const numFlocks = 4 + Math.floor(Math.random() * 4);
+    const numFlocks = 2 + Math.floor(Math.random() * 2);
     const spawnCx = G.START_POS ? G.START_POS.x : gridSize / 2;
     const spawnCy = G.START_POS ? G.START_POS.y : gridSize / 2;
     for (let f = 0; f < numFlocks; f++) {
@@ -1260,8 +1260,8 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     if (!G.activePayload && !G.deliverMode) {
         for (let p of G.payloads) {
             if (p.rescued || p.hanging || p.npcTarget || p.isDelivery) continue;
-            let dist = Math.hypot(G.heli.x - p.x, G.heli.y - p.y);
-            let hZ = G.heli.z - G.heli.winch;
+            let dist = Math.hypot(G.rescuerSwing.x - p.x, G.rescuerSwing.y - p.y);
+            let hZ = Math.max(G.heli.z - G.heli.winch, getGround(G.rescuerSwing.x, G.rescuerSwing.y));
             if (dist < 1.8 && Math.abs(hZ - getGround(p.x, p.y)) < 1.0) {
                 // check pickup zone if the payload's vessel defines one
                 if (p.attachTo) {
