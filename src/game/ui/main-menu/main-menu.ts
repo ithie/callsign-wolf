@@ -7,11 +7,11 @@ import { mountScreenShell } from '../screen-shell/screen-shell';
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
 type MainMenuCallbacks = {
+    onSplashClick: () => void;
     onStart: () => void;
     onMultiplayer?: () => void;
     onSettings: () => void;
     onCredits: () => void;
-    onSplashClick: () => void;
 };
 
 let _splashHandler: (() => void) | null = null;
@@ -19,20 +19,14 @@ let _splashHandler: (() => void) | null = null;
 export const mountMainMenu = (cb: MainMenuCallbacks) => {
     const splash = _ensureEl('splash');
 
-    // Remove previous handler before remounting to avoid duplicate listeners
     if (_splashHandler) {
         splash.removeEventListener('click', _splashHandler);
         _splashHandler = null;
     }
 
     splash.classList.add('ui-screen');
-    splash.innerHTML = `
-        <div class="title">${I18N.SPLASH_TITLE}</div>
-        <div class="subtitle" id="splash-version"></div>
-        <canvas id="menu-heli-big"></canvas>
-        <p class="start-hint">${I18N.SPLASH_HINT}</p>`;
+    splash.innerHTML = `<p class="start-hint">${I18N.SPLASH_HINT}</p>`;
 
-    // i.thie softworks interstitial — created once, managed manually (not a nav screen)
     const ithie = _ensureEl('ithie-splash');
     ithie.innerHTML = `<span class="ithie-text" id="ithie-text"></span><span class="ithie-cursor">_</span>`;
 
@@ -48,30 +42,24 @@ export const mountMainMenu = (cb: MainMenuCallbacks) => {
         splash.removeEventListener('click', _handleSplashClick);
         _splashHandler = null;
 
-        // 1. flicker: CSS animation via class
         splash.classList.add('splash-clicked');
-
-        // 2. CRT collapse starts mid-flicker so the white bleeds into the implosion
         setTimeout(() => { splash.classList.add('crt-collapse'); }, 150);
 
-        // 3. hide splash, show interstitial, start typewriter
         setTimeout(() => {
             showScreen(null);
             splash.classList.remove('splash-clicked', 'crt-collapse');
             ithie.style.display = 'flex';
             ithie.style.transition = 'opacity 500ms ease';
-            ithie.getBoundingClientRect(); // force reflow so transition fires
+            ithie.getBoundingClientRect();
             ithie.style.opacity = '1';
             _typewrite('i.thie softworks.');
         }, 560);
 
-        // 4. fade out interstitial (hold = 520..2220ms = 1700ms)
         setTimeout(() => {
             ithie.style.transition = 'opacity 600ms ease';
             ithie.style.opacity = '0';
         }, 2220);
 
-        // 5. hand off to callback
         setTimeout(() => {
             ithie.style.display = 'none';
             _splashHandler = _handleSplashClick;

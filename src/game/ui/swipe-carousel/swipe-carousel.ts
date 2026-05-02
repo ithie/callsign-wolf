@@ -21,8 +21,8 @@ type CarouselState = {
 
 const CARD_WIDTH = 280;
 const CARD_GAP = 16;
-const DRAG_THRESHOLD = 30;
-const AXIS_LOCK_THRESHOLD = 8;
+const DRAG_THRESHOLD = 20;
+const AXIS_LOCK_THRESHOLD = 10;
 
 export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement => {
     const { items, renderCard, renderDetail, isLocked, onTap, onDetailClose } = opts;
@@ -69,14 +69,6 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
         track.style.transform = `translateX(${x}px)`;
     };
 
-    const _updateDots = () => {
-        root.querySelectorAll('.swipe-dot').forEach((d, i) => {
-            d.classList.toggle('active', i === state.index);
-        });
-        root.querySelector('.swipe-nav-btn.prev')?.classList.toggle('disabled', state.index === 0);
-        root.querySelector('.swipe-nav-btn.next')?.classList.toggle('disabled', state.index >= items.length - 1);
-    };
-
     const _openDetail = (i: number) => {
         if (!renderDetail) return;
         const item = items[i];
@@ -101,7 +93,6 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
     const _goTo = (i: number) => {
         state.index = _clampIndex(i);
         _applyTransform();
-        _updateDots();
     };
 
     const _onCardTap = (i: number) => {
@@ -130,7 +121,7 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
         state.isDragging = true;
         state.hasMoved = false;
         track.classList.add('dragging');
-        track.setPointerCapture(e.pointerId);
+        root.setPointerCapture(e.pointerId);
     };
 
     const _onPointerMove = (e: PointerEvent) => {
@@ -172,49 +163,20 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
         }
     };
 
-    track.addEventListener('pointerdown', _onPointerDown);
-    track.addEventListener('pointermove', _onPointerMove);
-    track.addEventListener('pointerup', _onPointerUp);
-    track.addEventListener('pointercancel', () => {
+    root.addEventListener('pointerdown', _onPointerDown);
+    root.addEventListener('pointermove', _onPointerMove);
+    root.addEventListener('pointerup', _onPointerUp);
+    root.addEventListener('pointercancel', () => {
         state.isDragging = false;
         track.classList.remove('dragging');
         _applyTransform();
     });
 
     // prevent context menu on long-press
-    track.addEventListener('contextmenu', e => e.preventDefault());
-
-    // ── nav buttons + dots ────────────────────────────────────────────────────
-
-    const nav = document.createElement('div');
-    nav.className = 'swipe-nav';
-
-    const prevBtn = document.createElement('div');
-    prevBtn.className = 'swipe-nav-btn prev disabled';
-    prevBtn.textContent = '◀';
-    prevBtn.addEventListener('click', () => { _goTo(state.index - 1); _closeDetail(); });
-
-    const dots = document.createElement('div');
-    dots.className = 'swipe-dots';
-    items.forEach((_, i) => {
-        const dot = document.createElement('div');
-        dot.className = 'swipe-dot' + (i === 0 ? ' active' : '');
-        dot.addEventListener('click', () => { _goTo(i); _closeDetail(); });
-        dots.appendChild(dot);
-    });
-
-    const nextBtn = document.createElement('div');
-    nextBtn.className = 'swipe-nav-btn next' + (items.length <= 1 ? ' disabled' : '');
-    nextBtn.textContent = '▶';
-    nextBtn.addEventListener('click', () => { _goTo(state.index + 1); _closeDetail(); });
-
-    nav.appendChild(prevBtn);
-    nav.appendChild(dots);
-    nav.appendChild(nextBtn);
+    root.addEventListener('contextmenu', e => e.preventDefault());
 
     root.appendChild(track);
     root.appendChild(detailPanel);
-    root.appendChild(nav);
 
     return root;
 };

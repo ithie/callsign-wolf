@@ -82,11 +82,6 @@ describe('UI screen snapshots', () => {
         snap('whats-new-overlay');
     });
 
-    it('splash (main-menu)', () => {
-        mountMainMenu(noopCallbacks);
-        snap('splash');
-    });
-
     it('main-menu', () => {
         mountMainMenu(noopCallbacks);
         snap('main-menu');

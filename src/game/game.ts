@@ -67,7 +67,6 @@ import {
     initHeliSelect,
     mountHeliSelect,
     showHeliSelect,
-    drawMenuHeli,
     animMainMenuBg,
 } from './ui/heli-select/heli-select';
 import { I18N, LANG_PREF_KEY, localize, onLanguageChange, setLanguage } from './i18n';
@@ -2676,7 +2675,6 @@ const _onloadMain = () => {
                 onSettings: toSettings,
                 onCredits: toCredits,
             });
-            (document.getElementById('splash-version') as HTMLElement).textContent = `v${__APP_VERSION__}`;
             mountBriefing();
             mountSettings();
             mountRankup();
@@ -2778,7 +2776,6 @@ const _onloadMain = () => {
         document.addEventListener('pointerdown', () => soundHandler.play(musicConfig.mainMenu || 'maintheme', true), {
             once: true,
         });
-        drawMenuHeli();
 };
 
 window.toCampaignSelect = toCampaignSelect;

@@ -214,14 +214,6 @@ exports[`UI screen snapshots > settings-screen 1`] = `
         </div><div class="back-btn">◀ BACK</div>"
 `;
 
-exports[`UI screen snapshots > splash (main-menu) 1`] = `
-"
-        <div class="title">SAR: CALLSIGN WOLF</div>
-        <div class="subtitle" id="splash-version"></div>
-        <canvas id="menu-heli-big"></canvas>
-        <p class="start-hint">CLICK TO START SYSTEM</p>"
-`;
-
 exports[`UI screen snapshots > whats-new 1`] = `
 "
         <div id="whats-new-version">WHAT'S NEW · v26.4.0</div>

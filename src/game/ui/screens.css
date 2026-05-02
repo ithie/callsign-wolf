@@ -13,7 +13,7 @@
     padding: clamp(14px, 3vh, 28px) 0;
     padding-top: max(clamp(14px, 3vh, 28px), env(safe-area-inset-top));
     padding-bottom: max(clamp(14px, 3vh, 28px), env(safe-area-inset-bottom));
-    touch-action: pan-y;
+    touch-action: pan-y manipulation;
 }
 @media (max-height: 600px) {
     .ui-screen { justify-content: flex-start; }
