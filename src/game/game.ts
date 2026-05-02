@@ -97,7 +97,7 @@ const _hud = (() => {
     const d = (id: string, css: string) => {
         const el = document.createElement('div');
         el.id = id;
-        el.style.cssText = `position:absolute;pointer-events:none;z-index:10;display:none;${css}`;
+        el.style.cssText = `position:absolute;pointer-events:none;z-index:120;display:none;${css}`;
         document.body.appendChild(el);
         return el;
     };
