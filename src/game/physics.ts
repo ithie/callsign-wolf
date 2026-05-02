@@ -934,9 +934,6 @@ export function updateFuelTruck(dt: number, ctx: PhysicsCtx) {
             if (reverseNavigate(wp.x, wp.y) < 1.5) ft.wpI++;
         } else {
             if (reverseNavigate(ft.parkX, ft.parkY) < 1.2) {
-                ft.x = ft.parkX;
-                ft.y = ft.parkY;
-                ft.angle = ft.parkAngle;
                 ft.wps = null;
                 ft.state = 'PARKED';
                 ft.t = 0;
