@@ -80,6 +80,9 @@ export default defineConfig(() => {
 
             rollupOptions: {
                 input: resolve(__dirname, 'index.html'),
+                output: {
+                    inlineDynamicImports: true,
+                },
             },
             assetsInlineLimit: 100000000,
         },
