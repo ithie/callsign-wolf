@@ -164,6 +164,47 @@ const _DE = {
     RANKUP_HELI_UNLOCK: 'NEUES LUFTFAHRZEUG FREIGESCHALTET',
     RANKUP_TITLE: 'Beförderung',
 
+    MENU_LEGAL: 'RECHTLICHES',
+    LEGAL_TITLE: 'RECHTLICHES',
+    LEGAL_IMPRESSUM_HEADING: 'IMPRESSUM',
+    LEGAL_DATENSCHUTZ_HEADING: 'DATENSCHUTZ',
+    LEGAL_IMPRESSUM: [
+        'Angaben gemäß § 5 TMG / DDG:',
+        '',
+        'Michael Draws-Beer',
+        'Friedrichstrasse 46',
+        '53332',
+        'Deutschland',
+        '',
+        'Kontakt',
+        'E-Mail: yarrick@web.de',
+        '',
+        'Inhaltlich Verantwortlicher gemäß § 18 Abs. 2 MStV:',
+        'Michael Draws-Beer – Anschrift wie oben',
+    ],
+    ...(_IS_APP
+        ? {
+              LEGAL_DATENSCHUTZ: [
+                  'SAR: Callsign WOLF speichert folgende Daten lokal auf deinem Gerät:',
+                  '▸ Rufzeichen  ▸ Dienstgrad  ▸ Kampagnenfortschritt  ▸ Spracheinstellung',
+                  'Die Daten werden ausschließlich zur Spielfunktion genutzt und nicht an Dritte weitergegeben. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.',
+                  'Gespeicherte Daten können jederzeit über Hauptmenü → Einstellungen → Spielstand löschen gelöscht werden.',
+                  'Die Steuerungseinstellung wird ebenfalls lokal gespeichert (rein technische Geräteeinstellung, kein Personenbezug).',
+                  'Kontakt für Datenschutzanfragen: yarrick@web.de',
+              ],
+          }
+        : {
+              LEGAL_DATENSCHUTZ: [
+                  'SAR: Callsign WOLF speichert folgende Daten ausschließlich lokal in deinem Browser (localStorage) – und nur mit deiner Einwilligung:',
+                  '▸ Rufzeichen  ▸ Dienstgrad  ▸ Kampagnenfortschritt  ▸ Einwilligungsstatus  ▸ Spracheinstellung',
+                  'Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung). Gespeicherte Daten können jederzeit über Hauptmenü → Einstellungen → Spielstand löschen gelöscht werden.',
+                  'Die Steuerungseinstellung wird unabhängig von der Einwilligung immer lokal gespeichert (rein technische Geräteeinstellung, kein Personenbezug).',
+                  'Es findet keine Weitergabe von Daten an Dritte statt.',
+                  'Kontakt für Datenschutzanfragen: yarrick@web.de',
+              ],
+              LEGAL_DATENSCHUTZ_WEB: 'Beim Aufbau einer Multiplayer-Verbindung werden zur Vermittlung der Peer-to-Peer-Verbindung Google STUN-Server (stun.l.google.com) kontaktiert. Dabei wird deine IP-Adresse übermittelt – ausschließlich auf deine Veranlassung und nur für die Dauer des Verbindungsaufbaus. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.',
+          }),
+
     MADE_WITH: 'MADE WITH ♥ IN JAVASCRIPT',
     COPYRIGHT: '© 2026 i.thie softworks — Alle Rechte vorbehalten.',
 
@@ -318,6 +359,47 @@ const _EN = {
     CAMPAIGN_SWITCH_PROGRESS_WARN: 'Progress of the active campaign will be deleted.',
     RANKUP_HELI_UNLOCK: 'NEW AIRCRAFT UNLOCKED',
     RANKUP_TITLE: 'Promotion',
+
+    MENU_LEGAL: 'LEGAL',
+    LEGAL_TITLE: 'LEGAL NOTICE',
+    LEGAL_IMPRESSUM_HEADING: 'IMPRINT',
+    LEGAL_DATENSCHUTZ_HEADING: 'PRIVACY POLICY',
+    LEGAL_IMPRESSUM: [
+        'Information according to § 5 TMG / DDG:',
+        '',
+        'Michael Draws-Beer',
+        'Friedrichstrasse 46',
+        '53332',
+        'Germany',
+        '',
+        'Contact',
+        'Email: yarrick@web.de',
+        '',
+        'Responsible for content (§ 18 para. 2 MStV):',
+        'Michael Draws-Beer – address as above',
+    ],
+    ...(_IS_APP
+        ? {
+              LEGAL_DATENSCHUTZ: [
+                  'SAR: Callsign WOLF stores the following data locally on your device:',
+                  '▸ Callsign  ▸ Rank  ▸ Campaign progress  ▸ Language setting',
+                  'Data is used exclusively for game functionality and is not shared with third parties. Legal basis: Art. 6 para. 1 lit. b GDPR.',
+                  'Stored data can be deleted at any time via Main Menu → Settings → Delete Save.',
+                  'The control setting is also stored locally (purely technical device setting, no personal data).',
+                  'Privacy contact: yarrick@web.de',
+              ],
+          }
+        : {
+              LEGAL_DATENSCHUTZ: [
+                  'SAR: Callsign WOLF stores the following data exclusively locally in your browser (localStorage) – and only with your consent:',
+                  '▸ Callsign  ▸ Rank  ▸ Campaign progress  ▸ Consent status  ▸ Language setting',
+                  'Legal basis: Art. 6 para. 1 lit. a GDPR (consent). Stored data can be deleted at any time via Main Menu → Settings → Delete Save.',
+                  'The control setting is always stored locally regardless of consent (purely technical device setting, no personal data).',
+                  'No data is shared with third parties.',
+                  'Privacy contact: yarrick@web.de',
+              ],
+              LEGAL_DATENSCHUTZ_WEB: 'When establishing a multiplayer connection, Google STUN servers (stun.l.google.com) are contacted to broker the peer-to-peer connection. Your IP address is transmitted – solely at your initiative and only for the duration of the connection setup. Legal basis: Art. 6 para. 1 lit. b GDPR.',
+          }),
 
     MADE_WITH: 'MADE WITH ♥ IN JAVASCRIPT',
     COPYRIGHT: '© 2026 i.thie softworks — All rights reserved.',

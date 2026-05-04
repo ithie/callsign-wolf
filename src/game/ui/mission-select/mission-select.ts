@@ -3,7 +3,7 @@ import { I18N, localize } from '../../i18n';
 import { ensureEl } from '../dom-helpers';
 import { isMissionUnlocked, type PlayerSession } from '../../session';
 import type { CampaignExport } from '../../../shared/types';
-import { showScreen } from '../nav';
+import { showScreenCrtEnter } from '../nav';
 import { mountScreenShell } from '../screen-shell/screen-shell';
 import { createSwipeCarousel } from '../swipe-carousel/swipe-carousel';
 
@@ -70,5 +70,5 @@ export const showMissionSelect = (deps: MissionSelectDeps) => {
     });
 
     body.appendChild(carousel);
-    showScreen('mission-select');
+    showScreenCrtEnter('mission-select');
 };

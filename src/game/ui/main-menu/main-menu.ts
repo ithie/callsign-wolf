@@ -12,6 +12,7 @@ type MainMenuCallbacks = {
     onMultiplayer?: () => void;
     onSettings: () => void;
     onCredits: () => void;
+    onLegal: () => void;
 };
 
 let _splashHandler: (() => void) | null = null;
@@ -82,9 +83,11 @@ export const mountMainMenu = (cb: MainMenuCallbacks) => {
             ${!_IS_APP && cb.onMultiplayer ? `<div class="menu-item" id="menu-item-multiplayer">${I18N.MENU_MULTIPLAYER}</div>` : ''}
             <div class="menu-item" id="menu-item-settings">${I18N.MENU_SETTINGS}</div>
             <div class="menu-item" id="menu-item-credits">${I18N.MENU_CREDITS}</div>
+            <div class="menu-item" id="menu-item-legal">${I18N.MENU_LEGAL}</div>
         </nav>`;
     document.getElementById('menu-item-start')!.addEventListener('click', cb.onStart);
     if (!_IS_APP) document.getElementById('menu-item-multiplayer')?.addEventListener('click', cb.onMultiplayer!);
     document.getElementById('menu-item-settings')!.addEventListener('click', cb.onSettings);
     document.getElementById('menu-item-credits')!.addEventListener('click', cb.onCredits);
+    document.getElementById('menu-item-legal')!.addEventListener('click', cb.onLegal);
 };

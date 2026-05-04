@@ -6,6 +6,7 @@ export const NAV_SCREENS = [
     'heli-select',
     'credits-screen',
     'settings-screen',
+    'legal-screen',
 ] as const;
 
 export type NavScreen = typeof NAV_SCREENS[number];
@@ -21,5 +22,17 @@ export const showScreen = (id: NavScreen | null): void => {
         } else {
             el.style.display = 'none';
         }
+    });
+};
+
+/** showScreen + CRT turn-on animation for forward navigation. */
+export const showScreenCrtEnter = (id: NavScreen): void => {
+    showScreen(id);
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.remove('crt-entering');
+    requestAnimationFrame(() => {
+        el.classList.add('crt-entering');
+        setTimeout(() => el.classList.remove('crt-entering'), 380);
     });
 };

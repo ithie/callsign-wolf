@@ -6,7 +6,7 @@ import { tileW, tileH, stepH, CANVAS_SCALE } from '../../render-config';
 import { zstate } from '../../state';
 import { I18N } from '../../i18n';
 import { ensureEl } from '../dom-helpers';
-import { showScreen } from '../nav';
+import { showScreenCrtEnter } from '../nav';
 import { mountScreenShell } from '../screen-shell/screen-shell';
 import { createSwipeCarousel } from '../swipe-carousel/swipe-carousel';
 
@@ -55,6 +55,9 @@ export const drawMenuHeli = () => {
 let _previewAnimRunning = false;
 let _activeHeliId: string | null = null;
 let _rotorPos = 0;
+let _overlayAngle = 0;
+
+const OVERLAY_SCALE_RATIO = 1.2;
 
 const _heliPreviewLoop = () => {
     if (document.getElementById('heli-select')!.style.display === 'none') {
@@ -64,24 +67,45 @@ const _heliPreviewLoop = () => {
     _rotorPos += 0.18;
     HELI_TYPES.forEach(ht => {
         const isActive = ht.id === _activeHeliId;
+
+        // Overlay rotates; card canvas freezes at rest angle while overlay is open
+        const cardAngle = isActive ? -0.075 : _G.menuAngles[ht.id];
         if (isActive) {
-            _G.menuAngles[ht.id] += 0.009;
+            _overlayAngle += 0.009;
         } else {
             const diff = -0.075 - _G.menuAngles[ht.id];
             if (Math.abs(diff) > 0.001) _G.menuAngles[ht.id] += diff * 0.1;
         }
+
         const c = document.getElementById('icon-' + ht.id) as HTMLCanvasElement | null;
-        if (!c) return;
-        const cx = c.getContext('2d')!;
-        const tW = Math.round(260 * CANVAS_SCALE);
-        const tH = Math.round(160 * CANVAS_SCALE);
-        if (c.width !== tW || c.height !== tH) { c.width = tW; c.height = tH; }
-        else cx.clearRect(0, 0, c.width, c.height);
-        const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
-            iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
-        _drawHeli(ht.id, 0, 0, 0, _G.menuAngles[ht.id], 0, 0, isActive ? _rotorPos : 0, 0, 0, {
-            targetCtx: cx, targetIso: offIso, scaleOverride: ht.previewScale,
-        });
+        if (c) {
+            const cx = c.getContext('2d')!;
+            const tW = Math.round(280 * CANVAS_SCALE);
+            const tH = Math.round(220 * CANVAS_SCALE);
+            if (c.width !== tW || c.height !== tH) { c.width = tW; c.height = tH; }
+            else cx.clearRect(0, 0, c.width, c.height);
+            const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
+                iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
+            _drawHeli(ht.id, 0, 0, 0, cardAngle, 0, 0, 0, 0, 0, {
+                targetCtx: cx, targetIso: offIso, scaleOverride: ht.previewScale,
+            });
+        }
+
+        if (isActive) {
+            const oc = document.getElementById('overlay-icon-' + ht.id) as HTMLCanvasElement | null;
+            if (oc && oc.isConnected) {
+                const ocx = oc.getContext('2d')!;
+                const oW = Math.round(360 * CANVAS_SCALE);
+                const oH = Math.round(280 * CANVAS_SCALE);
+                if (oc.width !== oW || oc.height !== oH) { oc.width = oW; oc.height = oH; }
+                else ocx.clearRect(0, 0, oc.width, oc.height);
+                const overlayIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
+                    iso(wx, wy, wz, camX, camY, { canvas: oc, tileW, tileH, stepH });
+                _drawHeli(ht.id, 0, 0, 0, _overlayAngle, 0, 0, _rotorPos, 0, 0, {
+                    targetCtx: ocx, targetIso: overlayIso, scaleOverride: ht.previewScale * OVERLAY_SCALE_RATIO,
+                });
+            }
+        }
     });
     requestAnimationFrame(_heliPreviewLoop);
 };
@@ -113,27 +137,41 @@ const _statBar = (label: string, pct: number): HTMLElement => {
     return row;
 };
 
-const _buildHeliDetail = (ht: HeliType, onSelect: (heliId: string) => void): HTMLElement => {
+const _buildOverlayDetail = (ht: HeliType, onSelect: (heliId: string) => void): HTMLElement => {
+    const wrap = document.createElement('div');
+    wrap.className = 'heli-overlay-wrap';
+
+    // Column 1: heli canvas — click propagates to overlay background → closes
+    const canvasWrap = document.createElement('div');
+    canvasWrap.className = 'heli-overlay-canvas-wrap';
+    const canvas = document.createElement('canvas');
+    canvas.className = 'heli-overlay-canvas';
+    canvas.id = 'overlay-icon-' + ht.id;
+    canvasWrap.appendChild(canvas);
+    wrap.appendChild(canvasWrap);
+
+    // Column 2: description text — click propagates to overlay → closes
+    if (ht.description) {
+        const textCol = document.createElement('div');
+        textCol.className = 'heli-overlay-text';
+        textCol.textContent = ht.description;
+        wrap.appendChild(textCol);
+    }
+
+    // Column 3: stats + button — stopPropagation so clicking here does NOT close
+    const statsCol = document.createElement('div');
+    statsCol.className = 'heli-overlay-stats';
+    statsCol.addEventListener('click', e => e.stopPropagation());
+
     const spd = Math.min(100, Math.round(ht.accel / 0.00117 * 100));
     const agi = Math.min(100, Math.round(ht.tiltSpeed / 0.05 * 100));
     const cap = Math.min(100, Math.round(ht.maxLoad / 20 * 100));
     const end = Math.min(100, Math.max(0, Math.round((0.012 - ht.fuelRate) / 0.012 * 90 + 10)));
 
-    const wrap = document.createElement('div');
-    wrap.className = 'heli-detail-wrap';
-
-    const header = document.createElement('div');
-    header.innerHTML = `
-        <div class="heli-detail-name">${ht.selectLabel}</div>
-        <div class="heli-detail-sub">${ht.selectSub}</div>
-        ${ht.description ? `<div class="heli-detail-fluff">${ht.description}</div>` : ''}
-        ${ht.canCarryCargo ? `<div class="heli-cargo-badge">✦ CARGOFÄHIG</div>` : ''}`;
-    wrap.appendChild(header);
-
-    wrap.appendChild(_statBar('GESCHW.', spd));
-    wrap.appendChild(_statBar('AGILITÄT', agi));
-    wrap.appendChild(_statBar('KAPAZITÄT', cap));
-    wrap.appendChild(_statBar('AUSDAUER', end));
+    statsCol.appendChild(_statBar('GESCHW.', spd));
+    statsCol.appendChild(_statBar('AGILITÄT', agi));
+    statsCol.appendChild(_statBar('KAPAZITÄT', cap));
+    statsCol.appendChild(_statBar('AUSDAUER', end));
 
     const btn = document.createElement('button');
     btn.className = 'heli-select-btn';
@@ -142,14 +180,15 @@ const _buildHeliDetail = (ht: HeliType, onSelect: (heliId: string) => void): HTM
         _activeHeliId = null;
         onSelect(ht.id);
     });
-    wrap.appendChild(btn);
+    statsCol.appendChild(btn);
 
     requestAnimationFrame(() => {
-        wrap.querySelectorAll<HTMLElement>('.heli-stat-fill').forEach(el => {
+        statsCol.querySelectorAll<HTMLElement>('.heli-stat-fill').forEach(el => {
             el.style.width = (el.dataset.pct ?? '0') + '%';
         });
     });
 
+    wrap.appendChild(statsCol);
     return wrap;
 };
 
@@ -166,19 +205,22 @@ export const showHeliSelect = (deps: HeliSelectDeps) => {
         renderCard: (ht, locked) => {
             const card = document.createElement('div');
             const lockLabel = locked
-                ? `<div class="box-sub heli-lock-label">${I18N.HELI_LOCKED_FROM(RANKS[ht.minRankIndex].name.toUpperCase())}</div>`
-                : `<div class="box-sub heli-cap-label">${ht.selectCap}</div>`;
+                ? `<div class="box-sub heli-lock-label heli-card-label-sub">${I18N.HELI_LOCKED_FROM(RANKS[ht.minRankIndex].name.toUpperCase())}</div>`
+                : `<div class="box-sub heli-cap-label heli-card-label-sub">${ht.selectCap}</div>`;
             card.innerHTML = `
                 <canvas id="icon-${ht.id}" class="heli-card-canvas"></canvas>
-                <div class="box-label">${ht.selectLabel}</div>
-                ${lockLabel}`;
+                <div class="heli-card-label">
+                    <div class="box-label">${ht.selectLabel}</div>
+                    ${lockLabel}
+                </div>`;
             return card;
         },
-        renderDetail: ht => {
+        renderDetail: (ht, _close) => {
             const locked = ht.minRankIndex > rankIndex;
             if (locked) return null;
             _activeHeliId = ht.id;
-            return _buildHeliDetail(ht, onSelect);
+            _overlayAngle = _G.menuAngles[ht.id];
+            return _buildOverlayDetail(ht, onSelect);
         },
         onDetailClose: () => {
             _activeHeliId = null;
@@ -186,6 +228,6 @@ export const showHeliSelect = (deps: HeliSelectDeps) => {
     });
 
     body.appendChild(carousel);
-    showScreen('heli-select');
+    showScreenCrtEnter('heli-select');
     animateHeliPreviews();
 };

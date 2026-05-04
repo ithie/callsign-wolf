@@ -1,6 +1,7 @@
 {
     "name": "zeewolf-sar",
     "private": true,
+    "license": "UNLICENSED",
     "version": "25.3.4",
     "type": "module",
     "main": "src/workbench/dist/main/index.cjs",

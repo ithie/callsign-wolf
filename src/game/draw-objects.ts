@@ -830,47 +830,48 @@ export function createDrawObjects(
                 rT4 = wf(-2.0, 0.3, 0.85);
             const tailTop = wf(-2.6, 0, 1.1),
                 tailLow = wf(-2.6, 0, 0.4);
-            faceFn([rB1, rB2, rB3, rB4], '#d50', null, 0, camX, camY);
-            faceFn([rB1, rM1, rM4, rB4], '#f60', null, 0, camX, camY);
-            faceFn([rM1, rT1, rT4, rM4], '#ff7711', null, 0, camX, camY);
-            faceFn([rB2, rM2, rM3, rB3], '#c40', null, 0, camX, camY);
-            faceFn([rM2, rT2, rT3, rM3], '#d50', null, 0, camX, camY);
-            faceFn([rT1, rT2, rT3, rT4], '#f60', '#d50', 0, camX, camY);
-            faceFn([rT4, rT3, tailTop], '#f60', '#d50', 0, camX, camY);
-            faceFn([rM4, rT4, tailTop, tailLow], '#ff7711', null, 0, camX, camY);
-            faceFn([rM3, rT3, tailTop, tailLow], '#d50', null, 0, camX, camY);
+            // nearLeft: local +Y side is closer to camera (iso depth = vx+vy; larger = nearer)
+            const nearLeft = sinA < cosA;
+            // Body — far side first, near side + its window, then top
+            if (nearLeft) {
+                faceFn([rB2, rM2, rM3, rB3], fillColor, null, 0, camX, camY);
+                faceFn([rM2, rT2, rT3, rM3], fillColor, null, 0, camX, camY);
+                faceFn([rB1, rM1, rM4, rB4], fillColor, null, 0, camX, camY);
+                faceFn([rM1, rT1, rT4, rM4], fillColor, null, 0, camX, camY);
+                faceFn([wf(1.5, 0.31, 0.6), wf(1.0, 0.31, 0.6), wf(1.0, 0.31, 0.75), wf(1.5, 0.31, 0.75)], '#111', null, 0, camX, camY);
+            } else {
+                faceFn([rB1, rM1, rM4, rB4], fillColor, null, 0, camX, camY);
+                faceFn([rM1, rT1, rT4, rM4], fillColor, null, 0, camX, camY);
+                faceFn([rB2, rM2, rM3, rB3], fillColor, null, 0, camX, camY);
+                faceFn([rM2, rT2, rT3, rM3], fillColor, null, 0, camX, camY);
+                faceFn([wf(1.5, -0.31, 0.6), wf(1.0, -0.31, 0.6), wf(1.0, -0.31, 0.75), wf(1.5, -0.31, 0.75)], '#111', null, 0, camX, camY);
+            }
+            faceFn([rT1, rT2, rT3, rT4], fillColor, null, 0, camX, camY);
+            // Tail — far side first, near side second, top last
+            if (nearLeft) {
+                faceFn([rM3, rT3, tailTop, tailLow], fillColor, null, 0, camX, camY);
+                faceFn([rM4, rT4, tailTop, tailLow], fillColor, null, 0, camX, camY);
+            } else {
+                faceFn([rM4, rT4, tailTop, tailLow], fillColor, null, 0, camX, camY);
+                faceFn([rM3, rT3, tailTop, tailLow], fillColor, null, 0, camX, camY);
+            }
+            faceFn([rT4, rT3, tailTop], fillColor, null, 0, camX, camY);
+            // Nose face + cockpit window — always draw
             const nTip = wf(2.8, 0, 0.45);
-            faceFn([nTip, rM2, rT2, rT1, rM1], fillColor, strokeColor, 0, camX, camY);
-            // Cockpit windows
+            faceFn([nTip, rM2, rT2, rT1, rM1], fillColor, null, 0, camX, camY);
             faceFn([wf(2.6, 0, 0.5), wf(2.2, -0.35, 0.6), wf(2.2, 0.35, 0.6)], '#111', null, 0, camX, camY);
-            faceFn(
-                [wf(1.5, 0.31, 0.6), wf(1.0, 0.31, 0.6), wf(1.0, 0.31, 0.75), wf(1.5, 0.31, 0.75)],
-                '#111',
-                null,
-                0,
-                camX,
-                camY
-            );
-            faceFn(
-                [wf(1.5, -0.31, 0.6), wf(1.0, -0.31, 0.6), wf(1.0, -0.31, 0.75), wf(1.5, -0.31, 0.75)],
-                '#111',
-                null,
-                0,
-                camX,
-                camY
-            );
             // Forward pylon
             const vT = wf(1.5, 0, 1.15);
-            faceFn([wf(1.8, 0.3, 0.85), wf(1.8, -0.3, 0.85), vT], '#f60', '#d50', 0, camX, camY);
-            faceFn([wf(1.8, -0.3, 0.85), wf(1.2, -0.3, 0.85), vT], '#d50', '#d50', 0, camX, camY);
-            faceFn([wf(1.2, -0.3, 0.85), wf(1.2, 0.3, 0.85), vT], '#f60', '#d50', 0, camX, camY);
-            faceFn([wf(1.2, 0.3, 0.85), wf(1.8, 0.3, 0.85), vT], '#ff7711', '#d50', 0, camX, camY);
+            faceFn([wf(1.8, 0.3, 0.85), wf(1.8, -0.3, 0.85), vT], fillColor, null, 0, camX, camY);
+            faceFn([wf(1.8, -0.3, 0.85), wf(1.2, -0.3, 0.85), vT], fillColor, null, 0, camX, camY);
+            faceFn([wf(1.2, -0.3, 0.85), wf(1.2, 0.3, 0.85), vT], fillColor, null, 0, camX, camY);
+            faceFn([wf(1.2, 0.3, 0.85), wf(1.8, 0.3, 0.85), vT], fillColor, null, 0, camX, camY);
             // Rear pylon
             const hTop = wf(-2.3, 0, 1.8);
-            faceFn([wf(-1.9, 0.3, 1.0), wf(-1.9, -0.3, 1.0), hTop], '#f60', '#d50', 0, camX, camY);
-            faceFn([wf(-1.9, -0.3, 1.0), wf(-2.5, -0.15, 1.1), hTop], '#d50', '#d50', 0, camX, camY);
-            faceFn([wf(-2.5, -0.15, 1.1), wf(-2.5, 0.15, 1.1), hTop], '#c40', '#d50', 0, camX, camY);
-            faceFn([wf(-2.5, 0.15, 1.1), wf(-1.9, 0.3, 1.0), hTop], '#ff7711', '#d50', 0, camX, camY);
+            faceFn([wf(-1.9, 0.3, 1.0), wf(-1.9, -0.3, 1.0), hTop], fillColor, null, 0, camX, camY);
+            faceFn([wf(-1.9, -0.3, 1.0), wf(-2.5, -0.15, 1.1), hTop], fillColor, null, 0, camX, camY);
+            faceFn([wf(-2.5, -0.15, 1.1), wf(-2.5, 0.15, 1.1), hTop], fillColor, null, 0, camX, camY);
+            faceFn([wf(-2.5, 0.15, 1.1), wf(-1.9, 0.3, 1.0), hTop], fillColor, null, 0, camX, camY);
             // Rotors
             actualCtx.strokeStyle = 'rgba(220,245,255,0.6)';
             actualCtx.lineWidth = 3 * s;

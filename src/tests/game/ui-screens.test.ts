@@ -69,6 +69,7 @@ const noopCallbacks = {
     onMultiplayer: vi.fn(),
     onSettings: vi.fn(),
     onCredits: vi.fn(),
+    onLegal: vi.fn(),
     onSplashClick: vi.fn(),
 };
 

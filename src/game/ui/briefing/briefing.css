@@ -26,7 +26,6 @@
     flex-shrink: 0;
     height: clamp(140px, 32vh, 260px);
     width: auto;
-    opacity: 0.88;
     align-self: flex-end;
 }
 

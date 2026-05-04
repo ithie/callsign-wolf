@@ -24,7 +24,7 @@ export const initSettings = (deps: Deps) => {
     _deps = deps;
 };
 
-import { showScreen } from '../nav';
+import { showScreen, showScreenCrtEnter } from '../nav';
 import { mountScreenShell } from '../screen-shell/screen-shell';
 
 export const mountSettings = () => {
@@ -178,7 +178,7 @@ export const toSettings = () => {
     }
     _refreshAudioButtons();
     _refreshLangButtons();
-    showScreen('settings-screen');
+    showScreenCrtEnter('settings-screen');
 };
 
 export const fromSettings = () => {

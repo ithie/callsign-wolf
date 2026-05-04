@@ -2,7 +2,7 @@ import { I18N, localize } from '../../i18n';
 import { isCampaignUnlocked, type PlayerSession } from '../../session';
 import type { CampaignExport } from '../../../shared/types';
 import { ensureEl } from '../dom-helpers';
-import { showScreen } from '../nav';
+import { showScreenCrtEnter } from '../nav';
 import { mountScreenShell } from '../screen-shell/screen-shell';
 import { createSwipeCarousel } from '../swipe-carousel/swipe-carousel';
 
@@ -64,5 +64,5 @@ export const showCampaignSelect = (deps: CampaignSelectDeps) => {
     });
 
     body.appendChild(carousel);
-    showScreen('campaign-select');
+    showScreenCrtEnter('campaign-select');
 };

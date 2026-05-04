@@ -4,7 +4,7 @@ import { hapticImpact, ImpactStyle } from '../../haptics';
 export type SwipeCarouselOpts<T> = {
     items: T[];
     renderCard: (item: T, locked: boolean) => HTMLElement;
-    renderDetail?: (item: T) => HTMLElement | null;
+    renderDetail?: (item: T, close: () => void) => HTMLElement | null;
     isLocked?: (item: T) => boolean;
     onTap?: (item: T) => void;
     onDetailClose?: () => void;
@@ -34,12 +34,8 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
     const track = document.createElement('div');
     track.className = 'swipe-track';
 
-    const detailPanel = document.createElement('div');
-    detailPanel.className = 'swipe-detail-panel';
-
-    const detailInner = document.createElement('div');
-    detailInner.className = 'swipe-detail-inner';
-    detailPanel.appendChild(detailInner);
+    const overlay = document.createElement('div');
+    overlay.className = 'swipe-right-overlay';
 
     const state: CarouselState = {
         index: 0,
@@ -65,31 +61,60 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
 
     const _clampIndex = (i: number) => Math.max(0, Math.min(items.length - 1, i));
 
+    const _totalTrackWidth = () =>
+        items.length * CARD_WIDTH + Math.max(0, items.length - 1) * CARD_GAP;
+
     const _applyTransform = (extraDx = 0) => {
-        const x = -(state.index * _cardStep()) + extraDx;
+        const visibleWidth = root.offsetWidth;
+        if (!visibleWidth) return;
+        const totalW = _totalTrackWidth();
+
+        let x: number;
+        if (totalW <= visibleWidth) {
+            // All cards fit — center the group, drags have no effect
+            x = Math.round((visibleWidth - totalW) / 2);
+        } else {
+            // Left-aligned scroll — no per-card centering
+            const idealX = -(state.index * _cardStep()) + extraDx;
+            // Clamp: first card at left edge (≤ 0), last card at right edge (≥ visibleWidth-totalW)
+            x = Math.max(visibleWidth - totalW, Math.min(0, idealX));
+        }
         track.style.transform = `translateX(${x}px)`;
     };
 
+    const _closeDetail = () => {
+        if (state.openIndex === null) return;
+        overlay.style.transformOrigin = 'center'; // symmetrical CRT collapse
+        overlay.classList.add('crt-closing');
+        cardEls.forEach(c => c.classList.remove('active'));
+        onDetailClose?.();
+        setTimeout(() => {
+            state.openIndex = null;
+            overlay.classList.remove('open', 'crt-closing');
+            overlay.innerHTML = '';
+        }, 385);
+    };
+
     const _openDetail = (i: number) => {
-        if (!renderDetail) return;
-        const item = items[i];
-        const content = renderDetail(item);
+        if (!renderDetail || overlay.classList.contains('crt-closing')) return;
+        const content = renderDetail(items[i], _closeDetail);
         if (!content) return;
 
+        // Morph origin: card's center in viewport coords
+        const rect = cardEls[i].getBoundingClientRect();
+        overlay.style.transformOrigin =
+            `${rect.left + rect.width / 2}px ${rect.top + rect.height / 2}px`;
+
         state.openIndex = i;
-        detailInner.innerHTML = '';
-        detailInner.appendChild(content);
-        detailPanel.classList.add('open');
+        overlay.innerHTML = '';
+        overlay.appendChild(content);
+        overlay.classList.remove('open'); // force animation restart if re-opened
+        requestAnimationFrame(() => overlay.classList.add('open'));
 
         cardEls.forEach((c, ci) => c.classList.toggle('active', ci === i));
     };
 
-    const _closeDetail = () => {
-        state.openIndex = null;
-        detailPanel.classList.remove('open');
-        cardEls.forEach(c => c.classList.remove('active'));
-        onDetailClose?.();
-    };
+    overlay.addEventListener('click', _closeDetail);
 
     const _goTo = (i: number) => {
         const next = _clampIndex(i);
@@ -103,13 +128,9 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
         if (locked) return;
 
         if (renderDetail) {
-            if (state.openIndex === i) {
-                _closeDetail();
-            } else {
-                if (state.index !== i) _goTo(i);
-                _openDetail(i);
-            }
+            _openDetail(i); // overlay covers screen — no need to scroll first
         } else {
+            if (state.index !== i) _goTo(i);
             onTap?.(items[i]);
         }
     };
@@ -118,6 +139,8 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
 
     const _onPointerDown = (e: PointerEvent) => {
         if ((e.target as HTMLElement).closest('button, .swipe-nav-btn')) return;
+        if (state.openIndex !== null) return;
+
         state.pointerStartX = e.clientX;
         state.pointerStartY = e.clientY;
         state.pointerCurrentX = e.clientX;
@@ -132,7 +155,6 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
         const dx = e.clientX - state.pointerStartX;
         const dy = e.clientY - state.pointerStartY;
 
-        // axis-lock: if moving more vertically, cancel horizontal drag
         if (!state.hasMoved && Math.abs(dy) > AXIS_LOCK_THRESHOLD && Math.abs(dy) > Math.abs(dx)) {
             state.isDragging = false;
             track.classList.remove('dragging');
@@ -155,7 +177,6 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
             _goTo(state.index + direction);
             _closeDetail();
         } else if (!state.hasMoved) {
-            // treat as tap: find which card was under pointer
             const el = document.elementFromPoint(e.clientX, e.clientY);
             const cardEl = el?.closest('[data-index]') as HTMLElement | null;
             if (cardEl && cardEl.dataset.index !== undefined) {
@@ -175,11 +196,17 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
         _applyTransform();
     });
 
-    // prevent context menu on long-press
     root.addEventListener('contextmenu', e => e.preventDefault());
 
     root.appendChild(track);
-    root.appendChild(detailPanel);
+    root.appendChild(overlay);
+
+    // Apply initial centering without transition (suppress the slide-in animation)
+    requestAnimationFrame(() => {
+        track.classList.add('dragging');
+        _applyTransform();
+        requestAnimationFrame(() => track.classList.remove('dragging'));
+    });
 
     return root;
 };

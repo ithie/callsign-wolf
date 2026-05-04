@@ -51,6 +51,7 @@ const tileW = Math.round(_tileW * gameRenderScale);
 const tileH = Math.round(_tileH * gameRenderScale);
 const stepH = _stepH * gameRenderScale;
 import { mountCreditsScreen, toCredits } from './ui/credits-screen/credits-screen';
+import { mountLegalScreen, toLegalScreen } from './ui/legal-screen/legal-screen';
 import { createBackButton } from './ui/back-button/back-button';
 import { startMenuParticles, stopMenuParticles } from './ui/menu-particles/menu-particles';
 import {
@@ -2656,6 +2657,31 @@ window.onload = () => {
 };
 
 const _onloadMain = () => {
+        if (!_IS_APP && window.location.pathname === '/imprint') {
+            type I18NWithWeb = typeof I18N & { LEGAL_DATENSCHUTZ_WEB?: string };
+            const stunText = (I18N as I18NWithWeb).LEGAL_DATENSCHUTZ_WEB ?? '';
+            document.head.insertAdjacentHTML('beforeend', `<style>
+                body{background:#050505;color:#5f5;font-family:monospace;margin:0;padding:24px max(24px,env(safe-area-inset-left,0px));overflow-y:auto;overflow-x:hidden;position:static;height:auto;width:auto;}
+                h1{color:#ff6600;font-size:clamp(24px,5vw,42px);letter-spacing:6px;margin-bottom:4px;font-weight:bold;}
+                h2{color:#ff6600;font-size:11px;letter-spacing:4px;font-weight:bold;margin:28px 0 10px;border-bottom:1px solid #1a1a1a;padding-bottom:6px;}
+                p{color:#666;font-size:12px;line-height:1.8;margin:4px 0;letter-spacing:0.5px;}
+                .sub{color:#5f5;letter-spacing:4px;font-size:12px;margin-bottom:36px;}
+                a.back{color:#666;text-decoration:none;display:inline-block;margin-top:36px;border:1px solid #444;padding:8px 20px;letter-spacing:3px;font-size:12px;}
+                a.back:hover{color:#aaa;border-color:#555;}
+                .wrap{max-width:640px;margin:0 auto;padding-bottom:48px;}
+            </style>`);
+            document.body.innerHTML = `<div class="wrap">
+                <h1>SAR: CALLSIGN WOLF</h1>
+                <div class="sub">${I18N.LEGAL_TITLE}</div>
+                <h2>${I18N.LEGAL_IMPRESSUM_HEADING}</h2>
+                ${I18N.LEGAL_IMPRESSUM.map(l => l ? `<p>${l}</p>` : '<br>').join('')}
+                <h2>${I18N.LEGAL_DATENSCHUTZ_HEADING}</h2>
+                ${I18N.LEGAL_DATENSCHUTZ.map(l => `<p>${l}</p>`).join('')}
+                ${stunText ? `<p>${stunText}</p>` : ''}
+                <a href="/" class="back">◀ ZURÜCK / BACK</a>
+            </div>`;
+            return;
+        }
         assertDom();
         if (!_IS_APP) {
             initMpGame({
@@ -2675,12 +2701,14 @@ const _onloadMain = () => {
         }
         const _mountScreens = () => {
             mountCreditsScreen(toMainMenu);
+            mountLegalScreen(toMainMenu);
             mountMainMenu({
                 onSplashClick: toMainMenu,
                 onStart: toCampaignSelect,
                 ...(!_IS_APP ? { onMultiplayer: toMpLobby } : {}),
                 onSettings: toSettings,
                 onCredits: toCredits,
+                onLegal: toLegalScreen,
             });
             mountBriefing();
             mountSettings();

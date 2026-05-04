@@ -1,83 +1,122 @@
 .heli-card-canvas {
-    width: 260px;
-    height: 160px;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
     display: block;
 }
 
+.heli-card-label {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 20px 10px 8px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.85));
+    text-align: center;
+    pointer-events: none;
+}
+
 .heli-lock-label {
     color: #333;
+    text-shadow: none;
 }
 
 .heli-cap-label {
     color: #aaa;
+    text-shadow: 0 0 6px #000, 0 0 3px #000;
 }
 
-/* ─── detail panel content ───────────────────────────────────────────────── */
+.heli-card-label .box-label {
+    text-shadow: 0 0 8px #000, 0 0 4px #000;
+}
 
-.heli-detail-wrap {
+/* ─── overlay: 3-column layout ───────────────────────────────────────────── */
+
+.heli-overlay-wrap {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: stretch;
+    width: 100%;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Column 1: animated heli canvas — overflows into text column, sits below text */
+.heli-overlay-canvas-wrap {
+    flex: 1;
+    min-width: 0;
+    display: flex;
     align-items: center;
-    text-align: center;
-    width: min(520px, 90vw);
-    padding-bottom: 8px;
+    justify-content: center;
+    cursor: pointer;
+    overflow: visible;
+    position: relative;
+    z-index: 0;
 }
 
-.heli-detail-name {
-    font-size: 24px;
-    color: #ff6600;
-    text-shadow: 0 0 10px #ff6600;
-    font-weight: bold;
-    letter-spacing: 2px;
-    margin-bottom: 4px;
+.heli-overlay-canvas {
+    width: 140%;
+    max-width: 360px;
+    aspect-ratio: 360 / 280;
+    display: block;
+    pointer-events: none;
 }
 
-.heli-detail-sub {
-    font-size: 13px;
-    color: #5f5;
-    letter-spacing: 3px;
-    margin-bottom: 14px;
-}
-
-.heli-detail-fluff {
+/* Column 2: description text — sits above overflowing canvas */
+.heli-overlay-text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    padding: 20px 24px;
     font-size: 13px;
     color: #777;
-    line-height: 1.85;
-    border-left: 2px solid #ff6600;
-    padding-left: 14px;
-    margin-bottom: 16px;
-    text-align: left;
-    max-width: 440px;
+    line-height: 1.8;
+    cursor: pointer;
+    border-left: 1px solid #1a1a1a;
+    position: relative;
+    z-index: 1;
 }
 
-.heli-cargo-badge {
-    font-size: 11px;
-    color: #5f5;
-    letter-spacing: 3px;
-    margin-bottom: 12px;
+/* Column 3: stat bars + button */
+.heli-overlay-stats {
+    flex: 1;
+    min-width: 0;
+    background: rgba(0, 20, 8, 0.97);
+    border-left: 1px solid #ff6600;
+    box-shadow: -4px 0 24px rgba(0, 0, 0, 0.6);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 16px 14px;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 1;
 }
 
 .heli-stat-row {
     display: flex;
     align-items: center;
-    width: min(360px, 80vw);
-    margin: 6px 0;
-    font-size: 12px;
-    gap: 12px;
+    width: 100%;
+    margin: 4px 0;
+    font-size: 11px;
+    gap: 8px;
 }
 
 .heli-stat-label {
-    letter-spacing: 2px;
-    color: #484848;
-    width: 96px;
+    letter-spacing: 1px;
+    color: #888;
+    width: 72px;
     flex-shrink: 0;
     text-align: left;
 }
 
 .heli-stat-bar {
     flex: 1;
-    height: 5px;
+    height: 4px;
     background: #0e0e0e;
     border: 1px solid #1e1e1e;
     border-radius: 3px;
@@ -93,13 +132,14 @@
 }
 
 .heli-select-btn {
-    margin-top: 20px;
-    padding: 10px 40px;
+    margin-top: 14px;
+    padding: 9px 0;
+    width: 100%;
     background: transparent;
     border: 1px solid #ff6600;
     color: #ff6600;
     font-family: inherit;
-    font-size: 14px;
+    font-size: 13px;
     letter-spacing: 3px;
     cursor: pointer;
     border-radius: 3px;
@@ -111,11 +151,4 @@
     background: #ff6600;
     color: #000;
     box-shadow: 0 0 20px rgba(255, 102, 0, 0.5);
-}
-
-@media (max-width: 640px) {
-    .heli-card-canvas {
-        width: 220px;
-        height: 136px;
-    }
 }

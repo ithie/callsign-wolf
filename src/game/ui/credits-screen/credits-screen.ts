@@ -3,7 +3,7 @@ import { soundHandler, musicConfig } from '../../main';
 import { I18N } from '../../i18n';
 
 import { ensureEl as _ensureEl } from '../dom-helpers';
-import { showScreen } from '../nav';
+import { showScreenCrtEnter } from '../nav';
 import { mountScreenShell } from '../screen-shell/screen-shell';
 
 export const mountCreditsScreen = (onBack: () => void): void => {
@@ -20,7 +20,7 @@ export const mountCreditsScreen = (onBack: () => void): void => {
 
 export const toCredits = () => {
     _buildCredits();
-    showScreen('credits-screen');
+    showScreenCrtEnter('credits-screen');
     if (musicConfig.credits) soundHandler.play(musicConfig.credits, true);
 };
 
