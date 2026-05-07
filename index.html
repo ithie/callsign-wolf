@@ -288,8 +288,8 @@
                 .lang-btn.active{border-color:#5f5;color:#5f5;}
                 .block{padding-left:10px;border-left:1px solid #1a1a1a;}
                 .wrap{max-width:640px;margin:0 auto;padding-bottom:48px;}
-                .wrap[data-lang="en"] .de{display:none;}
-                .wrap[data-lang="de"] .en{display:none;}
+                .wrap[data-lang="en"] .sec-de{display:none;}
+                .wrap[data-lang="de"] .sec-en{display:none;}
             </style>`);const a=d=>d.map(h=>h?`<p>${h}</p>`:"<br>").join(""),l=navigator.language?.toLowerCase().startsWith("de")?"de":"en";document.body.innerHTML=`<div class="wrap" id="imp" data-lang="${l}">
                 <h1>SAR: CALLSIGN WOLF</h1>
                 <div class="sub">${Ht.LEGAL_TITLE} · ${Ot.LEGAL_TITLE}</div>
@@ -298,15 +298,15 @@
                     <button class="lang-btn de" onclick="document.getElementById('imp').dataset.lang='de';document.querySelector('.lang-btn.de').classList.add('active');document.querySelector('.lang-btn.en').classList.remove('active')">DEUTSCH</button>
                 </div>
 
-                <h2 class="en">${Ht.LEGAL_IMPRESSUM_HEADING}</h2>
-                <div class="block en">${a(Ht.LEGAL_IMPRESSUM)}</div>
-                <h2 class="de">${Ot.LEGAL_IMPRESSUM_HEADING}</h2>
-                <div class="block de">${a(Ot.LEGAL_IMPRESSUM)}</div>
+                <h2 class="sec-en">${Ht.LEGAL_IMPRESSUM_HEADING}</h2>
+                <div class="block sec-en">${a(Ht.LEGAL_IMPRESSUM)}</div>
+                <h2 class="sec-de">${Ot.LEGAL_IMPRESSUM_HEADING}</h2>
+                <div class="block sec-de">${a(Ot.LEGAL_IMPRESSUM)}</div>
 
-                <h2 class="en">${Ht.LEGAL_DATENSCHUTZ_HEADING}</h2>
-                <div class="block en">${a(Ms.en)}</div>
-                <h2 class="de">${Ot.LEGAL_DATENSCHUTZ_HEADING}</h2>
-                <div class="block de">${a(Ms.de)}</div>
+                <h2 class="sec-en">${Ht.LEGAL_DATENSCHUTZ_HEADING}</h2>
+                <div class="block sec-en">${a(Ms.en)}</div>
+                <h2 class="sec-de">${Ot.LEGAL_DATENSCHUTZ_HEADING}</h2>
+                <div class="block sec-de">${a(Ms.de)}</div>
             </div>`,document.documentElement.style.overflowY="auto",document.body.style.overflowY="auto";const r=document.querySelector(`.lang-btn.${l}`);r&&r.classList.add("active");return}t1(),d0({cancelRaf:()=>{cancelAnimationFrame(Oe),Oe=0},ctx:E,getPlayerName:()=>K.playerName||"WOLF",setTouchVisible:fn,setSelectedCampaignIndex:a=>{ot=a},launchMission:Ni,showMsg:an});const e=()=>{qa(It),Ja(It),V0({onSplashClick:It,onStart:ls,onMultiplayer:yi,onSettings:sn,onCredits:li,onLegal:Qa}),_0(),P0(),b0(),k1()};P1(),e();const n=(a,l)=>{const r=Nt(a);return r===null?l:r==="1"},s=(a,l)=>dn(a,l?"1":"0");n("zw_music",!0)||ye.mute(),En(n("zw_sfx",!0)),We()&&K0({isMusicEnabled:()=>!ye.state.isMuted,setMusicEnabled:a=>{a?ye.unmute():ye.mute(),s("zw_music",a)},isSfxEnabled:()=>As(),setSfxEnabled:a=>{En(a),s("zw_sfx",a)},getControlMode:cn,setControlMode:Us,onPause:()=>{cancelAnimationFrame(Oe),Oe=0,hn(),ye.stop()},onResume:()=>{ye.state.isMuted||ye.play(ye.state.activeTheme,!1,.4),Xs(t.heli.type),Oe=requestAnimationFrame(ln)},onAbort:()=>as()}),L0({getSession:()=>K,saveSession:qe,getRankMissions:Lt,getControlMode:cn,setControlMode:Us,isTouchDevice:We,isMusicEnabled:()=>!ye.state.isMuted,setMusicEnabled:a=>{a?ye.unmute():ye.mute(),s("zw_music",a)},isSfxEnabled:()=>As(),setSfxEnabled:a=>{En(a),s("zw_sfx",a)},onBack:Qn}),F0(),ti(e),L1(),ri();const i=()=>{ft("splash")},o=()=>{W0(K.lastSeenVersion,()=>{K.lastSeenVersion=A.WHATS_NEW_VERSION,qe(K),i()})||(K.lastSeenVersion=A.WHATS_NEW_VERSION,qe(K),i())};K.cookieConsent===null||Xo(K)||Jo(K)?(K.cookieConsent=null,K.consentTimestamp=null,K.consentVersion="",v0(o),document.getElementById("cookie-banner").style.display="flex"):o(),document.addEventListener("pointerdown",()=>ye.play(Be.mainMenu,!0),{once:!0})};window.toCampaignSelect=ls;window.toMainMenu=It;window.toCredits=li;window.backFromHeliSelect=Oi;window.returnToBase=as;window.selectCampaign=Pi;window.selectMission=rs;window.startGame=Wn;window.toSettings=sn;window.approveCookies=R1,window.declineCookies=b1,window.confirmDeleteSession=()=>{jn(ut),setTimeout(()=>window.location.reload(),1200)};class D1 extends kt{constructor(){super(...arguments),this.group="CapacitorStorage"}async configure({group:n}){typeof n=="string"&&(this.group=n)}async get(n){return{value:this.impl.getItem(this.applyPrefix(n.key))}}async set(n){this.impl.setItem(this.applyPrefix(n.key),n.value)}async remove(n){this.impl.removeItem(this.applyPrefix(n.key))}async keys(){return{keys:this.rawKeys().map(s=>s.substring(this.prefix.length))}}async clear(){for(const n of this.rawKeys())this.impl.removeItem(n)}async migrate(){var n;const s=[],i=[],o="_cap_",a=Object.keys(this.impl).filter(l=>l.indexOf(o)===0);for(const l of a){const r=l.substring(o.length),d=(n=this.impl.getItem(l))!==null&&n!==void 0?n:"",{value:h}=await this.get({key:r});typeof h=="string"?i.push(r):(await this.set({key:r,value:d}),s.push(r))}return{migrated:s,existing:i}}async removeOld(){const n="_cap_",s=Object.keys(this.impl).filter(i=>i.indexOf(n)===0);for(const i of s)this.impl.removeItem(i)}get impl(){return window.localStorage}get prefix(){return this.group==="NativeStorage"?"":`${this.group}.`}rawKeys(){return Object.keys(this.impl).filter(n=>n.indexOf(this.prefix)===0)}applyPrefix(n){return this.prefix+n}}const O1=Object.freeze(Object.defineProperty({__proto__:null,PreferencesWeb:D1},Symbol.toStringTag,{value:"Module"}));class H1 extends kt{constructor(){super(...arguments),this.selectionStarted=!1}async impact(n){const s=this.patternForImpact(n?.style);this.vibrateWithPattern(s)}async notification(n){const s=this.patternForNotification(n?.type);this.vibrateWithPattern(s)}async vibrate(n){const s=n?.duration||300;this.vibrateWithPattern([s])}async selectionStart(){this.selectionStarted=!0}async selectionChanged(){this.selectionStarted&&this.vibrateWithPattern([70])}async selectionEnd(){this.selectionStarted=!1}patternForImpact(n=Xe.Heavy){return n===Xe.Medium?[43]:n===Xe.Light?[20]:[61]}patternForNotification(n=it.Success){return n===it.Warning?[30,40,30,50,60]:n===it.Error?[27,45,50]:[35,65,21]}vibrateWithPattern(n){if(navigator.vibrate)navigator.vibrate(n);else throw this.unavailable("Browser does not support the vibrate API")}}const B1=Object.freeze(Object.defineProperty({__proto__:null,HapticsWeb:H1},Symbol.toStringTag,{value:"Module"}));
 
 </script>
