@@ -274,6 +274,10 @@ function triggerCrash(reason: string) {
     setTimeout(() => {
         cancelAnimationFrame(_rafId);
         _rafId = 0;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        hidePauseButton();
+        _hud.showAll(false);
+        setTouchVisible(false);
         document.getElementById('campaign-failed-reason')!.innerHTML = reason;
         document.getElementById('campaign-failed-screen')!.style.display = 'flex';
     }, 1800); // Explosion erst austoben lassen
@@ -343,6 +347,8 @@ function missionComplete() {
     _rafId = 0;
     stopHeliSound();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    _hud.showAll(false);
+    setTouchVisible(false);
 
     if (allDone) {
         document.getElementById('campaign-complete-name')!.textContent = '';
@@ -491,6 +497,7 @@ const _doSelectCampaign = (idx: number) => {
     _selectedMissionIndex = 0;
     campaignHandler.campaign.setActiveCampaign(idx);
 
+    if (type === 'tutorial') { selectMission(0); return; }
     _openMissionSelect(); // calls showScreen('mission-select')
 };
 
@@ -623,20 +630,6 @@ const launchMission = async (showLoader = true): Promise<void> => {
         zstate.cam.y = (G.START_POS.x + G.START_POS.y) * (tileH / 2);
     }
 
-    // Tutorial mission 1 (Nachtanken): start airborne away from pad, engine already running
-    if (_lmd.campaignType === 'tutorial' && _selectedMissionIndex === 1) {
-        G.heli.x = G.PAD.xMin - 15;
-        G.heli.y = G.PAD.yMin - 15;
-        G.heli.z = 8;
-        G.heli.vx = 0;
-        G.heli.vy = 0;
-        G.heli.vz = 0;
-        G.heli.inAir = true;
-        G.heli.engineOn = true;
-        G.heli.rotorRPM = 1.0;
-        zstate.cam.x = (G.heli.x - G.heli.y) * (tileW / 2);
-        zstate.cam.y = (G.heli.x + G.heli.y) * (tileH / 2) - G.heli.z * stepH;
-    }
 
     _showRainOverlay(_missionRain, _lmd.windDir ?? 225, _lmd.windStr ?? 1);
     cancelAnimationFrame(_rafId);
@@ -656,9 +649,8 @@ const launchMission = async (showLoader = true): Promise<void> => {
         soundHandler.play(campaignHandler.getActiveCampaignMusic().ingame || 'clike', false, 0.4);
         setTouchVisible(true);
         if (_lmd.campaignType === 'tutorial') {
-            initTutorial(_selectedMissionIndex, _isTouchDevice(), G, missionComplete);
+            initTutorial(_isTouchDevice(), getControlMode(), G, missionComplete);
         }
-        showMsg(I18N.SYSTEM_READY);
     });
 };
 
@@ -2021,6 +2013,9 @@ const _physicsCtx = {
     },
     get hasCarrier() {
         return _missionHasCarrier;
+    },
+    get isTutorialMode() {
+        return campaignHandler.getCurrentMissionData().campaignType === 'tutorial';
     },
     showMsg,
     get missionComplete() {

@@ -12,6 +12,7 @@ export interface PhysicsCtx {
     windVar: boolean;
     hasPad: boolean;
     hasCarrier: boolean;
+    isTutorialMode?: boolean;
     partyMode?: boolean;
     partyPalette?: readonly string[];
     showMsg: (txt: string) => void;
@@ -1166,7 +1167,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
             else if (G.keys['KeyS']) G.heli.vz -= 0.002 * dt;
             else G.heli.vz *= Math.pow(0.9, dt);
 
-            G.heli.fuel -= G.heli.fuelRate * mod * dt;
+            if (!ctx.isTutorialMode) G.heli.fuel -= G.heli.fuelRate * mod * dt;
         } else {
             G.heli.tilt *= Math.pow(0.98, dt);
             G.heli.roll = Math.sin(Date.now() * 0.01) * 0.1;
@@ -1304,7 +1305,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
         let p = G.activePayload;
         if (p.isDelivery) {
             // deliver-mode payload winched back in
-            const inZone = _inDropzone(p.x, p.y);
+            const inZone = ctx.isTutorialMode || _inDropzone(p.x, p.y);
             G.payloads.splice(G.payloads.indexOf(p), 1);
             p.hanging = false;
             p.rescued = true;

@@ -267,11 +267,11 @@ export function createDrawObjects(
         colors?: { shirt: string; pants: string }
     ) {
         const base = iso(pX, pY, pZ, cx, cy);
-        const headR = 2.5,
-            torsoW = 5,
-            torsoH = 7,
-            legW = 2,
-            legH = 6;
+        const headR = 1.8,
+            torsoW = 3.5,
+            torsoH = 5,
+            legW = 1.5,
+            legH = 4;
         const isRescuer = outfit === 'rescuer';
         const colorShirt = colors?.shirt ?? (isRescuer ? '#ff6600' : '#5a786e');
         const colorPants = colors?.pants ?? (isRescuer ? '#ff6600' : '#3b4a6b');
