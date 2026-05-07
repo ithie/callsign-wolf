@@ -10,7 +10,7 @@ Physics-based flight, winch operations, dynamic weather, procedural terrain, car
 
 ## Play
 
-**Online:** [ithie.github.io/zeewolf-sar](https://ithie.github.io/zeewolf-sar)
+**Online:** [ithie.github.io/callsign-wolf](https://ithie.github.io/callsign-wolf)
 
 **Local:** open `index.html` directly in any modern browser — no build step or server needed.
 

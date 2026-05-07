@@ -135,6 +135,23 @@
         inset 0 0 28px rgba(255, 102, 0, 0.04);
     transform: scaleX(1.03) translateY(-1px);
 }
+.menu-legal-link {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: #666;
+    cursor: pointer;
+    transition: color 0.2s;
+    position: absolute;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: 0;
+    right: 0;
+    text-align: center;
+    z-index: 1;
+}
+.menu-legal-link:hover {
+    color: #999;
+}
+
 @media (max-height: 520px) {
     .menu-item {
         font-size: 18px;
@@ -144,5 +161,8 @@
     .menu-nav {
         margin-top: 8px;
         gap: 7px;
+    }
+    .menu-legal-link {
+        bottom: max(8px, env(safe-area-inset-bottom));
     }
 }

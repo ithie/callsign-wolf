@@ -2657,7 +2657,7 @@ window.onload = () => {
 };
 
 const _onloadMain = () => {
-        if (!_IS_APP && window.location.pathname === '/imprint') {
+        if (!_IS_APP && new URLSearchParams(window.location.search).has('imprint')) {
             type I18NWithWeb = typeof I18N & { LEGAL_DATENSCHUTZ_WEB?: string };
             const stunText = (I18N as I18NWithWeb).LEGAL_DATENSCHUTZ_WEB ?? '';
             document.head.insertAdjacentHTML('beforeend', `<style>
@@ -2678,7 +2678,7 @@ const _onloadMain = () => {
                 <h2>${I18N.LEGAL_DATENSCHUTZ_HEADING}</h2>
                 ${I18N.LEGAL_DATENSCHUTZ.map(l => `<p>${l}</p>`).join('')}
                 ${stunText ? `<p>${stunText}</p>` : ''}
-                <a href="/" class="back">◀ ZURÜCK / BACK</a>
+                <a href="/callsign-wolf/" class="back">◀ ZURÜCK / BACK</a>
             </div>`;
             return;
         }

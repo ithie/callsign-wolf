@@ -72,6 +72,7 @@ export default defineConfig(() => {
                       }),
             },
         },
+        base: isApp ? './' : '/callsign-wolf/',
         plugins: [zsongPlugin(), zdefPlugin(), makeSingleFile(), bundleSizeGuard(), ...(isApp ? [injectAppCsp()] : [])],
         build: {
             outDir: 'dist/',
