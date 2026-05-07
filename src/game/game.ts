@@ -74,7 +74,6 @@ import { mountCookieBanner, notifyConsent } from './ui/cookie-banner/cookie-bann
 import { mountBriefing, showBriefingOverlay, hideBriefing } from './ui/briefing/briefing';
 import { mountSettings, initSettings, toSettings } from './ui/settings/settings';
 import { mountRankup, showRankUp } from './ui/rankup/rankup';
-import { mountMuteButton, refreshMuteButton } from './ui/mute-button/mute-button';
 import { mountPauseButton, showPauseButton, hidePauseButton } from './ui/pause-overlay/pause-overlay';
 import { mountWhatsNew, showWhatsNewIfNeeded } from './ui/whats-new/whats-new';
 import { mountMainMenu } from './ui/main-menu/main-menu';
@@ -2742,34 +2741,17 @@ const _onloadMain = () => {
             setSfxEnabled(false);
         }
 
-        const _allMuted = () => soundHandler.state.isMuted && !isSfxEnabled();
-
-        mountMuteButton({
-            isMuted: _allMuted,
-            onToggle: () => {
-                const muted = _allMuted();
-                soundHandler.state.isMuted ? soundHandler.unmute() : soundHandler.mute();
-                setSfxEnabled(muted);
-                _setPref('zw_music', muted);
-                _setPref('zw_sfx', muted);
-                refreshMuteButton(_allMuted());
-            },
-        });
-        refreshMuteButton(_allMuted());
-
         if (_isTouchDevice()) {
             mountPauseButton({
                 isMusicEnabled: () => !soundHandler.state.isMuted,
                 setMusicEnabled: (v: boolean) => {
                     v ? soundHandler.unmute() : soundHandler.mute();
                     _setPref('zw_music', v);
-                    refreshMuteButton(_allMuted());
                 },
                 isSfxEnabled: () => isSfxEnabled(),
                 setSfxEnabled: (v: boolean) => {
                     setSfxEnabled(v);
                     _setPref('zw_sfx', v);
-                    refreshMuteButton(_allMuted());
                 },
                 getControlMode,
                 setControlMode,
@@ -2796,13 +2778,11 @@ const _onloadMain = () => {
             setMusicEnabled: (v: boolean) => {
                 v ? soundHandler.unmute() : soundHandler.mute();
                 _setPref('zw_music', v);
-                refreshMuteButton(_allMuted());
             },
             isSfxEnabled: () => isSfxEnabled(),
             setSfxEnabled: (v: boolean) => {
                 setSfxEnabled(v);
                 _setPref('zw_sfx', v);
-                refreshMuteButton(_allMuted());
             },
             onBack: animMainMenuBg,
         });

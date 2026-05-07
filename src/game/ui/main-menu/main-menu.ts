@@ -3,7 +3,6 @@ import { I18N } from '../../i18n';
 import { ensureEl as _ensureEl } from '../dom-helpers';
 import { showScreen } from '../nav';
 import { mountScreenShell } from '../screen-shell/screen-shell';
-import logoSrc from '../../../../toOldRekindlingFlames.png';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
@@ -53,10 +52,9 @@ export const mountMainMenu = (cb: MainMenuCallbacks) => {
     ithie.innerHTML = `<span class="ithie-text" id="ithie-text"></span><span class="ithie-cursor">_</span>`;
 
     const logo = _ensureEl('logo-splash');
-    logo.innerHTML = `<img src="${logoSrc}" class="logo-splash-img" alt="" />`;
+    logo.innerHTML = `<span class="ithie-text" id="logo-splash-text"></span><span class="ithie-cursor">_</span>`;
 
-    const _typewrite = (text: string) => {
-        const el = document.getElementById('ithie-text')!;
+    const _typewrite = (el: HTMLElement, text: string) => {
         el.textContent = '';
         let i = 0;
         const tick = () => { if (i < text.length) { el.textContent += text[i++]; _typeBeep(); setTimeout(tick, 65); } };
@@ -77,7 +75,7 @@ export const mountMainMenu = (cb: MainMenuCallbacks) => {
             ithie.style.transition = 'opacity 500ms ease';
             ithie.getBoundingClientRect();
             ithie.style.opacity = '1';
-            _typewrite('i.thie softworks.');
+            _typewrite(document.getElementById('ithie-text')!, 'i.thie softworks.');
         }, 560);
 
         setTimeout(() => {
@@ -90,11 +88,12 @@ export const mountMainMenu = (cb: MainMenuCallbacks) => {
             logo.style.display = 'flex';
             logo.classList.remove('crt-entering', 'crt-leaving');
             requestAnimationFrame(() => logo.classList.add('crt-entering'));
+            _typewrite(document.getElementById('logo-splash-text')!, 'To old rekindling flames...');
         }, 2900);
 
         setTimeout(() => {
             logo.classList.add('crt-leaving');
-        }, 2900 + 380 + 1000);
+        }, 2900 + 380 + 3800);
 
         setTimeout(() => {
             logo.style.display = 'none';
@@ -102,7 +101,7 @@ export const mountMainMenu = (cb: MainMenuCallbacks) => {
             _splashHandler = _handleSplashClick;
             splash.addEventListener('click', _handleSplashClick);
             cb.onSplashClick();
-        }, 2900 + 380 + 1000 + 380);
+        }, 2900 + 380 + 3800 + 380);
     };
 
     _splashHandler = _handleSplashClick;

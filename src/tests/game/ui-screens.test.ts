@@ -25,7 +25,6 @@ import { mountWhatsNew } from '../../game/ui/whats-new/whats-new';
 import { mountMainMenu } from '../../game/ui/main-menu/main-menu';
 import { mountBriefing } from '../../game/ui/briefing/briefing';
 import { mountCookieBanner } from '../../game/ui/cookie-banner/cookie-banner';
-import { mountMuteButton } from '../../game/ui/mute-button/mute-button';
 import { initSettings, mountSettings } from '../../game/ui/settings/settings';
 import { mountRankup } from '../../game/ui/rankup/rankup';
 import { mountCreditsScreen } from '../../game/ui/credits-screen/credits-screen';
@@ -98,10 +97,6 @@ describe('UI screen snapshots', () => {
         snap('cookie-banner');
     });
 
-    it('mute-button', () => {
-        mountMuteButton({ isMuted: () => false, onToggle: vi.fn() });
-        snap('audio-mute');
-    });
 
     it('settings-screen', () => {
         initSettings(mockSettingsDeps());
