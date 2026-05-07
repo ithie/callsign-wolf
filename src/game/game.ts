@@ -75,6 +75,7 @@ import { mountBriefing, showBriefingOverlay, hideBriefing } from './ui/briefing/
 import { mountSettings, initSettings, toSettings } from './ui/settings/settings';
 import { mountRankup, showRankUp } from './ui/rankup/rankup';
 import { mountMuteButton, refreshMuteButton } from './ui/mute-button/mute-button';
+import { mountPauseButton, showPauseButton, hidePauseButton } from './ui/pause-overlay/pause-overlay';
 import { mountWhatsNew, showWhatsNewIfNeeded } from './ui/whats-new/whats-new';
 import { mountMainMenu } from './ui/main-menu/main-menu';
 import { mountMissionSelect, showMissionSelect } from './ui/mission-select/mission-select';
@@ -117,7 +118,7 @@ const _hud = (() => {
 
     const deliver = d('hud-deliver', 'left:0;right:0;top:20px;text-align:center;font:bold 14px monospace;color:#f90;');
 
-    const minimap = d('minimap-dom', 'width:140px;height:140px;background:rgba(0,20,10,0.8);border:1px solid #5f5;overflow:hidden;box-sizing:border-box;');
+    const minimap = d('minimap-dom', 'width:130px;height:130px;background:rgba(0,20,10,0.8);border:1px solid #5f5;overflow:hidden;box-sizing:border-box;');
     const mmPad = document.createElement('div');
     mmPad.style.cssText = 'position:absolute;background:#666;display:none;';
     minimap.appendChild(mmPad);
@@ -338,6 +339,7 @@ function missionComplete() {
     }
 
     saveSession(_session);
+    hidePauseButton();
     cancelAnimationFrame(_rafId);
     _rafId = 0;
     stopHeliSound();
@@ -401,6 +403,7 @@ const _resetHeliState = () => {
 
 function returnToBase() {
     destroyTutorial();
+    hidePauseButton();
     cancelAnimationFrame(_rafId);
     _rafId = 0;
     stopHeliSound();
@@ -642,6 +645,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     initHeliSound(G.heli.type);
     _briefingActive = true;
     _rafId = requestAnimationFrame(drawScene);
+    showPauseButton();
 
     const rank = getRank(_session, _getRankMissions());
     const address = I18N.BRIEFING_ADDRESS(rank.name, _session.playerName).toUpperCase();
@@ -945,10 +949,10 @@ function drawScene() {
 
         // minimap
         const isTouch = _isTouchDevice();
-        const mmSize = 140;
+        const mmSize = 130;
         const mmPadPx = 20;
-        _hud.minimap.style.right  = `${mmPadPx}px`;
-        _hud.minimap.style.top    = isTouch ? `${mmPadPx}px` : '';
+        _hud.minimap.style.right  = isTouch ? 'max(16px, env(safe-area-inset-right))' : `${mmPadPx}px`;
+        _hud.minimap.style.top    = isTouch ? '12px' : '';
         _hud.minimap.style.bottom = isTouch ? '' : `${mmPadPx}px`;
 
         const sc = mmSize / gridSize;
@@ -1977,6 +1981,7 @@ function handleCollisionBoxes() {
 
 // ─── main menu ───────────────────────────────────────────────────────────────
 function toMainMenu() {
+    hidePauseButton();
     cancelAnimationFrame(_rafId);
     _rafId = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2135,10 +2140,11 @@ const _renderTerrainBatched = (
 
 // Renders terrain with offscreen cache for day/rain mode, or batched for night/party.
 const _drawTerrain = (camX: number, camY: number, _rx: number, _ry: number, isNight: boolean, _rain: boolean) => {
-    const xFrom = Math.floor(_rx - 14);
-    const xTo = Math.ceil(_rx + 14);
-    const yFrom = Math.floor(_ry - 14);
-    const yTo = Math.ceil(_ry + 14);
+    const _tileRange = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH)) + 2;
+    const xFrom = Math.floor(_rx - _tileRange);
+    const xTo = Math.ceil(_rx + _tileRange);
+    const yFrom = Math.floor(_ry - _tileRange);
+    const yTo = Math.ceil(_ry + _tileRange);
 
     if (isNight) {
         // Night: spotlight cone is dynamic → path-batch on main canvas every frame
@@ -2272,10 +2278,11 @@ window.onkeydown = e => {
 window.onkeyup = e => (G.keys[e.code] = false);
 document.addEventListener('selectstart', e => e.preventDefault());
 document.addEventListener('dragstart', e => e.preventDefault());
+document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
 const _resizeCanvas = () => {
     if (_IS_APP) {
         // App bundle only: phone 2.0×, tablet (≥768px short-side) 2.5× upscale — landscape-safe
-        const scale = Math.min(screen.width, screen.height) >= 768 ? 2.5 : 2.0;
+        const scale = Math.min(screen.width, screen.height) >= 768 ? 2.5 : 3.0;
         canvas.width  = Math.round(window.innerWidth  / scale);
         canvas.height = Math.round(window.innerHeight / scale);
         canvas.style.width  = window.innerWidth  + 'px';
@@ -2749,6 +2756,34 @@ const _onloadMain = () => {
             },
         });
         refreshMuteButton(_allMuted());
+
+        if (_isTouchDevice()) {
+            mountPauseButton({
+                isMusicEnabled: () => !soundHandler.state.isMuted,
+                setMusicEnabled: (v: boolean) => {
+                    v ? soundHandler.unmute() : soundHandler.mute();
+                    _setPref('zw_music', v);
+                    refreshMuteButton(_allMuted());
+                },
+                isSfxEnabled: () => isSfxEnabled(),
+                setSfxEnabled: (v: boolean) => {
+                    setSfxEnabled(v);
+                    _setPref('zw_sfx', v);
+                    refreshMuteButton(_allMuted());
+                },
+                getControlMode,
+                setControlMode,
+                onPause: () => {
+                    cancelAnimationFrame(_rafId);
+                    _rafId = 0;
+                    stopHeliSound();
+                },
+                onResume: () => {
+                    initHeliSound(G.heli.type);
+                    _rafId = requestAnimationFrame(drawScene);
+                },
+            });
+        }
 
         initSettings({
             getSession: () => _session,

@@ -541,6 +541,7 @@ export function createDrawObjects(
         const _baseScale = getHeliType(type).scale;
         let s = _baseScale;
         if (scaleOverride > 0) s = scaleOverride * _baseScale;
+        const lineScale = tileW / 64; // normalises lineWidth across canvas scales
 
         function p(lx: number, ly: number, lz: number) {
             lx *= s;
@@ -650,7 +651,7 @@ export function createDrawObjects(
             };
             fenEllipse('#1a1a1a', null, 0, 1.0);
             actualCtx.strokeStyle = 'rgba(210,235,255,0.7)';
-            actualCtx.lineWidth = 1.2 * s;
+            actualCtx.lineWidth = 1.2 * s * lineScale;
             actualCtx.lineCap = 'round';
             for (let i = 0; i < 8; i++) {
                 const a = hRotor * 2.0 + i * (Math.PI / 4);
@@ -668,10 +669,10 @@ export function createDrawObjects(
                 actualCtx.stroke();
             }
             fenEllipse('#444', null, 0, 0.33);
-            fenEllipse(null, fillColor, 1.5 * s, 1.0);
+            fenEllipse(null, fillColor, 1.5 * s * lineScale, 1.0);
             // Main rotor
             actualCtx.strokeStyle = 'rgba(220,245,255,0.5)';
-            actualCtx.lineWidth = 2;
+            actualCtx.lineWidth = 2 * lineScale;
             const hub = p(0, 0, 0.7);
             for (let i = 0; i < 4; i++) {
                 const a = hRotor + i * (Math.PI / 2);
@@ -701,7 +702,7 @@ export function createDrawObjects(
             const stabL = p(-2.4, 0.6, 0.3),
                 stabR = p(-2.4, -0.6, 0.3);
             actualCtx.fillStyle = '#111';
-            actualCtx.lineWidth = 4 * s;
+            actualCtx.lineWidth = 4 * s * lineScale;
             actualCtx.strokeStyle = '#222';
             actualCtx.beginPath();
             actualCtx.moveTo(stabL.x, stabL.y);
@@ -758,7 +759,7 @@ export function createDrawObjects(
             const finBase = p(-2.4, 0, 0.6),
                 finTop = p(-2.9, 0, 1.3),
                 finBack = p(-3.0, 0, 0.6);
-            actualCtx.lineWidth = 6 * s;
+            actualCtx.lineWidth = 6 * s * lineScale;
             actualCtx.strokeStyle = fillColor;
             actualCtx.beginPath();
             actualCtx.moveTo(tailBoomStart.x, tailBoomStart.y);
@@ -772,7 +773,7 @@ export function createDrawObjects(
             actualCtx.fill();
             // Tail rotor
             actualCtx.strokeStyle = 'rgba(220,245,255,0.55)';
-            actualCtx.lineWidth = 2 * s;
+            actualCtx.lineWidth = 2 * s * lineScale;
             actualCtx.lineCap = 'round';
             const trHub = p(-2.95, 0.08, 0.95);
             for (let i = 0; i < 4; i++) {
@@ -785,7 +786,7 @@ export function createDrawObjects(
             }
             // Main rotor
             actualCtx.strokeStyle = 'rgba(220,245,255,0.5)';
-            actualCtx.lineWidth = 3 * s;
+            actualCtx.lineWidth = 3 * s * lineScale;
             const hub = p(0, 0, 0.8);
             for (let i = 0; i < 4; i++) {
                 const a = hRotor + i * (Math.PI / 2);
@@ -874,7 +875,7 @@ export function createDrawObjects(
             faceFn([wf(-2.5, 0.15, 1.1), wf(-1.9, 0.3, 1.0), hTop], fillColor, null, 0, camX, camY);
             // Rotors
             actualCtx.strokeStyle = 'rgba(220,245,255,0.6)';
-            actualCtx.lineWidth = 3 * s;
+            actualCtx.lineWidth = 3 * s * lineScale;
             const rF = p(1.5, 0, 1.15);
             for (let i = 0; i < 3; i++) {
                 const a = hRotor + i * ((Math.PI * 2) / 3);
@@ -956,7 +957,7 @@ export function createDrawObjects(
             const bottom = actualIso(hX, hY, groundZ, camX, camY);
             actualCtx.save();
             actualCtx.strokeStyle = 'rgba(255, 220, 0, 0.9)';
-            actualCtx.lineWidth = 1.5;
+            actualCtx.lineWidth = 1.5 * lineScale;
             actualCtx.setLineDash([5, 4]);
             actualCtx.shadowColor = '#ffdd00';
             actualCtx.shadowBlur = 4;

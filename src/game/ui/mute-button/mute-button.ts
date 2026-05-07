@@ -35,7 +35,9 @@ type MuteButtonDeps = {
 import { ensureEl as _ensureEl } from '../dom-helpers';
 
 export const mountMuteButton = (deps: MuteButtonDeps) => {
-    const el = _ensureEl('audio-mute');
+    const container = _ensureEl('hud-tl');
+    let el = document.getElementById('audio-mute');
+    if (!el) { el = document.createElement('div'); el.id = 'audio-mute'; container.appendChild(el); }
     el.innerHTML = HTML;
     el.onclick = (evt) => { evt.preventDefault(); deps.onToggle(); };
 };

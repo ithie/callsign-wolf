@@ -10,6 +10,7 @@ export const DESKTOP_RENDER_SCALE = 0.6;
 // Applied only to web-desktop: keeps the same number of visible tiles while rendering fewer pixels
 export const gameRenderScale = (!_isApp && !_isMobile) ? DESKTOP_RENDER_SCALE : 1;
 
-export const tileW = _isMobile ? 32 : 64;
-export const tileH = _isMobile ? 16 : 32;
-export const stepH = _isMobile ? 12.5 : 25;
+// App phone: canvas is 3× downscaled → tiles must be ~64/3≈21 for desktop parity; 20 gives slight zoom-out
+export const tileW = _isApp ? 20 : _isMobile ? 24 : 64;
+export const tileH = _isApp ? 10 : _isMobile ? 12 : 32;
+export const stepH = _isApp ? 7.8 : _isMobile ? 9.4 : 25;
