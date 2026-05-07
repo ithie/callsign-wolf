@@ -71,7 +71,7 @@ import {
     showHeliSelect,
     animMainMenuBg,
 } from './ui/heli-select/heli-select';
-import { I18N, LANG_PREF_KEY, localize, onLanguageChange, setLanguage } from './i18n';
+import { I18N, I18N_DE, I18N_EN, LANG_PREF_KEY, localize, onLanguageChange, setLanguage } from './i18n';
 import { mountCookieBanner, notifyConsent } from './ui/cookie-banner/cookie-banner';
 import { mountBriefing, showBriefingOverlay, hideBriefing } from './ui/briefing/briefing';
 import { mountSettings, initSettings, toSettings } from './ui/settings/settings';
@@ -2644,26 +2644,34 @@ window.onload = () => {
 
 const _onloadMain = () => {
         if (!_IS_APP && new URLSearchParams(window.location.search).has('imprint')) {
-            type I18NWithWeb = typeof I18N & { LEGAL_DATENSCHUTZ_WEB?: string };
-            const stunText = (I18N as I18NWithWeb).LEGAL_DATENSCHUTZ_WEB ?? '';
+            document.documentElement.style.cssText = 'overflow-y:auto;height:auto;';
             document.head.insertAdjacentHTML('beforeend', `<style>
                 body{background:#050505;color:#5f5;font-family:monospace;margin:0;padding:24px max(24px,env(safe-area-inset-left,0px));overflow-y:auto;overflow-x:hidden;position:static;height:auto;width:auto;}
                 h1{color:#ff6600;font-size:clamp(24px,5vw,42px);letter-spacing:6px;margin-bottom:4px;font-weight:bold;}
                 h2{color:#ff6600;font-size:11px;letter-spacing:4px;font-weight:bold;margin:28px 0 10px;border-bottom:1px solid #1a1a1a;padding-bottom:6px;}
                 p{color:#666;font-size:12px;line-height:1.8;margin:4px 0;letter-spacing:0.5px;}
                 .sub{color:#5f5;letter-spacing:4px;font-size:12px;margin-bottom:36px;}
+                .lang{display:inline-block;font-size:9px;letter-spacing:3px;border:1px solid #333;color:#444;padding:1px 5px;margin-bottom:6px;}
+                .block{margin-bottom:16px;padding-left:10px;border-left:1px solid #1a1a1a;}
                 a.back{color:#666;text-decoration:none;display:inline-block;margin-top:36px;border:1px solid #444;padding:8px 20px;letter-spacing:3px;font-size:12px;}
                 a.back:hover{color:#aaa;border-color:#555;}
                 .wrap{max-width:640px;margin:0 auto;padding-bottom:48px;}
             </style>`);
+            type I18NWithWeb = typeof I18N_DE & { LEGAL_DATENSCHUTZ_WEB?: string };
+            const _rows = (lines: readonly string[]) => lines.map(l => l ? `<p>${l}</p>` : '<br>').join('');
+            const _web = (t: typeof I18N_DE) => (t as I18NWithWeb).LEGAL_DATENSCHUTZ_WEB ?? '';
             document.body.innerHTML = `<div class="wrap">
                 <h1>SAR: CALLSIGN WOLF</h1>
-                <div class="sub">${I18N.LEGAL_TITLE}</div>
-                <h2>${I18N.LEGAL_IMPRESSUM_HEADING}</h2>
-                ${I18N.LEGAL_IMPRESSUM.map(l => l ? `<p>${l}</p>` : '<br>').join('')}
-                <h2>${I18N.LEGAL_DATENSCHUTZ_HEADING}</h2>
-                ${I18N.LEGAL_DATENSCHUTZ.map(l => `<p>${l}</p>`).join('')}
-                ${stunText ? `<p>${stunText}</p>` : ''}
+                <div class="sub">${I18N_EN.LEGAL_TITLE} · ${I18N_DE.LEGAL_TITLE}</div>
+
+                <h2>${I18N_EN.LEGAL_IMPRESSUM_HEADING} / ${I18N_DE.LEGAL_IMPRESSUM_HEADING}</h2>
+                <div class="block"><div class="lang">EN</div>${_rows(I18N_EN.LEGAL_IMPRESSUM)}</div>
+                <div class="block"><div class="lang">DE</div>${_rows(I18N_DE.LEGAL_IMPRESSUM)}</div>
+
+                <h2>${I18N_EN.LEGAL_DATENSCHUTZ_HEADING} / ${I18N_DE.LEGAL_DATENSCHUTZ_HEADING}</h2>
+                <div class="block"><div class="lang">EN</div>${_rows(I18N_EN.LEGAL_DATENSCHUTZ)}${_web(I18N_EN) ? `<p>${_web(I18N_EN)}</p>` : ''}</div>
+                <div class="block"><div class="lang">DE</div>${_rows(I18N_DE.LEGAL_DATENSCHUTZ)}${_web(I18N_DE) ? `<p>${_web(I18N_DE)}</p>` : ''}</div>
+
                 <a href="/callsign-wolf/" class="back">◀ ZURÜCK / BACK</a>
             </div>`;
             return;

@@ -467,6 +467,9 @@ const _EN = {
 
 const _lang0 = _detectLang();
 
+export const I18N_DE: typeof _DE = _DE;
+export const I18N_EN: typeof _DE = _EN as unknown as typeof _DE;
+
 export let I18N: typeof _DE = (_lang0 === 'de' ? _DE : _EN) as typeof _DE;
 
 /** Active language code — used by localize() and campaign text rendering. */
