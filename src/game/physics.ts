@@ -816,6 +816,139 @@ export function handleParticles(dt: number, ctx: PhysicsCtx) {
 }
 
 // ─── Fuel Truck ───────────────────────────────────────────────────────────────
+export function initCarrierFuelCar() {
+    if (!G.CARRIER || G.CARRIER.x === undefined) return;
+    const car = G.carrierFuelCar;
+    const cosA = Math.cos(G.CARRIER.angle), sinA = Math.sin(G.CARRIER.angle);
+    car.x = G.CARRIER.x + car.localParkX * cosA - car.localParkY * sinA;
+    car.y = G.CARRIER.y + car.localParkX * sinA + car.localParkY * cosA;
+    car.angle = car.localParkAngle + G.CARRIER.angle;
+    car.state = 'PARKED';
+    car.t = 0;
+    car.wps = null;
+    car.wpI = 0;
+}
+
+export function updateCarrierFuelCar(dt: number, ctx: PhysicsCtx) {
+    if (!G.CARRIER || G.CARRIER.x === undefined) return;
+    const car = G.carrierFuelCar;
+    const heli = G.heli;
+
+    const SPEED     = 0.042;
+    const SPEED_REV = 0.026;
+    const MAX_STEER = 0.028;
+    const STOP_DIST = 3.2;
+    const FUEL_RATE = 0.3;
+
+    const cosC = Math.cos(G.CARRIER.angle), sinC = Math.sin(G.CARRIER.angle);
+
+    const parkWorld = () => ({
+        x: G.CARRIER.x + car.localParkX * cosC - car.localParkY * sinC,
+        y: G.CARRIER.y + car.localParkX * sinC + car.localParkY * cosC,
+    });
+
+    // Repulsion so the car steers around parked helis
+    const parkedHeliForce = (): [number, number] => {
+        let fx = 0, fy = 0;
+        for (const ph of G.parkedHelis) {
+            const wx = G.CARRIER.x + ph.xRel * cosC - ph.yRel * sinC;
+            const wy = G.CARRIER.y + ph.xRel * sinC + ph.yRel * cosC;
+            const dx = car.x - wx, dy = car.y - wy;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 0.01 || dist > 3.5) continue;
+            const s = Math.min(3.0, 1.5 / dist);
+            fx += (dx / dist) * s;
+            fy += (dy / dist) * s;
+        }
+        return [fx, fy];
+    };
+
+    const localToWorld = (lx: number, ly: number) => ({
+        x: G.CARRIER.x + lx * cosC - ly * sinC,
+        y: G.CARRIER.y + lx * sinC + ly * cosC,
+    });
+    const worldToLocal = (wx: number, wy: number) => {
+        const dx = wx - G.CARRIER.x, dy = wy - G.CARRIER.y;
+        return { lx: dx * cosC + dy * sinC, ly: -dx * sinC + dy * cosC };
+    };
+
+    // car.angle = front/drive direction (mirrors ft.angle in fuel truck).
+    const navigate = (tx: number, ty: number): number => {
+        const dx = tx - car.x, dy = ty - car.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 0.01) return 0;
+        const [rfx, rfy] = parkedHeliForce();
+        const ax = dx / dist + rfx, ay = dy / dist + rfy;
+        const desired = Math.atan2(ay, ax); // front toward target
+        const diff = ((desired - car.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        car.angle += Math.max(-MAX_STEER * dt, Math.min(MAX_STEER * dt, diff));
+        car.x += Math.cos(car.angle) * SPEED * dt;
+        car.y += Math.sin(car.angle) * SPEED * dt;
+        return dist;
+    };
+
+    // Reverse = rear leads = front away from target.
+    const reverseNavigate = (tx: number, ty: number): number => {
+        const dx = tx - car.x, dy = ty - car.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 0.01) return 0;
+        const desired = Math.atan2(dy, dx) + Math.PI; // front away from target = rear leads
+        const diff = ((desired - car.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        car.angle += Math.max(-MAX_STEER * dt, Math.min(MAX_STEER * dt, diff));
+        car.x -= Math.cos(car.angle) * SPEED_REV * dt;
+        car.y -= Math.sin(car.angle) * SPEED_REV * dt;
+        return dist;
+    };
+
+    if (car.state === 'PARKED') {
+        const p = parkWorld();
+        car.x = p.x;
+        car.y = p.y;
+        car.angle = car.localParkAngle + G.CARRIER.angle;
+        return;
+    }
+
+    if (car.state === 'DRIVING') {
+        if (!car.wps) car.wps = [];
+        const localPos = worldToLocal(car.x, car.y);
+        const last = car.wps[car.wps.length - 1];
+        if (!last || Math.hypot(localPos.lx - last.lx, localPos.ly - last.ly) >= 1.0)
+            car.wps.push(localPos);
+        if (navigate(heli.x, heli.y) <= STOP_DIST) {
+            car.state = 'FUELING';
+            car.t = 0;
+        }
+    } else if (car.state === 'FUELING') {
+        if (heli.fuel < 100) {
+            heli.fuel = Math.min(100, heli.fuel + FUEL_RATE * dt);
+        } else {
+            car.state = 'RETURNING';
+            car.t = 0;
+            car.wpI = 0;
+            if (car.wps) car.wps.reverse();
+        }
+        if (heli.onboard > 0) {
+            G.totalRescued += heli.onboard;
+            heli.onboard = 0;
+            if (G.totalRescued >= G.goalCount) ctx.missionComplete();
+            else ctx.showMsg(I18N.SECURED(G.totalRescued, G.goalCount));
+        }
+    } else if (car.state === 'RETURNING') {
+        const wps = car.wps;
+        const p = parkWorld();
+        if (wps && car.wpI < wps.length) {
+            const wp = localToWorld(wps[car.wpI].lx, wps[car.wpI].ly);
+            if (reverseNavigate(wp.x, wp.y) < 1.0) car.wpI++;
+        } else {
+            if (reverseNavigate(p.x, p.y) < 1.2) {
+                car.wps = null;
+                car.state = 'PARKED';
+                car.t = 0;
+            }
+        }
+    }
+}
+
 export function initFuelTruck() {
     if (!G.PAD) return;
     const ft = G.fuelTruck;
@@ -954,6 +1087,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     updateBoats(G.BOATS, dt);
     updateSubmarines(G.SUBMARINES, dt);
     if (ctx.hasPad && G.fuelTruck.state !== 'PARKED') updateFuelTruck(dt, ctx);
+    if (ctx.hasCarrier) updateCarrierFuelCar(dt, ctx);
     if (ctx.hasCarrier && !crashed) {
         let oldX = G.CARRIER.x,
             oldY = G.CARRIER.y,
@@ -1038,6 +1172,19 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     ) {
         G.fuelTruck.state = 'DRIVING';
         G.fuelTruck.t = 0;
+    }
+    if (
+        ctx.hasCarrier &&
+        onCarrierDeck &&
+        !G.heli.engineOn &&
+        !G.heli.inAir &&
+        G.heli.rotorRPM < 0.05 &&
+        G.carrierFuelCar.state === 'PARKED' &&
+        (G.heli.fuel < 99 || G.heli.onboard > 0)
+    ) {
+        G.carrierFuelCar.state = 'DRIVING';
+        G.carrierFuelCar.wps = null;
+        G.carrierFuelCar.wpI = 0;
     }
     G.heli.rotorRPM =
         G.heli.engineOn && G.heli.fuel > 0
@@ -1345,26 +1492,6 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
         }
     }
 
-    // landing on pad: carrier refuel/offload instant
-    if (!inAir && onPad) {
-        if (ctx.hasCarrier) {
-            let local = getCarrierLocal(G.heli.x, G.heli.y, G.CARRIER);
-            if (
-                local.x >= -G.CARRIER.w &&
-                local.x <= G.CARRIER.w &&
-                local.y >= -G.CARRIER.l &&
-                local.y <= G.CARRIER.l
-            ) {
-                if (G.heli.fuel < 100) G.heli.fuel = Math.min(100, G.heli.fuel + 0.5);
-                if (G.heli.onboard > 0) {
-                    G.totalRescued += G.heli.onboard;
-                    G.heli.onboard = 0;
-                    if (G.totalRescued >= G.goalCount) ctx.missionComplete();
-                    else ctx.showMsg(I18N.SECURED(G.totalRescued, G.goalCount));
-                }
-            }
-        }
-    }
 
     // crash detection
     if (!onPad && G.heli.z < 0.1 && getGround(G.heli.x, G.heli.y, G.points, G.CARRIER) < -0.2)

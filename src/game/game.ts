@@ -36,6 +36,7 @@ import {
     initGrid,
     generateTerrain,
     initCarrierFromMission,
+    initCarrierFuelCar,
     initBoatsFromMission,
     initSubmarinesFromMission,
     initPayloadsFromMission,
@@ -139,16 +140,13 @@ const _hud = (() => {
         return mmPool[i];
     };
 
-    const fps = d('hud-fps', 'right:10px;bottom:10px;font:bold 13px monospace;');
-
     const showAll = (v: boolean) => {
         const s = v ? 'block' : 'none';
         panel.style.display = s;
         minimap.style.display = s;
-        fps.style.display = s;
     };
 
-    return { panel, alt, spd, winch, fuel, pax, obj, callsign, deliver, minimap, mmPad, mmCarrier, mmHeli, getDot, mmPool, fps, showAll };
+    return { panel, alt, spd, winch, fuel, pax, obj, callsign, deliver, minimap, mmPad, mmCarrier, mmHeli, getDot, mmPool, showAll };
 })();
 const isoFn = (wx: number, wy: number, wz: number, cx: number, cy: number) =>
     iso(wx, wy, wz, cx, cy, { canvas, tileW, tileH, stepH });
@@ -572,6 +570,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     // Step 2 — objects
     initCarrierFromMission();
     if (G.CARRIER && G.CARRIER.x !== undefined) G.CARRIER.rescueZones = CARRIER_DEF.rescueZones || [];
+    if (hasCarrier()) initCarrierFuelCar();
     initBoatsFromMission();
     initSubmarinesFromMission();
     handle?.step('Objekte…', 0.5);
@@ -596,8 +595,9 @@ const launchMission = async (showLoader = true): Promise<void> => {
     _hud.showAll(true);
 
     if (isStartsOnCarrier()) {
-        G.heli.x = G.CARRIER.x;
-        G.heli.y = G.CARRIER.y - 1;
+        const _cosA = Math.cos(G.CARRIER.angle), _sinA = Math.sin(G.CARRIER.angle);
+        G.heli.x = G.CARRIER.x + (-3.5) * _cosA;
+        G.heli.y = G.CARRIER.y + (-3.5) * _sinA;
         G.heli.z = G.CARRIER.zDeck + 0.1;
         G.heli.vx = 0;
         G.heli.vy = 0;
@@ -672,8 +672,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
 //   parkY = PAD.yMin - 1    (Mitte der Hangar-Tiefe yMin-2..yMin)
 //   parkAngle = +PI/2        (Nase zeigt in +Y = Richtung Landeplatz)
 //
-let _fpsLastTime = 0,
-    _fpsSmooth = 60;
+let _fpsLastTime = 0;
 function drawScene() {
     const _now = performance.now();
     if (_isTouchDevice() && _fpsLastTime > 0 && _now - _fpsLastTime < 1000 / 30 - 1) {
@@ -681,7 +680,6 @@ function drawScene() {
         return;
     }
     const dt = _fpsLastTime > 0 ? Math.min((_now - _fpsLastTime) / (1000 / 60), 3.0) : 1.0;
-    if (_fpsLastTime) _fpsSmooth += (1000 / (_now - _fpsLastTime) - _fpsSmooth) * 0.1;
     _fpsLastTime = _now;
 
     const rain = _missionRain;
@@ -809,7 +807,8 @@ function drawScene() {
         p.life -= p.isSmoke ? 0.018 : 0.025;
         let pos = iso(p.x, p.y, Math.max(p.z, 0), camX, camY, { stepH, tileW, tileH, canvas });
         const alpha = Math.min(1.0, p.life * (p.isSmoke ? 1.5 : 2.0));
-        const size = p.size || 3;
+        const pScale = tileW / 64;
+        const size = (p.size || 3) * pScale;
         ctx.globalAlpha = Math.max(0, alpha);
         if (p.isSmoke) {
             ctx.fillStyle = `rgb(${p.color})`;
@@ -818,10 +817,10 @@ function drawScene() {
             ctx.fill();
         } else if (p.isMetal) {
             ctx.fillStyle = `rgb(${p.color})`;
-            ctx.fillRect(pos.x - 1.5, pos.y - 1.5, 3, 3);
+            ctx.fillRect(pos.x - 1.5 * pScale, pos.y - 1.5 * pScale, 3 * pScale, 3 * pScale);
         } else if (p.isConfetti) {
             ctx.fillStyle = `rgb(${p.color})`;
-            ctx.fillRect(pos.x - 2, pos.y - 2, 4, 4);
+            ctx.fillRect(pos.x - 2 * pScale, pos.y - 2 * pScale, 4 * pScale, 4 * pScale);
         } else {
             ctx.fillStyle = `rgb(${p.color})`;
             ctx.beginPath();
@@ -923,10 +922,7 @@ function drawScene() {
         _hud.pax.textContent   = `PAX: ${G.heli.onboard}/${G.heli.maxLoad}`;
         _hud.pax.style.color   = G.heli.onboard >= G.heli.maxLoad ? '#f90' : '#5f5';
 
-        const landObj = G.objectives.find(o => o.type === 'land_at');
-        _hud.obj.textContent = landObj
-            ? `FLY TO: ${landObj.target.toUpperCase()}`
-            : `SAVED: ${G.totalRescued}/${G.goalCount}`;
+        _hud.obj.textContent = `SAVED: ${G.totalRescued}/${G.goalCount}`;
         _hud.callsign.textContent = _session.playerName || '';
 
         _hud.deliver.style.display = G.deliverMode ? 'block' : 'none';
@@ -980,15 +976,6 @@ function drawScene() {
     }
 
     if (!_IS_APP) mpTickAndHUD(ctx, canvas, dt);
-
-    if (showCollisionBoxes || _isTouchDevice()) {
-        const fps = Math.round(_fpsSmooth);
-        _hud.fps.textContent  = `${fps} FPS`;
-        _hud.fps.style.color  = fps >= 55 ? '#0f0' : fps >= 30 ? '#ff0' : '#f44';
-        _hud.fps.style.display = 'block';
-    } else {
-        _hud.fps.style.display = 'none';
-    }
 
     if (!_IS_APP && _partyMode) drawDiscoBall();
 
@@ -1133,8 +1120,8 @@ function drawPayloadObjects(hangingOnly = false, ropeOnly = false) {
         if (payload.type === 'crate') {
             ctx.fillStyle = '#d84';
             ctx.strokeStyle = '#530';
-            ctx.lineWidth = 1;
-            let s = 14;
+            ctx.lineWidth = Math.max(0.5, tileW / 64);
+            let s = tileW * 0.22;
             ctx.fillRect(p.x - s / 2, p.y - s, s, s);
             ctx.strokeRect(p.x - s / 2, p.y - s, s, s);
         } else {
@@ -1202,17 +1189,6 @@ function drawVectorCarrier(cx: number, cy: number) {
             cs: '#e0b800',
             ct: '#caa800',
         },
-        {
-            tx: 2.8,
-            ty: 2.7,
-            ta: Math.PI / 2 + 0.25,
-            bc: '#888888',
-            bs: '#dddddd',
-            bd: '#666666',
-            cc: '#aaaaaa',
-            cs: '#ffffff',
-            ct: '#eeeeee',
-        },
     ];
     tractorData.forEach(t => {
         const wx = objX + (t.tx + 0.5) * cosA - (t.ty + 0.35) * sinA;
@@ -1224,6 +1200,15 @@ function drawVectorCarrier(cx: number, cy: number) {
             drawFn: (cx, cy) =>
                 drawTractor(objX, objY, angle, deckZ, cx, cy, t.tx, t.ty, t.ta, t.bc, t.bs, t.bd, t.cc, t.cs, t.ct),
         });
+    });
+    // Carrier fuel car — world position, drawn independently of carrier transform
+    const car = G.carrierFuelCar;
+    SceneRenderer.add(null, {
+        x: car.x,
+        y: car.y,
+        z: deckZ,
+        drawFn: (cx, cy) =>
+            drawTractor(car.x, car.y, 0, deckZ, cx, cy, 0, 0, car.angle + Math.PI, '#888888', '#dddddd', '#666666', '#aaaaaa', '#ffffff', '#eeeeee'),
     });
     const towerWX = objX + (ix + iw / 2) * cosA - (iy + il / 2) * sinA;
     const towerWY = objY + (ix + iw / 2) * sinA + (iy + il / 2) * cosA;
