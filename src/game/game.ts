@@ -145,6 +145,7 @@ const _hud = (() => {
         const s = v ? 'block' : 'none';
         panel.style.display = s;
         minimap.style.display = s;
+        fps.style.display = s;
     };
 
     return { panel, alt, spd, winch, fuel, pax, obj, callsign, deliver, minimap, mmPad, mmCarrier, mmHeli, getDot, mmPool, fps, showAll };
@@ -265,6 +266,17 @@ function isVisible(objX: number, objY: number, margin = 16) {
 }
 
 // ─── screens ────────────────────────────────────────────────────────────────
+const _stopMission = () => {
+    cancelAnimationFrame(_rafId);
+    _rafId = 0;
+    destroyTutorial();
+    hidePauseButton();
+    stopHeliSound();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    _hud.showAll(false);
+    setTouchVisible(false);
+};
+
 function triggerCrash(reason: string) {
     if (zstate.crashed) return;
     stopHeliSound();
@@ -273,12 +285,7 @@ function triggerCrash(reason: string) {
     zstate.crashed = true;
     _showRainOverlay(false);
     setTimeout(() => {
-        cancelAnimationFrame(_rafId);
-        _rafId = 0;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        hidePauseButton();
-        _hud.showAll(false);
-        setTouchVisible(false);
+        _stopMission();
         document.getElementById('campaign-failed-reason')!.innerHTML = reason;
         document.getElementById('campaign-failed-screen')!.style.display = 'flex';
     }, 1800); // Explosion erst austoben lassen
@@ -343,13 +350,7 @@ function missionComplete() {
     }
 
     saveSession(_session);
-    hidePauseButton();
-    cancelAnimationFrame(_rafId);
-    _rafId = 0;
-    stopHeliSound();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    _hud.showAll(false);
-    setTouchVisible(false);
+    _stopMission();
 
     if (allDone) {
         document.getElementById('campaign-complete-name')!.textContent = '';
@@ -408,17 +409,11 @@ const _resetHeliState = () => {
 };
 
 function returnToBase() {
-    destroyTutorial();
-    hidePauseButton();
-    cancelAnimationFrame(_rafId);
-    _rafId = 0;
-    stopHeliSound();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    _stopMission();
     if (!_IS_APP && _partyMode) soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
     if (!_IS_APP) _partyMode = false;
     zstate.gameStarted = false;
     if (!_IS_APP && mpHandleReturnToBase()) return;
-    setTouchVisible(false);
     _resetHeliState();
 
     document.getElementById('campaign-complete-screen')!.style.display = 'none';
@@ -431,14 +426,10 @@ function returnToBase() {
 }
 
 const returnToCampaignSelect = () => {
-    cancelAnimationFrame(_rafId);
-    _rafId = 0;
-    stopHeliSound();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    _stopMission();
     if (!_IS_APP && _partyMode) soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
     if (!_IS_APP) _partyMode = false;
     zstate.gameStarted = false;
-    setTouchVisible(false);
     _resetHeliState();
     document.getElementById('campaign-complete-screen')!.style.display = 'none';
     hideBriefing();
