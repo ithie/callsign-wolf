@@ -9,6 +9,7 @@ interface TutorialStep {
     control: ControlHint;
     dimControls: NonNullable<ControlHint>[];
     condition: (g: GameState, mode: 'heading' | 'screen') => boolean;
+    onComplete?: (g: GameState) => void;
 }
 
 let _startX = 0;
@@ -36,7 +37,7 @@ const _STEPS: readonly TutorialStep[] = [
         dimControls: ['joystick-right', 'pitch-wheel', 'deliver-toggle'],
         condition: g => Math.hypot(g.heli.x - _startX, g.heli.y - _startY) > 4,
     },
-    // 4. Steer + accelerate (mode-dependent)
+    // 4. Steer + accelerate (mode-dependent) — drop fuel so step 5 starts low
     {
         getText: (t, m) => m === 'heading'
             ? (t ? I18N.TUT_STEER_H_M : I18N.TUT_STEER_H_D)
@@ -44,8 +45,9 @@ const _STEPS: readonly TutorialStep[] = [
         control: 'joystick-right',
         dimControls: ['pitch-wheel', 'deliver-toggle'],
         condition: g => Math.hypot(g.heli.x - _startX, g.heli.y - _startY) > 12,
+        onComplete: g => { g.heli.fuel = 15; },
     },
-    // 5. Land
+    // 5. Land to refuel
     {
         getText: (t) => t ? I18N.TUT_LAND_M : I18N.TUT_LAND_D,
         control: 'joystick-left',
@@ -216,8 +218,6 @@ export const initTutorial = (
     _startX = g.START_POS?.x ?? g.heli.x;
     _startY = g.START_POS?.y ?? g.heli.y;
 
-    g.heli.fuel = 15;
-
     if (!document.getElementById('tutorial-hud')) {
         const hud = document.createElement('div');
         hud.id = 'tutorial-hud';
@@ -237,6 +237,7 @@ export const tutorialTick = (g: GameState): void => {
     const step = _STEPS[_stepIndex];
     if (!step.condition(g, _controlMode)) return;
 
+    step.onComplete?.(g);
     _stepIndex++;
     _flashOk(_STEPS[_stepIndex] ?? null);
 };

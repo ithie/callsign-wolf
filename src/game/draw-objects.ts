@@ -267,11 +267,12 @@ export function createDrawObjects(
         colors?: { shirt: string; pants: string }
     ) {
         const base = iso(pX, pY, pZ, cx, cy);
-        const headR = 1.8,
-            torsoW = 3.5,
-            torsoH = 5,
-            legW = 1.5,
-            legH = 4;
+        const s = tileW / 64;
+        const headR = Math.max(1, 2.5 * s),
+            torsoW = Math.max(1.5, 5 * s),
+            torsoH = Math.max(1.5, 7.5 * s),
+            legW = Math.max(1, 2 * s),
+            legH = Math.max(1.5, 7 * s);
         const isRescuer = outfit === 'rescuer';
         const colorShirt = colors?.shirt ?? (isRescuer ? '#ff6600' : '#5a786e');
         const colorPants = colors?.pants ?? (isRescuer ? '#ff6600' : '#3b4a6b');
@@ -285,7 +286,7 @@ export function createDrawObjects(
         const torsoY = drawY - legH - torsoH;
         ctx.fillStyle = colorShirt;
         ctx.fillRect(drawX - torsoW / 2, torsoY, torsoW, torsoH);
-        const headY = torsoY - headR + 1;
+        const headY = torsoY - headR + s;
         ctx.fillStyle = isRescuer ? '#ffffff' : '#f2d0a4';
         ctx.beginPath();
         ctx.arc(drawX, headY, headR, 0, Math.PI * 2);
@@ -293,33 +294,32 @@ export function createDrawObjects(
         if (isRescuer) {
             const isTravolta = colorShirt === '#ffffff';
             if (isTravolta) {
-                // Black lapels — Saturday Night Fever suit
                 ctx.fillStyle = '#111';
                 ctx.beginPath();
-                ctx.moveTo(drawX, torsoY + 1);
-                ctx.lineTo(drawX - 2, torsoY + 4);
-                ctx.lineTo(drawX, torsoY + 3);
-                ctx.lineTo(drawX + 2, torsoY + 4);
+                ctx.moveTo(drawX, torsoY + s);
+                ctx.lineTo(drawX - 2 * s, torsoY + 4 * s);
+                ctx.lineTo(drawX, torsoY + 3 * s);
+                ctx.lineTo(drawX + 2 * s, torsoY + 4 * s);
                 ctx.closePath();
                 ctx.fill();
             } else {
                 ctx.strokeStyle = '#111';
-                ctx.lineWidth = 1.2;
+                ctx.lineWidth = Math.max(0.8, 1.2 * s);
                 ctx.beginPath();
                 ctx.arc(drawX, headY, headR, Math.PI * 0.9, Math.PI * 0.1, false);
                 ctx.stroke();
             }
         }
         if (isWaving) {
-            const waveOffset = Math.sin(Date.now() * 0.015) * 3;
+            const waveOffset = Math.sin(Date.now() * 0.015) * 3 * s;
             const shoulderX = drawX + torsoW / 2,
-                shoulderY = torsoY + 2;
+                shoulderY = torsoY + 2 * s;
             ctx.strokeStyle = colorArm;
-            ctx.lineWidth = 1.5;
+            ctx.lineWidth = Math.max(1, 1.5 * s);
             ctx.lineCap = 'round';
             ctx.beginPath();
             ctx.moveTo(shoulderX, shoulderY);
-            ctx.lineTo(shoulderX + 4 + waveOffset, shoulderY - 5);
+            ctx.lineTo(shoulderX + 4 * s + waveOffset, shoulderY - 5 * s);
             ctx.stroke();
         }
     }
