@@ -60,6 +60,31 @@
     50%       { opacity: 0; }
 }
 
+/* ─── logo interstitial ──────────────────────────────────────────────────── */
+#logo-splash {
+    position: fixed;
+    inset: 0;
+    background: #050505;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9998;
+}
+.logo-splash-img {
+    width: min(90vw, 90vh);
+    height: min(90vw, 90vh);
+    object-fit: contain;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
+#logo-splash.crt-entering {
+    animation: crtExpand 380ms cubic-bezier(0, 0, 0.6, 1) forwards;
+}
+#logo-splash.crt-leaving {
+    animation: crtCollapse 380ms cubic-bezier(0.4, 0, 1, 1) forwards;
+    pointer-events: none;
+}
+
 /* ─── main menu ─────────────────────────────────────────────────────────── */
 #main-menu .subtitle {
     margin-bottom: 44px;
