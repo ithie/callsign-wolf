@@ -580,7 +580,6 @@ const launchMission = async (showLoader = true): Promise<void> => {
 
     // Step 3 — environment
     initFoliageFromMission();
-    _buildTreeSprites();
     initBirds();
     G.deliverMode = false;
     initPayloadsFromMission();
@@ -760,18 +759,21 @@ function drawScene() {
     if (hasPad()) drawPadLights(camX, camY, G.PAD.z, false);
     if (hasPad() && isVisible(G.PAD.xMin, G.PAD.yMin)) drawWindsock(camX, camY); // pad always in range if visible
 
-    // Bäume als vorgerenderte Sprites (1 drawImage statt ~240 canvas ops pro Baum)
-    G.TREES_MAP.forEach((t: any) => {
-        if (!isVisible(t.x, t.y)) return;
-        if (!_IS_APP && _partyMode) {
-            drawTree(t.x, t.y, camX, camY, t.s, t.gz, t.type || 'pine', G.wind, t.type !== 'dead');
-            return;
+    // Bäume als vorgerenderte Sprites — nur sichtbare Tiles via Spatial-Index
+    {
+        const _tr = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH)) + 2;
+        const xFrom = Math.floor(rx - _tr), xTo = Math.ceil(rx + _tr);
+        const yFrom = Math.floor(ry - _tr), yTo = Math.ceil(ry + _tr);
+        for (let tx = xFrom; tx <= xTo; tx++) {
+            for (let ty = yFrom; ty <= yTo; ty++) {
+                const bucket = _treeIndex.get(`${tx}_${ty}`);
+                if (!bucket) continue;
+                for (const t of bucket) {
+                    drawTree(t.x, t.y, camX, camY, t.s, t.gz, t.type || 'pine', G.wind, !_IS_APP && _partyMode && t.type !== 'dead');
+                }
+            }
         }
-        const sprite = _treeSprites.get(`${t.type}_${t.s}`);
-        if (!sprite) return;
-        const p = isoFn(t.x, t.y, t.gz, camX, camY);
-        ctx.drawImage(sprite.canvas, Math.round(p.x - sprite.ox), Math.round(p.y - sprite.oy));
-    });
+    }
 
     // Vögel
     updateBirds();
@@ -951,7 +953,7 @@ function drawScene() {
         const mmSize = 130;
         const mmPadPx = 20;
         _hud.minimap.style.right  = isTouch ? 'max(16px, env(safe-area-inset-right))' : `${mmPadPx}px`;
-        _hud.minimap.style.top    = isTouch ? '12px' : '';
+        _hud.minimap.style.top    = isTouch ? 'max(12px, env(safe-area-inset-top))' : '';
         _hud.minimap.style.bottom = isTouch ? '' : `${mmPadPx}px`;
 
         const sc = mmSize / gridSize;
@@ -1423,32 +1425,15 @@ function initFoliageFromMission() {
     G.TREES_MAP.forEach((t: any) => {
         t.gz = getGround(t.x, t.y, G.points, G.CARRIER);
     });
+    _treeIndex.clear();
+    G.TREES_MAP.forEach((t: any) => {
+        const key = `${Math.floor(t.x)}_${Math.floor(t.y)}`;
+        const bucket = _treeIndex.get(key);
+        if (bucket) bucket.push(t);
+        else _treeIndex.set(key, [t]);
+    });
 }
 
-const _buildTreeSprites = () => {
-    _treeSprites.clear();
-    const seen = new Set<string>();
-    const neutralWind = { x: 0, y: 0, phase: 0 };
-    G.TREES_MAP.forEach((t: any) => {
-        const key = `${t.type}_${t.s}`;
-        if (seen.has(key)) return;
-        seen.add(key);
-        const s: number = t.s || 1.0;
-        const type: string = t.type || 'pine';
-        const w = Math.ceil(tileW * 2.5 * s);
-        const h = Math.ceil(stepH * 6 * s);
-        const ox = Math.round(w / 2);
-        const oy = h - 2;
-        const offCanvas = document.createElement('canvas');
-        offCanvas.width = w;
-        offCanvas.height = h;
-        const offCtx = offCanvas.getContext('2d')!;
-        const offDraw = createDrawObjects(offCtx, isoFn, tileW, tileH, SceneRenderer);
-        // Place the tree base at (ox, oy): iso(0,0,0,camX,camY).y = canvas.height/2 - camY → camY = canvas.height/2 - oy
-        offDraw.drawTree(0, 0, canvas.width / 2 - ox, canvas.height / 2 - oy, s, 0, type, neutralWind, false);
-        _treeSprites.set(key, { canvas: offCanvas, ox, oy });
-    });
-};
 
 function drawLighthouse(cx: number, cy: number) {
     const _lhObj = getObjectByType('lighthouse');
@@ -2007,8 +1992,7 @@ let _missionNight = false;
 let _missionWindStr = 1;
 let _missionWindDir = 0;
 let _missionWindVar = false;
-type _TreeSprite = { canvas: HTMLCanvasElement; ox: number; oy: number };
-let _treeSprites: Map<string, _TreeSprite> = new Map();
+let _treeIndex: Map<string, any[]> = new Map();
 let _lighthouseX = -1;
 let _lighthouseY = -1;
 let _missionGridSize = 28;
@@ -2322,7 +2306,7 @@ const getControlMode = (): 'heading' | 'screen' =>
     storageGet(CTRL_MODE_KEY) === 'screen' ? 'screen' : 'heading';
 const setControlMode = (m: 'heading' | 'screen') => storageSet(CTRL_MODE_KEY, m);
 
-const _setupJoystick = (id: string, up: string, down: string, left: string, right: string) => {
+const _setupJoystick = (id: string, up: string, down: string, left: string, right: string, safeVertical = false) => {
     const el = document.getElementById(id);
     if (!el) return;
     const knob = el.querySelector('.joystick-knob') as HTMLElement;
@@ -2333,10 +2317,11 @@ const _setupJoystick = (id: string, up: string, down: string, left: string, righ
         jr = 0;
     const setKeys = (dx: number, dy: number) => {
         const dead = jr * 0.18;
-        (G.keys as Record<string, boolean>)[up] = dy < -dead;
-        (G.keys as Record<string, boolean>)[down] = dy > dead;
-        (G.keys as Record<string, boolean>)[left] = dx < -dead;
-        (G.keys as Record<string, boolean>)[right] = dx > dead;
+        const inVertSector = safeVertical && Math.abs(dy) > dead && Math.abs(dx) < Math.abs(dy) * 0.4;
+        (G.keys as Record<string, boolean>)[up]    = dy < -dead;
+        (G.keys as Record<string, boolean>)[down]  = dy > dead;
+        (G.keys as Record<string, boolean>)[left]  = !inVertSector && dx < -dead;
+        (G.keys as Record<string, boolean>)[right] = !inVertSector && dx > dead;
     };
     el.addEventListener('pointerdown', e => {
         e.preventDefault();
@@ -2478,7 +2463,7 @@ const setupTouchControls = () => {
     // joysticks
     _setupJoystick('joystick-left', 'KeyW', 'KeyS', 'KeyA', 'KeyD');
     if (getControlMode() === 'screen') {
-        _setupJoystick('joystick-right', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight');
+        _setupJoystick('joystick-right', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', true);
     } else {
         _setupHeadingJoystick('joystick-right');
     }
@@ -2759,11 +2744,15 @@ const _onloadMain = () => {
                     cancelAnimationFrame(_rafId);
                     _rafId = 0;
                     stopHeliSound();
+                    soundHandler.stop();
                 },
                 onResume: () => {
+                    if (!soundHandler.state.isMuted)
+                        soundHandler.play(soundHandler.state.activeTheme, false, 0.4);
                     initHeliSound(G.heli.type);
                     _rafId = requestAnimationFrame(drawScene);
                 },
+                onAbort: () => returnToBase(),
             });
         }
 

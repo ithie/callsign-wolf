@@ -1,3 +1,13 @@
+#hud-tl {
+    position: fixed;
+    top: max(12px, env(safe-area-inset-top));
+    left: max(16px, env(safe-area-inset-left));
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 #pause-btn {
     cursor: pointer;
     opacity: 0.85;
