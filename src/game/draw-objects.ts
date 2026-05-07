@@ -495,14 +495,15 @@ export function createDrawObjects(
                 ctx.moveTo(elbowIso.x, elbowIso.y);
                 ctx.lineTo(nozzleIso.x, nozzleIso.y);
                 ctx.stroke();
+                const as = tileW / 64;
                 ctx.fillStyle = '#555';
                 ctx.beginPath();
-                ctx.arc(elbowIso.x, elbowIso.y, 3, 0, Math.PI * 2);
+                ctx.arc(elbowIso.x, elbowIso.y, Math.max(1.2, 3 * as), 0, Math.PI * 2);
                 ctx.fill();
                 const fueling = getFuelingState ? getFuelingState() : false;
                 ctx.fillStyle = fueling && Math.floor(Date.now() / 200) % 2 ? '#ff8800' : '#444';
                 ctx.beginPath();
-                ctx.arc(nozzleIso.x, nozzleIso.y, 4, 0, Math.PI * 2);
+                ctx.arc(nozzleIso.x, nozzleIso.y, Math.max(1.5, 4 * as), 0, Math.PI * 2);
                 ctx.fill();
             },
         });

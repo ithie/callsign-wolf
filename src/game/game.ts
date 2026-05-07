@@ -22,6 +22,7 @@ import { zstate } from './state';
 import { initHeliSound, updateHeliSound, stopHeliSound, setSfxEnabled, isSfxEnabled } from './heli-sound';
 
 import HANGAR_DEF from './models/hangar.zdef';
+import TOWER_DEF from './models/tower.zdef';
 import LIGHTHOUSE_DEF from './models/lighthouse.zdef';
 import SAILBOAT_DEF from './models/sailboat.zdef';
 import CARRIER_DEF from './models/carrier.zdef';
@@ -572,7 +573,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     const handle = showLoader ? showLoadingScreen(localize(_lmd.headline) || 'MISSION') : null;
 
     // Step 1 — terrain
-    generateTerrain(G.points, _missionHasPad ? G.PAD : null);
+    generateTerrain(G.points, _missionHasPad ? { ...G.PAD, yMin: G.PAD.yMin - 3 } : null);
     _precomputeDayColors(_missionRain);
     handle?.step('Gelände…', 0.25);
     if (handle) await _tick();
@@ -675,10 +676,10 @@ const launchMission = async (showLoader = true): Promise<void> => {
 //   local X=1.5-2.2 : Cab / Front
 //   Fahrtrichtung  : world angle = atan2(dy,dx), truck +X zeigt dahin
 //
-// PARKPOSITION: direkt neben linker Hangar-Wand (bei xMax-4), längs dazu
-//   parkX = PAD.xMax - 5.2   (Truck-Mitte in X; rechte Seite bei xMax-4.75, Abstand 0.75 zur Wand)
-//   parkY = PAD.yMin + 0.1   (Heck bündig mit Hangar-Rückwand)
-//   parkAngle = +PI/2        (Nase zeigt in +Y = zur Hangar-Öffnung hin)
+// PARKPOSITION: direkt neben linker Hangar-Wand (bei xMax-5), längs dazu
+//   parkX = PAD.xMax - 6.2  (rechte Truck-Seite xMax-5.75, Abstand 0.75 zur Hangar-Wand)
+//   parkY = PAD.yMin - 1    (Mitte der Hangar-Tiefe yMin-2..yMin)
+//   parkAngle = +PI/2        (Nase zeigt in +Y = Richtung Landeplatz)
 //
 let _fpsLastTime = 0,
     _fpsSmooth = 60;
@@ -1293,10 +1294,16 @@ function drawParkedHelis(cx: number, cy: number) {
 // ─── pad / hangar / lights / windsock / lighthouse ───────────────────────────
 function drawHangar() {
     SceneRenderer.add(HANGAR_DEF, {
-        x: G.PAD.xMax - 2,
-        y: G.PAD.yMin + 1,
+        x: G.PAD.xMax - 3,
+        y: G.PAD.yMin - 1,
         z: G.PAD.z,
         angle: Math.PI / 2,
+    });
+    SceneRenderer.add(TOWER_DEF, {
+        x: G.PAD.xMax - 0.5,
+        y: G.PAD.yMin - 1,
+        z: G.PAD.z,
+        angle: 0,
     });
 }
 
@@ -1334,7 +1341,8 @@ function setLightsOnDeck(lights: Array<{ x: number; y: number }>, blink: boolean
         let p = iso(l.x, l.y, z + 0.05, cx, cy, { stepH, tileW, tileH, canvas });
         ctx.fillStyle = blink ? '#f00' : '#500';
         ctx.beginPath();
-        ctx.arc(p.x, p.y, blink ? 3 : 2.5, 0, 7);
+        const s = tileW / 64;
+        ctx.arc(p.x, p.y, blink ? Math.max(1.5, 3 * s) : Math.max(1.2, 2.5 * s), 0, 7);
         ctx.fill();
     });
 }
@@ -1367,8 +1375,8 @@ function drawWindsock(cx: number, cy: number) {
     for (let i = 1; i <= 4; i++) {
         let t = i / 4;
         let bend = Math.sin(phase + i * 0.5) * 1.5 * t;
-        let px = top.x + wIsoX * i * 1.5 + perpX * (0.5 - t * 0.5) + bend * perpX * 0.2;
-        let py = top.y + wIsoY * i * 1.5 + perpY * (0.5 - t * 0.5) + bend * perpY * 0.2;
+        let px = top.x + wIsoX * i * 0.6 + perpX * (0.5 - t * 0.5) + bend * perpX * 0.2;
+        let py = top.y + wIsoY * i * 0.6 + perpY * (0.5 - t * 0.5) + bend * perpY * 0.2;
         ctx.lineTo(px, py);
     }
     for (let i = 3; i >= 1; i--) {
@@ -1642,8 +1650,8 @@ function drawDebugOverlay(camX: number, camY: number) {
         ctx.fillText(`yMin=${p.yMin} yMax=${p.yMax} z=${p.z}`, lbl.x, lbl.y + 6);
 
         // Hangar outline
-        const hX = p.xMax - 4,
-            hY = p.yMin;
+        const hX = p.xMax - 5,
+            hY = p.yMin - 2;
         const hc = [isoP(hX, hY, p.z), isoP(hX + 4, hY, p.z), isoP(hX + 4, hY + 2, p.z), isoP(hX, hY + 2, p.z)];
         ctx.strokeStyle = 'rgba(255,80,0,0.8)';
         ctx.lineWidth = 1.5;
@@ -1793,9 +1801,9 @@ function handleCollisionBoxes() {
 
     // ── Hangar ────────────────────────────────────────────────────────────────
     if (hasPad()) {
-        // Hangar: hX=G.PAD.xMax-4, hY=G.PAD.yMin, Breite=4, Tiefe=2, Höhe=1.8
-        const hX = G.PAD.xMax - 4,
-            hY = G.PAD.yMin,
+        // Hangar: hX=G.PAD.xMax-5, hY=G.PAD.yMin-2, Breite=4, Tiefe=2, Höhe=1.8
+        const hX = G.PAD.xMax - 5,
+            hY = G.PAD.yMin - 2,
             hZ = G.PAD.z;
         // Mittelpunkt + lokale Extents (keine Rotation)
         const hmx = hX + 2,
@@ -1804,6 +1812,15 @@ function handleCollisionBoxes() {
         if (!zstate.crashed && G.heli.inAir) {
             if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, hmx, hmy, 0, -2, 2, -1, 1, hZ, hZ + 1.8)) {
                 _physicsCtx.triggerCrash(I18N.CRASH_HANGAR);
+            }
+        }
+
+        // ── Tower ──────────────────────────────────────────────────────────────
+        const tmx = G.PAD.xMax - 0.5, tmy = G.PAD.yMin - 1, tZ = G.PAD.z;
+        if (showCollisionBoxes) drawCollisionBox(tmx, tmy, 0, -0.5, 0.5, -0.5, 0.5, tZ, tZ + 5, 'rgba(255,200,0,0.9)');
+        if (!zstate.crashed && G.heli.inAir) {
+            if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, tmx, tmy, 0, -0.5, 0.5, -0.5, 0.5, tZ, tZ + 5)) {
+                _physicsCtx.triggerCrash(I18N.CRASH_TOWER);
             }
         }
     }
@@ -2043,14 +2060,17 @@ const _precomputeDayColors = (rain: boolean) => {
         for (let y = 0; y < gridSize; y++) {
             const h0 = G.points[x]?.[y] ?? 0;
             const isPad = hasPad() && x >= G.PAD.xMin && x <= G.PAD.xMax && y >= G.PAD.yMin && y <= G.PAD.yMax;
+            const isService = hasPad() && x >= G.PAD.xMin && x <= G.PAD.xMax && y >= G.PAD.yMin - 3 && y < G.PAD.yMin;
             const c = 35 + Math.floor(h0 * 15);
             _tileColors[x][y] = isPad
                 ? '#444'
-                : h0 > 0
-                  ? `rgb(${c - 10},${c + 30},${c - 10})`
-                  : rain
-                    ? '#002244'
-                    : '#003d7a';
+                : isService
+                  ? '#444'
+                  : h0 > 0
+                    ? `rgb(${c - 10},${c + 30},${c - 10})`
+                    : rain
+                      ? '#002244'
+                      : '#003d7a';
         }
     }
 };
@@ -2136,6 +2156,7 @@ const _drawTerrain = (camX: number, camY: number, _rx: number, _ry: number, isNi
             haA = G.heli.angle;
         _renderTerrainBatched(ctx, canvas.width, canvas.height, camX, camY, xFrom, xTo, yFrom, yTo, (x, y, h0) => {
             const isPad = hasPad() && x >= G.PAD.xMin && x <= G.PAD.xMax && y >= G.PAD.yMin && y <= G.PAD.yMax;
+            const isService = hasPad() && x >= G.PAD.xMin && x <= G.PAD.xMax && y >= G.PAD.yMin - 3 && y < G.PAD.yMin;
             let diff = Math.atan2(y - haY, x - haX) - haA;
             while (diff < -Math.PI) diff += Math.PI * 2;
             while (diff > Math.PI) diff -= Math.PI * 2;
@@ -2144,6 +2165,7 @@ const _drawTerrain = (camX: number, camY: number, _rx: number, _ry: number, isNi
             const inLight = Math.abs(diff) < coneWidth && dx * dx + dy * dy < range2;
             if (!inLight) return '#020205';
             if (isPad) return `rgb(${intensity - 30},${intensity - 30},${intensity - 30})`;
+            if (isService) return `rgb(${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)})`;
             return h0 > 0
                 ? `rgb(${intensity - 20},${intensity + 10},${intensity - 20})`
                 : `rgb(0,${Math.floor(intensity * 0.3)},${Math.floor(intensity * 0.6)})`;
@@ -2155,7 +2177,9 @@ const _drawTerrain = (camX: number, camY: number, _rx: number, _ry: number, isNi
         // Party: tile colors change ~3.5×/sec → path-batch on main canvas
         _renderTerrainBatched(ctx, canvas.width, canvas.height, camX, camY, xFrom, xTo, yFrom, yTo, (x, y, _h0) => {
             const isPad = hasPad() && x >= G.PAD.xMin && x <= G.PAD.xMax && y >= G.PAD.yMin && y <= G.PAD.yMax;
+            const isService = hasPad() && x >= G.PAD.xMin && x <= G.PAD.xMax && y >= G.PAD.yMin - 3 && y < G.PAD.yMin;
             if (isPad) return '#444';
+            if (isService) return '#aaaaaa';
             const tileOffset = Math.abs(x * 173 + y * 251) % 800;
             const phase = Math.floor((Date.now() + tileOffset * 320) / 280);
             return _PARTY_PALETTE[phase % _PARTY_PALETTE.length];

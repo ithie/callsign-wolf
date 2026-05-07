@@ -819,8 +819,8 @@ export function handleParticles(dt: number, ctx: PhysicsCtx) {
 export function initFuelTruck() {
     if (!G.PAD) return;
     const ft = G.fuelTruck;
-    ft.parkX = G.PAD.xMax - 5.2;
-    ft.parkY = G.PAD.yMin + 0.1;
+    ft.parkX = G.PAD.xMax - 6.2;  // linke Seite des Hangars (xMax-5 - 0.75 Abstand - 0.45 Truck-Hälfte)
+    ft.parkY = G.PAD.yMin - 1;    // Mitte der Hangarbandbreite
     ft.parkAngle = Math.PI * 0.5;
     ft.x = ft.parkX;
     ft.y = ft.parkY;
@@ -843,13 +843,14 @@ export function updateFuelTruck(dt: number, ctx: PhysicsCtx) {
     const STOP_DIST = 3.5;
 
     const HB = {
-        x0: G.PAD.xMax - 4.5,
+        x0: G.PAD.xMax - 5.5,
         x1: G.PAD.xMax + 0.5,
-        y0: G.PAD.yMin - 0.5,
-        y1: G.PAD.yMin + 2.5,
-    };
+        y0: G.PAD.yMin - 2.5,
+        y1: G.PAD.yMin + 0.5,
+    }; // covers hangar (xMax-5..xMax-1) + tower (xMax-1..xMax), service-zone depth
 
     function hangarForce() {
+        if (ft.x < HB.x0) return [0, 0]; // truck is left of hangar cluster — no collision risk from this side
         const cx = Math.max(HB.x0, Math.min(HB.x1, ft.x));
         const cy = Math.max(HB.y0, Math.min(HB.y1, ft.y));
         const dx = ft.x - cx,
