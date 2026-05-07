@@ -2655,8 +2655,8 @@ const _onloadMain = () => {
                 .lang-btn.active{border-color:#5f5;color:#5f5;}
                 .block{padding-left:10px;border-left:1px solid #1a1a1a;}
                 .wrap{max-width:640px;margin:0 auto;padding-bottom:48px;}
-                .wrap[data-lang="en"] .de{display:none;}
-                .wrap[data-lang="de"] .en{display:none;}
+                .wrap[data-lang="en"] .sec-de{display:none;}
+                .wrap[data-lang="de"] .sec-en{display:none;}
             </style>`);
             const _rows = (lines: readonly string[]) => lines.map(l => l ? `<p>${l}</p>` : '<br>').join('');
             const _initLang = navigator.language?.toLowerCase().startsWith('de') ? 'de' : 'en';
@@ -2668,15 +2668,15 @@ const _onloadMain = () => {
                     <button class="lang-btn de" onclick="document.getElementById('imp').dataset.lang='de';document.querySelector('.lang-btn.de').classList.add('active');document.querySelector('.lang-btn.en').classList.remove('active')">DEUTSCH</button>
                 </div>
 
-                <h2 class="en">${I18N_EN.LEGAL_IMPRESSUM_HEADING}</h2>
-                <div class="block en">${_rows(I18N_EN.LEGAL_IMPRESSUM)}</div>
-                <h2 class="de">${I18N_DE.LEGAL_IMPRESSUM_HEADING}</h2>
-                <div class="block de">${_rows(I18N_DE.LEGAL_IMPRESSUM)}</div>
+                <h2 class="sec-en">${I18N_EN.LEGAL_IMPRESSUM_HEADING}</h2>
+                <div class="block sec-en">${_rows(I18N_EN.LEGAL_IMPRESSUM)}</div>
+                <h2 class="sec-de">${I18N_DE.LEGAL_IMPRESSUM_HEADING}</h2>
+                <div class="block sec-de">${_rows(I18N_DE.LEGAL_IMPRESSUM)}</div>
 
-                <h2 class="en">${I18N_EN.LEGAL_DATENSCHUTZ_HEADING}</h2>
-                <div class="block en">${_rows(LEGAL_DATENSCHUTZ_IMPRINT.en)}</div>
-                <h2 class="de">${I18N_DE.LEGAL_DATENSCHUTZ_HEADING}</h2>
-                <div class="block de">${_rows(LEGAL_DATENSCHUTZ_IMPRINT.de)}</div>
+                <h2 class="sec-en">${I18N_EN.LEGAL_DATENSCHUTZ_HEADING}</h2>
+                <div class="block sec-en">${_rows(LEGAL_DATENSCHUTZ_IMPRINT.en)}</div>
+                <h2 class="sec-de">${I18N_DE.LEGAL_DATENSCHUTZ_HEADING}</h2>
+                <div class="block sec-de">${_rows(LEGAL_DATENSCHUTZ_IMPRINT.de)}</div>
             </div>`;
             document.documentElement.style.overflowY = 'auto';
             document.body.style.overflowY = 'auto';
