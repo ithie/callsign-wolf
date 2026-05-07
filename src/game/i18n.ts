@@ -5,6 +5,27 @@
 
 export const LANG_PREF_KEY = 'zeewolf_lang';
 
+const _DATENSCHUTZ_DE = [
+    'SAR: Callsign WOLF speichert folgende Daten lokal auf deinem Gerät:',
+    '▸ Rufzeichen  ▸ Dienstgrad  ▸ Kampagnenfortschritt  ▸ Spracheinstellung',
+    'Die Daten werden ausschließlich zur Spielfunktion genutzt und nicht an Dritte weitergegeben. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.',
+    'Gespeicherte Daten können jederzeit über Hauptmenü → Einstellungen → Spielstand löschen gelöscht werden.',
+    'Die Steuerungseinstellung wird ebenfalls lokal gespeichert (rein technische Geräteeinstellung, kein Personenbezug).',
+    'Kontakt für Datenschutzanfragen: yarrick@web.de',
+] as const;
+
+const _DATENSCHUTZ_EN = [
+    'SAR: Callsign WOLF stores the following data locally on your device:',
+    '▸ Callsign  ▸ Rank  ▸ Campaign progress  ▸ Language setting',
+    'Data is used exclusively for game functionality and is not shared with third parties. Legal basis: Art. 6 para. 1 lit. b GDPR.',
+    'Stored data can be deleted at any time via Main Menu → Settings → Delete Save.',
+    'The control setting is also stored locally (purely technical device setting, no personal data).',
+    'Privacy contact: yarrick@web.de',
+] as const;
+
+/** App-version privacy text — used by the ?imprint page (App Store link) for both DE and EN. */
+export const LEGAL_DATENSCHUTZ_IMPRINT = { de: _DATENSCHUTZ_DE, en: _DATENSCHUTZ_EN };
+
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
 import { storageGet, storageSet } from './storage';
@@ -211,18 +232,11 @@ const _DE = {
     ],
     ...(_IS_APP
         ? {
-              LEGAL_DATENSCHUTZ: [
-                  'SAR: Callsign WOLF speichert folgende Daten lokal auf deinem Gerät:',
-                  '▸ Rufzeichen  ▸ Dienstgrad  ▸ Kampagnenfortschritt  ▸ Spracheinstellung',
-                  'Die Daten werden ausschließlich zur Spielfunktion genutzt und nicht an Dritte weitergegeben. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.',
-                  'Gespeicherte Daten können jederzeit über Hauptmenü → Einstellungen → Spielstand löschen gelöscht werden.',
-                  'Die Steuerungseinstellung wird ebenfalls lokal gespeichert (rein technische Geräteeinstellung, kein Personenbezug).',
-                  'Kontakt für Datenschutzanfragen: yarrick@web.de',
-              ],
+              LEGAL_DATENSCHUTZ: _DATENSCHUTZ_DE,
           }
         : {
               LEGAL_DATENSCHUTZ: [
-                  'SAR: Callsign WOLF speichert folgende Daten ausschließlich lokal in deinem Browser (localStorage) – und nur mit deiner Einwilligung:',
+                  'SAR: Callsign WOLF speichert folgende Daten ausschließlich lokal auf deinem Gerät – und nur mit deiner Einwilligung:',
                   '▸ Rufzeichen  ▸ Dienstgrad  ▸ Kampagnenfortschritt  ▸ Einwilligungsstatus  ▸ Spracheinstellung',
                   'Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung). Gespeicherte Daten können jederzeit über Hauptmenü → Einstellungen → Spielstand löschen gelöscht werden.',
                   'Die Steuerungseinstellung wird unabhängig von der Einwilligung immer lokal gespeichert (rein technische Geräteeinstellung, kein Personenbezug).',
@@ -434,18 +448,11 @@ const _EN = {
     ],
     ...(_IS_APP
         ? {
-              LEGAL_DATENSCHUTZ: [
-                  'SAR: Callsign WOLF stores the following data locally on your device:',
-                  '▸ Callsign  ▸ Rank  ▸ Campaign progress  ▸ Language setting',
-                  'Data is used exclusively for game functionality and is not shared with third parties. Legal basis: Art. 6 para. 1 lit. b GDPR.',
-                  'Stored data can be deleted at any time via Main Menu → Settings → Delete Save.',
-                  'The control setting is also stored locally (purely technical device setting, no personal data).',
-                  'Privacy contact: yarrick@web.de',
-              ],
+              LEGAL_DATENSCHUTZ: _DATENSCHUTZ_EN,
           }
         : {
               LEGAL_DATENSCHUTZ: [
-                  'SAR: Callsign WOLF stores the following data exclusively locally in your browser (localStorage) – and only with your consent:',
+                  'SAR: Callsign WOLF stores the following data exclusively locally on your device – and only with your consent:',
                   '▸ Callsign  ▸ Rank  ▸ Campaign progress  ▸ Consent status  ▸ Language setting',
                   'Legal basis: Art. 6 para. 1 lit. a GDPR (consent). Stored data can be deleted at any time via Main Menu → Settings → Delete Save.',
                   'The control setting is always stored locally regardless of consent (purely technical device setting, no personal data).',
