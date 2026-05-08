@@ -29,6 +29,8 @@ import PILOT_BOAT_DEF from './models/pilot_boat.zdef';
 import SALVAGE_TUG_DEF from './models/supply_vessel.zdef';
 import RESEARCH_PLATFORM_DEF from './models/research_platform.zdef';
 import WIND_TURBINE_DEF from './models/wind_turbine.zdef';
+import PLANE_WRECK_DEF from './models/plane_wreck.zdef';
+import SAILBOAT_BROKEN_DEF from './models/sailboat_broken.zdef';
 import CARRIER_DEF from './models/carrier.zdef';
 import SUBMARINE_DEF from './models/submarine.zdef';
 import { applyParts } from './def-utils';
@@ -616,6 +618,10 @@ const launchMission = async (showLoader = true): Promise<void> => {
         G.heli.angle = G.CARRIER.angle;
         G.heli.engineOn = false;
         G.heli.rotorRPM = 0;
+        G.rescuerSwing.x = G.heli.x;
+        G.rescuerSwing.y = G.heli.y;
+        G.rescuerSwing.vx = 0;
+        G.rescuerSwing.vy = 0;
         zstate.cam.x = (G.heli.x - G.heli.y) * (tileW / 2);
         zstate.cam.y = (G.heli.x + G.heli.y) * (tileH / 2);
     } else {
@@ -628,6 +634,10 @@ const launchMission = async (showLoader = true): Promise<void> => {
         G.heli.inAir = false;
         G.heli.engineOn = false;
         G.heli.rotorRPM = 0;
+        G.rescuerSwing.x = G.START_POS.x;
+        G.rescuerSwing.y = G.START_POS.y;
+        G.rescuerSwing.vx = 0;
+        G.rescuerSwing.vy = 0;
         zstate.cam.x = (G.START_POS.x - G.START_POS.y) * (tileW / 2);
         zstate.cam.y = (G.START_POS.x + G.START_POS.y) * (tileH / 2);
     }
@@ -730,20 +740,27 @@ function drawScene() {
 
     _drawTerrain(camX, camY, rx, ry, isNight, rain);
 
-    if (hasLighthouse() && isVisible(lighthouseX, lighthouseY)) drawLighthouse(camX, camY);
-    if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, 25)) drawVectorCarrier(camX, camY);
+    const _visMargin = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH)) + 4;
+    if (hasLighthouse() && isVisible(lighthouseX, lighthouseY, _visMargin)) drawLighthouse(camX, camY);
+    if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, _visMargin)) drawVectorCarrier(camX, camY);
     drawParkedHelis(camX, camY);
     G.BOATS.forEach(b => {
-        if (isVisible(b.x, b.y, 15)) drawBoatModel(b, camX, camY);
+        if (isVisible(b.x, b.y, _visMargin)) drawBoatModel(b, camX, camY);
     });
     G.SUBMARINES.forEach(s => {
-        if (isVisible(s.x, s.y, 15)) drawSubmarine(s.x, s.y, s.angle, camX, camY);
+        if (isVisible(s.x, s.y, _visMargin)) drawSubmarine(s.x, s.y, s.angle, camX, camY);
     });
     G.RESEARCH_PLATFORMS.forEach(rp => {
-        if (isVisible(rp.x, rp.y, 10)) drawResearchPlatform(rp.x, rp.y, camX, camY);
+        if (isVisible(rp.x, rp.y, _visMargin)) drawResearchPlatform(rp.x, rp.y);
     });
     G.WIND_TURBINES.forEach(wt => {
-        if (isVisible(wt.x, wt.y, 15)) drawWindTurbine(wt.x, wt.y, camX, camY);
+        if (isVisible(wt.x, wt.y, _visMargin)) drawWindTurbine(wt.x, wt.y, wt.spinning);
+    });
+    G.PLANE_WRECKS.forEach((pw: any) => {
+        if (isVisible(pw.x, pw.y, _visMargin)) drawPlaneWreck(pw.x, pw.y, pw.angle);
+    });
+    G.BROKEN_SAILBOATS.forEach((bs: any) => {
+        if (isVisible(bs.x, bs.y, _visMargin)) drawBrokenSailboat(bs.x, bs.y, bs.angle);
     });
     if (hasPad() && isVisible(G.PAD.xMin + 3, G.PAD.yMin + 3)) drawHangar();
     if (hasPad() && G.fuelTruck && isVisible(G.fuelTruck.x, G.fuelTruck.y))
@@ -860,8 +877,8 @@ function drawScene() {
         // ropes drawn BEFORE heli so heli body renders over rope top
         drawPayloadObjects(true, true);
 
-        // winch line (only when nothing hanging)
-        if (!G.activePayload) {
+        // winch line (only when extended and nothing hanging)
+        if (!G.activePayload && G.heli.winch > 0.05) {
             const rs = G.rescuerSwing;
             const winchTipZ = Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
             let hP = iso(G.heli.x, G.heli.y, G.heli.z, camX, camY, { stepH, tileW, tileH, canvas });
@@ -1141,6 +1158,8 @@ function drawPayloadObjects(hangingOnly = false, ropeOnly = false) {
             ctx.fillRect(p.x - s / 2, p.y - s, s, s);
             ctx.strokeRect(p.x - s / 2, p.y - s, s, s);
         } else {
+            const inWater = !payload.hanging && G.waterLevel > 0
+                && getGround(payload.x, payload.y, G.points, G.CARRIER) < G.waterLevel;
             drawPerson(
                 payload.x,
                 payload.y,
@@ -1150,7 +1169,8 @@ function drawPayloadObjects(hangingOnly = false, ropeOnly = false) {
                 cam.x,
                 cam.y,
                 undefined,
-                payload.outfitColors
+                payload.outfitColors,
+                inWater
             );
             if (payload.z < 0) {
                 ctx.strokeStyle = '#aaf';
@@ -1350,30 +1370,38 @@ function drawWindsock(cx: number, cy: number) {
     ctx.moveTo(base.x, base.y);
     ctx.lineTo(top.x, top.y);
     ctx.stroke();
-    let windAngle = G.wind.angle ?? Math.PI * 0.75;
-    let wIsoX = (Math.cos(windAngle) - Math.sin(windAngle)) * (tileW / 2);
-    let wIsoY = (Math.cos(windAngle) + Math.sin(windAngle)) * (tileH / 2);
-    let len = Math.hypot(wIsoX, wIsoY);
-    wIsoX = (wIsoX / len) * 5;
-    wIsoY = (wIsoY / len) * 5;
+    const windStrNorm = Math.min(1, _missionWindStr / 10);
+    let wIsoX: number, wIsoY: number;
+    if (windStrNorm < 0.01) {
+        // Windstille: Sack hängt senkrecht herunter (isometrisch: gleich in x und y)
+        wIsoX = 0;
+        wIsoY = 4;
+    } else {
+        const windAngle = G.wind.angle ?? Math.PI * 0.75;
+        const rawX = (Math.cos(windAngle) - Math.sin(windAngle)) * (tileW / 2);
+        const rawY = (Math.cos(windAngle) + Math.sin(windAngle)) * (tileH / 2);
+        const len = Math.hypot(rawX, rawY);
+        wIsoX = (rawX / len) * 5 * windStrNorm;
+        wIsoY = (rawY / len) * 5 * windStrNorm;
+    }
     // perpendicular for cone width
     let perpX = -wIsoY,
         perpY = wIsoX;
-    let phase = Date.now() * 0.005;
+    const phase = Date.now() * 0.005;
     ctx.fillStyle = 'orange';
     ctx.beginPath();
     ctx.moveTo(top.x - perpX * 0.5, top.y - perpY * 0.5);
     ctx.lineTo(top.x + perpX * 0.5, top.y + perpY * 0.5);
     for (let i = 1; i <= 4; i++) {
         let t = i / 4;
-        let bend = Math.sin(phase + i * 0.5) * 1.5 * t;
+        let bend = Math.sin(phase + i * 0.5) * 1.5 * t * windStrNorm;
         let px = top.x + wIsoX * i * 0.6 + perpX * (0.5 - t * 0.5) + bend * perpX * 0.2;
         let py = top.y + wIsoY * i * 0.6 + perpY * (0.5 - t * 0.5) + bend * perpY * 0.2;
         ctx.lineTo(px, py);
     }
     for (let i = 3; i >= 1; i--) {
         let t = i / 4;
-        let bend = Math.sin(phase + i * 0.5) * 1.5 * t;
+        let bend = Math.sin(phase + i * 0.5) * 1.5 * t * windStrNorm;
         let px = top.x + wIsoX * i * 1.5 - perpX * (0.5 - t * 0.5) + bend * perpX * 0.2;
         let py = top.y + wIsoY * i * 1.5 - perpY * (0.5 - t * 0.5) + bend * perpY * 0.2;
         ctx.lineTo(px, py);
@@ -1398,16 +1426,24 @@ function drawSubmarine(sX: number, sY: number, angle: number, cx: number, cy: nu
     SceneRenderer.flush(cx, cy);
 }
 
-function drawResearchPlatform(rX: number, rY: number, cx: number, cy: number) {
+function drawResearchPlatform(rX: number, rY: number) {
     SceneRenderer.add(RESEARCH_PLATFORM_DEF, { x: rX, y: rY, z: G.waterLevel, angle: 0 });
-    SceneRenderer.flush(cx, cy);
 }
 
-function drawWindTurbine(tX: number, tY: number, cx: number, cy: number) {
+function drawWindTurbine(tX: number, tY: number, spinning: boolean) {
     const gz = Math.max(G.waterLevel, getGround(tX, tY, G.points, G.CARRIER));
-    const rotorAngle = (Date.now() * 0.002) % (Math.PI * 2);
+    const rotorAngle = spinning ? (Date.now() * 0.002) % (Math.PI * 2) : 0;
     SceneRenderer.add(applyParts(WIND_TURBINE_DEF as any, { rotorAngle }), { x: tX, y: tY, z: gz, angle: 0 });
-    SceneRenderer.flush(cx, cy);
+}
+
+function drawPlaneWreck(wx: number, wy: number, angle: number) {
+    const gz = Math.max(G.waterLevel, getGround(wx, wy, G.points, G.CARRIER));
+    SceneRenderer.add(PLANE_WRECK_DEF as any, { x: wx, y: wy, z: gz, angle });
+}
+
+function drawBrokenSailboat(bx: number, by: number, angle: number) {
+    const gz = Math.max(G.waterLevel, getGround(bx, by, G.points, G.CARRIER));
+    SceneRenderer.add(SAILBOAT_BROKEN_DEF as any, { x: bx, y: by, z: gz, angle: angle - Math.PI / 2 });
 }
 
 // Beflockung aus Missionsdaten laden
@@ -2114,6 +2150,18 @@ const _physicsCtx = {
         return !_IS_APP ? mpGetMissionComplete(missionComplete) : missionComplete;
     },
     get triggerCrash() {
+        if (import.meta.env.DEV && new URLSearchParams(location.search).has('preview') && _previewLaunch) {
+            return (_reason: string) => {
+                if (zstate.crashed) return;
+                stopHeliSound();
+                spawnExplosion(G.heli, G.particles, G.debris, G.points, G.CARRIER);
+                zstate.crashed = true;
+                _showRainOverlay(false);
+                setTimeout(() => {
+                    _previewLaunch!((campaignHandler as any).getPreviewMissionData?.());
+                }, 1800);
+            };
+        }
         return !_IS_APP ? mpGetTriggerCrash(triggerCrash) : triggerCrash;
     },
 } as import('./physics').PhysicsCtx;
@@ -2732,9 +2780,27 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('preview') &
     });
 }
 
+// ── Minimal startup for workbench preview (DEV only) ──────────────────────────
+const _onloadPreview = !import.meta.env.DEV
+    ? undefined
+    : () => {
+          assertDom();
+          mountGameOverlays();
+          mountGameScreens();
+          mountBriefing();
+          zinit();
+          soundHandler.mute();
+          setSfxEnabled(false);
+          setupTouchControls();
+      };
+
 window.onload = () => {
     requestAnimationFrame(() => {
         void (async () => {
+            if (import.meta.env.DEV && new URLSearchParams(location.search).has('preview') && _onloadPreview) {
+                _onloadPreview();
+                return;
+            }
             if (_IS_APP) {
                 await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, CTRL_MODE_KEY, 'zw_music', 'zw_sfx']);
                 _session = loadSession();

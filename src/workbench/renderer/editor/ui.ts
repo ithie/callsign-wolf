@@ -106,7 +106,7 @@ export const renderObjectList = () => {
     m.objects.forEach((obj, idx) => {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;align-items:center;gap:6px;margin:3px 0;font-size:11px';
-        const icons: Record<string, string> = { pad: '🟩', carrier: '🚢', boat: '⛵', pilot_boat: '🚤', salvage_tug: '🛳', submarine: '🤿', lighthouse: '🔦', research_platform: '🏗', wind_turbine: '🌀' };
+        const icons: Record<string, string> = { pad: '🟩', carrier: '🚢', boat: '⛵', pilot_boat: '🚤', salvage_tug: '🛳', submarine: '🤿', lighthouse: '🔦', research_platform: '🏗', wind_turbine: '🌀', plane_wreck: '✈️', sailboat_broken: '⛵' };
         const label = document.createElement('span');
         label.style.flex = '1';
         label.innerText = `${icons[obj.type] || '?'} ${obj.type} @ (${obj.x}, ${obj.y})`;
@@ -162,6 +162,7 @@ export const syncToData = () => {
     m.briefing = { de: getEl<HTMLTextAreaElement>('m_briefing_de').value, en: getEl<HTMLTextAreaElement>('m_briefing_en').value };
     m.rain = getInput('m_rain').checked;
     m.night = getInput('m_night').checked;
+    (m as any).waterLevel = parseFloat(getInput('m_water_level').value) || 0;
     m.windDir = parseInt(getInput('m_wind_dir').value) || 0;
     m.windStr = parseFloat(getInput('m_wind_str').value) || 0;
     m.windVar = getInput('m_wind_var').checked;
@@ -181,7 +182,8 @@ const syncVesselFromUI = (kind: 'carrier' | 'boat' | 'submarine') => {
     const m = getCurrentMission();
     if (!m || state.selectedObjectIdx === null) return;
     const obj = m.objects[state.selectedObjectIdx] as any;
-    if (!obj || obj.type !== kind) return;
+    const _boatTypes = new Set(['boat', 'pilot_boat', 'salvage_tug']);
+    if (!obj || (kind === 'boat' ? !_boatTypes.has(obj.type) : obj.type !== kind)) return;
     const prefix = kind === 'carrier' ? 'carrier' : kind === 'submarine' ? 'submarine' : 'boat';
     obj.path = (document.getElementById(`m_${prefix}_path`) as HTMLSelectElement)?.value ?? obj.path;
     obj.speed = parseFloat((document.getElementById(`m_${prefix}_speed`) as HTMLInputElement)?.value) || 0;
@@ -208,6 +210,7 @@ export const loadMission = (idx: number) => {
     getInput('m_grid_size').value = m.gridSize.toString();
     getInput('m_rain').checked = m.rain;
     getInput('m_night').checked = m.night;
+    getInput('m_water_level').value = ((m as any).waterLevel ?? 0).toString();
     getInput('m_wind_dir').value = m.windDir.toString();
     getInput('m_wind_str').value = m.windStr.toString();
     getInput('m_wind_var').checked = m.windVar;
@@ -317,7 +320,7 @@ const makePayload = (type: 'person' | 'crate', gx: number, gy: number, m: Missio
         nearestDist = SNAP_RADIUS;
     for (let i = 0; i < m.objects.length; i++) {
         const obj = m.objects[i];
-        if (obj.type !== 'carrier' && obj.type !== 'boat' && obj.type !== 'submarine') continue;
+        if (obj.type !== 'carrier' && obj.type !== 'boat' && obj.type !== 'submarine' && obj.type !== 'sailboat_broken') continue;
         const d = Math.hypot(gx - obj.x, gy - obj.y);
         if (d <= nearestDist) {
             nearestDist = d;
@@ -326,7 +329,7 @@ const makePayload = (type: 'person' | 'crate', gx: number, gy: number, m: Missio
     }
     if (nearestIdx >= 0) {
         const obj = m.objects[nearestIdx] as any;
-        return { type, x: gx, y: gy, attachTo: { objectType: obj.type as 'carrier' | 'boat' | 'submarine', objectIdx: nearestIdx } };
+        return { type, x: gx, y: gy, attachTo: { objectType: obj.type as 'carrier' | 'boat' | 'submarine' | 'sailboat_broken', objectIdx: nearestIdx } };
     }
     return { type, x: gx, y: gy };
 };
@@ -512,6 +515,28 @@ const paint = (e: MouseEvent) => {
         } else {
             m.objects.push({ type: 'wind_turbine' as any, x: gx, y: gy });
         }
+    } else if (state.currentTool === 'plane_wreck') {
+        if (e.shiftKey) {
+            const near = m.objects.reduce((best: any, o: any, i: number) => {
+                if (o.type !== 'plane_wreck') return best;
+                const d = Math.hypot(o.x - gx, o.y - gy);
+                return !best || d < best.d ? { d, i } : best;
+            }, null as any);
+            if (near && near.d < 5) m.objects.splice(near.i, 1);
+        } else {
+            m.objects.push({ type: 'plane_wreck' as any, x: gx, y: gy, angle: 0 });
+        }
+    } else if (state.currentTool === 'sailboat_broken') {
+        if (e.shiftKey) {
+            const near = m.objects.reduce((best: any, o: any, i: number) => {
+                if (o.type !== 'sailboat_broken') return best;
+                const d = Math.hypot(o.x - gx, o.y - gy);
+                return !best || d < best.d ? { d, i } : best;
+            }, null as any);
+            if (near && near.d < 5) m.objects.splice(near.i, 1);
+        } else {
+            m.objects.push({ type: 'sailboat_broken' as any, x: gx, y: gy, angle: 0 });
+        }
     } else if (state.currentTool === 'person') {
         if (e.shiftKey) removeNearestPayload(m, gx, gy, 'person');
         else {
@@ -672,6 +697,19 @@ export const initUI = () => {
         state.selectedObjectIdx = null;
         drawMap();
     });
+    safeClick('close-wt', () => {
+        state.selectedObjectIdx = null;
+        drawMap();
+    });
+    document.getElementById('m_wt_spinning')?.addEventListener('change', () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx] as any;
+        if (obj?.type !== 'wind_turbine') return;
+        obj.spinning = (document.getElementById('m_wt_spinning') as HTMLInputElement).checked;
+        drawMap();
+        broadcastPreview();
+    });
 
     // Spawn buttons
     safeClick('btn_spawn_pad', () => {
@@ -717,13 +755,15 @@ export const initUI = () => {
     document.body.appendChild(cursorEl);
     const cursorCtx = cursorEl.getContext('2d')!;
     const PAINT_TOOLS = new Set(['terrain', 'flatten', 'foliage']);
-    const POINT_TOOLS = new Set(['pad', 'carrier', 'boat', 'pilot_boat', 'salvage_tug', 'submarine', 'lighthouse', 'research_platform', 'wind_turbine', 'person', 'crate']);
+    const POINT_TOOLS = new Set(['pad', 'carrier', 'boat', 'pilot_boat', 'salvage_tug', 'submarine', 'lighthouse', 'research_platform', 'wind_turbine', 'plane_wreck', 'sailboat_broken', 'person', 'crate']);
     const dotColors: Record<string, string> = {
         pad: '#5f5',
         carrier: '#88aaff',
         boat: '#4af',
         submarine: '#888',
         lighthouse: '#ffdd44',
+        plane_wreck: '#aaa',
+        sailboat_broken: '#b96',
         person: '#ffe033',
         crate: '#ff8800',
     };
@@ -889,6 +929,7 @@ export const initUI = () => {
                 if (obj.type === 'pad') hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
                 else if (obj.type === 'carrier' || obj.type === 'boat' || obj.type === 'pilot_boat' || obj.type === 'salvage_tug' || obj.type === 'submarine') hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
                 else if (obj.type === 'lighthouse' || obj.type === 'research_platform' || obj.type === 'wind_turbine') hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
+                else if ((obj as any).type === 'plane_wreck' || (obj as any).type === 'sailboat_broken') hit = Math.hypot(gx - (obj as any).x, gy - (obj as any).y) < 3;
                 if (hit) {
                     state.selectedObjectIdx = state.selectedObjectIdx === i ? null : i;
                     state.selectedPayloadIdx = null;
@@ -936,6 +977,8 @@ export const initUI = () => {
                 state.currentTool !== 'lighthouse' &&
                 state.currentTool !== 'research_platform' &&
                 state.currentTool !== 'wind_turbine' &&
+                state.currentTool !== 'plane_wreck' &&
+                state.currentTool !== 'sailboat_broken' &&
                 state.currentTool !== 'foliage'
             ) {
                 paint(e);

@@ -161,10 +161,10 @@ const _DE = {
     CRASH_TREE: 'BAUMKONTAKT',
 
     WHATS_NEW_HEADLINE: 'NEUIGKEITEN',
-    WHATS_NEW_VERSION: 'v26.4.0',
-    WHATS_NEW_TITLE: 'iOS App',
+    WHATS_NEW_VERSION: 'v26.5.0',
+    WHATS_NEW_TITLE: 'Kampagne: Callsign Wolf',
     WHATS_NEW_HINT: 'KLICKEN ZUM FORTFAHREN',
-    WHATS_NEW_ITEMS: ['Jetzt als native iOS App spielbar'],
+    WHATS_NEW_ITEMS: ['Jetzt als native iOS App spielbar', '🐺 Demo-Kampagne verfügbar: Callsign Wolf'],
 
     PILOT_HEADING: 'PROFIL',
     PILOT_CALLSIGN: 'RUFZEICHEN (MAX. 8 ZEICHEN, A–Z)',
@@ -377,10 +377,10 @@ const _EN = {
     CRASH_TREE: 'TREE CONTACT',
 
     WHATS_NEW_HEADLINE: "WHAT'S NEW",
-    WHATS_NEW_VERSION: 'v26.4.0',
-    WHATS_NEW_TITLE: 'iOS App',
+    WHATS_NEW_VERSION: 'v26.5.0',
+    WHATS_NEW_TITLE: 'Campaign: Callsign Wolf',
     WHATS_NEW_HINT: 'CLICK TO CONTINUE',
-    WHATS_NEW_ITEMS: ['Now available as a native iOS app'],
+    WHATS_NEW_ITEMS: ['Now available as a native iOS app', '🐺 Demo campaign available: Callsign Wolf'],
 
     PILOT_HEADING: 'PROFILE',
     PILOT_CALLSIGN: 'CALLSIGN (MAX. 8 CHARS, A–Z)',

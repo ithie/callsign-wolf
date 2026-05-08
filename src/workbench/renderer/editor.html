@@ -35,6 +35,12 @@
                 <div class="editor-wrapper">
                     <canvas id="editorCanvas" width="600" height="600"></canvas>
 
+                    <div id="ui_wt" class="floating-ui">
+                        <span class="close-btn" id="close-wt">✖</span>
+                        <strong style="color: #4f4">🌀 WINDRAD</strong><br />
+                        <label><input type="checkbox" id="m_wt_spinning" /> Rotiert</label>
+                    </div>
+
                     <div id="ui_wind" class="floating-ui" style="left: 90px; top: 15px">
                         <span class="close-btn" id="close-wind">✖</span>
                         <strong style="color: cyan">💨 WIND VECTOR</strong><br />
@@ -141,6 +147,8 @@
             <input type="radio" name="tool" value="submarine" />
             <input type="radio" name="tool" value="research_platform" />
             <input type="radio" name="tool" value="wind_turbine" />
+            <input type="radio" name="tool" value="plane_wreck" />
+            <input type="radio" name="tool" value="sailboat_broken" />
             <input type="radio" name="tool" value="person" />
             <input type="radio" name="tool" value="crate" />
             <input type="radio" name="tool" value="foliage" />
@@ -179,6 +187,7 @@
             <textarea id="m_briefing_en"></textarea>
             <input type="checkbox" id="m_rain" />
             <input type="checkbox" id="m_night" />
+            <input type="number" id="m_water_level" value="0" min="-5" max="30" step="0.5" style="width:60px" />
             <input type="number" id="m_npc_heli_count" value="0" min="0" max="3" />
             <select id="m_npc_heli_type">
                 <option value="random">Zufällig</option>
@@ -268,6 +277,7 @@ Viel Glück, Pilot.</textarea
                     spawnObject: m.spawnObject || 'pad',
                     rain: !!m.rain,
                     night: !!m.night,
+                    waterLevel: m.waterLevel || 0,
                     windDir: m.windDir || 0,
                     windStr: m.windStr || 0,
                     windVar: !!m.windVar,
@@ -325,6 +335,7 @@ Viel Glück, Pilot.</textarea
                               gridSize: m.gridSize,
                               rain: m.rain,
                               night: m.night,
+                              waterLevel: m.waterLevel || 0,
                               windDir: m.windDir,
                               windStr: m.windStr,
                               windVar: m.windVar,
@@ -481,6 +492,10 @@ Viel Glück, Pilot.</textarea
                     case 'set-night':
                         chk('m_night', data.value);
                         fire('m_night', 'input');
+                        break;
+                    case 'set-water-level':
+                        set('m_water_level', data.value);
+                        fire('m_water_level', 'input');
                         break;
                     case 'set-wind-dir':
                         set('m_wind_dir', data.value);

@@ -1,5 +1,46 @@
 # SAR: Callsign WOLF — Changelog
 
+## v26.5.0 — Callsign Wolf Demo Campaign & Editor Overhaul
+
+### New
+
+- **Demo campaign: Callsign Wolf** — 5-mission story campaign now available in-game; missions 4 & 5 (»Überflutetes Atoll«, »Rückzug«) expanded to 500×500 grid with centered atoll geography
+- **New scene objects: Plane Wreck & Broken Sailboat** — two new static decorative objects with full 3D isometric models (`.zdef`); placeable in the mission editor
+    - Plane wreck: Cessna-style crash with yellow fuselage, red accents, snapped propeller blade, asymmetric wing damage, scorch marks
+    - Broken sailboat: intact hull with mast stump, fallen mast bar, and collapsed sail on deck
+- **Persons snap to broken sailboat** — persons placed near a broken sailboat in the editor auto-attach to its deck (`waterLevel + 0.35`); position is preserved at runtime
+- **Persons half-submerged in water** — persons in water are now rendered with a canvas clip at the waterline; legs are hidden below the surface
+- **`waterLevel` in mission editor** — the virtual water level (🌊) is now editable in the mission settings panel
+- **Wind turbine: optional rotation** — each wind turbine now has an individual `spinning` flag; only rotating turbines animate the rotor each frame. Configurable per-object in the editor
+- **Windsock is wind-aware** — at `windStr = 0` the sock hangs straight down and is static; intensity of flutter and extension scale linearly with wind strength (0–10)
+
+### Editor
+
+- **Plane wreck & broken sailboat** — rendered on the editor map (top-down): scorch ellipse + fuselage + wings for the wreck; hull + fallen mast line for the broken sailboat. Both respect the `angle` property
+- **Pilot boat & salvage tug added to tool palette** — were missing from `ED_TOOLS`; now placeable with full path/angle/speed/radius editing via the boat panel
+- **Pilot boat & salvage tug rotation fixed** — `syncVesselFromUI` guard was comparing `obj.type !== 'boat'`, causing angle/path changes to be silently dropped for both vessel types
+- **Wind turbine panel** — selecting a wind turbine now opens a floating panel with a »Rotiert« checkbox
+- **Research platform & wind turbine** — both were missing from the editor tool palette; added
+- **Preview auto-restart on crash** — crashing in the editor preview no longer shows the campaign-failed screen; after the explosion the mission restarts automatically from the start position
+- **Briefing fixed in preview** — `mountBriefing()` was not called in the preview startup path, causing a null-reference error when a mission with a briefing was previewed
+
+### Fixes
+
+- **Object pop-in** — `isVisible()` margin for all static objects (research platform, wind turbines, plane wrecks, broken sailboats) was hardcoded to small values (4–15 tiles). Now computed dynamically from `canvas.width / tileW` and `canvas.height / tileH` — objects appear as soon as they enter the visible tile area
+- **Render performance: static objects** — `drawResearchPlatform()`, `drawWindTurbine()`, `drawPlaneWreck()`, and `drawBrokenSailboat()` were each calling `SceneRenderer.flush()` directly, forcing a premature depth-sort pass per object. All four now only call `add()`; the shared flush at the end of the frame handles depth sorting correctly
+- **Gray winch line at mission start** — `G.rescuerSwing` was initialised to `{x:0, y:0}` (world origin), causing a line to be drawn from the helicopter to the map corner. Fixed by initialising `rescuerSwing` to the heli's actual start position
+- **Winch line visible when retracted** — the winch rope was drawn even when `heli.winch = 0`. Added a `> 0.05` threshold guard
+
+### Technical
+
+- `MissionObject` union extended with `PlaneWreckObject` and `SailboatBrokenObject` types
+- `MissionPayload.attachTo.objectType` union extended with `'sailboat_broken'`
+- `WindTurbineObject`: new optional `spinning?: boolean` field
+- `G.BROKEN_SAILBOATS` now stores `_objIdx` for `attachTo` resolution at runtime
+- `initPayloadsFromMission`: `sailboat_broken` case sets `pz = waterLevel + 0.35` directly, bypassing `getGround` (which has no knowledge of static vessel objects)
+
+---
+
 ## v25.3.4 — Campaign Progression & Fixes
 
 ### Changed

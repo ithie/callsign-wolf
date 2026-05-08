@@ -264,7 +264,8 @@ export function createDrawObjects(
         cx: number,
         cy: number,
         outfit?: string,
-        colors?: { shirt: string; pants: string }
+        colors?: { shirt: string; pants: string },
+        submerged = false
     ) {
         const base = iso(pX, pY, pZ, cx, cy);
         const s = tileW / 64;
@@ -279,6 +280,13 @@ export function createDrawObjects(
         const colorArm = isRescuer ? '#ff6600' : '#f2d0a4';
         const drawX = base.x,
             drawY = base.y;
+
+        if (submerged) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 0, ctx.canvas.width, drawY - legH);
+            ctx.clip();
+        }
 
         ctx.fillStyle = colorPants;
         ctx.fillRect(drawX - torsoW / 2, drawY - legH, legW, legH);
@@ -322,6 +330,7 @@ export function createDrawObjects(
             ctx.lineTo(shoulderX + 4 * s + waveOffset, shoulderY - 5 * s);
             ctx.stroke();
         }
+        if (submerged) ctx.restore();
     }
 
     // ── drawTractor ────────────────────────────────────────────────────────────

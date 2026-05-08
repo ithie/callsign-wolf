@@ -48,6 +48,8 @@ export const G = {
     SUBMARINES: [] as any[],
     RESEARCH_PLATFORMS: [] as any[],
     WIND_TURBINES: [] as any[],
+    PLANE_WRECKS: [] as any[],
+    BROKEN_SAILBOATS: [] as any[],
     seaTime: 0,
     payloads: [] as any[],
     activePayload: null as any,

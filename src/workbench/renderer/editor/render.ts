@@ -16,11 +16,13 @@ export const drawMap = () => {
     const bUI = document.getElementById('ui_boat') as HTMLElement;
     const sUI = document.getElementById('ui_submarine') as HTMLElement;
     const wUI = document.getElementById('ui_wind') as HTMLElement;
+    const wtUI = document.getElementById('ui_wt') as HTMLElement;
 
     if (pUI) pUI.style.display = 'none';
     if (cUI) cUI.style.display = 'none';
     if (bUI) bUI.style.display = 'none';
     if (sUI) sUI.style.display = 'none';
+    if (wtUI) wtUI.style.display = 'none';
     if (wUI) wUI.style.display = 'none';
 
     // ── Terrain ────────────────────────────────────────────────────────────────
@@ -286,6 +288,71 @@ export const drawMap = () => {
                 ctx.lineTo(wx + Math.cos(a) * 3 * tSize, wy + Math.sin(a) * 3 * tSize);
                 ctx.stroke();
             }
+            ctx.shadowBlur = 0;
+            if (isSelected && wtUI) {
+                wtUI.style.display = 'block';
+                wtUI.style.left = Math.min(600 - 140, Math.max(0, wx + 20)) + 'px';
+                wtUI.style.top = Math.min(600 - 60, Math.max(0, wy + 20)) + 'px';
+                const spinEl = document.getElementById('m_wt_spinning') as HTMLInputElement;
+                if (spinEl) spinEl.checked = !!(obj as any).spinning;
+            }
+        } else if ((obj as any).type === 'plane_wreck') {
+            const pw = obj as any;
+            const ox = (pw.x + 0.5 - state.panX) * tSize;
+            const oy = (pw.y + 0.5 - state.panY) * tSize;
+            const rad = ((pw.angle ?? 0) * Math.PI) / 180;
+            if (isSelected) { ctx.shadowBlur = 10; ctx.shadowColor = '#fa0'; }
+            ctx.save();
+            ctx.translate(ox, oy);
+            ctx.rotate(rad);
+            // Scorch mark
+            ctx.fillStyle = '#1a1612';
+            ctx.beginPath();
+            ctx.ellipse(0.3 * tSize, 0, 1.2 * tSize, 0.7 * tSize, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Fuselage
+            ctx.fillStyle = '#d4c022';
+            ctx.fillRect(-1.5 * tSize, -0.15 * tSize, 2.8 * tSize, 0.3 * tSize);
+            // Wings (high-wing cross)
+            ctx.fillRect(-0.4 * tSize, -1.2 * tSize, 0.35 * tSize, 2.4 * tSize);
+            // Tail fin
+            ctx.fillStyle = '#cc1e00';
+            ctx.fillRect(-1.5 * tSize, -0.35 * tSize, 0.5 * tSize, 0.7 * tSize);
+            ctx.restore();
+            ctx.shadowBlur = 0;
+        } else if ((obj as any).type === 'sailboat_broken') {
+            const sb = obj as any;
+            const ox = (sb.x + 0.5 - state.panX) * tSize;
+            const oy = (sb.y + 0.5 - state.panY) * tSize;
+            const rad = ((sb.angle ?? 0) * Math.PI) / 180;
+            if (isSelected) { ctx.shadowBlur = 10; ctx.shadowColor = '#fa0'; }
+            ctx.save();
+            ctx.translate(ox, oy);
+            ctx.rotate(rad);
+            // Hull
+            ctx.fillStyle = '#933';
+            ctx.beginPath();
+            ctx.moveTo( 1.2 * tSize,  0);
+            ctx.lineTo( 0.2 * tSize, -0.45 * tSize);
+            ctx.lineTo(-1.0 * tSize, -0.35 * tSize);
+            ctx.lineTo(-1.0 * tSize,  0.35 * tSize);
+            ctx.lineTo( 0.2 * tSize,  0.45 * tSize);
+            ctx.closePath();
+            ctx.fill();
+            // Deck
+            ctx.fillStyle = '#a85';
+            ctx.fillRect(-0.9 * tSize, -0.3 * tSize, 2.0 * tSize, 0.6 * tSize);
+            // Mast stump
+            ctx.fillStyle = '#aaa';
+            ctx.fillRect(-0.35 * tSize, -0.05 * tSize, 0.1 * tSize, 0.1 * tSize);
+            // Fallen mast (line across deck)
+            ctx.strokeStyle = '#bbb';
+            ctx.lineWidth = Math.max(1, tSize * 0.08);
+            ctx.beginPath();
+            ctx.moveTo(-0.3 * tSize, 0);
+            ctx.lineTo( 1.1 * tSize,  0.35 * tSize);
+            ctx.stroke();
+            ctx.restore();
             ctx.shadowBlur = 0;
         }
     });

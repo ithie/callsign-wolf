@@ -364,6 +364,7 @@ export function initBoatsFromMission() {
 }
 
 export function initStaticObjectsFromMission() {
+    const allObjects = getObjects();
     G.RESEARCH_PLATFORMS = getObjectsByType('research_platform').map((obj: any) => ({
         x: obj.x,
         y: obj.y,
@@ -375,7 +376,19 @@ export function initStaticObjectsFromMission() {
         x: obj.x,
         y: obj.y,
         angle: 0,
+        spinning: obj.spinning ?? false,
         rescueZones: (obj.rescueZones || []) as any[],
+    }));
+    G.PLANE_WRECKS = getObjectsByType('plane_wreck').map((obj: any) => ({
+        x: obj.x,
+        y: obj.y,
+        angle: obj.angle ?? 0,
+    }));
+    G.BROKEN_SAILBOATS = getObjectsByType('sailboat_broken').map((obj: any) => ({
+        x: obj.x,
+        y: obj.y,
+        angle: obj.angle ?? 0,
+        _objIdx: allObjects.indexOf(obj),
     }));
 }
 
@@ -416,6 +429,7 @@ export function initPayloadsFromMission() {
     G.payloads = missionPayloads.map((p: any) => {
         let px = p.x,
             py = p.y;
+        let pz: number | null = null;
         if (p.attachTo) {
             const lx = p.attachTo.localX ?? 0, ly = p.attachTo.localY ?? 0;
             if (p.attachTo.objectType === 'carrier' && G.CARRIER && G.CARRIER.x !== undefined) {
@@ -433,6 +447,13 @@ export function initPayloadsFromMission() {
                     const wp = _applyVesselOffset(attachedSub, lx, ly);
                     px = wp.x; py = wp.y;
                 }
+            } else if (p.attachTo.objectType === 'sailboat_broken') {
+                const sb = G.BROKEN_SAILBOATS.find((s: any) => s._objIdx === p.attachTo!.objectIdx);
+                if (sb) {
+                    px = sb.x;
+                    py = sb.y;
+                    pz = G.waterLevel + 0.35;
+                }
             }
         }
         const SURVIVOR_OUTFITS = [
@@ -448,7 +469,7 @@ export function initPayloadsFromMission() {
         return {
             x: px,
             y: py,
-            z: getGround(px, py, G.points, G.CARRIER),
+            z: pz ?? getGround(px, py, G.points, G.CARRIER),
             vx: 0,
             vy: 0,
             type: p.type,
@@ -1287,6 +1308,9 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
                         const wp = _applyVesselOffset(sub, lx, ly);
                         p.x = wp.x; p.y = wp.y; p.z = sub.zDeck;
                     }
+                } else if (p.attachTo.objectType === 'sailboat_broken') {
+                    const sb = G.BROKEN_SAILBOATS.find((s: any) => s._objIdx === p.attachTo.objectIdx);
+                    if (sb) { p.x = sb.x; p.y = sb.y; p.z = G.waterLevel + 0.35; }
                 }
             } else if (getGround(p.x, p.y, G.points, G.CARRIER) < G.waterLevel) {
                 p.z = -0.3 + Math.sin(Date.now() * 0.002) * 0.1;
