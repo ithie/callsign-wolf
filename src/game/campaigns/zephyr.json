@@ -1,0 +1,67 @@
+{
+    "type": "sar",
+    "campaignTitle": {
+        "de": "PROJEKT: ZEPHYR",
+        "en": "PROJECT: ZEPHYR"
+    },
+    "campaignSublines": [
+        { "de": "Erneuerbare Energien, echte Gefahren.", "en": "Green energy, real dangers." },
+        { "de": "Wartungseinsatz im Offshore-Windpark.", "en": "Maintenance in the offshore wind farm." }
+    ],
+    "music": { "briefing": "main", "ingame": "tutorial" },
+    "levels": [
+        {
+            "headline": { "de": "1. Anflug auf Sector 7", "en": "1. Approach to Sector 7" },
+            "briefing": {
+                "de": "Willkommen im Team. Wir versorgen heute den Windpark 'Zephyr'. Bringen Sie zuerst die Werkzeugkiste vom Träger zur Forschungsplattform. Ein einfacher Flug zum Aufwärmen.",
+                "en": "Welcome to the team. Today we're servicing the 'Zephyr' wind farm. First, deliver the tool crate from the carrier to the research platform. A simple warm-up flight."
+            },
+            "gridSize": 120,
+            "terrain": "0x14641",
+            "spawnObject": "carrier",
+            "objects": [
+                { "type": "carrier", "x": 20, "y": 20, "path": "static" },
+                { "type": "research_platform", "x": 80, "y": 80 }
+            ],
+            "payloads": [
+                {
+                    "type": "crate",
+                    "x": 20,
+                    "y": 20,
+                    "attachTo": { "objectType": "carrier", "objectIdx": 0, "localX": 4, "localY": 0 }
+                }
+            ],
+            "objectives": [{ "type": "rescue_all" }]
+        },
+        {
+            "headline": { "de": "2. Ikarus' Atem", "en": "2. Icarus' Breath" },
+            "briefing": {
+                "de": "Jetzt wird es ernst. Die automatische Bremse an Turbine 4 ist ausgefallen! Sie müssen den Cheftechniker direkt auf der Gondel absetzen. Der Rotor dreht sich noch langsam – halten Sie Abstand zu den Blättern und nutzen Sie die Winde!",
+                "en": "Things are getting serious. The automatic brake on Turbine 4 has failed! You must drop the chief technician directly onto the nacelle. The rotor is still spinning slowly – stay clear of the blades and use the winch!"
+            },
+            "gridSize": 150,
+            "terrain": "0x22801",
+            "spawnObject": "carrier",
+            "rain": true,
+            "windStr": 3.2,
+            "objects": [
+                { "type": "carrier", "x": 20, "y": 50, "angle": 90, "path": "straight", "speed": 2 },
+                {
+                    "type": "wind_turbine",
+                    "x": 80,
+                    "y": 80,
+                    "rescueZones": [{ "x": 0.3, "y": 0, "w": 1, "h": 1, "role": "dropoff" }]
+                }
+            ],
+            "payloads": [
+                {
+                    "type": "person",
+                    "x": 20,
+                    "y": 50,
+                    "attachTo": { "objectType": "carrier", "objectIdx": 0, "localX": 4, "localY": 0 }
+                }
+            ],
+            "objectives": [{ "type": "rescue_all" }]
+        }
+    ]
+}

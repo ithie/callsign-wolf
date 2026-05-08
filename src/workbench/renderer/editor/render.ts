@@ -64,7 +64,7 @@ export const drawMap = () => {
                 const btn = document.getElementById('btn_spawn_pad');
                 if (btn) btn.style.background = m.spawnObject === 'pad' ? COLORS.uiHighlight : 'var(--accent)';
             }
-        } else if (obj.type === 'carrier' || obj.type === 'boat') {
+        } else if (obj.type === 'carrier' || obj.type === 'boat' || obj.type === 'pilot_boat' || obj.type === 'salvage_tug') {
             const isCarrier = obj.type === 'carrier';
             const rad = (obj.angle * Math.PI) / 180;
 
@@ -111,8 +111,32 @@ export const drawMap = () => {
                 ctx.lineTo(5 * tSize, -3.5 * tSize);
                 ctx.lineTo(5 * tSize, 3.5 * tSize);
                 ctx.fill();
+            } else if (obj.type === 'pilot_boat') {
+                ctx.fillStyle = '#ffcc00';
+                ctx.fillRect(-4 * tSize, -1.5 * tSize, 8 * tSize, 3 * tSize);
+                ctx.fillStyle = '#eebb00';
+                ctx.beginPath();
+                ctx.moveTo(4 * tSize, 0);
+                ctx.lineTo(2 * tSize, -1.5 * tSize);
+                ctx.lineTo(2 * tSize, 1.5 * tSize);
+                ctx.fill();
+                // Cabin
+                ctx.fillStyle = '#444';
+                ctx.fillRect(-1.5 * tSize, -1 * tSize, 3 * tSize, 2 * tSize);
+            } else if (obj.type === 'salvage_tug') {
+                ctx.fillStyle = '#888';
+                ctx.fillRect(-7 * tSize, -2.5 * tSize, 14 * tSize, 5 * tSize);
+                ctx.fillStyle = '#aaa';
+                ctx.beginPath();
+                ctx.moveTo(7 * tSize, 0);
+                ctx.lineTo(4 * tSize, -2.5 * tSize);
+                ctx.lineTo(4 * tSize, 2.5 * tSize);
+                ctx.fill();
+                // Bridge
+                ctx.fillStyle = '#eee';
+                ctx.fillRect(1 * tSize, -1.5 * tSize, 4 * tSize, 3 * tSize);
             } else {
-                // Boat: schlanker Rumpf
+                // Sailboat: schlanker Rumpf
                 ctx.fillStyle = '#ddd';
                 ctx.beginPath();
                 ctx.moveTo(5 * tSize, 0);
@@ -218,6 +242,51 @@ export const drawMap = () => {
             ctx.beginPath();
             ctx.arc(lx, ly, tSize * 0.4, 0, Math.PI * 2);
             ctx.fill();
+        } else if (obj.type === 'research_platform') {
+            const rx = (obj.x - state.panX) * tSize;
+            const ry = (obj.y - state.panY) * tSize;
+            if (isSelected) { ctx.shadowBlur = 10; ctx.shadowColor = '#4af'; }
+            // Pylon
+            ctx.fillStyle = '#ffcc00';
+            ctx.fillRect(rx - 0.4 * tSize, ry - 0.4 * tSize, 0.8 * tSize, 0.8 * tSize);
+            // Main deck
+            ctx.fillStyle = '#666';
+            ctx.fillRect(rx - 1.5 * tSize, ry - 1.5 * tSize, 3 * tSize, 3 * tSize);
+            // Helideck (offset to the left: x=-3.5..-1.5)
+            ctx.fillStyle = '#2a8f2a';
+            ctx.fillRect(rx - 3.5 * tSize, ry - 1.2 * tSize, 2 * tSize, 2.4 * tSize);
+            // H marker on helideck
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = Math.max(1, tSize * 0.2);
+            ctx.beginPath();
+            ctx.moveTo(rx - 3.1 * tSize, ry - 0.7 * tSize);
+            ctx.lineTo(rx - 3.1 * tSize, ry + 0.7 * tSize);
+            ctx.moveTo(rx - 2.4 * tSize, ry - 0.7 * tSize);
+            ctx.lineTo(rx - 2.4 * tSize, ry + 0.7 * tSize);
+            ctx.moveTo(rx - 3.1 * tSize, ry);
+            ctx.lineTo(rx - 2.4 * tSize, ry);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        } else if (obj.type === 'wind_turbine') {
+            const wx = (obj.x + 0.5 - state.panX) * tSize;
+            const wy = (obj.y + 0.5 - state.panY) * tSize;
+            if (isSelected) { ctx.shadowBlur = 10; ctx.shadowColor = '#4f4'; }
+            // Pole
+            ctx.fillStyle = '#ccc';
+            ctx.beginPath();
+            ctx.arc(wx, wy, tSize * 0.25, 0, Math.PI * 2);
+            ctx.fill();
+            // Blades (3)
+            ctx.strokeStyle = '#eee';
+            ctx.lineWidth = Math.max(1, tSize * 0.15);
+            for (let i = 0; i < 3; i++) {
+                const a = (i / 3) * Math.PI * 2;
+                ctx.beginPath();
+                ctx.moveTo(wx, wy);
+                ctx.lineTo(wx + Math.cos(a) * 3 * tSize, wy + Math.sin(a) * 3 * tSize);
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
         }
     });
 

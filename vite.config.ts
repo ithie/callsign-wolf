@@ -52,7 +52,7 @@ const injectAppCsp = (): Plugin => ({
         ),
 });
 
-export default defineConfig(() => {
+export default defineConfig(({ command }) => {
     return {
         define: { __APP_VERSION__: JSON.stringify(version) },
         resolve: {
@@ -72,7 +72,7 @@ export default defineConfig(() => {
                       }),
             },
         },
-        base: isApp ? './' : '/callsign-wolf/',
+        base: isApp ? './' : command === 'build' ? '/callsign-wolf/' : '/',
         plugins: [zsongPlugin(), zdefPlugin(), makeSingleFile(), bundleSizeGuard(), ...(isApp ? [injectAppCsp()] : [])],
         build: {
             outDir: 'dist/',

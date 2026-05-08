@@ -25,6 +25,10 @@ import HANGAR_DEF from './models/hangar.zdef';
 import TOWER_DEF from './models/tower.zdef';
 import LIGHTHOUSE_DEF from './models/lighthouse.zdef';
 import SAILBOAT_DEF from './models/sailboat.zdef';
+import PILOT_BOAT_DEF from './models/pilot_boat.zdef';
+import SALVAGE_TUG_DEF from './models/supply_vessel.zdef';
+import RESEARCH_PLATFORM_DEF from './models/research_platform.zdef';
+import WIND_TURBINE_DEF from './models/wind_turbine.zdef';
 import CARRIER_DEF from './models/carrier.zdef';
 import SUBMARINE_DEF from './models/submarine.zdef';
 import { applyParts } from './def-utils';
@@ -39,6 +43,7 @@ import {
     initCarrierFuelCar,
     initBoatsFromMission,
     initSubmarinesFromMission,
+    initStaticObjectsFromMission,
     initPayloadsFromMission,
     initFuelTruck,
     initBirds,
@@ -554,6 +559,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     _missionWindStr = _lmd.windStr ?? 1;
     _missionWindDir = _lmd.windDir ?? 0;
     _missionWindVar = !!_lmd.windVar;
+    G.waterLevel = _lmd.waterLevel ?? 0;
     const _lhObj = _lmdObjs.find((o: any) => o.type === 'lighthouse');
     _lighthouseX = _lhObj ? _lhObj.x : -1;
     _lighthouseY = _lhObj ? _lhObj.y : -1;
@@ -573,6 +579,10 @@ const launchMission = async (showLoader = true): Promise<void> => {
     if (hasCarrier()) initCarrierFuelCar();
     initBoatsFromMission();
     initSubmarinesFromMission();
+    initStaticObjectsFromMission();
+    G.RESEARCH_PLATFORMS.forEach((rp: any) => {
+        rp.rescueZones = (RESEARCH_PLATFORM_DEF as any).rescueZones || [];
+    });
     handle?.step('Objekte…', 0.5);
     if (handle) await _tick();
 
@@ -724,10 +734,16 @@ function drawScene() {
     if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, 25)) drawVectorCarrier(camX, camY);
     drawParkedHelis(camX, camY);
     G.BOATS.forEach(b => {
-        if (isVisible(b.x, b.y, 15)) drawSailboat(b.x, b.y, b.angle, camX, camY);
+        if (isVisible(b.x, b.y, 15)) drawBoatModel(b, camX, camY);
     });
     G.SUBMARINES.forEach(s => {
         if (isVisible(s.x, s.y, 15)) drawSubmarine(s.x, s.y, s.angle, camX, camY);
+    });
+    G.RESEARCH_PLATFORMS.forEach(rp => {
+        if (isVisible(rp.x, rp.y, 10)) drawResearchPlatform(rp.x, rp.y, camX, camY);
+    });
+    G.WIND_TURBINES.forEach(wt => {
+        if (isVisible(wt.x, wt.y, 15)) drawWindTurbine(wt.x, wt.y, camX, camY);
     });
     if (hasPad() && isVisible(G.PAD.xMin + 3, G.PAD.yMin + 3)) drawHangar();
     if (hasPad() && G.fuelTruck && isVisible(G.fuelTruck.x, G.fuelTruck.y))
@@ -1366,13 +1382,31 @@ function drawWindsock(cx: number, cy: number) {
     ctx.fill();
 }
 
-function drawSailboat(sX: number, sY: number, angle: number, cx: number, cy: number) {
-    SceneRenderer.add(SAILBOAT_DEF, { x: sX, y: sY, z: 0, angle });
+function drawBoatModel(b: any, cx: number, cy: number) {
+    if (b.objectType === 'pilot_boat') {
+        const radarAngle = (Date.now() * 0.002) % (Math.PI * 2);
+        SceneRenderer.add(applyParts(PILOT_BOAT_DEF as any, { radarAngle }), { x: b.x, y: b.y, z: 0, angle: b.angle });
+    } else {
+        const def = b.objectType === 'salvage_tug' ? SALVAGE_TUG_DEF : SAILBOAT_DEF;
+        SceneRenderer.add(def, { x: b.x, y: b.y, z: 0, angle: b.angle });
+    }
     SceneRenderer.flush(cx, cy);
 }
 
 function drawSubmarine(sX: number, sY: number, angle: number, cx: number, cy: number) {
     SceneRenderer.add(SUBMARINE_DEF, { x: sX, y: sY, z: 0, angle });
+    SceneRenderer.flush(cx, cy);
+}
+
+function drawResearchPlatform(rX: number, rY: number, cx: number, cy: number) {
+    SceneRenderer.add(RESEARCH_PLATFORM_DEF, { x: rX, y: rY, z: G.waterLevel, angle: 0 });
+    SceneRenderer.flush(cx, cy);
+}
+
+function drawWindTurbine(tX: number, tY: number, cx: number, cy: number) {
+    const gz = Math.max(G.waterLevel, getGround(tX, tY, G.points, G.CARRIER));
+    const rotorAngle = (Date.now() * 0.002) % (Math.PI * 2);
+    SceneRenderer.add(applyParts(WIND_TURBINE_DEF as any, { rotorAngle }), { x: tX, y: tY, z: gz, angle: 0 });
     SceneRenderer.flush(cx, cy);
 }
 
@@ -1834,21 +1868,49 @@ function handleCollisionBoxes() {
         }
     }
 
-    // ── Sailboats ──────────────────────────────────────────────────────────────
+    // ── Boats (sailboat / pilot_boat / salvage_tug) ────────────────────────────
     G.BOATS.forEach(b => {
-        // Rumpf
-        if (showCollisionBoxes)
-            drawCollisionBox(b.x, b.y, b.angle, -1.1, 1.3, -0.45, 0.45, 0, 0.35, 'rgba(0,255,100,0.8)');
-        // Mast
-        if (showCollisionBoxes)
-            drawCollisionBox(b.x, b.y, b.angle, -0.4, -0.2, -0.1, 0.1, 0.35, 3.2, 'rgba(255,80,0,0.9)');
-
-        if (!zstate.crashed) {
-            if (
-                checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -1.1, 1.3, -0.45, 0.45, 0, 0.35) ||
-                checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -0.4, -0.2, -0.1, 0.1, 0.35, 3.2)
-            ) {
-                _physicsCtx.triggerCrash(I18N.CRASH_BOAT);
+        if (b.objectType === 'pilot_boat') {
+            // pilot_boat.zdef: hull + cabin
+            if (showCollisionBoxes) {
+                drawCollisionBox(b.x, b.y, b.angle, -1.0, 1.0, -0.4, 0.4, 0, 0.3, 'rgba(0,255,100,0.8)');
+                drawCollisionBox(b.x, b.y, b.angle, -0.3, 0.5, -0.3, 0.3, 0.3, 0.9, 'rgba(255,80,0,0.9)');
+            }
+            if (!zstate.crashed) {
+                if (
+                    checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -1.0, 1.0, -0.4, 0.4, 0, 0.3) ||
+                    checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -0.3, 0.5, -0.3, 0.3, 0.3, 0.9)
+                ) {
+                    _physicsCtx.triggerCrash(I18N.CRASH_BOAT);
+                }
+            }
+        } else if (b.objectType === 'salvage_tug') {
+            // salvage_tug.zdef: hull (z=0..1.2) + superstructure (z=1.2..3.2)
+            if (showCollisionBoxes) {
+                drawCollisionBox(b.x, b.y, b.angle, -2.5, 3.2, -1.2, 1.2, 0, 1.2, 'rgba(0,255,100,0.8)');
+                drawCollisionBox(b.x, b.y, b.angle, 1.0, 2.2, -0.8, 0.8, 1.2, 3.2, 'rgba(255,80,0,0.9)');
+            }
+            if (!zstate.crashed) {
+                if (
+                    checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -2.5, 3.2, -1.2, 1.2, 0, 1.2) ||
+                    checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, 1.0, 2.2, -0.8, 0.8, 1.2, 3.2)
+                ) {
+                    _physicsCtx.triggerCrash(I18N.CRASH_BOAT);
+                }
+            }
+        } else {
+            // sailboat.zdef: hull + mast
+            if (showCollisionBoxes) {
+                drawCollisionBox(b.x, b.y, b.angle, -1.1, 1.3, -0.45, 0.45, 0, 0.35, 'rgba(0,255,100,0.8)');
+                drawCollisionBox(b.x, b.y, b.angle, -0.4, -0.2, -0.1, 0.1, 0.35, 3.2, 'rgba(255,80,0,0.9)');
+            }
+            if (!zstate.crashed) {
+                if (
+                    checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -1.1, 1.3, -0.45, 0.45, 0, 0.35) ||
+                    checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -0.4, -0.2, -0.1, 0.1, 0.35, 3.2)
+                ) {
+                    _physicsCtx.triggerCrash(I18N.CRASH_BOAT);
+                }
             }
         }
     });
@@ -1868,6 +1930,43 @@ function handleCollisionBoxes() {
                 checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, s.x, s.y, s.angle, 0.8, 2.3, -0.32, 0.32, 0.3, 2.4)
             ) {
                 _physicsCtx.triggerCrash(I18N.CRASH_SUBMARINE);
+            }
+        }
+    });
+
+    // ── Research platforms ────────────────────────────────────────────────────
+    G.RESEARCH_PLATFORMS.forEach(rp => {
+        const wl = G.waterLevel;
+        // collision boxes in world z = wl + local z
+        if (showCollisionBoxes) {
+            drawCollisionBox(rp.x, rp.y, 0, -0.4, 0.4, -0.4, 0.4, wl, wl + 6.0, 'rgba(0,255,100,0.8)');
+            drawCollisionBox(rp.x, rp.y, 0, -1.5, 1.5, -1.5, 1.5, wl + 6.0, wl + 6.5, 'rgba(0,255,100,0.8)');
+            drawCollisionBox(rp.x, rp.y, 0, 0.8, 1.2, -0.2, 0.2, wl + 6.5, wl + 15.0, 'rgba(255,80,0,0.9)');
+        }
+        if (!zstate.crashed) {
+            if (
+                checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, rp.x, rp.y, 0, -0.4, 0.4, -0.4, 0.4, wl, wl + 6.0) ||
+                checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, rp.x, rp.y, 0, -1.5, 1.5, -1.5, 1.5, wl + 6.0, wl + 6.5) ||
+                checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, rp.x, rp.y, 0, 0.8, 1.2, -0.2, 0.2, wl + 6.5, wl + 15.0)
+            ) {
+                _physicsCtx.triggerCrash(I18N.CRASH_LIGHTHOUSE);
+            }
+        }
+    });
+
+    // ── Wind turbines ─────────────────────────────────────────────────────────
+    G.WIND_TURBINES.forEach(wt => {
+        // pole: -0.3..0.3 x -0.3..0.3 x 0..7.5; nacelle: -0.6..1.2 x -0.6..0.6 x 7.5..8.5
+        if (showCollisionBoxes) {
+            drawCollisionBox(wt.x, wt.y, 0, -0.3, 0.3, -0.3, 0.3, 0, 7.5, 'rgba(0,255,200,0.8)');
+            drawCollisionBox(wt.x, wt.y, 0, -0.6, 1.2, -0.6, 0.6, 7.5, 8.5, 'rgba(255,80,0,0.9)');
+        }
+        if (!zstate.crashed) {
+            if (
+                checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, wt.x, wt.y, 0, -0.3, 0.3, -0.3, 0.3, 0, 7.5) ||
+                checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, wt.x, wt.y, 0, -0.6, 1.2, -0.6, 0.6, 7.5, 8.5)
+            ) {
+                _physicsCtx.triggerCrash(I18N.CRASH_LIGHTHOUSE);
             }
         }
     });
@@ -2037,12 +2136,13 @@ const _precomputeDayColors = (rain: boolean) => {
             const h0 = G.points[x]?.[y] ?? 0;
             const isPad = hasPad() && x >= G.PAD.xMin && x <= G.PAD.xMax && y >= G.PAD.yMin && y <= G.PAD.yMax;
             const isService = hasPad() && x >= G.PAD.xMin && x <= G.PAD.xMax && y >= G.PAD.yMin - 3 && y < G.PAD.yMin;
+            const wl = G.waterLevel;
             const c = 35 + Math.floor(h0 * 15);
             _tileColors[x][y] = isPad
                 ? '#444'
                 : isService
                   ? '#444'
-                  : h0 > 0
+                  : h0 > wl
                     ? `rgb(${c - 10},${c + 30},${c - 10})`
                     : rain
                       ? '#002244'
@@ -2079,15 +2179,19 @@ const _renderTerrainBatched = (
             const h2 = G.points[x + 1][y + 1],
                 h3 = G.points[x][y + 1];
             const fill = getFill(x, y, h0);
+            // Clamp corners to waterLevel so submerged tiles form a flat surface.
+            const wl = G.waterLevel;
+            const rh0 = Math.max(h0, wl), rh1 = Math.max(h1, wl);
+            const rh2 = Math.max(h2, wl), rh3 = Math.max(h3, wl);
             // Inline iso — no object allocation
             const p0x = hw + (x - y) * htW - ccX;
-            const p0y = hh + (x + y) * htH - h0 * stepH - ccY;
+            const p0y = hh + (x + y) * htH - rh0 * stepH - ccY;
             const p1x = hw + (x + 1 - y) * htW - ccX;
-            const p1y = hh + (x + 1 + y) * htH - h1 * stepH - ccY;
+            const p1y = hh + (x + 1 + y) * htH - rh1 * stepH - ccY;
             const p2x = hw + (x + 1 - (y + 1)) * htW - ccX;
-            const p2y = hh + (x + 1 + (y + 1)) * htH - h2 * stepH - ccY;
+            const p2y = hh + (x + 1 + (y + 1)) * htH - rh2 * stepH - ccY;
             const p3x = hw + (x - (y + 1)) * htW - ccX;
-            const p3y = hh + (x + (y + 1)) * htH - h3 * stepH - ccY;
+            const p3y = hh + (x + (y + 1)) * htH - rh3 * stepH - ccY;
 
             let batch = _terrainBatch.get(fill);
             if (!batch) {
@@ -2142,7 +2246,7 @@ const _drawTerrain = (camX: number, camY: number, _rx: number, _ry: number, isNi
             if (!inLight) return '#020205';
             if (isPad) return `rgb(${intensity - 30},${intensity - 30},${intensity - 30})`;
             if (isService) return `rgb(${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)})`;
-            return h0 > 0
+            return h0 > G.waterLevel
                 ? `rgb(${intensity - 20},${intensity + 10},${intensity - 20})`
                 : `rgb(0,${Math.floor(intensity * 0.3)},${Math.floor(intensity * 0.6)})`;
         });

@@ -30,8 +30,28 @@ type SubmarineObject = {
     radius: number;
 };
 type LighthouseObject = { type: 'lighthouse'; x: number; y: number };
+type PilotBoatObject = {
+    type: 'pilot_boat';
+    x: number;
+    y: number;
+    angle: number;
+    path: 'circle' | 'straight' | 'static';
+    speed: number;
+    radius: number;
+};
+type SalvageTugObject = {
+    type: 'salvage_tug';
+    x: number;
+    y: number;
+    angle: number;
+    path: 'circle' | 'straight' | 'static';
+    speed: number;
+    radius: number;
+};
+type ResearchPlatformObject = { type: 'research_platform'; x: number; y: number };
+type WindTurbineObject = { type: 'wind_turbine'; x: number; y: number; rescueZones?: Array<{ x: number; y: number; w: number; h: number; role: 'pickup' | 'dropoff' | 'both' }> };
 
-type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject;
+type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject;
 
 export type Objective =
     | { type: 'rescue_all' }
@@ -63,6 +83,7 @@ export interface Mission {
     windDir: number;
     windStr: number;
     windVar: boolean;
+    waterLevel?: number;
 }
 
 export type MissionData = Omit<Mission, 'terrain' | 'foliage'> & {

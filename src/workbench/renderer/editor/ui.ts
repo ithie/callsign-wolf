@@ -106,7 +106,7 @@ export const renderObjectList = () => {
     m.objects.forEach((obj, idx) => {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;align-items:center;gap:6px;margin:3px 0;font-size:11px';
-        const icons: Record<string, string> = { pad: '🟩', carrier: '🚢', boat: '⛵', submarine: '🤿', lighthouse: '🔦' };
+        const icons: Record<string, string> = { pad: '🟩', carrier: '🚢', boat: '⛵', pilot_boat: '🚤', salvage_tug: '🛳', submarine: '🤿', lighthouse: '🔦', research_platform: '🏗', wind_turbine: '🌀' };
         const label = document.createElement('span');
         label.style.flex = '1';
         label.innerText = `${icons[obj.type] || '?'} ${obj.type} @ (${obj.x}, ${obj.y})`;
@@ -480,6 +480,38 @@ const paint = (e: MouseEvent) => {
             if (existing >= 0) m.objects[existing] = newLH;
             else m.objects.push(newLH);
         }
+    } else if (state.currentTool === 'pilot_boat') {
+        if (e.shiftKey) {
+            const ni = m.objects.findIndex(o => o.type === 'pilot_boat');
+            if (ni >= 0) m.objects.splice(ni, 1);
+        } else {
+            m.objects.push({ type: 'pilot_boat' as any, x: gx, y: gy, angle: 0, path: 'static', speed: 0, radius: 0 });
+        }
+    } else if (state.currentTool === 'salvage_tug') {
+        if (e.shiftKey) {
+            const ni = m.objects.findIndex(o => o.type === 'salvage_tug');
+            if (ni >= 0) m.objects.splice(ni, 1);
+        } else {
+            m.objects.push({ type: 'salvage_tug' as any, x: gx, y: gy, angle: 0, path: 'static', speed: 0, radius: 0 });
+        }
+    } else if (state.currentTool === 'research_platform') {
+        if (e.shiftKey) {
+            const ni = m.objects.findIndex(o => o.type === 'research_platform');
+            if (ni >= 0) m.objects.splice(ni, 1);
+        } else {
+            m.objects.push({ type: 'research_platform' as any, x: gx, y: gy });
+        }
+    } else if (state.currentTool === 'wind_turbine') {
+        if (e.shiftKey) {
+            const near = m.objects.reduce((best: any, o: any, i: number) => {
+                if (o.type !== 'wind_turbine') return best;
+                const d = Math.hypot(o.x - gx, o.y - gy);
+                return !best || d < best.d ? { d, i } : best;
+            }, null as any);
+            if (near && near.d < 5) m.objects.splice(near.i, 1);
+        } else {
+            m.objects.push({ type: 'wind_turbine' as any, x: gx, y: gy });
+        }
     } else if (state.currentTool === 'person') {
         if (e.shiftKey) removeNearestPayload(m, gx, gy, 'person');
         else {
@@ -685,7 +717,7 @@ export const initUI = () => {
     document.body.appendChild(cursorEl);
     const cursorCtx = cursorEl.getContext('2d')!;
     const PAINT_TOOLS = new Set(['terrain', 'flatten', 'foliage']);
-    const POINT_TOOLS = new Set(['pad', 'carrier', 'boat', 'submarine', 'lighthouse', 'person', 'crate']);
+    const POINT_TOOLS = new Set(['pad', 'carrier', 'boat', 'pilot_boat', 'salvage_tug', 'submarine', 'lighthouse', 'research_platform', 'wind_turbine', 'person', 'crate']);
     const dotColors: Record<string, string> = {
         pad: '#5f5',
         carrier: '#88aaff',
@@ -855,8 +887,8 @@ export const initUI = () => {
                 const obj = m.objects[i];
                 let hit = false;
                 if (obj.type === 'pad') hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
-                else if (obj.type === 'carrier' || obj.type === 'boat' || obj.type === 'submarine') hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
-                else if (obj.type === 'lighthouse') hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
+                else if (obj.type === 'carrier' || obj.type === 'boat' || obj.type === 'pilot_boat' || obj.type === 'salvage_tug' || obj.type === 'submarine') hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
+                else if (obj.type === 'lighthouse' || obj.type === 'research_platform' || obj.type === 'wind_turbine') hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
                 if (hit) {
                     state.selectedObjectIdx = state.selectedObjectIdx === i ? null : i;
                     state.selectedPayloadIdx = null;
@@ -896,10 +928,14 @@ export const initUI = () => {
                 state.currentTool !== 'person' &&
                 state.currentTool !== 'crate' &&
                 state.currentTool !== 'boat' &&
+                state.currentTool !== 'pilot_boat' &&
+                state.currentTool !== 'salvage_tug' &&
                 state.currentTool !== 'submarine' &&
                 state.currentTool !== 'carrier' &&
                 state.currentTool !== 'pad' &&
                 state.currentTool !== 'lighthouse' &&
+                state.currentTool !== 'research_platform' &&
+                state.currentTool !== 'wind_turbine' &&
                 state.currentTool !== 'foliage'
             ) {
                 paint(e);

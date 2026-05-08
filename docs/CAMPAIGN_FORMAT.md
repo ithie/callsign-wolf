@@ -2,34 +2,54 @@
 
 Campaigns are stored as JSON in `src/game/campaigns/`. Each file contains one campaign with one or more mission levels. New campaigns saved via the Mission Editor are automatically registered in `src/game/main.ts`.
 
+---
+
+## Localisation (i18n)
+
+All display-string fields accept either a plain string or a localised object:
+
+```json
+"campaignTitle": "MY CAMPAIGN"
+```
+
+```json
+"campaignTitle": { "de": "MEINE KAMPAGNE", "en": "MY CAMPAIGN" }
+```
+
+This applies to `campaignTitle`, `campaignSublines[]`, `headline`, `sublines[]`, and `briefing`.
+
+---
+
 ## Top-level Structure
 
 ```json
 {
-  "type": "tutorial",
-  "campaignTitle": "TUTORIAL",
-  "campaignSublines": ["Erste Flugversuche"],
+  "type": "sar",
+  "campaignTitle": { "de": "MEINE KAMPAGNE", "en": "MY CAMPAIGN" },
+  "campaignSublines": [
+    { "de": "Erste Zeile", "en": "First line" }
+  ],
   "music": {
     "briefing": "main",
     "ingame": "tutorial"
   },
-  "levels": [ ... ]
+  "levels": [ "..." ]
 }
 ```
 
-| Field              | Type     | Description                                          |
-| ------------------ | -------- | ---------------------------------------------------- |
-| `type`             | string   | Internal identifier (used for routing)               |
-| `campaignTitle`    | string   | Displayed title on the campaign select screen        |
-| `campaignSublines` | string[] | Subtitle lines shown below the title                 |
-| `music`            | object   | Optional. Per-campaign music assignments (see below) |
-| `levels`           | array    | Ordered list of mission levels                       |
+| Field              | Type                 | Description                                                        |
+| ------------------ | -------------------- | ------------------------------------------------------------------ |
+| `type`             | string               | Internal identifier (e.g. `"tutorial"`, `"sar"`, `"free-flight"`) |
+| `campaignTitle`    | string \| i18n       | Displayed title on the campaign select screen                      |
+| `campaignSublines` | string[] \| i18n[]   | Subtitle lines shown below the title                               |
+| `music`            | object               | Optional. Per-campaign music assignments (see below)               |
+| `levels`           | array                | Ordered list of mission levels                                     |
 
 ---
 
 ## Music
 
-The optional `music` field assigns songs to specific campaign phases. Both sub-fields are optional; if omitted, the current music simply continues playing.
+Both sub-fields are optional; if omitted the current music continues playing.
 
 ```json
 "music": {
@@ -38,12 +58,12 @@ The optional `music` field assigns songs to specific campaign phases. Both sub-f
 }
 ```
 
-| Field      | Type   | Description                                                 |
-| ---------- | ------ | ----------------------------------------------------------- |
-| `briefing` | string | Song key to start when the mission briefing screen is shown |
-| `ingame`   | string | Song key to start when the mission itself begins            |
+| Field      | Type   | Description                                                       |
+| ---------- | ------ | ----------------------------------------------------------------- |
+| `briefing` | string | Song key to play when the mission briefing screen is shown        |
+| `ingame`   | string | Song key to play when the mission itself begins                   |
 
-Song keys correspond to filenames (without `.json`) in `src/game/music/`. The Workbench Campaign Editor exposes dropdowns for both fields.
+Song keys correspond to filenames (without `.json`) in `src/game/music/`.
 
 ---
 
@@ -53,51 +73,60 @@ Each entry in `levels` describes one playable mission.
 
 ```json
 {
-  "headline":    "Erste Flugversuche",
-  "briefing":    "Rette alle Überlebenden.",
+  "headline":    { "de": "Mission 1", "en": "Mission 1" },
+  "sublines":    [{ "de": "Rette alle Überlebenden", "en": "Rescue all survivors" }],
+  "briefing":    { "de": "Vollständiger Briefingtext.", "en": "Full briefing text." },
   "gridSize":    100,
   "terrain":     "...",
   "spawnObject": "pad",
-  "objects":     [ ... ],
-  "payloads":    [ ... ],
-  "foliage":     [ ... ],
+  "objects":     [ "..." ],
+  "payloads":    [ "..." ],
+  "foliage":     "...",
+  "objectives":  [ "..." ],
   "rain":        false,
   "night":       false,
   "windDir":     90,
-  "windStr":     1,
-  "windVar":     false
+  "windStr":     1.5,
+  "windVar":     false,
+  "waterLevel":  0
 }
 ```
 
-| Field         | Type    | Description                                               |
-| ------------- | ------- | --------------------------------------------------------- |
-| `headline`    | string  | Mission title shown in briefing                           |
-| `briefing`    | string  | Briefing text                                             |
-| `gridSize`    | number  | Width and height of the terrain grid in tiles             |
-| `terrain`     | string  | Run-length encoded elevation data (see below)             |
-| `spawnObject` | string  | Where the helicopter spawns: `"pad"` or `"carrier"`       |
-| `objects`     | array   | Placed scene objects (pads, carriers, boats, lighthouses) |
-| `payloads`    | array   | Rescue targets (persons or crates)                        |
-| `foliage`     | array   | Decorative vegetation                                     |
-| `rain`        | boolean | Rain effect active                                        |
-| `night`       | boolean | Night mode active                                         |
-| `windDir`     | number  | Wind direction in degrees (0 = North, 90 = East)          |
-| `windStr`     | number  | Wind strength (0 = calm, higher = stronger)               |
-| `windVar`     | boolean | Randomly varying wind                                     |
+| Field         | Type            | Description                                                                 |
+| ------------- | --------------- | --------------------------------------------------------------------------- |
+| `headline`    | string \| i18n  | Mission title shown in briefing and mission select                          |
+| `sublines`    | i18n[]          | Optional. Subtitle lines shown in the mission select screen                 |
+| `briefing`    | string \| i18n  | Briefing text shown before the mission starts                               |
+| `gridSize`    | number          | Width and height of the terrain grid in tiles                               |
+| `terrain`     | string          | Run-length encoded elevation data (see below)                               |
+| `spawnObject` | string          | Where the helicopter spawns: `"pad"` or `"carrier"`                         |
+| `objects`     | array           | Placed scene objects (see below)                                            |
+| `payloads`    | array           | Rescue targets (persons or crates, see below)                               |
+| `foliage`     | string \| array | Decorative vegetation (see below)                                           |
+| `objectives`  | array           | Optional. Win conditions (see below)                                        |
+| `rain`        | boolean         | Rain effect active                                                          |
+| `night`       | boolean         | Night mode active                                                           |
+| `windDir`     | number          | Wind direction in degrees (0 = North, 90 = East)                            |
+| `windStr`     | number          | Wind strength (0 = calm)                                                    |
+| `windVar`     | boolean         | Randomly varying wind direction and strength                                |
+| `waterLevel`  | number          | Optional (default `0`). Tiles at or below this elevation render as water.  |
 
 ---
 
 ## Terrain Encoding
 
-The `terrain` field is a run-length encoded string representing a flat array of elevation values, row by row (left to right, top to bottom). The full array has `gridSize × gridSize` entries.
+The `terrain` field is a run-length encoded string of elevation values, row by row (left to right, top to bottom). The full array has `(gridSize + 1) × (gridSize + 1)` entries.
 
-**Encoding rules:**
+**Rules:**
 
-- A plain number, e.g. `97`, represents a single tile with that elevation.
-- `3x97` means the value `97` repeated 3 times.
-- `-10x5` means the value `-10` repeated 5 times. Negative values mark water or void tiles.
+- A plain number (`97`) represents a single tile at that elevation.
+- `3x97` means value `97` repeated 3 times.
+- Negative values mark water tiles at default water level (e.g. `-10`).
+- Values are divided by 10 internally: JSON value `80` → game elevation `8.0`.
 
-**Example (decoded excerpt):** `3x97,-10x4` → `[97, 97, 97, -10, -10, -10, -10]`
+**Example:** `3x97,-10x4` → `[9.7, 9.7, 9.7, -1.0, -1.0, -1.0, -1.0]`
+
+All-water map for gridSize 100: `"-10x10201"`
 
 ---
 
@@ -109,33 +138,70 @@ The `terrain` field is a run-length encoded string representing a flat array of 
 { "type": "pad", "x": 15, "y": 20 }
 ```
 
-Landing and spawn point for the helicopter.
+Landing and spawn point for the helicopter on land.
 
 ### Carrier
 
 ```json
 {
-    "type": "carrier",
-    "x": 40,
-    "y": 60,
-    "angle": 0,
-    "path": "circle",
-    "speed": 0.5,
-    "radius": 15
+  "type": "carrier",
+  "x": 40,
+  "y": 60,
+  "angle": 0,
+  "path": "circle",
+  "speed": 10,
+  "radius": 45
 }
 ```
 
-| Field    | Type   | Description                                              |
-| -------- | ------ | -------------------------------------------------------- |
-| `x`, `y` | number | Starting grid position                                   |
-| `angle`  | number | Initial heading in degrees                               |
-| `path`   | string | Movement pattern: `"circle"` · `"straight"` · `"static"` |
-| `speed`  | number | Movement speed                                           |
-| `radius` | number | Circle radius (for `"circle"` path)                      |
+Large moving vessel. Can be used as spawn point (`spawnObject: "carrier"`).
+
+| Field    | Type   | Description                                                       |
+| -------- | ------ | ----------------------------------------------------------------- |
+| `x`, `y` | number | Starting grid position                                            |
+| `angle`  | number | Initial heading in degrees (0 = East, 90 = South)                 |
+| `path`   | string | Movement pattern: `"static"` · `"circle"` · `"straight"`          |
+| `speed`  | number | Speed in knots                                                    |
+| `radius` | number | Circle radius in tiles (only used when `path` is `"circle"`)      |
+
+**Path behaviour:**
+
+- `"static"` — does not move.
+- `"circle"` — orbits an elliptical path. The initial position and heading define the starting point on the orbit. `radius` is the semi-major axis; the semi-minor axis is `radius × 0.8`.
+- `"straight"` — moves indefinitely in the direction of `angle`, eventually leaving the map.
 
 ### Boat
 
-Same fields as Carrier. Boats are smaller vessels and do not serve as spawn points.
+Same fields as Carrier. Boats are smaller vessels; they cannot serve as spawn points but can carry payloads via `attachTo` and define `rescueZones`.
+
+```json
+{
+  "type": "boat",
+  "x": 113,
+  "y": 110,
+  "angle": 0,
+  "path": "straight",
+  "speed": 3,
+  "radius": 0
+}
+```
+
+### Submarine
+
+Same fields as Boat. Submarines travel on the water surface and can carry payloads. They also support `rescueZones`.
+
+```json
+{
+  "type": "submarine",
+  "x": 70,
+  "y": 45,
+  "angle": 135,
+  "path": "static",
+  "speed": 0,
+  "radius": 0,
+  "rescueZones": [{ "x": 0, "y": 0, "w": 4.5, "h": 0.6, "role": "dropoff" }]
+}
+```
 
 ### Lighthouse
 
@@ -143,7 +209,29 @@ Same fields as Carrier. Boats are smaller vessels and do not serve as spawn poin
 { "type": "lighthouse", "x": 10, "y": 25 }
 ```
 
-Static decorative/navigational object.
+Static decorative and navigational landmark. Not interactable.
+
+---
+
+## Rescue Zones
+
+Carrier, Boat, and Submarine objects can define `rescueZones` — regions in vessel-local coordinates where the player can pick up or deliver payloads.
+
+```json
+"rescueZones": [
+  { "x": 0, "y": 0, "w": 4.5, "h": 0.6, "role": "dropoff" }
+]
+```
+
+| Field    | Type   | Description                                                            |
+| -------- | ------ | ---------------------------------------------------------------------- |
+| `x`, `y` | number | Centre of the zone in vessel-local coordinates (longitudinal/lateral)  |
+| `w`, `h` | number | Width and height of the zone                                           |
+| `role`   | string | `"pickup"` · `"dropoff"` · `"both"`                                    |
+
+If no `rescueZones` are defined, the entire vessel surface allows both pickup and dropoff.
+
+The carrier's default rescue zones are defined in its `.zdef` file, not in the mission JSON.
 
 ---
 
@@ -155,23 +243,107 @@ Rescue targets the player must winch up and deliver.
 { "type": "person", "x": 27, "y": 30 }
 ```
 
-| Field    | Type   | Values                 |
-| -------- | ------ | ---------------------- |
-| `type`   | string | `"person"` · `"crate"` |
-| `x`, `y` | number | Grid position          |
+```json
+{
+  "type": "crate",
+  "x": 70,
+  "y": 45,
+  "attachTo": {
+    "objectType": "submarine",
+    "objectIdx": 1,
+    "localX": -3,
+    "localY": 0.3
+  }
+}
+```
+
+| Field       | Type    | Description                                                          |
+| ----------- | ------- | -------------------------------------------------------------------- |
+| `type`      | string  | `"person"` · `"crate"`                                               |
+| `x`, `y`    | number  | World grid position (used as fallback if `attachTo` is absent)       |
+| `attachTo`  | object  | Optional. Attach payload to a moving vessel (see below)              |
+| `npcTarget` | boolean | Optional. If `true`, payload is not counted toward the mission goal  |
+
+### attachTo
+
+Attaches the payload to a vessel so it moves with it until picked up.
+
+| Field        | Type   | Description                                                                 |
+| ------------ | ------ | --------------------------------------------------------------------------- |
+| `objectType` | string | `"carrier"` · `"boat"` · `"submarine"`                                      |
+| `objectIdx`  | number | Index of the object in the `objects` array (0-based)                        |
+| `localX`     | number | Optional. Longitudinal offset in vessel-local space (positive = toward bow) |
+| `localY`     | number | Optional. Lateral offset in vessel-local space (positive = starboard)       |
+
+The offset is rotated with the vessel's heading each frame so the payload stays in the correct deck position.
+
+---
+
+## Objectives
+
+The `objectives` array defines the win conditions for the mission. If omitted or empty, the mission cannot be won (useful for free-flight levels).
+
+```json
+"objectives": [
+  { "type": "rescue_all" }
+]
+```
+
+```json
+"objectives": [
+  { "type": "land_at", "target": "carrier" }
+]
+```
+
+| Objective type | Fields           | Description                                                                                                             |
+| -------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `rescue_all`   | —                | Complete when all non-`npcTarget` payloads have been rescued and delivered                                              |
+| `land_at`      | `target: string` | Complete when the player shuts down the engine while on the target. `target` is `"pad"`, `"carrier"`, or `"boat"` |
+
+Multiple objectives in the array are checked independently; whichever fires first completes the mission.
 
 ---
 
 ## Foliage
 
-Decorative vegetation, not interactable.
+Decorative vegetation. Not interactable, does not block movement.
 
-```json
-{ "x": 12, "y": 18, "s": 1.2, "type": "tree" }
+### Compressed string format (editor output)
+
+The Mission Editor writes foliage as a compact `|`-delimited string. Each token is:
+
+```text
+<type_char><x*10>,<y*10>,<s*10>
 ```
 
-| Field    | Type   | Description     |
-| -------- | ------ | --------------- |
-| `x`, `y` | number | Grid position   |
-| `s`      | number | Scale factor    |
-| `type`   | string | Vegetation type |
+| Type char | Tree type |
+| --------- | --------- |
+| `p`       | pine      |
+| `o`       | oak       |
+| `b`       | bush      |
+| `d`       | dead      |
+
+**Example:** `"p542,238,10|o438,517,10|b740,350,10|d401,368,10"`
+
+Decoded: a pine at (54.2, 23.8) scale 1.0, an oak at (43.8, 51.7) scale 1.0, etc.
+
+### Expanded JSON array format
+
+Foliage can also be written as a plain JSON array (useful when authoring by hand):
+
+```json
+"foliage": [
+  { "type": "pine", "x": 12, "y": 18, "s": 1.2 },
+  { "type": "oak",  "x": 20, "y": 10, "s": 0.9 },
+  { "type": "bush", "x": 30, "y": 25, "s": 1.0 },
+  { "type": "dead", "x": 40, "y": 15, "s": 1.1 }
+]
+```
+
+| Field    | Type   | Description                               |
+| -------- | ------ | ----------------------------------------- |
+| `type`   | string | `"pine"` · `"oak"` · `"bush"` · `"dead"` |
+| `x`, `y` | number | Grid position                             |
+| `s`      | number | Scale factor (1.0 = normal size)          |
+
+Use `""` or `[]` for levels with no vegetation.

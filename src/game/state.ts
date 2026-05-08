@@ -36,6 +36,7 @@ export const zstate = createZstate();
 export const G = {
     goalCount: 0,
     totalRescued: 0,
+    waterLevel: 0,
     objectives: [] as any[],
     menuHover: Object.fromEntries(HELI_TYPES.map(h => [h.id, false])),
     menuAngles: Object.fromEntries(HELI_TYPES.map(h => [h.id, -0.5])),
@@ -45,6 +46,8 @@ export const G = {
     CARRIER: {} as any,
     BOATS: [] as any[],
     SUBMARINES: [] as any[],
+    RESEARCH_PLATFORMS: [] as any[],
+    WIND_TURBINES: [] as any[],
     seaTime: 0,
     payloads: [] as any[],
     activePayload: null as any,

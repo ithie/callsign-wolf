@@ -140,6 +140,20 @@ const _inDropzone = (wx: number, wy: number): boolean => {
             if (_pointInVesselZone(wx, wy, sub, z)) return true;
         }
     }
+    for (const rp of G.RESEARCH_PLATFORMS) {
+        if (!rp.rescueZones?.length) continue;
+        for (const z of rp.rescueZones) {
+            if (z.role === 'pickup') continue;
+            if (_pointInVesselZone(wx, wy, rp, z)) return true;
+        }
+    }
+    for (const wt of G.WIND_TURBINES) {
+        if (!wt.rescueZones?.length) continue;
+        for (const z of wt.rescueZones) {
+            if (z.role === 'pickup') continue;
+            if (_pointInVesselZone(wx, wy, wt, z)) return true;
+        }
+    }
     return false;
 };
 
@@ -308,17 +322,21 @@ export function updateSubmarines(SUBMARINES: any[], dt: number) {
 
 export function initBoatsFromMission() {
     const allObjects = getObjects();
-    G.BOATS = getObjectsByType('boat').map((obj: any) => {
+    const boatTypes = ['boat', 'pilot_boat', 'salvage_tug'];
+    G.BOATS = boatTypes.flatMap(type => getObjectsByType(type)).map((obj: any) => {
         const objIdx = allObjects.indexOf(obj);
+        const isPilotBoat = obj.type === 'pilot_boat';
+        const isSalvageTug = obj.type === 'salvage_tug';
         const b = {
             x: obj.x,
             y: obj.y,
+            objectType: obj.type as string,
             angle: 0,
             path: 'static',
             speed: 0,
-            w: 1.5,
-            l: 3.0,
-            zDeck: 0.35,
+            w: isSalvageTug ? 1.2 : isPilotBoat ? 0.8 : 1.5,
+            l: isSalvageTug ? 3.5 : isPilotBoat ? 2.0 : 3.0,
+            zDeck: isSalvageTug ? 1.2 : isPilotBoat ? 0.3 : 0.35,
             zHull: 0.15,
             radiusX: 0,
             radiusY: 0,
@@ -343,6 +361,22 @@ export function initBoatsFromMission() {
         initVessel(obj, b, st);
         return b;
     });
+}
+
+export function initStaticObjectsFromMission() {
+    G.RESEARCH_PLATFORMS = getObjectsByType('research_platform').map((obj: any) => ({
+        x: obj.x,
+        y: obj.y,
+        angle: 0,
+        zDeck: G.waterLevel + 6.51,
+        rescueZones: [] as any[],
+    }));
+    G.WIND_TURBINES = getObjectsByType('wind_turbine').map((obj: any) => ({
+        x: obj.x,
+        y: obj.y,
+        angle: 0,
+        rescueZones: (obj.rescueZones || []) as any[],
+    }));
 }
 
 export function updateBoats(BOATS: any[], dt: number) {
@@ -625,7 +659,7 @@ export function initBirds() {
             fy = spawnCy + Math.sin(angle) * dist;
             fx = Math.max(3, Math.min(gridSize - 3, fx));
             fy = Math.max(3, Math.min(gridSize - 3, fy));
-            if (getGround(fx, fy, G.points, G.CARRIER) > 0.2) {
+            if (getGround(fx, fy, G.points, G.CARRIER) > G.waterLevel + 0.2) {
                 found = true;
                 break;
             }
@@ -750,7 +784,7 @@ export function handleParticles(dt: number, ctx: PhysicsCtx) {
                     });
                 }
             });
-        } else if (G.heli.z < 2.5 && gH > 0.1) {
+        } else if (G.heli.z < G.waterLevel + 2.5 && gH > G.waterLevel + 0.1) {
             rotors.forEach((rotor: any) => {
                 const a = Math.random() * Math.PI * 2;
                 G.particles.push({
@@ -763,14 +797,14 @@ export function handleParticles(dt: number, ctx: PhysicsCtx) {
                     color: '150, 140, 120',
                 });
             });
-        } else if (G.heli.z < 2.0 && gH < 0.1) {
+        } else if (G.heli.z < G.waterLevel + 2.0 && gH < G.waterLevel + 0.1) {
             rotors.forEach((rotor: any) => {
                 for (let i = 0; i < 2; i++) {
                     const a = Math.random() * Math.PI * 2;
                     G.particles.push({
                         x: rotor.x + Math.cos(a) * 0.6,
                         y: rotor.y + Math.sin(a) * 0.6,
-                        z: 0,
+                        z: G.waterLevel,
                         vx: Math.cos(a) * 0.08,
                         vy: Math.sin(a) * 0.08,
                         life: 0.4,
@@ -1254,7 +1288,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
                         p.x = wp.x; p.y = wp.y; p.z = sub.zDeck;
                     }
                 }
-            } else if (getGround(p.x, p.y, G.points, G.CARRIER) < 0) {
+            } else if (getGround(p.x, p.y, G.points, G.CARRIER) < G.waterLevel) {
                 p.z = -0.3 + Math.sin(Date.now() * 0.002) * 0.1;
             }
         });
@@ -1494,10 +1528,10 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
 
 
     // crash detection
-    if (!onPad && G.heli.z < 0.1 && getGround(G.heli.x, G.heli.y, G.points, G.CARRIER) < -0.2)
+    if (!onPad && G.heli.z < G.waterLevel + 0.1 && getGround(G.heli.x, G.heli.y, G.points, G.CARRIER) < G.waterLevel - 0.2)
         ctx.triggerCrash(I18N.CRASH_WATER);
     if (G.heli.z < groundH + 0.25) {
-        if (!onPad && groundH > 0.1) ctx.triggerCrash(I18N.CRASH_BAD_ZONE);
+        if (!onPad && groundH > G.waterLevel + 0.1) ctx.triggerCrash(I18N.CRASH_BAD_ZONE);
         else if (Math.hypot(G.heli.vx, G.heli.vy) > 0.12) ctx.triggerCrash(I18N.CRASH_TOO_FAST);
         else if (G.heli.vz < -0.15) ctx.triggerCrash(I18N.CRASH_HARD_IMPACT);
     }
