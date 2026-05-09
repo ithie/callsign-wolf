@@ -32,6 +32,7 @@ export const mountTouchControls = (): void => {
             </div>
         </div>
         <div class="joystick" id="joystick-right">
+            <div class="js-safe-zone"></div>
             <span class="js-n">▲</span><span class="js-s">▼</span>
             <span class="js-w">◀</span><span class="js-e">▶</span>
             <div class="joystick-knob"></div>
@@ -39,6 +40,10 @@ export const mountTouchControls = (): void => {
     document.body.appendChild(el);
 
     _toggleEl = el.querySelector('#touch-deliver-toggle');
+};
+
+export const setRightStickProfi = (profi: boolean): void => {
+    document.getElementById('joystick-right')?.classList.toggle('profi', profi);
 };
 
 export const initPitchWheel = (setKey: (key: string, val: boolean) => void): void => {

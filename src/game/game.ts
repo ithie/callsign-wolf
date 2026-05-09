@@ -2,7 +2,7 @@ import './ui/base.css';
 import './ui/screens.css';
 import { showLoadingScreen } from './ui/loading-screen/loading-screen';
 import { ensureEl } from './ui/dom-helpers';
-import { mountTouchControls, setDeliverToggle, initPitchWheel } from './ui/touch-controls/touch-controls';
+import { mountTouchControls, setDeliverToggle, initPitchWheel, setRightStickProfi } from './ui/touch-controls/touch-controls';
 import { iso } from './render';
 import { campaignHandler, soundHandler, zinit, musicConfig } from './main';
 import {
@@ -89,6 +89,7 @@ import { mountMainMenu } from './ui/main-menu/main-menu';
 import { mountMissionSelect, showMissionSelect } from './ui/mission-select/mission-select';
 import { mountCampaignSelect, showCampaignSelect } from './ui/campaign-select/campaign-select';
 import { showScreen } from './ui/nav';
+import { mountMinimap, showMinimap, updateMinimap } from './ui/minimap/minimap';
 import { initTutorial, tutorialTick, destroyTutorial, isTutorialRunning } from './ui/tutorial/tutorial';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
@@ -126,34 +127,12 @@ const _hud = (() => {
 
     const deliver = d('hud-deliver', 'left:0;right:0;top:20px;text-align:center;font:bold 14px monospace;color:#f90;');
 
-    const minimap = d('minimap-dom', 'width:130px;height:130px;background:rgba(0,20,10,0.8);border:1px solid #5f5;overflow:hidden;box-sizing:border-box;');
-    const mmPad = document.createElement('div');
-    mmPad.style.cssText = 'position:absolute;background:#666;display:none;';
-    minimap.appendChild(mmPad);
-    const mmCarrier = document.createElement('div');
-    mmCarrier.style.cssText = 'position:absolute;width:6px;height:6px;border-radius:50%;background:#889;transform:translate(-50%,-50%);display:none;';
-    minimap.appendChild(mmCarrier);
-    const mmHeli = document.createElement('div');
-    mmHeli.style.cssText = 'position:absolute;width:3px;height:3px;background:#fff;transform:translate(-50%,-50%);display:none;';
-    minimap.appendChild(mmHeli);
-    const mmPool: HTMLElement[] = [];
-    const getDot = (i: number) => {
-        if (!mmPool[i]) {
-            const dot = document.createElement('div');
-            dot.style.cssText = 'position:absolute;width:4px;height:4px;border-radius:50%;transform:translate(-50%,-50%);display:none;';
-            minimap.appendChild(dot);
-            mmPool.push(dot);
-        }
-        return mmPool[i];
-    };
-
     const showAll = (v: boolean) => {
-        const s = v ? 'block' : 'none';
-        panel.style.display = s;
-        minimap.style.display = s;
+        panel.style.display = v ? 'block' : 'none';
+        showMinimap(v);
     };
 
-    return { panel, alt, spd, winch, fuel, pax, obj, callsign, deliver, minimap, mmPad, mmCarrier, mmHeli, getDot, mmPool, showAll };
+    return { panel, alt, spd, winch, fuel, pax, obj, callsign, deliver, showAll };
 })();
 const isoFn = (wx: number, wy: number, wz: number, cx: number, cy: number) =>
     iso(wx, wy, wz, cx, cy, { canvas, tileW, tileH, stepH });
@@ -961,51 +940,14 @@ function drawScene() {
         _hud.deliver.style.display = G.deliverMode ? 'block' : 'none';
         setDeliverToggle(G.deliverMode);
 
-        // minimap
-        const isTouch = _isTouchDevice();
-        const mmSize = 130;
-        const mmPadPx = 20;
-        _hud.minimap.style.right  = isTouch ? 'max(16px, env(safe-area-inset-right))' : `${mmPadPx}px`;
-        _hud.minimap.style.top    = isTouch ? 'max(12px, env(safe-area-inset-top))' : '';
-        _hud.minimap.style.bottom = isTouch ? '' : `${mmPadPx}px`;
-
-        const sc = mmSize / gridSize;
-
-        if (hasPad()) {
-            const pw = (G.PAD.xMax - G.PAD.xMin) * sc;
-            const ph = (G.PAD.yMax - G.PAD.yMin) * sc;
-            _hud.mmPad.style.left    = `${G.PAD.xMin * sc}px`;
-            _hud.mmPad.style.top     = `${G.PAD.yMin * sc}px`;
-            _hud.mmPad.style.width   = `${pw}px`;
-            _hud.mmPad.style.height  = `${ph}px`;
-            _hud.mmPad.style.display = 'block';
-        } else {
-            _hud.mmPad.style.display = 'none';
-        }
-
-        if (hasCarrier()) {
-            _hud.mmCarrier.style.left    = `${G.CARRIER.x * sc}px`;
-            _hud.mmCarrier.style.top     = `${G.CARRIER.y * sc}px`;
-            _hud.mmCarrier.style.display = 'block';
-        } else {
-            _hud.mmCarrier.style.display = 'none';
-        }
-
-        _hud.mmHeli.style.left    = `${G.heli.x * sc}px`;
-        _hud.mmHeli.style.top     = `${G.heli.y * sc}px`;
-        _hud.mmHeli.style.display = 'block';
-
-        const activePays = G.payloads.filter((p: any) => !p.rescued && !p.npcTarget && !p.hanging);
-        activePays.forEach((p: any, i: number) => {
-            const dot = _hud.getDot(i);
-            dot.style.left       = `${p.x * sc}px`;
-            dot.style.top        = `${p.y * sc}px`;
-            dot.style.background = p.type === 'crate' ? '#d84' : '#f00';
-            dot.style.display    = 'block';
+        updateMinimap({
+            gridSize,
+            isTouch: _isTouchDevice(),
+            pad: hasPad() ? G.PAD : null,
+            carrier: hasCarrier() ? G.CARRIER : null,
+            heli: G.heli,
+            payloads: G.payloads,
         });
-        for (let i = activePays.length; i < _hud.mmPool.length; i++) {
-            _hud.mmPool[i].style.display = 'none';
-        }
     }
 
     if (!_IS_APP) mpTickAndHUD(ctx, canvas, dt);
@@ -2451,7 +2393,10 @@ const setTouchVisible = (v: boolean) => {
 const CTRL_MODE_KEY = 'zeewolf-ctrl-mode';
 const getControlMode = (): 'heading' | 'screen' =>
     storageGet(CTRL_MODE_KEY) === 'screen' ? 'screen' : 'heading';
-const setControlMode = (m: 'heading' | 'screen') => storageSet(CTRL_MODE_KEY, m);
+const setControlMode = (m: 'heading' | 'screen') => {
+    storageSet(CTRL_MODE_KEY, m);
+    setRightStickProfi(m === 'screen');
+};
 
 const _setupJoystick = (id: string, up: string, down: string, left: string, right: string, safeVertical = false) => {
     const el = document.getElementById(id);
@@ -2580,6 +2525,7 @@ const _setupHeadingJoystick = (id: string) => {
 const setupTouchControls = () => {
     if (!_isTouchDevice()) return;
     mountTouchControls();
+    setRightStickProfi(getControlMode() === 'screen');
     if (!_IS_APP) {
         document.getElementById('debug-toggle')?.addEventListener('click', () => {
             showCollisionBoxes = !showCollisionBoxes;
@@ -2788,6 +2734,7 @@ const _onloadPreview = !import.meta.env.DEV
           mountGameOverlays();
           mountGameScreens();
           mountBriefing();
+          mountMinimap();
           zinit();
           soundHandler.mute();
           setSfxEnabled(false);
@@ -2889,6 +2836,7 @@ const _onloadMain = () => {
         };
 
         mountGameOverlays();
+        mountMinimap();
         _mountScreens();
         zinit();
         const _getPref = (key: string, def: boolean) => {

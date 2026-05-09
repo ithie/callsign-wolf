@@ -110,32 +110,37 @@
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
+    background: transparent;
+    border: none;
+    box-shadow: none;
 }
 .toggle-housing {
-    width: 30px;
-    height: 68px;
-    border-radius: 6px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid rgba(255, 102, 0, 0.18);
-    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8);
+    width: 52px;
+    height: 96px;
+    border-radius: 10px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
     position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
-    perspective: 120px;
+    perspective: 200px;
     pointer-events: none;
-    transition: border-color 0.2s, box-shadow 0.2s;
+    transition: none;
 }
 .toggle-rocker {
-    width: 22px;
-    height: 58px;
-    border-radius: 4px;
+    width: 52px;
+    height: 96px;
+    border-radius: 10px;
     background: linear-gradient(180deg,
-        rgba(255, 102, 0, 0.18) 0%,
-        rgba(255, 102, 0, 0.08) 50%,
-        rgba(255, 102, 0, 0.04) 100%
+        rgba(255, 102, 0, 0.14) 0%,
+        rgba(0, 0, 0, 0.70) 25%,
+        rgba(0, 0, 0, 0.70) 75%,
+        rgba(255, 102, 0, 0.06) 100%
     );
-    border: 1px solid rgba(255, 102, 0, 0.3);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.9);
+    border: none;
     transform: rotateX(-22deg);
     transform-origin: center bottom;
     transition: transform 0.15s ease-out, background 0.2s, border-color 0.2s, box-shadow 0.2s;
@@ -151,8 +156,8 @@
 .toggle-rocker::before,
 .toggle-rocker::after {
     content: '';
-    width: 5px;
-    height: 5px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     transition: background 0.2s, box-shadow 0.2s;
 }
@@ -160,19 +165,18 @@
 .toggle-rocker::after  { background: rgba(255, 102, 0, 0.15); }
 
 #touch-deliver-toggle.on .toggle-housing {
-    border-color: rgba(255, 102, 0, 0.35);
-    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 102, 0, 0.1);
+    box-shadow: none;
 }
 #touch-deliver-toggle.on .toggle-rocker {
     transform: rotateX(22deg);
     transform-origin: center top;
     background: linear-gradient(180deg,
-        rgba(255, 102, 0, 0.08) 0%,
-        rgba(255, 102, 0, 0.22) 50%,
-        rgba(255, 102, 0, 0.45) 100%
+        rgba(255, 102, 0, 0.06) 0%,
+        rgba(0, 0, 0, 0.60) 25%,
+        rgba(255, 102, 0, 0.30) 75%,
+        rgba(255, 102, 0, 0.55) 100%
     );
-    border-color: rgba(255, 102, 0, 0.75);
-    box-shadow: 0 4px 16px rgba(255, 102, 0, 0.35), inset 0 0 8px rgba(255, 102, 0, 0.1);
+    box-shadow: 0 4px 20px rgba(255, 102, 0, 0.4), inset 0 2px 8px rgba(0, 0, 0, 0.9);
 }
 #touch-deliver-toggle.on .toggle-rocker::before { background: rgba(255, 102, 0, 0.15); }
 #touch-deliver-toggle.on .toggle-rocker::after  { background: #ff6600; box-shadow: 0 0 8px rgba(255, 102, 0, 1); }
@@ -255,6 +259,33 @@
     box-shadow:
         0 0 16px rgba(255, 102, 0, 0.3),
         inset 0 0 12px rgba(255, 102, 0, 0.08);
+}
+
+/* ─── PROFI safe-zone overlay (right stick, screen-relative mode) ─────────── */
+/* safe zone = |dx| < |dy|*0.4 → ±21.8° from top and bottom */
+.js-safe-zone {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: conic-gradient(
+        from 0deg at center,
+        rgba(255, 102, 0, 0.13)   0deg,
+        rgba(255, 102, 0, 0.13)  35deg,
+        transparent              35deg,
+        transparent             145deg,
+        rgba(255, 102, 0, 0.13) 145deg,
+        rgba(255, 102, 0, 0.13) 215deg,
+        transparent             215deg,
+        transparent             325deg,
+        rgba(255, 102, 0, 0.13) 325deg,
+        rgba(255, 102, 0, 0.13) 360deg
+    );
+}
+.joystick.profi .js-safe-zone {
+    opacity: 1;
 }
 
 /* ── Tutorial highlight (touch devices only) ─────────────────────────────── */
