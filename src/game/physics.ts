@@ -439,13 +439,13 @@ export function initPayloadsFromMission() {
                 const attachedBoat = G.BOATS.find((b: any) => b._objIdx === p.attachTo!.objectIdx);
                 if (attachedBoat) {
                     const wp = _applyVesselOffset(attachedBoat, lx, ly);
-                    px = wp.x; py = wp.y;
+                    px = wp.x; py = wp.y; pz = attachedBoat.zDeck;
                 }
             } else if (p.attachTo.objectType === 'submarine') {
                 const attachedSub = G.SUBMARINES.find((s: any) => s._objIdx === p.attachTo!.objectIdx);
                 if (attachedSub) {
                     const wp = _applyVesselOffset(attachedSub, lx, ly);
-                    px = wp.x; py = wp.y;
+                    px = wp.x; py = wp.y; pz = attachedSub.zDeck;
                 }
             } else if (p.attachTo.objectType === 'sailboat_broken') {
                 const sb = G.BROKEN_SAILBOATS.find((s: any) => s._objIdx === p.attachTo!.objectIdx);
@@ -1536,7 +1536,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
                 ctx.showMsg(I18N.ONBOARD(G.heli.onboard, G.heli.maxLoad));
             } else ctx.showMsg(I18N.CABIN_FULL);
         } else {
-            if (onPad && G.heli.z < 3.0) {
+            if ((onPad && G.heli.z < 3.0) || _inDropzone(p.x, p.y)) {
                 p.hanging = false;
                 p.rescued = true;
                 G.activePayload = null;

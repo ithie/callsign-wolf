@@ -1063,7 +1063,7 @@ function drawPayloadObjects(hangingOnly = false, ropeOnly = false) {
         if (!hangingOnly && payload.hanging) return;
         if (!payload.hanging && !isVisible(payload.x, payload.y)) return;
 
-        if (isNight && !payload.hanging) {
+        if (isNight && !payload.hanging && !payload.attachTo) {
             const dx = payload.x - G.heli.x,
                 dy = payload.y - G.heli.y;
             const alt = G.heli.z - getGround(G.heli.x, G.heli.y, G.points, G.CARRIER);
@@ -1708,6 +1708,22 @@ function drawDebugOverlay(camX: number, camY: number) {
         ctx.font = '9px monospace';
         ctx.fillText('PARK', parkP.x - 12, parkP.y + 14);
     }
+
+    // ── Rescue / dropoff zones ────────────────────────────────────
+    const zoneColor = (role: string) =>
+        role === 'pickup' ? 'rgba(0,255,80,0.55)' :
+        role === 'dropoff' ? 'rgba(255,140,0,0.55)' : 'rgba(255,255,0,0.55)';
+    const drawZones = (vessel: any) => {
+        for (const z of (vessel.rescueZones ?? [])) {
+            drawCollisionBox(vessel.x, vessel.y, vessel.angle ?? 0,
+                z.x - z.w, z.x + z.w, z.y - z.h, z.y + z.h,
+                vessel.zDeck ?? 0, (vessel.zDeck ?? 0) + 0.25, zoneColor(z.role));
+        }
+    };
+    if (hasCarrier()) drawZones(G.CARRIER);
+    G.BOATS.forEach(drawZones);
+    G.SUBMARINES.forEach(drawZones);
+    G.RESEARCH_PLATFORMS.forEach(drawZones);
 
     // ── Heli position label ───────────────────────────────────────
     const heliP = isoP(hx, hy, G.heli.z);

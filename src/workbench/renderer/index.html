@@ -2497,7 +2497,7 @@
           <label style="color:var(--text-dim)">Wind °</label>
           <input type="number" value="${cm.windDir}" min="0" max="359" style="width:52px" oninput="edDispatch('set-wind-dir',{value:this.value})">
           <label style="color:var(--text-dim)">Stärke</label>
-          <input type="number" value="${cm.windStr}" step="0.1" min="0" max="10" style="width:52px" oninput="edDispatch('set-wind-str',{value:this.value})">
+          <input type="number" value="${cm.windStr}" step="0.1" min="0" max="3.5" style="width:52px" oninput="edDispatch('set-wind-str',{value:this.value})">
         </div>
         <label style="margin-top:4px"><input type="checkbox" ${cm.windVar ? 'checked' : ''} onchange="edDispatch('set-wind-var',{value:this.checked})"> Dyn. Windvarianz</label>
         <div class="ed-row" style="margin-top:6px">
