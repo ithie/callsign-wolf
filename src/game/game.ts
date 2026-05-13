@@ -2,7 +2,12 @@ import './ui/base.css';
 import './ui/screens.css';
 import { showLoadingScreen } from './ui/loading-screen/loading-screen';
 import { ensureEl } from './ui/dom-helpers';
-import { mountTouchControls, setDeliverToggle, initPitchWheel, setRightStickProfi } from './ui/touch-controls/touch-controls';
+import {
+    mountTouchControls,
+    setDeliverToggle,
+    initPitchWheel,
+    setRightStickProfi,
+} from './ui/touch-controls/touch-controls';
 import { iso } from './render';
 import { campaignHandler, soundHandler, zinit, musicConfig } from './main';
 import {
@@ -72,13 +77,17 @@ import {
     mpGetMissionComplete,
     mpGetTriggerCrash,
 } from './mp-game';
+import { initHeliSelect, mountHeliSelect, showHeliSelect, animMainMenuBg } from './ui/heli-select/heli-select';
 import {
-    initHeliSelect,
-    mountHeliSelect,
-    showHeliSelect,
-    animMainMenuBg,
-} from './ui/heli-select/heli-select';
-import { I18N, I18N_DE, I18N_EN, LANG_PREF_KEY, LEGAL_DATENSCHUTZ_IMPRINT, localize, onLanguageChange, setLanguage } from './i18n';
+    I18N,
+    I18N_DE,
+    I18N_EN,
+    LANG_PREF_KEY,
+    LEGAL_DATENSCHUTZ_IMPRINT,
+    localize,
+    onLanguageChange,
+    setLanguage,
+} from './i18n';
 import { mountCookieBanner, notifyConsent } from './ui/cookie-banner/cookie-banner';
 import { mountBriefing, showBriefingOverlay, hideBriefing } from './ui/briefing/briefing';
 import { mountSettings, initSettings, toSettings } from './ui/settings/settings';
@@ -112,15 +121,25 @@ const _hud = (() => {
         document.body.appendChild(el);
         return el;
     };
-    const isTouch = () => ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.matchMedia('(pointer: coarse)').matches;
-    const touchShadow = () => isTouch() ? 'text-shadow:0 0 3px rgba(0,0,0,0.9),0 0 3px rgba(0,0,0,0.9);' : '';
-    const panel = d('hud-panel', `font:bold 13px monospace;color:#5f5;line-height:16px;white-space:nowrap;${touchShadow()}`);
-    const alt      = Object.assign(document.createElement('div'), { }); panel.appendChild(alt);
-    const spd      = document.createElement('div'); panel.appendChild(spd);
-    const winch    = document.createElement('div'); panel.appendChild(winch);
-    const fuel     = document.createElement('div'); panel.appendChild(fuel);
-    const pax      = document.createElement('div'); panel.appendChild(pax);
-    const obj      = document.createElement('div'); panel.appendChild(obj);
+    const isTouch = () =>
+        ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.matchMedia('(pointer: coarse)').matches;
+    const touchShadow = () => (isTouch() ? 'text-shadow:0 0 3px rgba(0,0,0,0.9),0 0 3px rgba(0,0,0,0.9);' : '');
+    const panel = d(
+        'hud-panel',
+        `font:bold 13px monospace;color:#5f5;line-height:16px;white-space:nowrap;${touchShadow()}`
+    );
+    const alt = Object.assign(document.createElement('div'), {});
+    panel.appendChild(alt);
+    const spd = document.createElement('div');
+    panel.appendChild(spd);
+    const winch = document.createElement('div');
+    panel.appendChild(winch);
+    const fuel = document.createElement('div');
+    panel.appendChild(fuel);
+    const pax = document.createElement('div');
+    panel.appendChild(pax);
+    const obj = document.createElement('div');
+    panel.appendChild(obj);
     const callsign = document.createElement('div');
     callsign.style.cssText = 'font-size:11px;color:#888;';
     panel.appendChild(callsign);
@@ -274,7 +293,6 @@ function triggerCrash(reason: string) {
         document.getElementById('campaign-failed-screen')!.style.display = 'flex';
     }, 1800); // Explosion erst austoben lassen
 }
-
 
 function missionComplete() {
     _showRainOverlay(false);
@@ -473,7 +491,10 @@ const _doSelectCampaign = (idx: number) => {
     _selectedMissionIndex = 0;
     campaignHandler.campaign.setActiveCampaign(idx);
 
-    if (type === 'tutorial') { selectMission(0); return; }
+    if (type === 'tutorial') {
+        selectMission(0);
+        return;
+    }
     _openMissionSelect(); // calls showScreen('mission-select')
 };
 
@@ -586,9 +607,10 @@ const launchMission = async (showLoader = true): Promise<void> => {
     _hud.showAll(true);
 
     if (isStartsOnCarrier()) {
-        const _cosA = Math.cos(G.CARRIER.angle), _sinA = Math.sin(G.CARRIER.angle);
-        G.heli.x = G.CARRIER.x + (-3.5) * _cosA;
-        G.heli.y = G.CARRIER.y + (-3.5) * _sinA;
+        const _cosA = Math.cos(G.CARRIER.angle),
+            _sinA = Math.sin(G.CARRIER.angle);
+        G.heli.x = G.CARRIER.x + -3.5 * _cosA;
+        G.heli.y = G.CARRIER.y + -3.5 * _sinA;
         G.heli.z = G.CARRIER.zDeck + 0.1;
         G.heli.vx = 0;
         G.heli.vy = 0;
@@ -620,7 +642,6 @@ const launchMission = async (showLoader = true): Promise<void> => {
         zstate.cam.x = (G.START_POS.x - G.START_POS.y) * (tileW / 2);
         zstate.cam.y = (G.START_POS.x + G.START_POS.y) * (tileH / 2);
     }
-
 
     _showRainOverlay(_missionRain, _lmd.windDir ?? 225, _lmd.windStr ?? 1);
     cancelAnimationFrame(_rafId);
@@ -756,14 +777,26 @@ function drawScene() {
     // Bäume als vorgerenderte Sprites — nur sichtbare Tiles via Spatial-Index
     {
         const _tr = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH)) + 2;
-        const xFrom = Math.floor(rx - _tr), xTo = Math.ceil(rx + _tr);
-        const yFrom = Math.floor(ry - _tr), yTo = Math.ceil(ry + _tr);
+        const xFrom = Math.floor(rx - _tr),
+            xTo = Math.ceil(rx + _tr);
+        const yFrom = Math.floor(ry - _tr),
+            yTo = Math.ceil(ry + _tr);
         for (let tx = xFrom; tx <= xTo; tx++) {
             for (let ty = yFrom; ty <= yTo; ty++) {
                 const bucket = _treeIndex.get(`${tx}_${ty}`);
                 if (!bucket) continue;
                 for (const t of bucket) {
-                    drawTree(t.x, t.y, camX, camY, t.s, t.gz, t.type || 'pine', G.wind, !_IS_APP && _partyMode && t.type !== 'dead');
+                    drawTree(
+                        t.x,
+                        t.y,
+                        camX,
+                        camY,
+                        t.s,
+                        t.gz,
+                        t.type || 'pine',
+                        G.wind,
+                        !_IS_APP && _partyMode && t.type !== 'dead'
+                    );
                 }
             }
         }
@@ -774,12 +807,10 @@ function drawScene() {
     drawBirds(camX, camY);
 
     // flapRate: vertical climb + horizontal speed (braking from speed → faster flapping)
-    const _flapRate = Math.max(0.5, Math.min(3.0,
-        1.0 + G.heli.vz * 20 + Math.hypot(G.heli.vx, G.heli.vy) * 8
-    ));
+    const _flapRate = Math.max(0.5, Math.min(3.0, 1.0 + G.heli.vz * 20 + Math.hypot(G.heli.vx, G.heli.vy) * 8));
 
     // shadow pass
-    if (!isNight && !zstate.crashed) {
+    if (!zstate.crashed) {
         drawHeli(
             G.heli.type,
             G.heli.x,
@@ -924,15 +955,15 @@ function drawScene() {
         const scale = window.innerWidth / canvas.width;
         const heliPos = iso(G.heli.x, G.heli.y, G.heli.z, camX, camY, { stepH, tileW, tileH, canvas });
         _hud.panel.style.left = `${heliPos.x * scale + 45}px`;
-        _hud.panel.style.top  = `${heliPos.y * scale - 35}px`;
+        _hud.panel.style.top = `${heliPos.y * scale - 35}px`;
 
-        _hud.alt.textContent   = `ALT: ${Math.round((G.heli.z - getGround(G.heli.x, G.heli.y)) * 10)}m`;
-        _hud.spd.textContent   = `SPD: ${Math.round(Math.hypot(G.heli.vx, G.heli.vy) * 1115)}km/h`;
+        _hud.alt.textContent = `ALT: ${Math.round((G.heli.z - getGround(G.heli.x, G.heli.y)) * 10)}m`;
+        _hud.spd.textContent = `SPD: ${Math.round(Math.hypot(G.heli.vx, G.heli.vy) * 1115)}km/h`;
         _hud.winch.textContent = `WINCH: ${Math.round(G.heli.winch * 10)}m`;
-        _hud.fuel.textContent  = `FUEL: ${Math.max(0, Math.round(G.heli.fuel))}%`;
-        _hud.fuel.style.color  = G.heli.fuel < 20 ? '#f00' : '#5f5';
-        _hud.pax.textContent   = `PAX: ${G.heli.onboard}/${G.heli.maxLoad}`;
-        _hud.pax.style.color   = G.heli.onboard >= G.heli.maxLoad ? '#f90' : '#5f5';
+        _hud.fuel.textContent = `FUEL: ${Math.max(0, Math.round(G.heli.fuel))}%`;
+        _hud.fuel.style.color = G.heli.fuel < 20 ? '#f00' : '#5f5';
+        _hud.pax.textContent = `PAX: ${G.heli.onboard}/${G.heli.maxLoad}`;
+        _hud.pax.style.color = G.heli.onboard >= G.heli.maxLoad ? '#f90' : '#5f5';
 
         _hud.obj.textContent = `SAVED: ${G.totalRescued}/${G.goalCount}`;
         _hud.callsign.textContent = _session.playerName || '';
@@ -1100,8 +1131,10 @@ function drawPayloadObjects(hangingOnly = false, ropeOnly = false) {
             ctx.fillRect(p.x - s / 2, p.y - s, s, s);
             ctx.strokeRect(p.x - s / 2, p.y - s, s, s);
         } else {
-            const inWater = !payload.hanging && G.waterLevel > 0
-                && getGround(payload.x, payload.y, G.points, G.CARRIER) < G.waterLevel;
+            const inWater =
+                !payload.hanging &&
+                G.waterLevel > 0 &&
+                getGround(payload.x, payload.y, G.points, G.CARRIER) < G.waterLevel;
             drawPerson(
                 payload.x,
                 payload.y,
@@ -1186,7 +1219,23 @@ function drawVectorCarrier(cx: number, cy: number) {
         y: car.y,
         z: deckZ,
         drawFn: (cx, cy) =>
-            drawTractor(car.x, car.y, 0, deckZ, cx, cy, 0, 0, car.angle + Math.PI, '#888888', '#dddddd', '#666666', '#aaaaaa', '#ffffff', '#eeeeee'),
+            drawTractor(
+                car.x,
+                car.y,
+                0,
+                deckZ,
+                cx,
+                cy,
+                0,
+                0,
+                car.angle + Math.PI,
+                '#888888',
+                '#dddddd',
+                '#666666',
+                '#aaaaaa',
+                '#ffffff',
+                '#eeeeee'
+            ),
     });
     const towerWX = objX + (ix + iw / 2) * cosA - (iy + il / 2) * sinA;
     const towerWY = objY + (ix + iw / 2) * sinA + (iy + il / 2) * cosA;
@@ -1421,7 +1470,6 @@ function initFoliageFromMission() {
         else _treeIndex.set(key, [t]);
     });
 }
-
 
 function drawLighthouse(cx: number, cy: number) {
     const _lhObj = getObjectByType('lighthouse');
@@ -1711,13 +1759,25 @@ function drawDebugOverlay(camX: number, camY: number) {
 
     // ── Rescue / dropoff zones ────────────────────────────────────
     const zoneColor = (role: string) =>
-        role === 'pickup' ? 'rgba(0,255,80,0.55)' :
-        role === 'dropoff' ? 'rgba(255,140,0,0.55)' : 'rgba(255,255,0,0.55)';
+        role === 'pickup'
+            ? 'rgba(0,255,80,0.55)'
+            : role === 'dropoff'
+            ? 'rgba(255,140,0,0.55)'
+            : 'rgba(255,255,0,0.55)';
     const drawZones = (vessel: any) => {
-        for (const z of (vessel.rescueZones ?? [])) {
-            drawCollisionBox(vessel.x, vessel.y, vessel.angle ?? 0,
-                z.x - z.w, z.x + z.w, z.y - z.h, z.y + z.h,
-                vessel.zDeck ?? 0, (vessel.zDeck ?? 0) + 0.25, zoneColor(z.role));
+        for (const z of vessel.rescueZones ?? []) {
+            drawCollisionBox(
+                vessel.x,
+                vessel.y,
+                vessel.angle ?? 0,
+                z.x - z.w,
+                z.x + z.w,
+                z.y - z.h,
+                z.y + z.h,
+                vessel.zDeck ?? 0,
+                (vessel.zDeck ?? 0) + 0.25,
+                zoneColor(z.role)
+            );
         }
     };
     if (hasCarrier()) drawZones(G.CARRIER);
@@ -1820,7 +1880,9 @@ function handleCollisionBoxes() {
         }
 
         // ── Tower ──────────────────────────────────────────────────────────────
-        const tmx = G.PAD.xMax - 0.5, tmy = G.PAD.yMin - 1, tZ = G.PAD.z;
+        const tmx = G.PAD.xMax - 0.5,
+            tmy = G.PAD.yMin - 1,
+            tZ = G.PAD.z;
         if (showCollisionBoxes) drawCollisionBox(tmx, tmy, 0, -0.5, 0.5, -0.5, 0.5, tZ, tZ + 5, 'rgba(255,200,0,0.9)');
         if (!zstate.crashed && G.heli.inAir) {
             if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, tmx, tmy, 0, -0.5, 0.5, -0.5, 0.5, tZ, tZ + 5)) {
@@ -1900,7 +1962,20 @@ function handleCollisionBoxes() {
             }
             if (!zstate.crashed) {
                 if (
-                    checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -1.1, 1.3, -0.45, 0.45, 0, 0.35) ||
+                    checkCollisionBox(
+                        G.heli.x,
+                        G.heli.y,
+                        G.heli.z,
+                        b.x,
+                        b.y,
+                        b.angle,
+                        -1.1,
+                        1.3,
+                        -0.45,
+                        0.45,
+                        0,
+                        0.35
+                    ) ||
                     checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -0.4, -0.2, -0.1, 0.1, 0.35, 3.2)
                 ) {
                     _physicsCtx.triggerCrash(I18N.CRASH_BOAT);
@@ -1940,7 +2015,20 @@ function handleCollisionBoxes() {
         if (!zstate.crashed) {
             if (
                 checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, rp.x, rp.y, 0, -0.4, 0.4, -0.4, 0.4, wl, wl + 6.0) ||
-                checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, rp.x, rp.y, 0, -1.5, 1.5, -1.5, 1.5, wl + 6.0, wl + 6.5) ||
+                checkCollisionBox(
+                    G.heli.x,
+                    G.heli.y,
+                    G.heli.z,
+                    rp.x,
+                    rp.y,
+                    0,
+                    -1.5,
+                    1.5,
+                    -1.5,
+                    1.5,
+                    wl + 6.0,
+                    wl + 6.5
+                ) ||
                 checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, rp.x, rp.y, 0, 0.8, 1.2, -0.2, 0.2, wl + 6.5, wl + 15.0)
             ) {
                 _physicsCtx.triggerCrash(I18N.CRASH_LIGHTHOUSE);
@@ -2147,12 +2235,12 @@ const _precomputeDayColors = (rain: boolean) => {
             _tileColors[x][y] = isPad
                 ? '#444'
                 : isService
-                  ? '#444'
-                  : h0 > wl
-                    ? `rgb(${c - 10},${c + 30},${c - 10})`
-                    : rain
-                      ? '#002244'
-                      : '#003d7a';
+                ? '#444'
+                : h0 > wl
+                ? `rgb(${c - 10},${c + 30},${c - 10})`
+                : rain
+                ? '#002244'
+                : '#003d7a';
         }
     }
 };
@@ -2187,8 +2275,10 @@ const _renderTerrainBatched = (
             const fill = getFill(x, y, h0);
             // Clamp corners to waterLevel so submerged tiles form a flat surface.
             const wl = G.waterLevel;
-            const rh0 = Math.max(h0, wl), rh1 = Math.max(h1, wl);
-            const rh2 = Math.max(h2, wl), rh3 = Math.max(h3, wl);
+            const rh0 = Math.max(h0, wl),
+                rh1 = Math.max(h1, wl);
+            const rh2 = Math.max(h2, wl),
+                rh3 = Math.max(h3, wl);
             // Inline iso — no object allocation
             const p0x = hw + (x - y) * htW - ccX;
             const p0y = hh + (x + y) * htH - rh0 * stepH - ccY;
@@ -2251,7 +2341,10 @@ const _drawTerrain = (camX: number, camY: number, _rx: number, _ry: number, isNi
             const inLight = Math.abs(diff) < coneWidth && dx * dx + dy * dy < range2;
             if (!inLight) return '#020205';
             if (isPad) return `rgb(${intensity - 30},${intensity - 30},${intensity - 30})`;
-            if (isService) return `rgb(${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)})`;
+            if (isService)
+                return `rgb(${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)},${Math.floor(
+                    intensity * 0.55
+                )})`;
             return h0 > G.waterLevel
                 ? `rgb(${intensity - 20},${intensity + 10},${intensity - 20})`
                 : `rgb(0,${Math.floor(intensity * 0.3)},${Math.floor(intensity * 0.6)})`;
@@ -2326,7 +2419,6 @@ const declineCookies = () => {
     notifyConsent();
 };
 
-
 window.onkeydown = e => {
     G.keys[e.code] = true;
     if ((document.activeElement as HTMLElement)?.tagName === 'INPUT') return;
@@ -2371,22 +2463,22 @@ const _resizeCanvas = () => {
     if (_IS_APP) {
         // App bundle only: phone 2.0×, tablet (≥768px short-side) 2.5× upscale — landscape-safe
         const scale = Math.min(screen.width, screen.height) >= 768 ? 2.5 : 3.0;
-        canvas.width  = Math.round(window.innerWidth  / scale);
+        canvas.width = Math.round(window.innerWidth / scale);
         canvas.height = Math.round(window.innerHeight / scale);
-        canvas.style.width  = window.innerWidth  + 'px';
+        canvas.style.width = window.innerWidth + 'px';
         canvas.style.height = window.innerHeight + 'px';
     } else {
         // Webapp only: mobile 1.6× upscale for performance, desktop 1×
         const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
         if (isMobile) {
-            canvas.width  = Math.round(window.innerWidth  / 0.8 / 2);
+            canvas.width = Math.round(window.innerWidth / 0.8 / 2);
             canvas.height = Math.round(window.innerHeight / 0.8 / 2);
-            canvas.style.width  = window.innerWidth  + 'px';
+            canvas.style.width = window.innerWidth + 'px';
             canvas.style.height = window.innerHeight + 'px';
         } else {
-            canvas.width  = Math.round(window.innerWidth  * gameRenderScale);
+            canvas.width = Math.round(window.innerWidth * gameRenderScale);
             canvas.height = Math.round(window.innerHeight * gameRenderScale);
-            canvas.style.width  = window.innerWidth  + 'px';
+            canvas.style.width = window.innerWidth + 'px';
             canvas.style.height = window.innerHeight + 'px';
         }
     }
@@ -2407,8 +2499,7 @@ const setTouchVisible = (v: boolean) => {
 };
 
 const CTRL_MODE_KEY = 'zeewolf-ctrl-mode';
-const getControlMode = (): 'heading' | 'screen' =>
-    storageGet(CTRL_MODE_KEY) === 'screen' ? 'screen' : 'heading';
+const getControlMode = (): 'heading' | 'screen' => (storageGet(CTRL_MODE_KEY) === 'screen' ? 'screen' : 'heading');
 const setControlMode = (m: 'heading' | 'screen') => {
     storageSet(CTRL_MODE_KEY, m);
     setRightStickProfi(m === 'screen');
@@ -2426,9 +2517,9 @@ const _setupJoystick = (id: string, up: string, down: string, left: string, righ
     const setKeys = (dx: number, dy: number) => {
         const dead = jr * 0.18;
         const inVertSector = safeVertical && Math.abs(dy) > dead && Math.abs(dx) < Math.abs(dy) * 0.4;
-        (G.keys as Record<string, boolean>)[up]    = dy < -dead;
-        (G.keys as Record<string, boolean>)[down]  = dy > dead;
-        (G.keys as Record<string, boolean>)[left]  = !inVertSector && dx < -dead;
+        (G.keys as Record<string, boolean>)[up] = dy < -dead;
+        (G.keys as Record<string, boolean>)[down] = dy > dead;
+        (G.keys as Record<string, boolean>)[left] = !inVertSector && dx < -dead;
         (G.keys as Record<string, boolean>)[right] = !inVertSector && dx > dead;
     };
     el.addEventListener('pointerdown', e => {
@@ -2665,7 +2756,10 @@ const mountGameScreens = () => {
             </div>
         </div>`;
     (warningEl.lastElementChild as HTMLElement).prepend(
-        createBackButton(() => { warningEl.style.display = 'none'; _pendingSwitchIndex = -1; })
+        createBackButton(() => {
+            warningEl.style.display = 'none';
+            _pendingSwitchIndex = -1;
+        })
     );
     document.getElementById('campaign-switch-confirm')!.addEventListener('click', () => {
         warningEl.style.display = 'none';
@@ -2776,8 +2870,10 @@ window.onload = () => {
 };
 
 const _onloadMain = () => {
-        if (!_IS_APP && new URLSearchParams(window.location.search).has('imprint')) {
-            document.head.insertAdjacentHTML('beforeend', `<style>
+    if (!_IS_APP && new URLSearchParams(window.location.search).has('imprint')) {
+        document.head.insertAdjacentHTML(
+            'beforeend',
+            `<style>
                 body{background:#050505;color:#5f5;font-family:monospace;margin:0;padding:24px max(24px,env(safe-area-inset-left,0px));overflow-x:hidden;position:static;height:auto;width:auto;}
                 h1{color:#ff6600;font-size:clamp(24px,5vw,42px);letter-spacing:6px;margin-bottom:4px;font-weight:bold;}
                 h2{color:#ff6600;font-size:11px;letter-spacing:4px;font-weight:bold;margin:28px 0 10px;border-bottom:1px solid #1a1a1a;padding-bottom:6px;}
@@ -2790,10 +2886,11 @@ const _onloadMain = () => {
                 .wrap{max-width:640px;margin:0 auto;padding-bottom:48px;}
                 .wrap[data-lang="en"] .sec-de{display:none;}
                 .wrap[data-lang="de"] .sec-en{display:none;}
-            </style>`);
-            const _rows = (lines: readonly string[]) => lines.map(l => l ? `<p>${l}</p>` : '<br>').join('');
-            const _initLang = navigator.language?.toLowerCase().startsWith('de') ? 'de' : 'en';
-            document.body.innerHTML = `<div class="wrap" id="imp" data-lang="${_initLang}">
+            </style>`
+        );
+        const _rows = (lines: readonly string[]) => lines.map(l => (l ? `<p>${l}</p>` : '<br>')).join('');
+        const _initLang = navigator.language?.toLowerCase().startsWith('de') ? 'de' : 'en';
+        document.body.innerHTML = `<div class="wrap" id="imp" data-lang="${_initLang}">
                 <h1>SAR: CALLSIGN WOLF</h1>
                 <div class="sub">${I18N_EN.LEGAL_TITLE} · ${I18N_DE.LEGAL_TITLE}</div>
                 <div class="lang-row">
@@ -2811,103 +2908,68 @@ const _onloadMain = () => {
                 <h2 class="sec-de">${I18N_DE.LEGAL_DATENSCHUTZ_HEADING}</h2>
                 <div class="block sec-de">${_rows(LEGAL_DATENSCHUTZ_IMPRINT.de)}</div>
             </div>`;
-            document.documentElement.style.overflowY = 'auto';
-            document.body.style.overflowY = 'auto';
-            const initBtn = document.querySelector<HTMLElement>(`.lang-btn.${_initLang}`);
-            if (initBtn) initBtn.classList.add('active');
-            return;
-        }
-        assertDom();
-        if (!_IS_APP) {
-            initMpGame({
-                cancelRaf: () => {
-                    cancelAnimationFrame(_rafId);
-                    _rafId = 0;
-                },
-                ctx,
-                getPlayerName: () => _session.playerName || 'WOLF',
-                setTouchVisible,
-                setSelectedCampaignIndex: (i: number) => {
-                    _selectedCampaignIndex = i;
-                },
-                launchMission,
-                showMsg,
-            });
-        }
-        const _mountScreens = () => {
-            mountCreditsScreen(toMainMenu);
-            mountLegalScreen(toMainMenu);
-            mountMainMenu({
-                onSplashClick: toMainMenu,
-                onStart: toCampaignSelect,
-                ...(!_IS_APP ? { onMultiplayer: toMpLobby } : {}),
-                onSettings: toSettings,
-                onCredits: toCredits,
-                onLegal: toLegalScreen,
-            });
-            mountBriefing();
-            mountSettings();
-            mountRankup();
-            mountGameScreens();
-        };
+        document.documentElement.style.overflowY = 'auto';
+        document.body.style.overflowY = 'auto';
+        const initBtn = document.querySelector<HTMLElement>(`.lang-btn.${_initLang}`);
+        if (initBtn) initBtn.classList.add('active');
+        return;
+    }
+    assertDom();
+    if (!_IS_APP) {
+        initMpGame({
+            cancelRaf: () => {
+                cancelAnimationFrame(_rafId);
+                _rafId = 0;
+            },
+            ctx,
+            getPlayerName: () => _session.playerName || 'WOLF',
+            setTouchVisible,
+            setSelectedCampaignIndex: (i: number) => {
+                _selectedCampaignIndex = i;
+            },
+            launchMission,
+            showMsg,
+        });
+    }
+    const _mountScreens = () => {
+        mountCreditsScreen(toMainMenu);
+        mountLegalScreen(toMainMenu);
+        mountMainMenu({
+            onSplashClick: toMainMenu,
+            onStart: toCampaignSelect,
+            ...(!_IS_APP ? { onMultiplayer: toMpLobby } : {}),
+            onSettings: toSettings,
+            onCredits: toCredits,
+            onLegal: toLegalScreen,
+        });
+        mountBriefing();
+        mountSettings();
+        mountRankup();
+        mountGameScreens();
+    };
 
-        mountGameOverlays();
-        mountMinimap();
-        _mountScreens();
-        zinit();
-        const _getPref = (key: string, def: boolean) => {
-            const v = storageGet(key);
-            return v === null ? def : v === '1';
-        };
-        const _setPref = (key: string, v: boolean) => storageSet(key, v ? '1' : '0');
+    mountGameOverlays();
+    mountMinimap();
+    _mountScreens();
+    zinit();
+    const _getPref = (key: string, def: boolean) => {
+        const v = storageGet(key);
+        return v === null ? def : v === '1';
+    };
+    const _setPref = (key: string, v: boolean) => storageSet(key, v ? '1' : '0');
 
-        // Apply saved preferences on startup
-        if (!_getPref('zw_music', true)) soundHandler.mute();
-        setSfxEnabled(_getPref('zw_sfx', true));
+    // Apply saved preferences on startup
+    if (!_getPref('zw_music', true)) soundHandler.mute();
+    setSfxEnabled(_getPref('zw_sfx', true));
 
-        // DEV mode: mute everything initially
-        if (import.meta.env.DEV) {
-            soundHandler.mute();
-            setSfxEnabled(false);
-        }
+    // DEV mode: mute everything initially
+    if (import.meta.env.DEV) {
+        soundHandler.mute();
+        setSfxEnabled(false);
+    }
 
-        if (_isTouchDevice()) {
-            mountPauseButton({
-                isMusicEnabled: () => !soundHandler.state.isMuted,
-                setMusicEnabled: (v: boolean) => {
-                    v ? soundHandler.unmute() : soundHandler.mute();
-                    _setPref('zw_music', v);
-                },
-                isSfxEnabled: () => isSfxEnabled(),
-                setSfxEnabled: (v: boolean) => {
-                    setSfxEnabled(v);
-                    _setPref('zw_sfx', v);
-                },
-                getControlMode,
-                setControlMode,
-                onPause: () => {
-                    cancelAnimationFrame(_rafId);
-                    _rafId = 0;
-                    stopHeliSound();
-                    soundHandler.stop();
-                },
-                onResume: () => {
-                    if (!soundHandler.state.isMuted)
-                        soundHandler.play(soundHandler.state.activeTheme, false, 0.4);
-                    initHeliSound(G.heli.type);
-                    _rafId = requestAnimationFrame(drawScene);
-                },
-                onAbort: () => returnToBase(),
-            });
-        }
-
-        initSettings({
-            getSession: () => _session,
-            saveSession,
-            getRankMissions: _getRankMissions,
-            getControlMode,
-            setControlMode,
-            isTouchDevice: _isTouchDevice,
+    if (_isTouchDevice()) {
+        mountPauseButton({
             isMusicEnabled: () => !soundHandler.state.isMuted,
             setMusicEnabled: (v: boolean) => {
                 v ? soundHandler.unmute() : soundHandler.mute();
@@ -2918,48 +2980,82 @@ const _onloadMain = () => {
                 setSfxEnabled(v);
                 _setPref('zw_sfx', v);
             },
-            onBack: animMainMenuBg,
+            getControlMode,
+            setControlMode,
+            onPause: () => {
+                cancelAnimationFrame(_rafId);
+                _rafId = 0;
+                stopHeliSound();
+                soundHandler.stop();
+            },
+            onResume: () => {
+                if (!soundHandler.state.isMuted) soundHandler.play(soundHandler.state.activeTheme, false, 0.4);
+                initHeliSound(G.heli.type);
+                _rafId = requestAnimationFrame(drawScene);
+            },
+            onAbort: () => returnToBase(),
         });
-        if (!_IS_APP) mountWhatsNew();
-        onLanguageChange(_mountScreens);
-        setupTouchControls();
-        startMenuParticles();
+    }
 
-        const _showSplash = () => {
-            showScreen('splash');
-        };
+    initSettings({
+        getSession: () => _session,
+        saveSession,
+        getRankMissions: _getRankMissions,
+        getControlMode,
+        setControlMode,
+        isTouchDevice: _isTouchDevice,
+        isMusicEnabled: () => !soundHandler.state.isMuted,
+        setMusicEnabled: (v: boolean) => {
+            v ? soundHandler.unmute() : soundHandler.mute();
+            _setPref('zw_music', v);
+        },
+        isSfxEnabled: () => isSfxEnabled(),
+        setSfxEnabled: (v: boolean) => {
+            setSfxEnabled(v);
+            _setPref('zw_sfx', v);
+        },
+        onBack: animMainMenuBg,
+    });
+    if (!_IS_APP) mountWhatsNew();
+    onLanguageChange(_mountScreens);
+    setupTouchControls();
+    startMenuParticles();
 
-        const _afterConsent = () => {
-            if (!_IS_APP) {
-                const shown = showWhatsNewIfNeeded(_session.lastSeenVersion, () => {
-                    _session.lastSeenVersion = I18N.WHATS_NEW_VERSION;
-                    saveSession(_session);
-                    _showSplash();
-                });
-                if (!shown) {
-                    _session.lastSeenVersion = I18N.WHATS_NEW_VERSION;
-                    saveSession(_session);
-                    _showSplash();
-                }
-            } else {
+    const _showSplash = () => {
+        showScreen('splash');
+    };
+
+    const _afterConsent = () => {
+        if (!_IS_APP) {
+            const shown = showWhatsNewIfNeeded(_session.lastSeenVersion, () => {
+                _session.lastSeenVersion = I18N.WHATS_NEW_VERSION;
+                saveSession(_session);
+                _showSplash();
+            });
+            if (!shown) {
+                _session.lastSeenVersion = I18N.WHATS_NEW_VERSION;
+                saveSession(_session);
                 _showSplash();
             }
-        };
-
-        // Show cookie banner if consent not yet given, expired, or privacy notice was updated
-        if (!_IS_APP && (_session.cookieConsent === null || isConsentExpired(_session) || isConsentOutdated(_session))) {
-            _session.cookieConsent = null;
-            _session.consentTimestamp = null;
-            _session.consentVersion = '';
-            mountCookieBanner(_afterConsent);
-            (document.getElementById('cookie-banner') as HTMLElement).style.display = 'flex';
         } else {
-            _afterConsent();
+            _showSplash();
         }
+    };
 
-        document.addEventListener('pointerdown', () => soundHandler.play(musicConfig.mainMenu || 'maintheme', true), {
-            once: true,
-        });
+    // Show cookie banner if consent not yet given, expired, or privacy notice was updated
+    if (!_IS_APP && (_session.cookieConsent === null || isConsentExpired(_session) || isConsentOutdated(_session))) {
+        _session.cookieConsent = null;
+        _session.consentTimestamp = null;
+        _session.consentVersion = '';
+        mountCookieBanner(_afterConsent);
+        (document.getElementById('cookie-banner') as HTMLElement).style.display = 'flex';
+    } else {
+        _afterConsent();
+    }
+
+    document.addEventListener('pointerdown', () => soundHandler.play(musicConfig.mainMenu || 'maintheme', true), {
+        once: true,
+    });
 };
 
 window.toCampaignSelect = toCampaignSelect;
