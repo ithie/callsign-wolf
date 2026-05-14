@@ -128,35 +128,40 @@ const _vesselPickupAllowed = (wx: number, wy: number, vessel: any): boolean => {
     return pickupZones.some((z: any) => _pointInVesselZone(wx, wy, vessel, z));
 };
 
-const _inDropzone = (wx: number, wy: number): boolean => {
-    if (G.CARRIER?.rescueZones?.length) {
+const _inDropzone = (wx: number, wy: number, deliverTo?: string): boolean => {
+    const wantCarrier = !deliverTo || deliverTo === 'carrier';
+    const wantBoat    = !deliverTo || deliverTo === 'boat';
+    const wantSub     = !deliverTo || deliverTo === 'submarine';
+    const wantAll     = !deliverTo;
+
+    if (wantCarrier && G.CARRIER?.rescueZones?.length) {
         for (const z of G.CARRIER.rescueZones) {
             if (z.role === 'pickup') continue;
             if (_pointInVesselZone(wx, wy, G.CARRIER, z)) return true;
         }
     }
-    for (const boat of G.BOATS) {
+    if (wantBoat) for (const boat of G.BOATS) {
         if (!boat.rescueZones?.length) continue;
         for (const z of boat.rescueZones) {
             if (z.role === 'pickup') continue;
             if (_pointInVesselZone(wx, wy, boat, z)) return true;
         }
     }
-    for (const sub of G.SUBMARINES) {
+    if (wantSub) for (const sub of G.SUBMARINES) {
         if (!sub.rescueZones?.length) continue;
         for (const z of sub.rescueZones) {
             if (z.role === 'pickup') continue;
             if (_pointInVesselZone(wx, wy, sub, z)) return true;
         }
     }
-    for (const rp of G.RESEARCH_PLATFORMS) {
+    if (wantAll) for (const rp of G.RESEARCH_PLATFORMS) {
         if (!rp.rescueZones?.length) continue;
         for (const z of rp.rescueZones) {
             if (z.role === 'pickup') continue;
             if (_pointInVesselZone(wx, wy, rp, z)) return true;
         }
     }
-    for (const wt of G.WIND_TURBINES) {
+    if (wantAll) for (const wt of G.WIND_TURBINES) {
         if (!wt.rescueZones?.length) continue;
         for (const z of wt.rescueZones) {
             if (z.role === 'pickup') continue;
@@ -1508,16 +1513,20 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
 
     // crate touchdown delivery
     if (G.activePayload?.type === 'crate' && onPad) {
-        const padSurfaceZ = onCarrierDeck ? G.CARRIER.zDeck : G.PAD.z;
-        const crateZ = G.heli.z - G.heli.winch;
-        if (crateZ <= padSurfaceZ + 0.4) {
-            const p = G.activePayload;
-            p.hanging = false;
-            p.rescued = true;
-            G.activePayload = null;
-            G.totalRescued++;
-            ctx.showMsg(I18N.DELIVERED);
-            if (G.totalRescued >= G.goalCount) ctx.missionComplete();
+        const p = G.activePayload;
+        const dt = (p as any).deliverTo as string | undefined;
+        const padTypeOk = !dt || (onCarrierDeck ? dt === 'carrier' : dt === 'pad');
+        if (padTypeOk) {
+            const padSurfaceZ = onCarrierDeck ? G.CARRIER.zDeck : G.PAD.z;
+            const crateZ = G.heli.z - G.heli.winch;
+            if (crateZ <= padSurfaceZ + 0.4) {
+                p.hanging = false;
+                p.rescued = true;
+                G.activePayload = null;
+                G.totalRescued++;
+                ctx.showMsg(I18N.DELIVERED);
+                if (G.totalRescued >= G.goalCount) ctx.missionComplete();
+            }
         }
     }
 
@@ -1551,7 +1560,11 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
                 ctx.showMsg(I18N.ONBOARD(G.heli.onboard, G.heli.maxLoad));
             } else ctx.showMsg(I18N.CABIN_FULL);
         } else {
-            if ((onPad && G.heli.z < 3.0) || _inDropzone(p.x, p.y)) {
+            const dt = (p as any).deliverTo as string | undefined;
+            const onCarrierOk = (!dt || dt === 'carrier') && onCarrierDeck && G.heli.z < 3.0;
+            const onPadOk     = (!dt || dt === 'pad')     && onPadSurface  && G.heli.z < 3.0;
+            const inZone = _inDropzone(p.x, p.y, dt) || _inDropzone(G.heli.x, G.heli.y, dt);
+            if (onCarrierOk || onPadOk || inZone) {
                 p.hanging = false;
                 p.rescued = true;
                 G.activePayload = null;

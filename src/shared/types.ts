@@ -65,6 +65,8 @@ export type MissionPayload = {
     y: number;
     attachTo?: { objectType: 'carrier' | 'boat' | 'submarine' | 'sailboat_broken'; objectIdx: number; localX?: number; localY?: number };
     npcTarget?: boolean;
+    /** Crates only: restrict delivery to this vessel type. Omit = any dropzone. */
+    deliverTo?: 'pad' | 'carrier' | 'submarine';
 };
 
 export interface Mission {

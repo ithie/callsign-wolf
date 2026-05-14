@@ -299,7 +299,8 @@
             "objectIdx": 0,
             "localX": 5,
             "localY": -1.5
-          }
+          },
+          "deliverTo": "submarine"
         },
         {
           "type": "crate",
@@ -310,7 +311,8 @@
             "objectIdx": 0,
             "localX": 5,
             "localY": 0
-          }
+          },
+          "deliverTo": "submarine"
         },
         {
           "type": "crate",
@@ -321,7 +323,8 @@
             "objectIdx": 0,
             "localX": 5,
             "localY": 1.5
-          }
+          },
+          "deliverTo": "submarine"
         }
       ],
       "foliage": "",

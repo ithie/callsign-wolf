@@ -59,11 +59,38 @@ export const renderPayloadList = () => {
         npcCb.onchange = () => { pa.npcTarget = npcCb.checked; drawMap(); };
         npcLabel.append(npcCb, 'NPC');
 
+        // deliverTo — only for crates
+        let deliverToEl: HTMLElement | null = null;
+        if (p.type === 'crate') {
+            const hasPad      = m.objects.some((o: any) => o.type === 'pad');
+            const hasCarrier  = m.objects.some((o: any) => o.type === 'carrier');
+            const hasSub      = m.objects.some((o: any) => o.type === 'submarine');
+
+            const sel = document.createElement('select');
+            sel.style.cssText = 'background:#222;color:#fa8;border:1px solid #555;font-size:10px;padding:1px 3px;cursor:pointer';
+            const opts: Array<[string, string]> = [['', 'Ziel: –']];
+            if (hasPad)     opts.push(['pad',       'Ziel: Pad']);
+            if (hasCarrier) opts.push(['carrier',   'Ziel: Carrier']);
+            if (hasSub)     opts.push(['submarine', 'Ziel: U-Boot']);
+            opts.forEach(([val, lbl]) => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.text  = lbl;
+                if ((pa.deliverTo ?? '') === val) opt.selected = true;
+                sel.appendChild(opt);
+            });
+            sel.onchange = () => {
+                pa.deliverTo = sel.value || undefined;
+                notifyWorkbench();
+            };
+            deliverToEl = sel;
+        }
+
         const btnDel = document.createElement('button');
         btnDel.innerText = 'X';
         btnDel.style.cssText = 'background:#822;color:#fff;border:none;padding:2px 6px;cursor:pointer;font-size:10px';
         btnDel.onclick = () => { m.payloads.splice(i, 1); renderPayloadList(); drawMap(); };
-        row.append(label, npcLabel, btnDel);
+        row.append(label, npcLabel, ...(deliverToEl ? [deliverToEl] : []), btnDel);
         wrap.appendChild(row);
 
         // localX / localY — only when attached to a vessel
