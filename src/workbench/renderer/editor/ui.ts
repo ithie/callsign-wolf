@@ -41,13 +41,14 @@ export const renderPayloadList = () => {
 
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px';
-        const icon = p.type === 'person' ? '🟡' : '🟠';
+        const icon = p.type === 'person' ? '🟡' : p.type === 'rescuer' ? '🔵' : '🟠';
+        const typeName = p.type === 'person' ? 'Person' : p.type === 'rescuer' ? 'Retter' : 'Crate';
         const label = document.createElement('span');
         label.style.flex = '1';
         const attach = pa.attachTo
             ? ` → ${pa.attachTo.objectType} #${pa.attachTo.objectIdx + 1}`
             : '';
-        label.innerText = `${i + 1}. ${icon} ${p.type === 'person' ? 'Person' : 'Crate'} @ (${p.x}, ${p.y})${attach}`;
+        label.innerText = `${i + 1}. ${icon} ${typeName} @ (${p.x}, ${p.y})${attach}`;
 
         // NPC-Target Checkbox
         const npcLabel = document.createElement('label');
@@ -315,7 +316,7 @@ const smoothCoast = (m: Mission, cx: number, cy: number, radius: number) => {
 };
 
 const SNAP_RADIUS = 8;
-const makePayload = (type: 'person' | 'crate', gx: number, gy: number, m: Mission) => {
+const makePayload = (type: 'person' | 'crate' | 'rescuer', gx: number, gy: number, m: Mission) => {
     let nearestIdx = -1,
         nearestDist = SNAP_RADIUS;
     for (let i = 0; i < m.objects.length; i++) {
@@ -334,7 +335,7 @@ const makePayload = (type: 'person' | 'crate', gx: number, gy: number, m: Missio
     return { type, x: gx, y: gy };
 };
 
-const removeNearestPayload = (m: Mission, gx: number, gy: number, type: 'person' | 'crate') => {
+const removeNearestPayload = (m: Mission, gx: number, gy: number, type: 'person' | 'crate' | 'rescuer') => {
     if (!m.payloads) return;
     let nearestIdx = -1,
         nearestDist = 3;
@@ -537,11 +538,12 @@ const paint = (e: MouseEvent) => {
         } else {
             m.objects.push({ type: 'sailboat_broken' as any, x: gx, y: gy, angle: 0 });
         }
-    } else if (state.currentTool === 'person') {
-        if (e.shiftKey) removeNearestPayload(m, gx, gy, 'person');
+    } else if (state.currentTool === 'person' || state.currentTool === 'rescuer') {
+        const t = state.currentTool as 'person' | 'rescuer';
+        if (e.shiftKey) removeNearestPayload(m, gx, gy, t);
         else {
             if (!m.payloads) m.payloads = [];
-            m.payloads.push(makePayload('person', gx, gy, m));
+            m.payloads.push(makePayload(t, gx, gy, m));
         }
         renderPayloadList();
     } else if (state.currentTool === 'crate') {
@@ -755,7 +757,7 @@ export const initUI = () => {
     document.body.appendChild(cursorEl);
     const cursorCtx = cursorEl.getContext('2d')!;
     const PAINT_TOOLS = new Set(['terrain', 'flatten', 'foliage']);
-    const POINT_TOOLS = new Set(['pad', 'carrier', 'boat', 'pilot_boat', 'salvage_tug', 'submarine', 'lighthouse', 'research_platform', 'wind_turbine', 'plane_wreck', 'sailboat_broken', 'person', 'crate']);
+    const POINT_TOOLS = new Set(['pad', 'carrier', 'boat', 'pilot_boat', 'salvage_tug', 'submarine', 'lighthouse', 'research_platform', 'wind_turbine', 'plane_wreck', 'sailboat_broken', 'person', 'rescuer', 'crate']);
     const dotColors: Record<string, string> = {
         pad: '#5f5',
         carrier: '#88aaff',
@@ -911,7 +913,7 @@ export const initUI = () => {
         // Click on existing object?
         if (!e.shiftKey) {
             // Erst Payloads prüfen (kleiner, leichter zu verfehlen)
-            if (state.currentTool === 'person' || state.currentTool === 'crate' || state.currentTool === 'move') {
+            if (state.currentTool === 'person' || state.currentTool === 'rescuer' || state.currentTool === 'crate' || state.currentTool === 'move') {
                 const payloads = m.payloads || [];
                 for (let i = 0; i < payloads.length; i++) {
                     if (Math.hypot(gx - payloads[i].x, gy - payloads[i].y) < 2) {
@@ -967,6 +969,7 @@ export const initUI = () => {
         } else if (state.isDrawing) {
             if (
                 state.currentTool !== 'person' &&
+                state.currentTool !== 'rescuer' &&
                 state.currentTool !== 'crate' &&
                 state.currentTool !== 'boat' &&
                 state.currentTool !== 'pilot_boat' &&

@@ -384,6 +384,20 @@ export const drawMap = () => {
             ctx.beginPath();
             ctx.arc(px, py, r * 0.45, 0, Math.PI * 2);
             ctx.stroke();
+        } else if (p.type === 'rescuer') {
+            ctx.fillStyle = isAttached ? '#88ddff' : '#ff6600';
+            ctx.beginPath();
+            ctx.arc(px, py, r * 0.45, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(px, py - r * 0.65, r * 0.28, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#cc3300';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(px, py, r * 0.45, 0, Math.PI * 2);
+            ctx.stroke();
         } else if (p.type === 'crate') {
             const s = r * 0.85;
             ctx.fillStyle = isAttached ? '#44ccff' : '#ff8800';

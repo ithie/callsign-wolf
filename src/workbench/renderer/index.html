@@ -2326,6 +2326,7 @@
                 { v: 'plane_wreck', l: '✈️ Wrack' },
                 { v: 'sailboat_broken', l: '⛵ Geknickter Mast' },
                 { v: 'person', l: '🟡 Person' },
+                { v: 'rescuer', l: '🔵 Retter' },
                 { v: 'crate', l: '🟠 Crate' },
                 { v: 'foliage', l: '🌲 Bäume' },
             ];
@@ -2556,7 +2557,7 @@
                       .map(
                           p => `
           <div class="ed-list-row">
-            <span>${p.type === 'person' ? '🟡' : '🟠'} ${p.type} @ (${p.x}, ${p.y})</span>
+            <span>${p.type === 'person' ? '🟡' : p.type === 'rescuer' ? '🔵' : '🟠'} ${p.type} @ (${p.x}, ${p.y})</span>
             <label style="font-size:10px;color:#8af;white-space:nowrap">
               <input type="checkbox" ${p.npcTarget ? 'checked' : ''} onchange="edDispatch('set-payload-npc',{idx:${p.idx},value:this.checked})"> NPC
             </label>

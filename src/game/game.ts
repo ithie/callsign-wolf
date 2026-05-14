@@ -905,7 +905,7 @@ function drawScene() {
         if (G.heli.winch > 0.3) {
             const rs = G.rescuerSwing;
             const winchTipZ = G.activePayload
-                ? G.activePayload.z + (G.activePayload.type === 'person' ? 0.35 : 0)
+                ? G.activePayload.z + (G.activePayload.type === 'person' || G.activePayload.type === 'rescuer' ? 0.35 : 0)
                 : Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
             drawPerson(
                 rs.x,
@@ -1115,7 +1115,7 @@ function drawPayloadObjects(hangingOnly = false, ropeOnly = false) {
             ctx.lineWidth = 1.5;
             ctx.beginPath();
             ctx.moveTo(hPos.x, hPos.y);
-            ctx.lineTo(pp.x, pp.y - (payload.type === 'person' ? 5 : 0));
+            ctx.lineTo(pp.x, pp.y - (payload.type === 'person' || payload.type === 'rescuer' ? 5 : 0));
             ctx.stroke();
             return;
         }
@@ -1144,7 +1144,7 @@ function drawPayloadObjects(hangingOnly = false, ropeOnly = false) {
                 !payload.hanging,
                 cam.x,
                 cam.y,
-                undefined,
+                payload.type === 'rescuer' ? 'rescuer' : undefined,
                 payload.outfitColors,
                 inWater
             );

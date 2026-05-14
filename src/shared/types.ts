@@ -60,7 +60,7 @@ export type Objective =
     | { type: 'land_at'; target: 'pad' | 'carrier' | 'boat' };
 
 export type MissionPayload = {
-    type: 'person' | 'crate';
+    type: 'person' | 'crate' | 'rescuer';
     x: number;
     y: number;
     attachTo?: { objectType: 'carrier' | 'boat' | 'submarine' | 'sailboat_broken'; objectIdx: number; localX?: number; localY?: number };

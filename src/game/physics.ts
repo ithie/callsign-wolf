@@ -1253,8 +1253,9 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     if (G.activePayload) {
         let p = G.activePayload;
         let hookZ = G.heli.z - G.heli.winch;
-        const damping = p.type === 'person' ? 0.88 : 0.95;
-        const tension = p.type === 'person' ? 0.018 : 0.005;
+        const isPersonLike = p.type === 'person' || p.type === 'rescuer';
+        const damping = isPersonLike ? 0.88 : 0.95;
+        const tension = isPersonLike ? 0.018 : 0.005;
         let ax = (G.heli.x - p.x) * tension + G.wind.x * 2.0;
         let ay = (G.heli.y - p.y) * tension + G.wind.y * 2.0;
         p.vx += ax * dt;
@@ -1526,7 +1527,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
                 G.heli.winch = 0.6;
             }
             if (G.heli.onboard === 0) G.deliverMode = false;
-        } else if (p.type === 'person') {
+        } else if (p.type === 'person' || p.type === 'rescuer') {
             if (G.heli.onboard < G.heli.maxLoad) {
                 p.hanging = false;
                 p.rescued = true;
