@@ -4,6 +4,7 @@ const MM_SIZE = 130;
 const MM_PAD_PX = 20;
 
 let _el: HTMLElement | null = null;
+let _canvas: HTMLCanvasElement | null = null;
 let _pad: HTMLElement;
 let _carrier: HTMLElement;
 let _heli: HTMLElement;
@@ -24,6 +25,12 @@ export const mountMinimap = (): void => {
     _el = document.createElement('div');
     _el.id = 'minimap-dom';
 
+    _canvas = document.createElement('canvas');
+    _canvas.width = MM_SIZE;
+    _canvas.height = MM_SIZE;
+    _canvas.style.cssText = 'position:absolute;top:0;left:0;';
+    _el.appendChild(_canvas);
+
     _pad = document.createElement('div');
     _pad.id = 'minimap-pad';
     _el.appendChild(_pad);
@@ -37,6 +44,33 @@ export const mountMinimap = (): void => {
     _el.appendChild(_heli);
 
     document.body.appendChild(_el);
+};
+
+export const initMinimapTerrain = (points: number[][], gridSize: number, waterLevel: number): void => {
+    if (!_canvas) return;
+    const ctx = _canvas.getContext('2d')!;
+    ctx.clearRect(0, 0, MM_SIZE, MM_SIZE);
+    const ts = MM_SIZE / gridSize;
+
+    const isLand = (x: number, y: number): boolean => {
+        if (x < 0 || y < 0 || x >= gridSize || y >= gridSize) return false;
+        return (points[x][y] + points[x + 1][y] + points[x][y + 1] + points[x + 1][y + 1]) / 4 > waterLevel;
+    };
+
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(60, 200, 80, 0.75)';
+    ctx.lineWidth = 1;
+    for (let x = 0; x < gridSize; x++) {
+        for (let y = 0; y < gridSize; y++) {
+            if (!isLand(x, y)) continue;
+            const px = x * ts, py = y * ts;
+            if (y > 0            && !isLand(x, y - 1)) { ctx.moveTo(px, py);      ctx.lineTo(px + ts, py);      }
+            if (y < gridSize - 1 && !isLand(x, y + 1)) { ctx.moveTo(px, py + ts); ctx.lineTo(px + ts, py + ts); }
+            if (x > 0            && !isLand(x - 1, y)) { ctx.moveTo(px, py);      ctx.lineTo(px, py + ts);      }
+            if (x < gridSize - 1 && !isLand(x + 1, y)) { ctx.moveTo(px + ts, py); ctx.lineTo(px + ts, py + ts); }
+        }
+    }
+    ctx.stroke();
 };
 
 export const showMinimap = (v: boolean): void => {

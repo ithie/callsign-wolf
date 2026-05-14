@@ -98,7 +98,7 @@ import { mountMainMenu } from './ui/main-menu/main-menu';
 import { mountMissionSelect, showMissionSelect } from './ui/mission-select/mission-select';
 import { mountCampaignSelect, showCampaignSelect } from './ui/campaign-select/campaign-select';
 import { showScreen } from './ui/nav';
-import { mountMinimap, showMinimap, updateMinimap } from './ui/minimap/minimap';
+import { mountMinimap, showMinimap, updateMinimap, initMinimapTerrain } from './ui/minimap/minimap';
 import { initTutorial, tutorialTick, destroyTutorial, isTutorialRunning } from './ui/tutorial/tutorial';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
@@ -571,6 +571,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
 
     // Step 1 — terrain
     generateTerrain(G.points, _missionHasPad ? { ...G.PAD, yMin: G.PAD.yMin - 3 } : null);
+    initMinimapTerrain(G.points, _missionGridSize, G.waterLevel);
     _precomputeDayColors(_missionRain);
     handle?.step('Gelände…', 0.25);
     if (handle) await _tick();
@@ -2462,7 +2463,8 @@ document.addEventListener('gesturestart', e => e.preventDefault(), { passive: fa
 const _resizeCanvas = () => {
     if (_IS_APP) {
         // App bundle only: phone 2.0×, tablet (≥768px short-side) 2.5× upscale — landscape-safe
-        const scale = Math.min(screen.width, screen.height) >= 768 ? 2.5 : 3.0;
+        //const scale = Math.min(screen.width, screen.height) >= 768 ? 2.5 : 2.8;
+        const scale = 2;
         canvas.width = Math.round(window.innerWidth / scale);
         canvas.height = Math.round(window.innerHeight / scale);
         canvas.style.width = window.innerWidth + 'px';
@@ -2554,16 +2556,12 @@ const _setupJoystick = (id: string, up: string, down: string, left: string, righ
     el.addEventListener('pointercancel', release);
 };
 
-const _setupHeadingJoystick = (id: string) => {
-    const el = document.getElementById(id);
+const _setupRightJoystick = () => {
+    const el = document.getElementById('joystick-right');
     if (!el) return;
     const knob = el.querySelector('.joystick-knob') as HTMLElement;
-    let active = false,
-        cx = 0,
-        cy = 0,
-        jr = 0;
-    let _stickDx = 0,
-        _stickDy = 0;
+    let active = false, cx = 0, cy = 0, jr = 0;
+    let _stickDx = 0, _stickDy = 0;
 
     el.addEventListener('pointerdown', e => {
         e.preventDefault();
@@ -2573,23 +2571,29 @@ const _setupHeadingJoystick = (id: string) => {
         cy = r.top + r.height / 2;
         jr = r.width / 2;
         active = true;
+        _stickDx = 0; _stickDy = 0;
         knob.style.transition = 'none';
     });
     el.addEventListener('pointermove', e => {
         if (!active) return;
-        const dx = e.clientX - cx,
-            dy = e.clientY - cy;
+        const dx = e.clientX - cx, dy = e.clientY - cy;
         const dist = Math.hypot(dx, dy) || 1;
         const clamped = Math.min(dist, jr * 0.55) / dist;
         knob.style.transform = `translate(calc(-50% + ${dx * clamped}px), calc(-50% + ${dy * clamped}px))`;
-        _stickDx = dx;
-        _stickDy = dy;
+        _stickDx = dx; _stickDy = dy;
+        if (getControlMode() === 'screen') {
+            const dead = jr * 0.18;
+            const inVertSector = Math.abs(dy) > dead && Math.abs(dx) < Math.abs(dy) * 0.4;
+            (G.keys as Record<string, boolean>)['ArrowUp'] = dy < -dead;
+            (G.keys as Record<string, boolean>)['ArrowDown'] = dy > dead;
+            (G.keys as Record<string, boolean>)['ArrowLeft'] = !inVertSector && dx < -dead;
+            (G.keys as Record<string, boolean>)['ArrowRight'] = !inVertSector && dx > dead;
+        }
     });
     const release = () => {
         if (!active) return;
         active = false;
-        _stickDx = 0;
-        _stickDy = 0;
+        _stickDx = 0; _stickDy = 0;
         knob.style.transition = 'transform 0.12s ease-out';
         knob.style.transform = 'translate(-50%, -50%)';
         (G.keys as Record<string, boolean>)['ArrowUp'] = false;
@@ -2600,25 +2604,19 @@ const _setupHeadingJoystick = (id: string) => {
     el.addEventListener('pointerup', release);
     el.addEventListener('pointercancel', release);
 
-    // Run each frame — reads current heli angle and maps stick to heading keys
+    // Heading mode: run each frame, maps stick direction relative to heli heading
     const tick = () => {
-        if (active && zstate.gameStarted && Math.hypot(_stickDx, _stickDy) > jr * 0.18) {
+        if (active && getControlMode() === 'heading' && zstate.gameStarted && Math.hypot(_stickDx, _stickDy) > jr * 0.18) {
             const targetAngle = Math.atan2(_stickDy, _stickDx);
             let diff = targetAngle - G.heli.angle;
-            // Normalise to [-π, π]
             while (diff > Math.PI) diff -= Math.PI * 2;
             while (diff < -Math.PI) diff += Math.PI * 2;
-
             const turnDead = 0.15;
             (G.keys as Record<string, boolean>)['ArrowLeft'] = diff < -turnDead;
             (G.keys as Record<string, boolean>)['ArrowRight'] = diff > turnDead;
-
-            // Dot product of stick direction vs current heli forward
             const stickLen = Math.hypot(_stickDx, _stickDy);
-            const normSx = _stickDx / stickLen,
-                normSy = _stickDy / stickLen;
-            const fwdX = Math.cos(G.heli.angle),
-                fwdY = Math.sin(G.heli.angle);
+            const normSx = _stickDx / stickLen, normSy = _stickDy / stickLen;
+            const fwdX = Math.cos(G.heli.angle), fwdY = Math.sin(G.heli.angle);
             const dot = normSx * fwdX + normSy * fwdY;
             const accelDead = 0.3;
             (G.keys as Record<string, boolean>)['ArrowUp'] = dot > accelDead;
@@ -2662,11 +2660,7 @@ const setupTouchControls = () => {
     });
     // joysticks
     _setupJoystick('joystick-left', 'KeyW', 'KeyS', 'KeyA', 'KeyD');
-    if (getControlMode() === 'screen') {
-        _setupJoystick('joystick-right', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', true);
-    } else {
-        _setupHeadingJoystick('joystick-right');
-    }
+    _setupRightJoystick();
 };
 
 const _ensureEl = ensureEl;
