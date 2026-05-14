@@ -65,7 +65,7 @@ export function getGround(fx: number, fy: number, points = G.points, CARRIER = G
         const cosA = Math.cos(-s.angle), sinA = Math.sin(-s.angle);
         const lx = dx * cosA - dy * sinA;
         const ly = dx * sinA + dy * cosA;
-        if (Math.abs(lx) <= s.w && Math.abs(ly) <= s.l) return s.zDeck;
+        if (Math.abs(lx) <= s.l && Math.abs(ly) <= s.w) return s.zDeck;
     }
     const { gridSize } = campaignHandler.getTerrain();
     let x1 = Math.floor(fx),
@@ -294,6 +294,10 @@ export function initSubmarinesFromMission() {
             set t(v) { s._seaTime = v; },
         };
         initVessel(obj, s, st);
+        // initVessel overwrites w/l/zDeck with generic boat values — restore submarine-specific ones
+        s.w = 0.7;
+        s.l = 5.4;
+        s.zDeck = 0.25;
         return s;
     });
 }
