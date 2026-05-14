@@ -85,6 +85,15 @@ export function getGround(fx: number, fy: number, points = G.points, CARRIER = G
     return 0;
 }
 
+const _isFlatTerrain = (x: number, y: number): boolean => {
+    const xi = Math.floor(x), yi = Math.floor(y);
+    const p = G.points;
+    if (!p[xi] || !p[xi + 1]) return false;
+    const h0 = p[xi][yi] ?? 0, h1 = p[xi + 1][yi] ?? 0;
+    const h2 = p[xi][yi + 1] ?? 0, h3 = p[xi + 1][yi + 1] ?? 0;
+    return Math.max(h0, h1, h2, h3) - Math.min(h0, h1, h2, h3) < 0.15;
+};
+
 function getCarrierLocal(globX: number, globY: number, CARRIER = G.CARRIER) {
     let dx = globX - CARRIER.x,
         dy = globY - CARRIER.y;
@@ -1208,7 +1217,8 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
         onPad && ctx.hasPad && G.PAD ? G.PAD.z : onPad && ctx.hasCarrier ? G.CARRIER.zDeck : groundH;
 
     // engine
-    if (G.keys['KeyW'] && !G.heli.engineOn && G.heli.fuel > 0 && onPad) G.heli.engineOn = true;
+    const onFlatTerrain = !G.heli.inAir && groundH > G.waterLevel + 0.1 && _isFlatTerrain(G.heli.x, G.heli.y);
+    if (G.keys['KeyW'] && !G.heli.engineOn && G.heli.fuel > 0 && (onPad || onFlatTerrain)) G.heli.engineOn = true;
     if (G.keys['KeyS'] && !G.heli.inAir && G.heli.engineOn) {
         G.heli.engineOn = false;
         const landObj = G.objectives.find((o: any) => o.type === 'land_at');
@@ -1560,7 +1570,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     if (!onPad && G.heli.z < G.waterLevel + 0.1 && getGround(G.heli.x, G.heli.y, G.points, G.CARRIER) < G.waterLevel - 0.2)
         ctx.triggerCrash(I18N.CRASH_WATER);
     if (G.heli.z < groundH + 0.25) {
-        if (!onPad && groundH > G.waterLevel + 0.1) ctx.triggerCrash(I18N.CRASH_BAD_ZONE);
+        if (!onPad && !onFlatTerrain && groundH > G.waterLevel + 0.1) ctx.triggerCrash(I18N.CRASH_BAD_ZONE);
         else if (Math.hypot(G.heli.vx, G.heli.vy) > 0.12) ctx.triggerCrash(I18N.CRASH_TOO_FAST);
         else if (G.heli.vz < -0.15) ctx.triggerCrash(I18N.CRASH_HARD_IMPACT);
     }

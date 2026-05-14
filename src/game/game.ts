@@ -935,6 +935,7 @@ function drawScene() {
             {
                 shadowGetGround: (x, y) => getGround(x, y),
                 flapRate: _flapRate,
+                tailRotorRate: 1.0 + Math.abs(G.heli.roll) * 4,
                 ...(!_IS_APP && _partyMode ? { fillColor: _partyColors[0], strokeColor: _partyColors[1] } : {}),
             }
         );
@@ -963,6 +964,15 @@ function drawScene() {
         _hud.winch.textContent = `WINCH: ${Math.round(G.heli.winch * 10)}m`;
         _hud.fuel.textContent = `FUEL: ${Math.max(0, Math.round(G.heli.fuel))}%`;
         _hud.fuel.style.color = G.heli.fuel < 20 ? '#f00' : '#5f5';
+        if (G.heli.fuel > 0 && G.heli.fuel < 20 && G.heli.inAir && G.heli.engineOn) {
+            _fuelBeepTimer -= dt;
+            if (_fuelBeepTimer <= 0) {
+                _fuelBeepTimer = G.heli.fuel < 10 ? 60 : 120;
+                _playFuelBeep();
+            }
+        } else {
+            _fuelBeepTimer = 0;
+        }
         _hud.pax.textContent = `PAX: ${G.heli.onboard}/${G.heli.maxLoad}`;
         _hud.pax.style.color = G.heli.onboard >= G.heli.maxLoad ? '#f90' : '#5f5';
 
@@ -2149,6 +2159,22 @@ function backFromHeliSelect() {
 }
 
 let _rafId = 0;
+let _fuelBeepTimer = 0;
+const _playFuelBeep = () => {
+    try {
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.18, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+        osc.onended = () => ctx.close();
+    } catch {}
+};
 
 // ─── mission-local cache (set once per launch, never changes mid-mission) ─────
 let _missionHasPad = false;

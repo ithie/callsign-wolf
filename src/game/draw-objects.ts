@@ -38,6 +38,8 @@ export interface DrawHeliOpts {
     shadowGetGround?: (x: number, y: number) => number;
     /** Ornithopter only: flap frequency multiplier (1.0 = hover, >1 = ascending). */
     flapRate?: number;
+    /** Tail rotor speed multiplier (1.0 = normal, >1 = yawing). */
+    tailRotorRate?: number;
 }
 
 export interface DrawFuelTruckOpts {
@@ -541,6 +543,7 @@ export function createDrawObjects(
             strokeColor = '#dd3300',
             shadowGetGround,
             flapRate = 1.0,
+            tailRotorRate = 1.0,
         } = opts;
 
         const actualCtx = tCtx ?? ctx;
@@ -664,7 +667,7 @@ export function createDrawObjects(
             actualCtx.lineWidth = 1.2 * s * lineScale;
             actualCtx.lineCap = 'round';
             for (let i = 0; i < 8; i++) {
-                const a = hRotor * 2.0 + i * (Math.PI / 4);
+                const a = hRotor * 2.0 * tailRotorRate + i * (Math.PI / 4);
                 const ca = Math.cos(a),
                     sa = Math.sin(a);
                 actualCtx.beginPath();
@@ -787,7 +790,7 @@ export function createDrawObjects(
             actualCtx.lineCap = 'round';
             const trHub = p(-2.95, 0.08, 0.95);
             for (let i = 0; i < 4; i++) {
-                const a = hRotor * 1.5 + i * (Math.PI / 2);
+                const a = hRotor * 1.5 * tailRotorRate + i * (Math.PI / 2);
                 const trEnd = p(-2.95 + Math.sin(a) * 0.55, 0.08, 0.95 + Math.cos(a) * 0.55);
                 actualCtx.beginPath();
                 actualCtx.moveTo(trHub.x, trHub.y);
