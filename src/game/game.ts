@@ -100,6 +100,7 @@ import { mountCampaignSelect, showCampaignSelect } from './ui/campaign-select/ca
 import { showScreen } from './ui/nav';
 import { mountMinimap, showMinimap, updateMinimap, initMinimapTerrain } from './ui/minimap/minimap';
 import { initTutorial, tutorialTick, destroyTutorial, isTutorialRunning } from './ui/tutorial/tutorial';
+import { requestReview } from './reviewRequest';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
@@ -353,6 +354,9 @@ function missionComplete() {
 
     saveSession(_session);
     _stopMission();
+
+    // Review triggers: any campaign completed, or promotion — Apple limits to 3×/year
+    if (allDone || rankUpRank) requestReview();
 
     if (allDone) {
         document.getElementById('campaign-complete-name')!.textContent = '';
@@ -885,15 +889,16 @@ function drawScene() {
     if (!zstate.crashed) {
         // ground persons drawn BEFORE heli for correct depth order
         drawPayloadObjects(false);
-        // ropes drawn BEFORE heli so heli body renders over rope top
+        // ropes, payload figures + rescuer all BEFORE heli — heli always on top
         drawPayloadObjects(true, true);
+        drawPayloadObjects(true, false);
 
         // winch line (only when extended and nothing hanging)
         if (!G.activePayload && G.heli.winch > 0.05) {
             const rs = G.rescuerSwing;
             const winchTipZ = Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
-            let hP = iso(G.heli.x, G.heli.y, G.heli.z, camX, camY, { stepH, tileW, tileH, canvas });
-            let wP = iso(rs.x, rs.y, winchTipZ, camX, camY, { stepH, tileW, tileH, canvas });
+            const hP = iso(G.heli.x, G.heli.y, G.heli.z, camX, camY, { stepH, tileW, tileH, canvas });
+            const wP = iso(rs.x, rs.y, winchTipZ, camX, camY, { stepH, tileW, tileH, canvas });
             ctx.strokeStyle = '#bbb';
             ctx.lineWidth = 1;
             ctx.beginPath();
@@ -901,7 +906,7 @@ function drawScene() {
             ctx.lineTo(wP.x, wP.y);
             ctx.stroke();
         }
-        // rescuer always at winch tip when winch is extended
+        // rescuer at winch tip drawn BEFORE heli (appears behind heli body)
         if (G.heli.winch > 0.3) {
             const rs = G.rescuerSwing;
             const winchTipZ = G.activePayload
@@ -947,9 +952,6 @@ function drawScene() {
         // collision box checks + optional debug rendering
         handleCollisionBoxes();
         if (!_IS_APP && showCollisionBoxes) drawDebugOverlay(camX, camY);
-
-        // hanging payload figures drawn after heli (no rope, that's done above)
-        drawPayloadObjects(true, false);
     } // end if (!zstate.crashed)
 
     // HUD — DOM elements (sharp on all devices, zero canvas draw calls)
@@ -1734,22 +1736,6 @@ function drawDebugOverlay(camX: number, camY: number) {
         ctx.beginPath();
         ctx.arc(ftBack.x, ftBack.y, 3, 0, Math.PI * 2);
         ctx.fill();
-        // Target position
-        if (ft.targetX != null && ft.targetY != null) {
-            const tgt = isoP(ft.targetX, ft.targetY, p.z);
-            ctx.strokeStyle = 'rgba(255,255,0,0.5)';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([3, 3]);
-            ctx.beginPath();
-            ctx.moveTo(ftP.x, ftP.y);
-            ctx.lineTo(tgt.x, tgt.y);
-            ctx.stroke();
-            ctx.setLineDash([]);
-            ctx.fillStyle = '#ff0';
-            ctx.beginPath();
-            ctx.arc(tgt.x, tgt.y, 4, 0, Math.PI * 2);
-            ctx.fill();
-        }
         // State + angle label
         ctx.fillStyle = '#ff0';
         ctx.font = 'bold 10px monospace';
@@ -1757,7 +1743,7 @@ function drawDebugOverlay(camX: number, camY: number) {
         ctx.fillText(`ang=${((ft.angle * 180) / Math.PI).toFixed(0)}°`, ftP.x + 7, ftP.y + 4);
         ctx.fillText(`x=${ft.x.toFixed(1)} y=${ft.y.toFixed(1)}`, ftP.x + 7, ftP.y + 16);
         // Park position marker
-        const parkP = isoP(ft.parkX, ft.parkY, p.z);
+        const parkP = isoP(ft.localParkX, ft.localParkY, p.z);
         ctx.strokeStyle = 'rgba(255,200,0,0.4)';
         ctx.lineWidth = 1;
         ctx.beginPath();
