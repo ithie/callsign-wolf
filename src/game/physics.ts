@@ -1,6 +1,7 @@
 import { campaignHandler } from './main';
 import { G, zstate } from './state';
 import { getHeliType } from './heli-types';
+import { PAYLOAD_DEFS } from './payload-defs';
 import { I18N } from './i18n';
 import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from './haptics';
 
@@ -18,6 +19,7 @@ export interface PhysicsCtx {
     showMsg: (txt: string) => void;
     missionComplete: () => void;
     triggerCrash: (reason: string) => void;
+    orniWreckDelivered: () => void;
 }
 
 // ─── object helpers (private) ─────────────────────────────────────────────────
@@ -402,6 +404,10 @@ export function initStaticObjectsFromMission() {
         y: obj.y,
         angle: obj.angle ?? 0,
     }));
+    getObjectsByType('ornithopter_wreck').forEach((obj: any) => {
+        const gz = getGround(obj.x, obj.y, G.points, G.CARRIER);
+        G.payloads.push({ type: 'orni_wreck', x: obj.x, y: obj.y, z: gz, angle: obj.angle ?? 0, hanging: false, rescued: false, deliverTo: 'pad' });
+    });
     G.BROKEN_SAILBOATS = getObjectsByType('sailboat_broken').map((obj: any) => ({
         x: obj.x,
         y: obj.y,
@@ -1249,7 +1255,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
         p.z = hookZ;
         p.vx *= Math.pow(damping, dt);
         p.vy *= Math.pow(damping, dt);
-        let baseMass = p.type === 'crate' ? 0.8 : 0.2;
+        const baseMass = PAYLOAD_DEFS[p.type]?.baseMass ?? 0.2;
         G.heli.vx -= ax * baseMass * G.heli.cargoResist * dt;
         G.heli.vy -= ay * baseMass * G.heli.cargoResist * dt;
         G.rescuerSwing.x = G.activePayload.x;
@@ -1469,10 +1475,22 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
                 G.rescuerSwing.y = p.y;
                 G.rescuerSwing.vx = 0;
                 G.rescuerSwing.vy = 0;
-                ctx.showMsg(p.type === 'crate' ? I18N.CARGO_SECURED : I18N.PATIENT_SECURED);
+                ctx.showMsg(p.type === 'orni_wreck' ? I18N.CARGO_SECURED : p.type === 'crate' ? I18N.CARGO_SECURED : I18N.PATIENT_SECURED);
                 G.heli.winch = Math.max(0, G.heli.winch - 0.5);
                 break;
             }
+        }
+    }
+
+    // orni wreck touchdown delivery → mission aborted, rank promotion
+    if (G.activePayload?.type === 'orni_wreck' && onPad && !onCarrierDeck) {
+        const crateZ = G.heli.z - G.heli.winch;
+        const padSurfaceZ = G.PAD?.z ?? 0;
+        if (crateZ <= padSurfaceZ + 0.4) {
+            G.activePayload.hanging = false;
+            G.activePayload.rescued = true;
+            G.activePayload = null;
+            ctx.orniWreckDelivered();
         }
     }
 
@@ -1524,6 +1542,16 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
                 hapticNotification(NotificationType.Success);
                 ctx.showMsg(I18N.ONBOARD(G.heli.onboard, G.heli.maxLoad));
             } else ctx.showMsg(I18N.CABIN_FULL);
+        } else if (p.type === 'orni_wreck') {
+            if (onPadSurface && G.heli.z < 3.0) {
+                p.hanging = false;
+                p.rescued = true;
+                G.activePayload = null;
+                ctx.orniWreckDelivered();
+            } else {
+                ctx.showMsg(I18N.DROP_AT_PAD);
+                G.heli.winch = 0.6;
+            }
         } else {
             const dt = (p as any).deliverTo as string | undefined;
             const onCarrierOk = (!dt || dt === 'carrier') && onCarrierDeck && G.heli.z < 3.0;

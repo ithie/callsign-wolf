@@ -134,7 +134,7 @@ export const renderObjectList = () => {
     m.objects.forEach((obj, idx) => {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;align-items:center;gap:6px;margin:3px 0;font-size:11px';
-        const icons: Record<string, string> = { pad: '🟩', carrier: '🚢', boat: '⛵', pilot_boat: '🚤', salvage_tug: '🛳', submarine: '🤿', lighthouse: '🔦', research_platform: '🏗', wind_turbine: '🌀', plane_wreck: '✈️', sailboat_broken: '⛵' };
+        const icons: Record<string, string> = { pad: '🟩', carrier: '🚢', boat: '⛵', pilot_boat: '🚤', salvage_tug: '🛳', submarine: '🤿', lighthouse: '🔦', research_platform: '🏗', wind_turbine: '🌀', plane_wreck: '✈️', sailboat_broken: '⛵', ornithopter_wreck: '🛸' };
         const label = document.createElement('span');
         label.style.flex = '1';
         label.innerText = `${icons[obj.type] || '?'} ${obj.type} @ (${obj.x}, ${obj.y})`;
@@ -554,6 +554,17 @@ const paint = (e: MouseEvent) => {
         } else {
             m.objects.push({ type: 'plane_wreck' as any, x: gx, y: gy, angle: 0 });
         }
+    } else if (state.currentTool === 'ornithopter_wreck') {
+        if (e.shiftKey) {
+            const near = m.objects.reduce((best: any, o: any, i: number) => {
+                if (o.type !== 'ornithopter_wreck') return best;
+                const d = Math.hypot(o.x - gx, o.y - gy);
+                return !best || d < best.d ? { d, i } : best;
+            }, null as any);
+            if (near && near.d < 5) m.objects.splice(near.i, 1);
+        } else {
+            m.objects.push({ type: 'ornithopter_wreck' as any, x: gx, y: gy, angle: 0 });
+        }
     } else if (state.currentTool === 'sailboat_broken') {
         if (e.shiftKey) {
             const near = m.objects.reduce((best: any, o: any, i: number) => {
@@ -784,7 +795,7 @@ export const initUI = () => {
     document.body.appendChild(cursorEl);
     const cursorCtx = cursorEl.getContext('2d')!;
     const PAINT_TOOLS = new Set(['terrain', 'flatten', 'foliage']);
-    const POINT_TOOLS = new Set(['pad', 'carrier', 'boat', 'pilot_boat', 'salvage_tug', 'submarine', 'lighthouse', 'research_platform', 'wind_turbine', 'plane_wreck', 'sailboat_broken', 'person', 'rescuer', 'crate']);
+    const POINT_TOOLS = new Set(['pad', 'carrier', 'boat', 'pilot_boat', 'salvage_tug', 'submarine', 'lighthouse', 'research_platform', 'wind_turbine', 'plane_wreck', 'sailboat_broken', 'ornithopter_wreck', 'person', 'rescuer', 'crate']);
     const dotColors: Record<string, string> = {
         pad: '#5f5',
         carrier: '#88aaff',
@@ -793,6 +804,7 @@ export const initUI = () => {
         lighthouse: '#ffdd44',
         plane_wreck: '#aaa',
         sailboat_broken: '#b96',
+        ornithopter_wreck: '#aaa',
         person: '#ffe033',
         crate: '#ff8800',
     };
@@ -958,7 +970,7 @@ export const initUI = () => {
                 if (obj.type === 'pad') hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
                 else if (obj.type === 'carrier' || obj.type === 'boat' || obj.type === 'pilot_boat' || obj.type === 'salvage_tug' || obj.type === 'submarine') hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
                 else if (obj.type === 'lighthouse' || obj.type === 'research_platform' || obj.type === 'wind_turbine') hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
-                else if ((obj as any).type === 'plane_wreck' || (obj as any).type === 'sailboat_broken') hit = Math.hypot(gx - (obj as any).x, gy - (obj as any).y) < 3;
+                else if ((obj as any).type === 'plane_wreck' || (obj as any).type === 'sailboat_broken' || (obj as any).type === 'ornithopter_wreck') hit = Math.hypot(gx - (obj as any).x, gy - (obj as any).y) < 3;
                 if (hit) {
                     state.selectedObjectIdx = state.selectedObjectIdx === i ? null : i;
                     state.selectedPayloadIdx = null;
@@ -1009,6 +1021,7 @@ export const initUI = () => {
                 state.currentTool !== 'wind_turbine' &&
                 state.currentTool !== 'plane_wreck' &&
                 state.currentTool !== 'sailboat_broken' &&
+                state.currentTool !== 'ornithopter_wreck' &&
                 state.currentTool !== 'foliage'
             ) {
                 paint(e);

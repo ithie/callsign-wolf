@@ -35,6 +35,8 @@ import SALVAGE_TUG_DEF from './models/supply_vessel.zdef';
 import RESEARCH_PLATFORM_DEF from './models/research_platform.zdef';
 import WIND_TURBINE_DEF from './models/wind_turbine.zdef';
 import PLANE_WRECK_DEF from './models/plane_wreck.zdef';
+import ORNI_WRECK_CARRY_DEF from './models/ornithopter_wreck_carry.zdef';
+import ORNI_WRECK_RESIDUE_DEF from './models/ornithopter_wreck_residue.zdef';
 import SAILBOAT_BROKEN_DEF from './models/sailboat_broken.zdef';
 import CARRIER_DEF from './models/carrier.zdef';
 import SUBMARINE_DEF from './models/submarine.zdef';
@@ -553,6 +555,25 @@ const startGame = (type: string): void => {
 
 const _tick = (): Promise<void> => new Promise(r => setTimeout(r, 0));
 
+const _maybeSpawnOrniWreck = () => {
+    if (!_IS_APP) return;
+    if (getRank(_session, _getRankMissions()).name === RANKS[RANKS.length - 1].name) return;
+    if (Math.random() >= 1 / 12) return;
+    const gridSize = campaignHandler.getTerrain().gridSize;
+    const margin = 6;
+    for (let attempt = 0; attempt < 120; attempt++) {
+        const x = margin + Math.random() * (gridSize - margin * 2);
+        const y = margin + Math.random() * (gridSize - margin * 2);
+        const gz = getGround(x, y, G.points, G.CARRIER);
+        if (gz <= G.waterLevel + 0.3) continue;
+        const sx = G.START_POS?.x ?? gridSize / 2;
+        const sy = G.START_POS?.y ?? gridSize / 2;
+        if (Math.hypot(x - sx, y - sy) < 14) continue;
+        G.payloads.push({ type: 'orni_wreck', x, y, z: gz, angle: Math.random() * Math.PI * 2, hanging: false, rescued: false, deliverTo: 'pad' });
+        break;
+    }
+};
+
 const launchMission = async (showLoader = true): Promise<void> => {
     // Populate per-mission cache — never call getCurrentMissionData() in the render loop
     const _lmd = campaignHandler.getCurrentMissionData();
@@ -598,6 +619,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     initBirds();
     G.deliverMode = false;
     initPayloadsFromMission();
+    _maybeSpawnOrniWreck();
     if (hasPad()) initFuelTruck();
     handle?.step('Umgebung…', 0.75);
     if (handle) await _tick();
@@ -746,7 +768,41 @@ function drawScene() {
     _drawTerrain(camX, camY, rx, ry, isNight, rain);
 
     const _visMargin = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH)) + 4;
+
+    const drawBowWave = (x: number, y: number, angle: number, speed: number, cx: number, cy: number) => {
+        const armLen = Math.min(10, speed * 0.9);
+        if (armLen < 0.5) return;
+        const HALF_V = 0.32; // ~18° Kelvin half-angle
+        const N = 4;
+        ctx.strokeStyle = '#c8dde8';
+        ctx.lineWidth = Math.max(0.5, tileW / 96);
+        for (const side of [-1, 1]) {
+            const a = angle + Math.PI + side * HALF_V;
+            ctx.beginPath();
+            const p0 = iso(x, y, G.waterLevel, cx, cy, { stepH, tileW, tileH, canvas });
+            ctx.moveTo(p0.x, p0.y);
+            for (let i = 1; i <= N; i++) {
+                const t = i / N;
+                const p = iso(x + Math.cos(a) * armLen * t, y + Math.sin(a) * armLen * t, G.waterLevel, cx, cy, { stepH, tileW, tileH, canvas });
+                ctx.lineTo(p.x, p.y);
+            }
+            ctx.stroke();
+        }
+    };
+
     if (hasLighthouse() && isVisible(lighthouseX, lighthouseY, _visMargin)) drawLighthouse(camX, camY);
+    // Bow waves — all before any vessel so no wave overlaps a ship
+    if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, _visMargin) && G.CARRIER.path !== 'static')
+        drawBowWave(G.CARRIER.x, G.CARRIER.y, G.CARRIER.angle, G.CARRIER.speed, camX, camY);
+    G.BOATS.forEach(b => {
+        if (isVisible(b.x, b.y, _visMargin) && b.path !== 'static')
+            drawBowWave(b.x, b.y, b.angle, b.speed, camX, camY);
+    });
+    G.SUBMARINES.forEach(s => {
+        if (isVisible(s.x, s.y, _visMargin) && s.path !== 'static')
+            drawBowWave(s.x, s.y, s.angle, s.speed, camX, camY);
+    });
+
     if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, _visMargin)) drawVectorCarrier(camX, camY);
     drawParkedHelis(camX, camY);
     G.BOATS.forEach(b => {
@@ -763,6 +819,16 @@ function drawScene() {
     });
     G.PLANE_WRECKS.forEach((pw: any) => {
         if (isVisible(pw.x, pw.y, _visMargin)) drawPlaneWreck(pw.x, pw.y, pw.angle);
+    });
+    G.payloads.forEach((p: any) => {
+        if (p.type === 'orni_wreck' && isVisible(p.x, p.y, _visMargin)) {
+            const gz = Math.max(G.waterLevel, getGround(p.x, p.y, G.points, G.CARRIER));
+            SceneRenderer.add(ORNI_WRECK_RESIDUE_DEF as any, { x: p.x, y: p.y, z: gz, angle: p.angle ?? 0 });
+            if (!p.hanging && !p.rescued) {
+                SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, { x: p.x, y: p.y, z: gz, angle: p.angle ?? 0 });
+            }
+            SceneRenderer.flush(camX, camY);
+        }
     });
     G.BROKEN_SAILBOATS.forEach((bs: any) => {
         if (isVisible(bs.x, bs.y, _visMargin)) drawBrokenSailboat(bs.x, bs.y, bs.angle);
@@ -1105,6 +1171,7 @@ function drawPayloadObjects(hangingOnly = false, ropeOnly = false) {
         if (payload.rescued && !payload.hanging) return;
         if (hangingOnly && !payload.hanging) return;
         if (!hangingOnly && payload.hanging) return;
+        if (payload.type === 'orni_wreck' && !payload.hanging) return; // rendered in ground pass
         if (!payload.hanging && !isVisible(payload.x, payload.y)) return;
 
         if (isNight && !payload.hanging && !payload.attachTo) {
@@ -1136,7 +1203,11 @@ function drawPayloadObjects(hangingOnly = false, ropeOnly = false) {
         if (payload.hanging && G.heli.winch < 0.4) return;
 
         let p = iso(payload.x, payload.y, payload.z, cam.x, cam.y, { stepH, tileW, tileH, canvas });
-        if (payload.type === 'crate') {
+        if (payload.type === 'orni_wreck') {
+            SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, { x: payload.x, y: payload.y, z: payload.z, angle: payload.angle ?? 0 });
+            SceneRenderer.flush(cam.x, cam.y);
+            return;
+        } else if (payload.type === 'crate') {
             ctx.fillStyle = '#d84';
             ctx.strokeStyle = '#530';
             ctx.lineWidth = Math.max(0.5, tileW / 64);
@@ -2223,6 +2294,12 @@ const _physicsCtx = {
         }
         return !_IS_APP ? mpGetTriggerCrash(triggerCrash) : triggerCrash;
     },
+    orniWreckDelivered() {
+        _session.rankOverride = RANKS.length - 1;
+        saveSession(_session);
+        _stopMission();
+        showRankUp(RANKS[RANKS.length - 1], _session.playerName, undefined);
+    },
 } as import('./physics').PhysicsCtx;
 
 if (!_IS_APP) {
@@ -2780,8 +2857,6 @@ const mountGameScreens = () => {
         }
     });
 };
-
-declare const __APP_VERSION__: string;
 
 // ─── Preview mode (Kampagnen-Editor Live-Preview) — DEV only ──────────────────
 const _previewLaunch = !import.meta.env.DEV

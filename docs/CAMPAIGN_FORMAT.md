@@ -257,12 +257,25 @@ Rescue targets the player must winch up and deliver.
 }
 ```
 
-| Field       | Type    | Description                                                          |
-| ----------- | ------- | -------------------------------------------------------------------- |
-| `type`      | string  | `"person"` · `"crate"`                                               |
-| `x`, `y`    | number  | World grid position (used as fallback if `attachTo` is absent)       |
-| `attachTo`  | object  | Optional. Attach payload to a moving vessel (see below)              |
-| `npcTarget` | boolean | Optional. If `true`, payload is not counted toward the mission goal  |
+| Field       | Type    | Description                                                         |
+| ----------- | ------- | ------------------------------------------------------------------- |
+| `type`      | string  | `"person"` · `"rescuer"` · `"crate"` · `"orni_wreck"` (see below) |
+| `x`, `y`    | number  | World grid position (used as fallback if `attachTo` is absent)     |
+| `attachTo`  | object  | Optional. Attach payload to a moving vessel (see below)            |
+| `npcTarget` | boolean | Optional. If `true`, payload is not counted toward the mission goal |
+
+### Payload types & physics
+
+Each payload type has a `baseMass` defined in `payload-defs.ts`. Effective horizontal drag on the carrying helicopter = `baseMass × heli.cargoResist`.
+
+| Type         | baseMass | Notes                                                                                                                                  |
+| ------------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `person`     | 0.2      | Rescued survivor, winched aboard                                                                                                       |
+| `rescuer`    | 0.2      | NPC rescuer lowered from heli                                                                                                          |
+| `crate`      | 0.8      | Cargo box, delivered to a dropzone                                                                                                     |
+| `orni_wreck` | 3.5      | Crashed ornithopter (easter egg). Too heavy for Dolphin (cargoResist 0.5 → drag 1.75), manageable for Coast-Hawk (cargoResist 0.1 → drag 0.35) |
+
+`orni_wreck` must be delivered to the pad. On delivery the active mission is aborted and the player is immediately promoted to Major.
 
 ### attachTo
 

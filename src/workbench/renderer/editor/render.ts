@@ -354,6 +354,80 @@ export const drawMap = () => {
             ctx.stroke();
             ctx.restore();
             ctx.shadowBlur = 0;
+        } else if ((obj as any).type === 'ornithopter_wreck') {
+            const ow = obj as any;
+            const ox = (ow.x + 0.5 - state.panX) * tSize;
+            const oy = (ow.y + 0.5 - state.panY) * tSize;
+            const rad = ((ow.angle ?? 0) * Math.PI) / 180;
+            if (isSelected) { ctx.shadowBlur = 10; ctx.shadowColor = '#fa0'; }
+            ctx.save();
+            ctx.translate(ox, oy);
+            ctx.rotate(rad);
+            // Scorch mark
+            ctx.fillStyle = '#1a1612';
+            ctx.beginPath();
+            ctx.ellipse(0.3 * tSize, 0, 0.9 * tSize, 0.5 * tSize, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Body
+            ctx.fillStyle = '#d0d0d0';
+            ctx.fillRect(-1.4 * tSize, -0.2 * tSize, 2.1 * tSize, 0.4 * tSize);
+            // Right wing (intact, flat)
+            ctx.fillStyle = '#c8c8c8';
+            ctx.beginPath();
+            ctx.moveTo( 0.2 * tSize, -0.25 * tSize);
+            ctx.lineTo(-0.5 * tSize, -0.22 * tSize);
+            ctx.lineTo(-0.1 * tSize, -3.0 * tSize);
+            ctx.lineTo( 0.1 * tSize, -3.0 * tSize);
+            ctx.closePath();
+            ctx.fill();
+            // Left wing — just a torn root stump
+            ctx.fillStyle = '#b8b8b8';
+            ctx.beginPath();
+            ctx.moveTo( 0.2 * tSize,  0.25 * tSize);
+            ctx.lineTo(-0.3 * tSize,  0.22 * tSize);
+            ctx.lineTo(-0.1 * tSize,  0.55 * tSize);
+            ctx.lineTo( 0.15 * tSize, 0.5 * tSize);
+            ctx.closePath();
+            ctx.fill();
+            // Jagged tear edge on stump
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = Math.max(1, tSize * 0.06);
+            ctx.beginPath();
+            ctx.moveTo(-0.3 * tSize, 0.22 * tSize);
+            ctx.lineTo(-0.22 * tSize, 0.38 * tSize);
+            ctx.lineTo(-0.1 * tSize, 0.55 * tSize);
+            ctx.stroke();
+            // Detached wing fragment lying nearby at an angle
+            ctx.save();
+            ctx.translate(-0.2 * tSize, 1.6 * tSize);
+            ctx.rotate(0.4);
+            ctx.fillStyle = '#b8b8b8';
+            ctx.beginPath();
+            ctx.moveTo(  0,             0);
+            ctx.lineTo(-0.35 * tSize,  0.08 * tSize);
+            ctx.lineTo(-0.1 * tSize,   2.0 * tSize);
+            ctx.lineTo( 0.12 * tSize,  1.8 * tSize);
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+            // Cockpit — broken glass: outline + radiating cracks
+            const cpx = 0.68 * tSize;
+            const cpy = 0;
+            ctx.strokeStyle = '#5a9db8';
+            ctx.lineWidth = Math.max(1, tSize * 0.07);
+            ctx.beginPath();
+            ctx.ellipse(cpx, cpy, 0.22 * tSize, 0.15 * tSize, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.strokeStyle = '#7aadcc';
+            ctx.lineWidth = Math.max(1, tSize * 0.04);
+            [0.3, 1.1, 1.9, 2.9, 3.8, 4.7, 5.6].forEach(a => {
+                ctx.beginPath();
+                ctx.moveTo(cpx, cpy);
+                ctx.lineTo(cpx + Math.cos(a) * 0.2 * tSize, cpy + Math.sin(a) * 0.13 * tSize);
+                ctx.stroke();
+            });
+            ctx.restore();
+            ctx.shadowBlur = 0;
         }
     });
 

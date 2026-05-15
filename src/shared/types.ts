@@ -52,15 +52,16 @@ type ResearchPlatformObject = { type: 'research_platform'; x: number; y: number 
 type WindTurbineObject = { type: 'wind_turbine'; x: number; y: number; spinning?: boolean; rescueZones?: Array<{ x: number; y: number; w: number; h: number; role: 'pickup' | 'dropoff' | 'both' }> };
 type PlaneWreckObject = { type: 'plane_wreck'; x: number; y: number; angle?: number };
 type SailboatBrokenObject = { type: 'sailboat_broken'; x: number; y: number; angle?: number };
+type OrnithopterWreckObject = { type: 'ornithopter_wreck'; x: number; y: number; angle?: number };
 
-type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | PlaneWreckObject | SailboatBrokenObject;
+type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject;
 
 export type Objective =
     | { type: 'rescue_all' }
     | { type: 'land_at'; target: 'pad' | 'carrier' | 'boat' };
 
 export type MissionPayload = {
-    type: 'person' | 'crate' | 'rescuer';
+    type: 'person' | 'crate' | 'rescuer' | 'orni_wreck';
     x: number;
     y: number;
     attachTo?: { objectType: 'carrier' | 'boat' | 'submarine' | 'sailboat_broken'; objectIdx: number; localX?: number; localY?: number };
