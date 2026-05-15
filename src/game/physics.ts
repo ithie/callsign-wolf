@@ -935,6 +935,7 @@ interface FuelVehicle {
     state: string;
     x: number; y: number; angle: number;
     localParkX: number; localParkY: number; localParkAngle: number;
+    localFuelX?: number; localFuelY?: number; localFuelAngle?: number;
     wps: { lx: number; ly: number }[] | null;
     wpI: number;
     t: number;
@@ -946,6 +947,7 @@ interface FuelVehicleCfg {
     worldToLocal: (wx: number, wy: number) => { lx: number; ly: number };
     obstacleForceFn: () => [number, number];
     parkSnapFn?: () => void;
+    getParentAngle?: () => number;
     SPEED: number;
     SPEED_REV: number;
     MAX_STEER: number;
@@ -1020,6 +1022,9 @@ const _updateFuelVehicle = (v: FuelVehicle, dt: number, ctx: PhysicsCtx, cfg: Fu
             if (navigate(heli.x, heli.y) <= cfg.STOP_DIST) {
                 v.state = cfg.hasArm ? 'ARM_OUT' : 'FUELING';
                 v.t = cfg.hasArm ? 0 : 1.0;
+                const lp = cfg.worldToLocal(v.x, v.y);
+                v.localFuelX = lp.lx; v.localFuelY = lp.ly;
+                v.localFuelAngle = cfg.getParentAngle ? v.angle - cfg.getParentAngle() : v.angle;
             }
         }
     } else if (v.state === 'ARM_OUT') {
@@ -1027,6 +1032,11 @@ const _updateFuelVehicle = (v: FuelVehicle, dt: number, ctx: PhysicsCtx, cfg: Fu
         v.arm = v.t;
         if (v.t >= 1) { v.state = 'FUELING'; v.t = 0; }
     } else if (v.state === 'FUELING') {
+        if (v.localFuelX !== undefined) {
+            const wp = cfg.localToWorld(v.localFuelX, v.localFuelY!);
+            v.x = wp.x; v.y = wp.y;
+            if (cfg.getParentAngle) v.angle = v.localFuelAngle! + cfg.getParentAngle();
+        }
         if (heli.fuel < 100) {
             heli.fuel = Math.min(100, heli.fuel + cfg.FUEL_RATE * dt);
         } else {
@@ -1094,6 +1104,7 @@ export function updateCarrierFuelCar(dt: number, ctx: PhysicsCtx) {
             car.x = p.x; car.y = p.y;
             car.angle = car.localParkAngle + G.CARRIER.angle;
         },
+        getParentAngle: () => G.CARRIER.angle,
         SPEED: 0.042, SPEED_REV: 0.026, MAX_STEER: 0.028, STOP_DIST: 3.2, FUEL_RATE: 0.3,
         hasArm: false,
     });

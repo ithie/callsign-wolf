@@ -281,6 +281,9 @@ const _stopMission = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     _hud.showAll(false);
     setTouchVisible(false);
+    _showRainOverlay(false);
+    const flashEl = document.getElementById('flash-overlay');
+    if (flashEl) flashEl.style.opacity = '0';
 };
 
 function triggerCrash(reason: string) {
@@ -289,7 +292,6 @@ function triggerCrash(reason: string) {
     soundHandler.play(musicConfig.defeat || 'final', false);
     spawnExplosion(G.heli, G.particles, G.debris, G.points, G.CARRIER);
     zstate.crashed = true;
-    _showRainOverlay(false);
     setTimeout(() => {
         _stopMission();
         document.getElementById('campaign-failed-reason')!.innerHTML = reason;
@@ -298,7 +300,6 @@ function triggerCrash(reason: string) {
 }
 
 function missionComplete() {
-    _showRainOverlay(false);
     destroyTutorial();
     const { campaignType } = campaignHandler.getCurrentMissionData();
     const isTutorial = campaignType === 'tutorial';
@@ -2296,7 +2297,6 @@ const _physicsCtx = {
                 stopHeliSound();
                 spawnExplosion(G.heli, G.particles, G.debris, G.points, G.CARRIER);
                 zstate.crashed = true;
-                _showRainOverlay(false);
                 setTimeout(() => {
                     _previewLaunch!((campaignHandler as any).getPreviewMissionData?.());
                 }, 1800);
@@ -2558,6 +2558,7 @@ window.onkeydown = e => {
 window.onkeyup = e => (G.keys[e.code] = false);
 document.addEventListener('selectstart', e => e.preventDefault());
 document.addEventListener('dragstart', e => e.preventDefault());
+document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
 const _resizeCanvas = () => {
     if (_IS_APP) {
@@ -2876,6 +2877,9 @@ const _previewLaunch = !import.meta.env.DEV
           cancelAnimationFrame(_rafId);
           _rafId = 0;
           stopHeliSound();
+          _showRainOverlay(false);
+          const _flashEl = document.getElementById('flash-overlay');
+          if (_flashEl) _flashEl.style.opacity = '0';
 
           showScreen(null);
           hideBriefing();

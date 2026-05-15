@@ -193,6 +193,9 @@
     touch-action: none;
     pointer-events: all;
     will-change: transform;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 .joystick-knob {
     width: 52px;
