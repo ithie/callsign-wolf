@@ -35,7 +35,7 @@
 #ithie-splash {
     position: fixed;
     inset: 0;
-    background: #050505;
+    background: transparent;
     display: none;
     align-items: center;
     justify-content: center;
@@ -64,7 +64,7 @@
 #logo-splash {
     position: fixed;
     inset: 0;
-    background: #050505;
+    background: transparent;
     display: none;
     align-items: center;
     justify-content: center;

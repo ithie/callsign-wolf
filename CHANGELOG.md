@@ -1,5 +1,34 @@
 # SAR: Callsign WOLF — Changelog
 
+## v26.5.1 — Bow Waves, Ornithopter Wreck & Polish
+
+### New
+
+- **Bow waves** — all moving vessels (carrier, boats, submarines) now produce animated Kelvin wake patterns. Wave crests propagate backward in proportion to vessel speed. Carrier wake uses a hull offset and wider crest spacing; boats and submarines use tighter patterns appropriate to their size.
+- **Ornithopter wreck split model** — the wreck is now two separate models: `ornithopter_wreck_residue` (scorch, stump, detached wing, glass shards) stays at the crash site permanently; `ornithopter_wreck_carry` (fuselage, intact wing, cockpit frame) hangs from the winch hook during transport.
+- **`PAYLOAD_DEFS`** — payload physics properties (`baseMass`) extracted into `payload-defs.ts`; physics reads from the table instead of inline ternaries. Documented in `CAMPAIGN_FORMAT.md`.
+
+### Changed
+
+- **Intro sequence** — CRT collapse effect removed from the i.thie softworks and logo interstitials. Backgrounds are now transparent so the particle effect shows through. The i.thie text ends with a brightness flash instead.
+- **Rescue handling improvements** — several edge cases in pickup/dropoff resolution fixed.
+- **Night mode shadows** — shadows were missing in night mode; restored.
+
+### Fixes
+
+- **Bow wave speed bug** — `G.CARRIER.speed` stored the physics angular velocity (~0.0004 rad/tick), causing `armLen` to always fall below the 0.5 visibility threshold. Fixed by storing `speedKnots` (raw JSON value) on each vessel during `initVessel`.
+- **Bow wave animation rate** — previously scaled by `√speed`, causing slow vessels to animate disproportionately fast. Now strictly linear with speed.
+
+### Technical
+
+- `initVessel` stores `vessel.speedKnots` for all vessel types; used by the renderer for wake animation.
+- `ornithopter_wreck.zdef` removed; replaced by `ornithopter_wreck_carry.zdef` + `ornithopter_wreck_residue.zdef`.
+- `src/game/payload-defs.ts` — new file; `physics.ts` imports `PAYLOAD_DEFS` from it.
+- zdef plugin performance optimisation.
+- Minimap rendering updated.
+
+---
+
 ## v26.5.0 — Callsign Wolf Demo Campaign & Editor Overhaul
 
 ### New

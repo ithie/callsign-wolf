@@ -769,38 +769,48 @@ function drawScene() {
 
     const _visMargin = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH)) + 4;
 
-    const drawBowWave = (x: number, y: number, angle: number, speed: number, cx: number, cy: number) => {
-        const armLen = Math.min(10, speed * 0.9);
-        if (armLen < 0.5) return;
-        const HALF_V = 0.32; // ~18° Kelvin half-angle
-        const N = 4;
-        ctx.strokeStyle = '#c8dde8';
-        ctx.lineWidth = Math.max(0.5, tileW / 96);
-        for (const side of [-1, 1]) {
-            const a = angle + Math.PI + side * HALF_V;
+    // hullOffset: world tiles from vessel center to stern (where wake begins)
+    // nCrests: how many wave lines in the wake
+    const drawBowWave = (x: number, y: number, angle: number, speed: number, cx: number, cy: number, hullOffset = 0, nCrests = 5) => {
+        const wakeLen = Math.min(14, speed * 1.1);
+        if (wakeLen < 1) return;
+        const wakeDir = angle + Math.PI;
+        const perpDir = angle + Math.PI / 2;
+        const KELVIN_HALF = 0.34;
+        const spacing = wakeLen / nCrests;
+        const phase = (performance.now() * speed * 0.0002) % spacing;
+        ctx.lineWidth = Math.max(1.5, tileW / 22);
+        for (let i = 0; i < nCrests; i++) {
+            const d = hullOffset + phase + i * spacing;
+            const wakeProgress = (d - hullOffset) / wakeLen;
+            if (wakeProgress >= 1) continue;
+            const fade = Math.pow(1 - wakeProgress, 0.5);
+            ctx.globalAlpha = fade * 0.72;
+            ctx.strokeStyle = '#cce8f4';
+            const cX = x + Math.cos(wakeDir) * d;
+            const cY = y + Math.sin(wakeDir) * d;
+            const halfW = d * Math.tan(KELVIN_HALF) * 1.2;
+            const s = iso(cX + Math.cos(perpDir) * halfW, cY + Math.sin(perpDir) * halfW, G.waterLevel, cx, cy, { stepH, tileW, tileH, canvas });
+            const e = iso(cX - Math.cos(perpDir) * halfW, cY - Math.sin(perpDir) * halfW, G.waterLevel, cx, cy, { stepH, tileW, tileH, canvas });
             ctx.beginPath();
-            const p0 = iso(x, y, G.waterLevel, cx, cy, { stepH, tileW, tileH, canvas });
-            ctx.moveTo(p0.x, p0.y);
-            for (let i = 1; i <= N; i++) {
-                const t = i / N;
-                const p = iso(x + Math.cos(a) * armLen * t, y + Math.sin(a) * armLen * t, G.waterLevel, cx, cy, { stepH, tileW, tileH, canvas });
-                ctx.lineTo(p.x, p.y);
-            }
+            ctx.moveTo(s.x, s.y);
+            ctx.lineTo(e.x, e.y);
             ctx.stroke();
         }
+        ctx.globalAlpha = 1.0;
     };
 
     if (hasLighthouse() && isVisible(lighthouseX, lighthouseY, _visMargin)) drawLighthouse(camX, camY);
     // Bow waves — all before any vessel so no wave overlaps a ship
     if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, _visMargin) && G.CARRIER.path !== 'static')
-        drawBowWave(G.CARRIER.x, G.CARRIER.y, G.CARRIER.angle, G.CARRIER.speed, camX, camY);
+        drawBowWave(G.CARRIER.x, G.CARRIER.y, G.CARRIER.angle, G.CARRIER.speedKnots, camX, camY, 9, 3);
     G.BOATS.forEach(b => {
         if (isVisible(b.x, b.y, _visMargin) && b.path !== 'static')
-            drawBowWave(b.x, b.y, b.angle, b.speed, camX, camY);
+            drawBowWave(b.x, b.y, b.angle, b.speedKnots, camX, camY, 2, 5);
     });
     G.SUBMARINES.forEach(s => {
         if (isVisible(s.x, s.y, _visMargin) && s.path !== 'static')
-            drawBowWave(s.x, s.y, s.angle, s.speed, camX, camY);
+            drawBowWave(s.x, s.y, s.angle, s.speedKnots, camX, camY, 3, 4);
     });
 
     if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, _visMargin)) drawVectorCarrier(camX, camY);

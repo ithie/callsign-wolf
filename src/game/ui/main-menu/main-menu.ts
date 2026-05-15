@@ -66,38 +66,49 @@ export const mountMainMenu = (cb: MainMenuCallbacks) => {
         _splashHandler = null;
 
         splash.classList.add('splash-clicked');
-        setTimeout(() => { splash.classList.add('crt-collapse'); }, 150);
 
         setTimeout(() => {
             showScreen(null);
-            splash.classList.remove('splash-clicked', 'crt-collapse');
+            splash.classList.remove('splash-clicked');
             ithie.style.display = 'flex';
             ithie.style.transition = 'opacity 500ms ease';
             ithie.getBoundingClientRect();
             ithie.style.opacity = '1';
             _typewrite(document.getElementById('ithie-text')!, 'i.thie softworks.');
-        }, 560);
+        }, 350);
 
+        // flash bright, then cut to black
         setTimeout(() => {
-            ithie.style.transition = 'opacity 600ms ease';
-            ithie.style.opacity = '0';
-        }, 2220);
+            ithie.style.transition = 'filter 140ms ease-out';
+            ithie.getBoundingClientRect();
+            ithie.style.filter = 'brightness(4)';
+        }, 2000);
+        setTimeout(() => {
+            ithie.style.transition = 'filter 280ms ease-in';
+            ithie.style.filter = 'brightness(0)';
+        }, 2140);
 
         setTimeout(() => {
             ithie.style.display = 'none';
+            ithie.style.filter = '';
+            ithie.style.transition = '';
             logo.style.display = 'flex';
-            logo.classList.remove('crt-entering', 'crt-leaving');
-            requestAnimationFrame(() => logo.classList.add('crt-entering'));
+            logo.style.opacity = '0';
+            logo.style.transition = 'opacity 380ms ease';
+            logo.getBoundingClientRect();
+            logo.style.opacity = '1';
             _typewrite(document.getElementById('logo-splash-text')!, 'To old rekindling flames...');
         }, 2900);
 
         setTimeout(() => {
-            logo.classList.add('crt-leaving');
+            logo.style.transition = 'opacity 380ms ease';
+            logo.style.opacity = '0';
         }, 2900 + 380 + 3800);
 
         setTimeout(() => {
             logo.style.display = 'none';
-            logo.classList.remove('crt-entering', 'crt-leaving');
+            logo.style.opacity = '';
+            logo.style.transition = '';
             _splashHandler = _handleSplashClick;
             splash.addEventListener('click', _handleSplashClick);
             cb.onSplashClick();

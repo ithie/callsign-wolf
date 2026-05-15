@@ -216,6 +216,7 @@ function initVessel(obj: any, vessel: any, seaTimeRef: { t: number }) {
     vessel.zDeck = obj.type === 'carrier' ? 4.2 : 0.35;
     vessel.zHull = obj.type === 'carrier' ? 3.8 : 0.15;
     vessel.path = obj.path ?? 'static';
+    vessel.speedKnots = obj.speed ?? 0;
     const knotsToUnits = 0.001663;
     if (obj.path === 'straight') {
         vessel.speed = (obj.speed ?? 0) * knotsToUnits;
