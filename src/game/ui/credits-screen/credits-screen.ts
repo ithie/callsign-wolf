@@ -30,8 +30,15 @@ const _buildCredits = () => {
     const sections: { role: string; names: string[] }[] = [
         { role: I18N.CREDITS_ROLE_DEVELOPMENT, names: ['Yarrick'] },
         { role: I18N.CREDITS_ROLE_CAMPAIGN, names: ['Jay "G" Man'] },
+        { role: I18N.CREDITS_ROLE_CONSULTGS, names: ['DBuhn'] },
         { role: I18N.CREDITS_ROLE_SOUND, names: ['Chris "Loud" E.'] },
-        { role: I18N.CREDITS_ROLE_TEST, names: ['Da Harp', 'Jay "G" Man', 'DBuhn', 'Gaunt', 'Bigwilli', 'Bri B.'] },
+        { role: I18N.CREDITS_ROLE_RECORDING, names: ['Yarrick'] },
+        { role: I18N.CREDITS_ROLE_VOICEARTIST, names: ['Bri B.'] },
+        { role: I18N.CREDITS_ROLE_LEADERTEST, names: ['Steven J. McG.'] },
+        {
+            role: I18N.CREDITS_ROLE_TEST,
+            names: ['Da Harp, Jay "G" Man', 'DBuhn, Gaunt', 'Bigwilli, Bri B.', 'Schollfried, Sarahm'],
+        },
         { role: I18N.CREDITS_ROLE_INSPIREDBY, names: ['Zeewolf (Binary Asylum, 1994)'] },
     ];
     let delay = 0.15;

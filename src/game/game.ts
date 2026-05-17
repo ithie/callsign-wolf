@@ -570,7 +570,16 @@ const _maybeSpawnOrniWreck = () => {
         const sx = G.START_POS?.x ?? gridSize / 2;
         const sy = G.START_POS?.y ?? gridSize / 2;
         if (Math.hypot(x - sx, y - sy) < 14) continue;
-        G.payloads.push({ type: 'orni_wreck', x, y, z: gz, angle: Math.random() * Math.PI * 2, hanging: false, rescued: false, deliverTo: 'pad' });
+        G.payloads.push({
+            type: 'orni_wreck',
+            x,
+            y,
+            z: gz,
+            angle: Math.random() * Math.PI * 2,
+            hanging: false,
+            rescued: false,
+            deliverTo: 'pad',
+        });
         break;
     }
 };
@@ -637,8 +646,8 @@ const launchMission = async (showLoader = true): Promise<void> => {
     if (isStartsOnCarrier()) {
         const _cosA = Math.cos(G.CARRIER.angle),
             _sinA = Math.sin(G.CARRIER.angle);
-        G.heli.x = G.CARRIER.x + -3.5 * _cosA;
-        G.heli.y = G.CARRIER.y + -3.5 * _sinA;
+        G.heli.x = G.CARRIER.x + -4.0 * _cosA;
+        G.heli.y = G.CARRIER.y + -14.0 * _sinA;
         G.heli.z = G.CARRIER.zDeck + 0.1;
         G.heli.vx = 0;
         G.heli.vy = 0;
@@ -772,7 +781,16 @@ function drawScene() {
 
     // hullOffset: world tiles from vessel center to stern (where wake begins)
     // nCrests: how many wave lines in the wake
-    const drawBowWave = (x: number, y: number, angle: number, speed: number, cx: number, cy: number, hullOffset = 0, nCrests = 5) => {
+    const drawBowWave = (
+        x: number,
+        y: number,
+        angle: number,
+        speed: number,
+        cx: number,
+        cy: number,
+        hullOffset = 0,
+        nCrests = 5
+    ) => {
         const wakeLen = Math.min(14, speed * 1.1);
         if (wakeLen < 1) return;
         const wakeDir = angle + Math.PI;
@@ -791,8 +809,18 @@ function drawScene() {
             const cX = x + Math.cos(wakeDir) * d;
             const cY = y + Math.sin(wakeDir) * d;
             const halfW = d * Math.tan(KELVIN_HALF) * 1.2;
-            const s = iso(cX + Math.cos(perpDir) * halfW, cY + Math.sin(perpDir) * halfW, G.waterLevel, cx, cy, { stepH, tileW, tileH, canvas });
-            const e = iso(cX - Math.cos(perpDir) * halfW, cY - Math.sin(perpDir) * halfW, G.waterLevel, cx, cy, { stepH, tileW, tileH, canvas });
+            const s = iso(cX + Math.cos(perpDir) * halfW, cY + Math.sin(perpDir) * halfW, G.waterLevel, cx, cy, {
+                stepH,
+                tileW,
+                tileH,
+                canvas,
+            });
+            const e = iso(cX - Math.cos(perpDir) * halfW, cY - Math.sin(perpDir) * halfW, G.waterLevel, cx, cy, {
+                stepH,
+                tileW,
+                tileH,
+                canvas,
+            });
             ctx.beginPath();
             ctx.moveTo(s.x, s.y);
             ctx.lineTo(e.x, e.y);
@@ -852,8 +880,8 @@ function drawScene() {
             armTarget: { x: G.heli.x, y: G.heli.y },
             getFuelingState: () => G.fuelTruck.state === 'FUELING',
         });
+    if (hasPad()) drawPadLights(G.PAD.z, false);
     SceneRenderer.flush(camX, camY);
-    if (hasPad()) drawPadLights(camX, camY, G.PAD.z, false);
     if (hasPad() && isVisible(G.PAD.xMin, G.PAD.yMin)) drawWindsock(camX, camY); // pad always in range if visible
 
     // Bäume als vorgerenderte Sprites — nur sichtbare Tiles via Spatial-Index
@@ -987,7 +1015,8 @@ function drawScene() {
         if (G.heli.winch > 0.3) {
             const rs = G.rescuerSwing;
             const winchTipZ = G.activePayload
-                ? G.activePayload.z + (G.activePayload.type === 'person' || G.activePayload.type === 'rescuer' ? 0.35 : 0)
+                ? G.activePayload.z +
+                  (G.activePayload.type === 'person' || G.activePayload.type === 'rescuer' ? 0.35 : 0)
                 : Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
             drawPerson(
                 rs.x,
@@ -1215,7 +1244,12 @@ function drawPayloadObjects(hangingOnly = false, ropeOnly = false) {
 
         let p = iso(payload.x, payload.y, payload.z, cam.x, cam.y, { stepH, tileW, tileH, canvas });
         if (payload.type === 'orni_wreck') {
-            SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, { x: payload.x, y: payload.y, z: payload.z, angle: payload.angle ?? 0 });
+            SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, {
+                x: payload.x,
+                y: payload.y,
+                z: payload.z,
+                angle: payload.angle ?? 0,
+            });
             SceneRenderer.flush(cam.x, cam.y);
             return;
         } else if (payload.type === 'crate') {
@@ -1346,6 +1380,7 @@ function drawVectorCarrier(cx: number, cy: number) {
         applyParts(CARRIER_DEF, { radarAngle: Date.now() * 0.002 }, { only: ['radar_mast', 'radar_arm'] }),
         { x: objX, y: objY, z: 0, angle, depth: towerWX + towerWY + 0.01 }
     );
+    drawPadLights(G.CARRIER.zDeck, true);
     SceneRenderer.flush(cx, cy);
 
     // Antenna — direct draw after flush, always on top
@@ -1359,8 +1394,6 @@ function drawVectorCarrier(cx: number, cy: number) {
     ctx.moveTo(a0.x, a0.y);
     ctx.lineTo(a1.x, a1.y);
     ctx.stroke();
-
-    drawPadLights(cx, cy, G.CARRIER.zDeck, true);
 }
 
 function drawParkedHelis(cx: number, cy: number) {
@@ -1405,19 +1438,17 @@ function drawHangar() {
     });
 }
 
-function drawPadLights(cx: number, cy: number, z: number, isCarrier = false) {
-    let blink = Math.floor(Date.now() / 500) % 2 === 0;
+function drawPadLights(z: number, isCarrier = false) {
+    const blink = Math.floor(Date.now() / 500) % 2 === 0;
     if (isCarrier) {
-        let cw = G.CARRIER.w + 1.2,
-            cl = G.CARRIER.l + 1.2,
+        const cw = 8.7,
+            cl = 4.2,
             ang = G.CARRIER.angle;
-        function r(rx: number, ry: number) {
-            return {
-                x: G.CARRIER.x + rx * Math.cos(ang) - ry * Math.sin(ang),
-                y: G.CARRIER.y + rx * Math.sin(ang) + ry * Math.cos(ang),
-            };
-        }
-        setLightsOnDeck([r(-cw, -cl), r(cw, -cl), r(cw, cl), r(-cw, cl)], blink, cx, cy, z);
+        const r = (rx: number, ry: number) => ({
+            x: G.CARRIER.x + rx * Math.cos(ang) - ry * Math.sin(ang),
+            y: G.CARRIER.y + rx * Math.sin(ang) + ry * Math.cos(ang),
+        });
+        setLightsOnDeck([r(-cw, -cl), r(cw, -cl), r(cw, cl), r(-cw, cl)], blink, z);
     } else {
         setLightsOnDeck(
             [
@@ -1427,21 +1458,27 @@ function drawPadLights(cx: number, cy: number, z: number, isCarrier = false) {
                 { x: G.PAD.xMin + 0.5, y: G.PAD.yMax + 0.5 },
             ],
             blink,
-            cx,
-            cy,
             z
         );
     }
 }
 
-function setLightsOnDeck(lights: Array<{ x: number; y: number }>, blink: boolean, cx: number, cy: number, z: number) {
+function setLightsOnDeck(lights: Array<{ x: number; y: number }>, blink: boolean, z: number) {
+    const lz = z + 0.05;
     lights.forEach(l => {
-        let p = iso(l.x, l.y, z + 0.05, cx, cy, { stepH, tileW, tileH, canvas });
-        ctx.fillStyle = blink ? '#f00' : '#500';
-        ctx.beginPath();
-        const s = tileW / 64;
-        ctx.arc(p.x, p.y, blink ? Math.max(1.5, 3 * s) : Math.max(1.2, 2.5 * s), 0, 7);
-        ctx.fill();
+        SceneRenderer.add(null, {
+            x: l.x,
+            y: l.y,
+            z: lz,
+            drawFn: (cx, cy) => {
+                const p = iso(l.x, l.y, lz, cx, cy, { stepH, tileW, tileH, canvas });
+                ctx.fillStyle = blink ? '#f00' : '#500';
+                ctx.beginPath();
+                const s = tileW / 64;
+                ctx.arc(p.x, p.y, blink ? Math.max(1.5, 3 * s) : Math.max(1.2, 2.5 * s), 0, 7);
+                ctx.fill();
+            },
+        });
     });
 }
 
@@ -2660,8 +2697,12 @@ const _setupRightJoystick = () => {
     const el = document.getElementById('joystick-right');
     if (!el) return;
     const knob = el.querySelector('.joystick-knob') as HTMLElement;
-    let active = false, cx = 0, cy = 0, jr = 0;
-    let _stickDx = 0, _stickDy = 0;
+    let active = false,
+        cx = 0,
+        cy = 0,
+        jr = 0;
+    let _stickDx = 0,
+        _stickDy = 0;
 
     el.addEventListener('pointerdown', e => {
         e.preventDefault();
@@ -2671,16 +2712,19 @@ const _setupRightJoystick = () => {
         cy = r.top + r.height / 2;
         jr = r.width / 2;
         active = true;
-        _stickDx = 0; _stickDy = 0;
+        _stickDx = 0;
+        _stickDy = 0;
         knob.style.transition = 'none';
     });
     el.addEventListener('pointermove', e => {
         if (!active) return;
-        const dx = e.clientX - cx, dy = e.clientY - cy;
+        const dx = e.clientX - cx,
+            dy = e.clientY - cy;
         const dist = Math.hypot(dx, dy) || 1;
         const clamped = Math.min(dist, jr * 0.55) / dist;
         knob.style.transform = `translate(calc(-50% + ${dx * clamped}px), calc(-50% + ${dy * clamped}px))`;
-        _stickDx = dx; _stickDy = dy;
+        _stickDx = dx;
+        _stickDy = dy;
         if (getControlMode() === 'screen') {
             const dead = jr * 0.18;
             const inVertSector = Math.abs(dy) > dead && Math.abs(dx) < Math.abs(dy) * 0.4;
@@ -2693,7 +2737,8 @@ const _setupRightJoystick = () => {
     const release = () => {
         if (!active) return;
         active = false;
-        _stickDx = 0; _stickDy = 0;
+        _stickDx = 0;
+        _stickDy = 0;
         knob.style.transition = 'transform 0.12s ease-out';
         knob.style.transform = 'translate(-50%, -50%)';
         (G.keys as Record<string, boolean>)['ArrowUp'] = false;
@@ -2706,7 +2751,12 @@ const _setupRightJoystick = () => {
 
     // Heading mode: run each frame, maps stick direction relative to heli heading
     const tick = () => {
-        if (active && getControlMode() === 'heading' && zstate.gameStarted && Math.hypot(_stickDx, _stickDy) > jr * 0.18) {
+        if (
+            active &&
+            getControlMode() === 'heading' &&
+            zstate.gameStarted &&
+            Math.hypot(_stickDx, _stickDy) > jr * 0.18
+        ) {
             const targetAngle = Math.atan2(_stickDy, _stickDx);
             let diff = targetAngle - G.heli.angle;
             while (diff > Math.PI) diff -= Math.PI * 2;
@@ -2715,8 +2765,10 @@ const _setupRightJoystick = () => {
             (G.keys as Record<string, boolean>)['ArrowLeft'] = diff < -turnDead;
             (G.keys as Record<string, boolean>)['ArrowRight'] = diff > turnDead;
             const stickLen = Math.hypot(_stickDx, _stickDy);
-            const normSx = _stickDx / stickLen, normSy = _stickDy / stickLen;
-            const fwdX = Math.cos(G.heli.angle), fwdY = Math.sin(G.heli.angle);
+            const normSx = _stickDx / stickLen,
+                normSy = _stickDy / stickLen;
+            const fwdX = Math.cos(G.heli.angle),
+                fwdY = Math.sin(G.heli.angle);
             const dot = normSx * fwdX + normSy * fwdY;
             const accelDead = 0.3;
             (G.keys as Record<string, boolean>)['ArrowUp'] = dot > accelDead;
@@ -3148,9 +3200,7 @@ const _onloadMain = () => {
         _afterConsent();
     }
 
-    document.addEventListener('pointerdown', () => soundHandler.play(musicConfig.mainMenu || 'maintheme', true), {
-        once: true,
-    });
+
 };
 
 window.toCampaignSelect = toCampaignSelect;

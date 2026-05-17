@@ -243,7 +243,8 @@ const _DE = {
                   'Es findet keine Weitergabe von Daten an Dritte statt.',
                   'Kontakt für Datenschutzanfragen: yarrick@web.de',
               ],
-              LEGAL_DATENSCHUTZ_WEB: 'Beim Aufbau einer Multiplayer-Verbindung werden zur Vermittlung der Peer-to-Peer-Verbindung Google STUN-Server (stun.l.google.com) kontaktiert. Dabei wird deine IP-Adresse übermittelt – ausschließlich auf deine Veranlassung und nur für die Dauer des Verbindungsaufbaus. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.',
+              LEGAL_DATENSCHUTZ_WEB:
+                  'Beim Aufbau einer Multiplayer-Verbindung werden zur Vermittlung der Peer-to-Peer-Verbindung Google STUN-Server (stun.l.google.com) kontaktiert. Dabei wird deine IP-Adresse übermittelt – ausschließlich auf deine Veranlassung und nur für die Dauer des Verbindungsaufbaus. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.',
           }),
 
     MADE_WITH: 'MADE WITH ♥ IN JAVASCRIPT',
@@ -252,7 +253,11 @@ const _DE = {
     CREDITS_ROLE_DEVELOPMENT: 'SPIELDESIGN & ENTWICKLUNG',
     CREDITS_ROLE_CAMPAIGN: 'KAMPAGNEN-DESIGN',
     CREDITS_ROLE_SOUND: 'SOUND & MUSIK',
+    CREDITS_ROLE_RECORDING: 'AUFNAHMELEITUNG',
+    CREDITS_ROLE_VOICEARTIST: 'SPRECHER',
+    CREDITS_ROLE_LEADERTEST: 'LEITER TEST',
     CREDITS_ROLE_TEST: 'TESTER',
+    CREDITS_ROLE_CONSULTGS: 'FACHBERATUNG G.S.',
     CREDITS_ROLE_INSPIREDBY: 'INSPIRIERT VON',
 } as const;
 
@@ -459,7 +464,8 @@ const _EN = {
                   'No data is shared with third parties.',
                   'Privacy contact: yarrick@web.de',
               ],
-              LEGAL_DATENSCHUTZ_WEB: 'When establishing a multiplayer connection, Google STUN servers (stun.l.google.com) are contacted to broker the peer-to-peer connection. Your IP address is transmitted – solely at your initiative and only for the duration of the connection setup. Legal basis: Art. 6 para. 1 lit. b GDPR.',
+              LEGAL_DATENSCHUTZ_WEB:
+                  'When establishing a multiplayer connection, Google STUN servers (stun.l.google.com) are contacted to broker the peer-to-peer connection. Your IP address is transmitted – solely at your initiative and only for the duration of the connection setup. Legal basis: Art. 6 para. 1 lit. b GDPR.',
           }),
 
     MADE_WITH: 'MADE WITH ♥ IN JAVASCRIPT',
@@ -468,7 +474,11 @@ const _EN = {
     CREDITS_ROLE_DEVELOPMENT: 'GAME DESIGN & DEVELOPMENT',
     CREDITS_ROLE_CAMPAIGN: 'CAMPAIGN DESIGN',
     CREDITS_ROLE_SOUND: 'SOUND & MUSIC',
+    CREDITS_ROLE_RECORDING: 'AUDIO-RECORDING',
+    CREDITS_ROLE_VOICEARTIST: 'VOICE-ARTIST',
+    CREDITS_ROLE_LEADERTEST: 'LEADER-TESTER',
     CREDITS_ROLE_TEST: 'TESTERS',
+    CREDITS_ROLE_CONSULTGS: 'CONSULTING G.S.',
     CREDITS_ROLE_INSPIREDBY: 'INSPIRED BY',
 } as const;
 

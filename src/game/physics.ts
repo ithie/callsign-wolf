@@ -976,7 +976,12 @@ const _updateFuelVehicle = (v: FuelVehicle, dt: number, ctx: PhysicsCtx, cfg: Fu
     const buildWps = (): { lx: number; ly: number }[] => {
         const N = 30;
         const p0 = { lx: v.localParkX, ly: v.localParkY };
-        const p3 = cfg.worldToLocal(heli.x, heli.y);
+        const heliLoc = cfg.worldToLocal(heli.x, heli.y);
+        const fullDx = heliLoc.lx - p0.lx, fullDy = heliLoc.ly - p0.ly;
+        const fullDist = Math.hypot(fullDx, fullDy) || 1;
+        // Stop STOP_DIST before heli center so truck body doesn't overlap with heli
+        const stopScale = Math.max(0, fullDist - cfg.STOP_DIST) / fullDist;
+        const p3 = { lx: p0.lx + fullDx * stopScale, ly: p0.ly + fullDy * stopScale };
         const dx = p3.lx - p0.lx, dy = p3.ly - p0.ly;
         const dist = Math.hypot(dx, dy) || 1;
         const p1 = { lx: p0.lx + Math.cos(v.localParkAngle) * dist * 0.4,
@@ -1013,13 +1018,31 @@ const _updateFuelVehicle = (v: FuelVehicle, dt: number, ctx: PhysicsCtx, cfg: Fu
         return;
     }
 
+    // Abort immediately when heli engine starts — prevent truck driving into lifting heli
+    if (heli.engineOn && v.state !== 'RETURNING') {
+        v.arm = 0;
+        if (!v.wps) { v.wps = buildWps(); v.wpI = 0; }
+        // Reverse from current progress so truck doesn't teleport
+        const progress = v.state === 'DRIVING' && v.wps
+            ? Math.min(1.0, (v.wpI ?? 0) / Math.max(1, v.wps.length - 1))
+            : 1.0;
+        v.state = 'RETURNING';
+        v.t = progress;
+    }
+
     if (v.state === 'DRIVING') {
         if (!v.wps) { v.wps = buildWps(); v.wpI = 0; }
         if (v.wpI < v.wps.length) {
             const wp = cfg.localToWorld(v.wps[v.wpI].lx, v.wps[v.wpI].ly);
             if (navigate(wp.x, wp.y) < 1.4) v.wpI++;
         } else {
-            if (navigate(heli.x, heli.y) <= cfg.STOP_DIST) {
+            // Navigate to stopping point (STOP_DIST before heli), not heli center
+            const heliLoc = cfg.worldToLocal(heli.x, heli.y);
+            const fullDx = heliLoc.lx - v.localParkX, fullDy = heliLoc.ly - v.localParkY;
+            const fullDist = Math.hypot(fullDx, fullDy) || 1;
+            const stopScale = Math.max(0, fullDist - cfg.STOP_DIST) / fullDist;
+            const sw = cfg.localToWorld(v.localParkX + fullDx * stopScale, v.localParkY + fullDy * stopScale);
+            if (navigate(sw.x, sw.y) <= 0.5) {
                 v.state = cfg.hasArm ? 'ARM_OUT' : 'FUELING';
                 v.t = cfg.hasArm ? 0 : 1.0;
                 const lp = cfg.worldToLocal(v.x, v.y);
@@ -1143,7 +1166,6 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     updateBoats(G.BOATS, dt);
     updateSubmarines(G.SUBMARINES, dt);
     if (ctx.hasPad && G.fuelTruck.state !== 'PARKED') updateFuelTruck(dt, ctx);
-    if (ctx.hasCarrier) updateCarrierFuelCar(dt, ctx);
     if (ctx.hasCarrier && !crashed) {
         let oldX = G.CARRIER.x,
             oldY = G.CARRIER.y,
@@ -1181,6 +1203,8 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
             G.heli.vy *= Math.pow(0.8, dt);
         }
     }
+    // Updated after carrier moves so car snaps to current-frame carrier position (no 1-frame lag)
+    if (ctx.hasCarrier) updateCarrierFuelCar(dt, ctx);
 
     let groundH = getGround(G.heli.x, G.heli.y, G.points, G.CARRIER);
 

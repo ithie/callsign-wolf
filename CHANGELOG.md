@@ -1,5 +1,25 @@
 # SAR: Callsign WOLF — Changelog
 
+## v26.6.0 — Bug Fixes & Rendering Polish
+
+### Fixes
+
+- **Fuel truck collision** — truck was parking inside the helicopter because the Bezier path endpoint was set to the heli center. The path now ends `STOP_DIST` before the heli center; the final approach targets that stopping position, so the truck body no longer overlaps the heli.
+- **Fuel truck abort on engine start** — if the player started the engine while the fuel truck was still en route, the truck continued navigating into the (now lifting) heli. The truck now immediately reverses to its parking spot the moment `engineOn` becomes true, at the correct progress position along its path (no teleport).
+- **Carrier fuel car frame lag** — `updateCarrierFuelCar` ran before `updateCarrierPos`, so the car's world position was computed from the previous frame's carrier position. Moving it after the carrier position update eliminates the 1-frame sliding artefact on a turning/moving carrier.
+- **Music starts mid-track** — `ZsynthPlayer` initialised `nextNoteTime = 0` for every new track. The scheduler's while-loop then caught up from time 0 to `audioContext.currentTime`, advancing `currentStep` through hundreds of steps before playing the first note. The track now starts at `currentTime + 0.05`.
+- **UI freeze before explosion** — the same `nextNoteTime = 0` bug caused the scheduler to create hundreds of Web Audio nodes synchronously on the main thread when the defeat music started, freezing the screen for several seconds before the explosion animation appeared. Fixed by the same `currentTime + 0.05` initialisation.
+
+### Changed
+
+- **PAD position lights** — lights now participate in the scene depth sort (rendered via `SceneRenderer.add` before `flush`) instead of being drawn directly to canvas after the flush. Lights no longer bleed through the fuel truck.
+- **Carrier position lights** — same depth-sort fix. Additionally, lights are now placed exactly at the visual hull edge (ZDEF `±8.7 / ±4.2`) instead of the physics bounds, where they previously floated outside the hull.
+- **Heli spawn position on carrier** — heli now spawns on the open deck, clear of the tower/superstructure.
+- **Music starts in main menu** — music no longer begins on the splash screen click. The first note plays when the main menu appears.
+- **No music restart on menu re-entry** — navigating back to the main menu (e.g. after a mission) no longer interrupts the music if the correct track is already playing.
+
+---
+
 ## v26.5.1 — Bow Waves, Ornithopter Wreck & Polish
 
 ### New

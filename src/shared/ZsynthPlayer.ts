@@ -114,7 +114,7 @@ const ZsynthPlayer = {
             isPlaying: true,
             currentStep: 0,
             gainNode: ZsynthPlayer.ctx.createGain(),
-            nextNoteTime: 0,
+            nextNoteTime: ZsynthPlayer.ctx.currentTime + 0.05,
             stepMap,
         };
 

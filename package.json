@@ -2,7 +2,7 @@
     "name": "callsign-wolf",
     "private": true,
     "license": "UNLICENSED",
-    "version": "26.5.1",
+    "version": "26.6.0",
     "type": "module",
     "main": "src/workbench/dist/main/index.cjs",
     "scripts": {
