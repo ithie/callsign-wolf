@@ -69,7 +69,7 @@ export const initNpcHelisFromMission = () => {
 
     const wps = hasCoordinator ? genWaypoints() : [];
     const firstWp = wps[0];
-    const cruiseZ = firstWp ? Math.max(G.waterLevel, getGround(firstWp.x, firstWp.y)) + PATROL_ALT : G.CARRIER.zDeck + PATROL_ALT;
+    const cruiseZ = firstWp ? getGround(firstWp.x, firstWp.y) + PATROL_ALT : G.CARRIER.zDeck + PATROL_ALT;
 
     for (const slot of CARRIER_SLOTS) {
         const isCoordSlot = slot === COORDINATOR_SLOT && hasCoordinator;

@@ -144,18 +144,18 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
     };
 
     const _drawWindTurbine = (tX: number, tY: number, spinning: boolean) => {
-        const gz = Math.max(G.waterLevel, getGround(tX, tY));
+        const gz = getGround(tX, tY);
         const rotorAngle = spinning ? (Date.now() * 0.002) % (Math.PI * 2) : 0;
         SceneRenderer.add(applyParts(WIND_TURBINE_DEF as any, { rotorAngle }), { x: tX, y: tY, z: gz, angle: 0 });
     };
 
     const _drawPlaneWreck = (wx: number, wy: number, angle: number) => {
-        const gz = Math.max(G.waterLevel, getGround(wx, wy));
+        const gz = getGround(wx, wy);
         SceneRenderer.add(PLANE_WRECK_DEF as any, { x: wx, y: wy, z: gz, angle });
     };
 
     const _drawBrokenSailboat = (bx: number, by: number, angle: number) => {
-        const gz = Math.max(G.waterLevel, getGround(bx, by));
+        const gz = getGround(bx, by);
         SceneRenderer.add(SAILBOAT_BROKEN_DEF as any, { x: bx, y: by, z: gz, angle: angle - Math.PI / 2 });
     };
 
@@ -214,7 +214,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
     const _drawLighthouse = (cx: number, cy: number) => {
         const lh = getLighthouse();
         if (!lh) return;
-        const lhZ = Math.max(G.waterLevel, getGround(lh.x, lh.y));
+        const lhZ = getGround(lh.x, lh.y);
         SceneRenderer.add(LIGHTHOUSE_DEF, { x: lh.x, y: lh.y, z: lhZ });
         SceneRenderer.flush(cx, cy);
         const p = isoFn(lh.x, lh.y, lhZ + 8.1, cx, cy);
@@ -295,7 +295,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 ? isVisible(G.CARRIER.x, G.CARRIER.y, visMargin)
                 : isVisible(npc.x, npc.y, visMargin);
             if (!visible) continue;
-            const groundBelow = npc.state === 'PARKED' ? npc.z : Math.max(G.waterLevel, getGround(npc.x, npc.y));
+            const groundBelow = npc.state === 'PARKED' ? npc.z : getGround(npc.x, npc.y);
             drawHeli(npc.type, npc.x, npc.y, npc.z, npc.angle, npc.tilt, npc.roll, npc.rotationPos, cx, cy, {
                 isShadow: true, scaleOverride: 1, fillColor: '#556b2f', strokeColor: '#3a4a1f',
                 shadowGetGround: () => groundBelow,
@@ -332,7 +332,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         G.PLANE_WRECKS.forEach((pw: any) => { if (isVisible(pw.x, pw.y, visMargin)) _drawPlaneWreck(pw.x, pw.y, pw.angle); });
         G.payloads.forEach((p: any) => {
             if (p.type !== 'orni_wreck' || !isVisible(p.x, p.y, visMargin)) return;
-            const gz = Math.max(G.waterLevel, getGround(p.x, p.y));
+            const gz = getGround(p.x, p.y);
             SceneRenderer.add(ORNI_WRECK_RESIDUE_DEF as any, { x: p.x, y: p.y, z: gz, angle: p.angle ?? 0 });
             if (!p.hanging && !p.rescued)
                 SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, { x: p.x, y: p.y, z: gz, angle: p.angle ?? 0 });
@@ -408,7 +408,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
 
             if (night && !payload.hanging && !payload.attachTo) {
                 const dx = payload.x - G.heli.x, dy = payload.y - G.heli.y;
-                const alt = G.heli.z - Math.max(G.waterLevel, getGround(G.heli.x, G.heli.y));
+                const alt = G.heli.z - getGround(G.heli.x, G.heli.y);
                 if (Math.hypot(dx, dy) > 10 + alt * 2.0) return;
                 let diff = Math.atan2(dy, dx) - G.heli.angle;
                 while (diff < -Math.PI) diff += Math.PI * 2;
@@ -543,51 +543,8 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         }
     };
 
-    const drawCollisionBox = (
-        wX: number,
-        wY: number,
-        angle: number,
-        oxMin: number,
-        oxMax: number,
-        oyMin: number,
-        oyMax: number,
-        ozMin: number,
-        ozMax: number,
-        color: string
-    ) => {
-        const camX = zstate.cam.x, camY = zstate.cam.y;
-        const cosA = Math.cos(angle), sinA = Math.sin(angle);
-        const wp = (lx: number, ly: number, lz: number) => ({
-            x: wX + lx * cosA - ly * sinA,
-            y: wY + lx * sinA + ly * cosA,
-            z: lz,
-        });
-        const corners = [
-            wp(oxMin, oyMin, ozMin), wp(oxMax, oyMin, ozMin),
-            wp(oxMax, oyMax, ozMin), wp(oxMin, oyMax, ozMin),
-            wp(oxMin, oyMin, ozMax), wp(oxMax, oyMin, ozMax),
-            wp(oxMax, oyMax, ozMax), wp(oxMin, oyMax, ozMax),
-        ];
-        const sc = corners.map(p => isoFn(p.x, p.y, p.z, camX, camY));
-        const edges = [
-            [0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],
-            [0,4],[1,5],[2,6],[3,7],
-        ];
-        ctx.save();
-        ctx.strokeStyle = color || 'rgba(0,255,100,0.85)';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([4, 3]);
-        ctx.shadowColor = color || '#00ff66';
-        ctx.shadowBlur = 4;
-        edges.forEach(([a, b]) => {
-            ctx.beginPath();
-            ctx.moveTo(sc[a].x, sc[a].y);
-            ctx.lineTo(sc[b].x, sc[b].y);
-            ctx.stroke();
-        });
-        ctx.setLineDash([]);
-        ctx.restore();
-    };
+    const drawCollisionBox = (wX: number, wY: number, angle: number, oxMin: number, oxMax: number, oyMin: number, oyMax: number, ozMin: number, ozMax: number, color: string) =>
+        SceneRenderer.drawCollisionBox(zstate.cam.x, zstate.cam.y, wX, wY, angle, oxMin, oxMax, oyMin, oyMax, ozMin, ozMax, color);
 
     const checkCollisionBox = (
         px: number, py: number, pz: number,
@@ -881,5 +838,5 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         }
     };
 
-    return { drawWorldObjects, drawBirds, drawDebris, drawPayloadObjects, drawDiscoBall, renderRain, drawCollisionBox, drawDebugOverlay, handleCollisionBoxes };
+    return { drawWorldObjects, drawBirds, drawDebris, drawPayloadObjects, drawDiscoBall, renderRain, drawDebugOverlay, handleCollisionBoxes };
 };

@@ -28,45 +28,48 @@ const _rotateVerts = (
  * Parts with a parent field are rotated in the already-transformed space of their parent.
  * Call this each frame before passing a DEF to SceneRenderer.
  */
+type RotFn = (verts: number[][]) => number[][];
+
+const _buildRotFnCache = (def: DEF, params: Record<string, number>) => {
+    const partMap = new Map(def.parts!.map(p => [p.id, p]));
+    const cache = new Map<string, RotFn>();
+    const getRotFn = (partId: string): RotFn => {
+        if (cache.has(partId)) return cache.get(partId)!;
+        const part = partMap.get(partId);
+        if (!part) {
+            const identity: RotFn = v => v;
+            cache.set(partId, identity);
+            return identity;
+        }
+        let fn: RotFn;
+        if (part.parent) {
+            const parentFn = getRotFn(part.parent);
+            if (part.rotate) {
+                const angle = params[part.rotate.param] ?? 0;
+                const tPivot = parentFn([part.rotate.pivot])[0] as [number, number, number];
+                const { axis } = part.rotate;
+                fn = verts => _rotateVerts(parentFn(verts), tPivot, axis, angle);
+            } else {
+                fn = parentFn;
+            }
+        } else if (part.rotate) {
+            const angle = params[part.rotate.param] ?? 0;
+            const { pivot, axis } = part.rotate;
+            fn = verts => _rotateVerts(verts, pivot, axis, angle);
+        } else {
+            fn = verts => verts;
+        }
+        cache.set(partId, fn);
+        return fn;
+    };
+    return getRotFn;
+};
+
 const applyParts = (def: DEF, params: Record<string, number>, opts?: { only?: string[] }): DEF => {
     const extraFaces: DEFFace[] = [];
 
     if (def.parts?.length) {
-        const partMap = new Map(def.parts.map(p => [p.id, p]));
-        const rotFnCache = new Map<string, (verts: number[][]) => number[][]>();
-
-        const getRotFn = (partId: string): (verts: number[][]) => number[][] => {
-            if (rotFnCache.has(partId)) return rotFnCache.get(partId)!;
-            const part = partMap.get(partId);
-            if (!part) {
-                const identity = (v: number[][]) => v;
-                rotFnCache.set(partId, identity);
-                return identity;
-            }
-
-            let fn: (verts: number[][]) => number[][];
-            if (part.parent) {
-                const parentFn = getRotFn(part.parent);
-                if (part.rotate) {
-                    const angle = params[part.rotate.param] ?? 0;
-                    const tPivot = parentFn([part.rotate.pivot])[0] as [number, number, number];
-                    const { axis } = part.rotate;
-                    fn = (verts) => _rotateVerts(parentFn(verts), tPivot, axis, angle);
-                } else {
-                    fn = parentFn;
-                }
-            } else if (part.rotate) {
-                const angle = params[part.rotate.param] ?? 0;
-                const { pivot, axis } = part.rotate;
-                fn = (verts) => _rotateVerts(verts, pivot, axis, angle);
-            } else {
-                fn = (verts) => verts;
-            }
-
-            rotFnCache.set(partId, fn);
-            return fn;
-        };
-
+        const getRotFn = _buildRotFnCache(def, params);
         for (const part of def.parts) {
             if (opts?.only && !opts.only.includes(part.id)) continue;
             const rotFn = getRotFn(part.id);
@@ -99,39 +102,7 @@ const getTransformedPivots = (def: DEF, params: Record<string, number>): Map<str
     const result = new Map<string, [number, number, number]>();
     if (!def.parts?.length) return result;
 
-    const partMap = new Map(def.parts.map(p => [p.id, p]));
-    const rotFnCache = new Map<string, (verts: number[][]) => number[][]>();
-
-    const getRotFn = (partId: string): (verts: number[][]) => number[][] => {
-        if (rotFnCache.has(partId)) return rotFnCache.get(partId)!;
-        const part = partMap.get(partId);
-        if (!part) {
-            const identity = (v: number[][]) => v;
-            rotFnCache.set(partId, identity);
-            return identity;
-        }
-        let fn: (verts: number[][]) => number[][];
-        if (part.parent) {
-            const parentFn = getRotFn(part.parent);
-            if (part.rotate) {
-                const angle = params[part.rotate.param] ?? 0;
-                const tPivot = parentFn([part.rotate.pivot])[0] as [number, number, number];
-                const { axis } = part.rotate;
-                fn = (verts) => _rotateVerts(parentFn(verts), tPivot, axis, angle);
-            } else {
-                fn = parentFn;
-            }
-        } else if (part.rotate) {
-            const angle = params[part.rotate.param] ?? 0;
-            const { pivot, axis } = part.rotate;
-            fn = (verts) => _rotateVerts(verts, pivot, axis, angle);
-        } else {
-            fn = (verts) => verts;
-        }
-        rotFnCache.set(partId, fn);
-        return fn;
-    };
-
+    const getRotFn = _buildRotFnCache(def, params);
     for (const part of def.parts) {
         if (!part.rotate) continue;
         const parentFn = part.parent ? getRotFn(part.parent) : null;

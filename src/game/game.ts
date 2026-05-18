@@ -714,7 +714,7 @@ function drawScene() {
             G.heli.rotationPos,
             camX,
             camY,
-            { isShadow: true, shadowGetGround: (x, y) => Math.max(G.waterLevel, getGround(x, y, G.points, G.CARRIER)), flapRate: _flapRate }
+            { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER), flapRate: _flapRate }
         );
         if (G.remoteHeli) {
             drawHeli(
@@ -728,7 +728,7 @@ function drawScene() {
                 G.remoteHeli.rotationPos,
                 camX,
                 camY,
-                { isShadow: true, shadowGetGround: (x, y) => Math.max(G.waterLevel, getGround(x, y, G.points, G.CARRIER)) }
+                { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER) }
             );
         }
     }

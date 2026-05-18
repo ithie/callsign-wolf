@@ -29,6 +29,7 @@ export interface DEFInstanceOptions {
 export interface SceneRenderer {
     add(def: DEF | null, opts: DEFInstanceOptions): void;
     flush(camX: number, camY: number): void;
+    drawCollisionBox(camX: number, camY: number, wX: number, wY: number, angle: number, xMin: number, xMax: number, yMin: number, yMax: number, zMin: number, zMax: number, color?: string): void;
     debugCollision: boolean;
     debugAltitude: boolean;
 }
@@ -73,6 +74,7 @@ export function createSceneRenderer(ctx: CanvasRenderingContext2D, iso: IsoFn): 
         camX: number, camY: number,
         wX: number, wY: number, angle: number,
         xMin: number, xMax: number, yMin: number, yMax: number, zMin: number, zMax: number,
+        color?: string,
     ) => {
         const cosA = Math.cos(angle), sinA = Math.sin(angle);
         const wp = (lx: number, ly: number, lz: number) => ({
@@ -88,15 +90,15 @@ export function createSceneRenderer(ctx: CanvasRenderingContext2D, iso: IsoFn): 
         ];
         const sc = corners.map(p => iso(p.x, p.y, p.z, camX, camY));
         const edges = [
-            [0,1],[1,2],[2,3],[3,0],   // bottom
-            [4,5],[5,6],[6,7],[7,4],   // top
-            [0,4],[1,5],[2,6],[3,7],   // verticals
+            [0,1],[1,2],[2,3],[3,0],
+            [4,5],[5,6],[6,7],[7,4],
+            [0,4],[1,5],[2,6],[3,7],
         ];
         ctx.save();
-        ctx.strokeStyle = 'rgba(0, 255, 100, 0.85)';
+        ctx.strokeStyle = color ?? 'rgba(0,255,100,0.85)';
         ctx.lineWidth = 1.5;
         ctx.setLineDash([4, 3]);
-        ctx.shadowColor = '#00ff66';
+        ctx.shadowColor = color ?? '#00ff66';
         ctx.shadowBlur = 4;
         edges.forEach(([a, b]) => {
             ctx.beginPath();
@@ -111,6 +113,10 @@ export function createSceneRenderer(ctx: CanvasRenderingContext2D, iso: IsoFn): 
     const renderer: SceneRenderer = {
         debugCollision: false,
         debugAltitude: false,
+
+        drawCollisionBox(camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color) {
+            _drawCollisionBox(camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color);
+        },
 
         add(def, { x, y, z = 0, angle = 0, colors, drawFn, depth: depthOverride } = {} as DEFInstanceOptions) {
             const faces: _Face[] = [];

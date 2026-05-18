@@ -106,7 +106,7 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
         const yTo = Math.ceil(ry + _tileRange);
 
         if (isNight) {
-            const alt = G.heli.z - Math.max(G.waterLevel, getGround(G.heli.x, G.heli.y, G.points, G.CARRIER));
+            const alt = G.heli.z - getGround(G.heli.x, G.heli.y, G.points, G.CARRIER);
             const coneWidth = 0.3 + alt * 0.05;
             const range = 10 + alt * 2.0;
             const range2 = range * range;
