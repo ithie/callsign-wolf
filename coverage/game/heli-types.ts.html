@@ -199,7 +199,25 @@
 <a name='L134'></a><a href='#L134'>134</a>
 <a name='L135'></a><a href='#L135'>135</a>
 <a name='L136'></a><a href='#L136'>136</a>
-<a name='L137'></a><a href='#L137'>137</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L137'></a><a href='#L137'>137</a>
+<a name='L138'></a><a href='#L138'>138</a>
+<a name='L139'></a><a href='#L139'>139</a>
+<a name='L140'></a><a href='#L140'>140</a>
+<a name='L141'></a><a href='#L141'>141</a>
+<a name='L142'></a><a href='#L142'>142</a>
+<a name='L143'></a><a href='#L143'>143</a>
+<a name='L144'></a><a href='#L144'>144</a>
+<a name='L145'></a><a href='#L145'>145</a>
+<a name='L146'></a><a href='#L146'>146</a>
+<a name='L147'></a><a href='#L147'>147</a>
+<a name='L148'></a><a href='#L148'>148</a>
+<a name='L149'></a><a href='#L149'>149</a>
+<a name='L150'></a><a href='#L150'>150</a>
+<a name='L151'></a><a href='#L151'>151</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -331,20 +349,30 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">22x</span>
-<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">18x</span>
 <span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">7x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">// ─── Heli Type Definitions ────────────────────────────────────────────────────
 // Single source of truth for all helicopter variants.
-// The game logic must not contain any `if (type === 'jayhawk')` etc.
+// The game logic must not contain any `if (type === 'coasthawk')` etc.
 // Import HELI_TYPES and use getHeliType(id) instead.
 &nbsp;
 import type { DEF } from './defs';
-import JAYHAWK_DEF from './models/jayhawk.zdef';
+import COASTHAWK_DEF from './models/coasthawk.zdef';
 import DOLPHIN_DEF from './models/dolphin.zdef';
-import CHINOOK_DEF from './models/chinook.zdef';
-import GLIDER_DEF from './models/glider.zdef';
+import ATLAS_DEF from './models/atlas.zdef';
+import ORNITHOPTER_RAW from './models/ornithopter.zdef';
 &nbsp;
 export interface HeliType {
     id: string;
@@ -359,27 +387,31 @@ export interface HeliType {
     liftPower: number;
     cargoResist: number;
     // Rendering
-    scale: number;         // drawHeli geometry scale
-    previewScale: number;  // scale for menu icon canvas
+    scale: number; // drawHeli geometry scale
+    previewScale: number; // scale for menu icon canvas
     // Collision box (local coords, zMax relative to heli.z)
     collisionBox: { xMin: number; xMax: number; yMin: number; yMax: number; zMax: number };
     // Local-x offsets of rotor hubs (for particles/sound). Single-rotor helis: [0].
     rotorOffsets: number[];
-    // Extra rotor debris piece on crash (chinook)
+    // Extra rotor debris piece on crash (atlas)
     extraRotorDebris: boolean;
     // Whether this heli can carry cargo crates
     canCarryCargo: boolean;
     // Select screen display
-    selectLabel: string;    // e.g. "MH-65 DOLPHIN"
-    selectSub: string;      // e.g. "Agile / Fast"
-    selectCap: string;      // e.g. "Cap: 3 (Lightweight)"
+    selectLabel: string; // e.g. "DOLPHIN"
+    selectSub: string; // e.g. "Agile / Fast"
+    selectCap: string; // e.g. "Cap: 3 (Lightweight)"
     description?: string;
+    // Minimum rank index required to fly this type (0=Leutnant, 1=Oberleutnant, 2=Hauptmann)
+    minRankIndex: number;
+    /** If true, this type is completely hidden in the selection screen when locked (instead of greyed out) */
+    hideWhenLocked?: boolean;
 }
 &nbsp;
 export const HELI_TYPES: HeliType[] = [
     {
         id: 'dolphin',
-        label: 'SA 365 Dauphin',
+        label: 'Dolphin',
         def: DOLPHIN_DEF,
         maxLoad: 3,
         accel: 0.00117,
@@ -389,20 +421,22 @@ export const HELI_TYPES: HeliType[] = [
         liftPower: 0.0009,
         cargoResist: 0.5,
         scale: 0.7,
-        previewScale: 2.5,
+        previewScale: 1.43,
         collisionBox: { xMin: -1.26, xMax: 1.26, yMin: -0.28, yMax: 0.28, zMax: 0.56 },
         rotorOffsets: [0],
         extraRotorDebris: false,
         canCarryCargo: false,
-        selectLabel: 'MH-65 DOLPHIN',
+        selectLabel: 'DOLPHIN',
         selectSub: 'Wendig / Schnell',
         selectCap: 'Kap.: 3 (Leichtgewicht)',
-        description: 'Ein wendiger Küstenwachthubschrauber — ideal für schnelle Einsätze in schwierigem Gelände. Leicht, präzise, reaktionsschnell. Das bevorzugte Werkzeug erfahrener Piloten.',
+        description:
+            'Ein wendiger Küstenwachthubschrauber — ideal für schnelle Einsätze in schwierigem Gelände. Leicht, präzise, reaktionsschnell. Das bevorzugte Werkzeug erfahrener Piloten.',
+        minRankIndex: 1,
     },
     {
-        id: 'jayhawk',
-        label: 'MH-60T Jayhawk',
-        def: JAYHAWK_DEF,
+        id: 'coasthawk',
+        label: 'Coast-Hawk',
+        def: COASTHAWK_DEF,
         maxLoad: 10,
         accel: 0.000502,
         friction: 0.998,
@@ -411,20 +445,22 @@ export const HELI_TYPES: HeliType[] = [
         liftPower: 0.0005,
         cargoResist: 0.1,
         scale: 1.0,
-        previewScale: 2.5,
+        previewScale: 1.0,
         collisionBox: { xMin: -3.0, xMax: 1.3, yMin: -0.5, yMax: 0.5, zMax: 1.3 },
         rotorOffsets: [0],
         extraRotorDebris: false,
         canCarryCargo: true,
-        selectLabel: 'MH-60T JAYHAWK',
+        selectLabel: 'Coast-Hawk',
         selectSub: 'Schwer / Stabil',
         selectCap: 'Kap.: 10 (Schwerlast)',
-        description: 'Das Arbeitstier der Seenotrettung. Trägt schwere Lasten über weite Strecken, auch bei rauem Wetter. Einmal in Fahrt gebracht, ist er schwer aufzuhalten.',
+        description:
+            'Das Arbeitstier der Seenotrettung. Trägt schwere Lasten über weite Strecken, auch bei rauem Wetter. Einmal in Fahrt gebracht, ist er schwer aufzuhalten.',
+        minRankIndex: 0,
     },
     {
-        id: 'chinook',
-        label: 'CH-47 Chinook',
-        def: CHINOOK_DEF,
+        id: 'atlas',
+        label: 'Atlas',
+        def: ATLAS_DEF,
         maxLoad: 20,
         accel: 0.000212,
         friction: 0.9992,
@@ -433,36 +469,42 @@ export const HELI_TYPES: HeliType[] = [
         liftPower: 0.0004,
         cargoResist: 0.05,
         scale: 1.0,
-        previewScale: 1.5,
+        previewScale: 1.0,
         collisionBox: { xMin: -2.6, xMax: 2.8, yMin: -0.6, yMax: 0.6, zMax: 1.8 },
         rotorOffsets: [1.5, -2.3],
         extraRotorDebris: true,
         canCarryCargo: true,
-        selectLabel: 'CH-47 CHINOOK',
+        selectLabel: 'Atlas',
         selectSub: 'Tandem / Extraschwer',
         selectCap: 'Kap.: 20 (Schwerlast)',
-        description: 'Zwei Rotoren, keine Ausrede. Der CH-47 ist für den Masseneinsatz gebaut — wenn normale Helikopter kapitulieren, fliegt der Chinook.',
+        description:
+            'Zwei Rotoren, keine Ausrede. Der Atlas ist für den Masseneinsatz gebaut — wenn normale Helikopter kapitulieren, fliegt der Atlas.',
+        minRankIndex: 2,
     },
     {
-        id: 'glider',
-        label: 'ASK-21',
-        def: GLIDER_DEF,
-        maxLoad: 0,
-        accel: 0,
-        friction: 0.9995,
-        tiltSpeed: 0.025,
-        fuelRate: 0,
-        liftPower: 0,
-        cargoResist: 0,
-        scale: 1.0,
-        previewScale: 2.0,
-        collisionBox: { xMin: -1.65, xMax: 1.0, yMin: -3.0, yMax: 3.0, zMax: 0.40 },
-        rotorOffsets: [],
+        id: 'ornithopter',
+        label: 'Ornithopter',
+        def: ORNITHOPTER_RAW as unknown as DEF,
+        maxLoad: 2,
+        accel: 0.00145,
+        friction: 0.993,
+        tiltSpeed: 0.045,
+        fuelRate: 0.009,
+        liftPower: 0.00082,
+        cargoResist: 0.25,
+        scale: 0.7,
+        previewScale: 1.43,
+        collisionBox: { xMin: -1.6, xMax: 0.9, yMin: -0.35, yMax: 0.35, zMax: 0.55 },
+        rotorOffsets: [0],
         extraRotorDebris: false,
-        canCarryCargo: false,
-        selectLabel: 'ASK-21 SEGLER',
-        selectSub: 'Motorlos / Thermisch',
-        selectCap: '✈ Easteregg',
+        canCarryCargo: true,
+        selectLabel: 'ORNITHOPTER',
+        selectSub: 'Schläger / Wendig',
+        selectCap: 'Kap.: 2 (Schnelleinsatz)',
+        description:
+            'Ein Flügelschläger der nächsten Generation. Zwei Mann, maximale Wendigkeit. Mit Fracht überraschend schnell — kein Helikopter, kein Flugzeug, etwas dazwischen.',
+        minRankIndex: 3,
+        hideWhenLocked: true,
     },
 ];
 &nbsp;
@@ -478,7 +520,7 @@ export function getHeliType(id: string): HeliType {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-22T08:15:01.607Z
+                at 2026-05-18T18:53:12.653Z
             </div>
         <script src="../prettify.js"></script>
         <script>

@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">11.25% </span>
+                <span class="strong">14.74% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>17/151</span>
+                <span class='fraction'>23/156</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">10.81% </span>
+                <span class="strong">10.25% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>4/37</span>
+                <span class='fraction'>4/39</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">11.42% </span>
+                <span class="strong">14.48% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>16/140</span>
+                <span class='fraction'>21/145</span>
             </div>
         
             
@@ -356,7 +356,16 @@
 <a name='L291'></a><a href='#L291'>291</a>
 <a name='L292'></a><a href='#L292'>292</a>
 <a name='L293'></a><a href='#L293'>293</a>
-<a name='L294'></a><a href='#L294'>294</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L294'></a><a href='#L294'>294</a>
+<a name='L295'></a><a href='#L295'>295</a>
+<a name='L296'></a><a href='#L296'>296</a>
+<a name='L297'></a><a href='#L297'>297</a>
+<a name='L298'></a><a href='#L298'>298</a>
+<a name='L299'></a><a href='#L299'>299</a>
+<a name='L300'></a><a href='#L300'>300</a>
+<a name='L301'></a><a href='#L301'>301</a>
+<a name='L302'></a><a href='#L302'>302</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -373,7 +382,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -381,6 +390,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -388,7 +401,6 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -440,8 +452,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -651,6 +667,7 @@
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import './mp-lobby.css';
 import { I18N } from '../../i18n';
+import { createBackButton } from '../back-button/back-button';
 import { createRTCPeer } from '../../multiplayer/rtc';
 import { HELI_TYPES } from '../../heli-types';
 import type { MpChannels } from '../../multiplayer/rtc';
@@ -666,7 +683,7 @@ export type MpLobbyCallbacks = {
 import { ensureEl as _ensureEl } from '../dom-helpers';
 &nbsp;
 const screen = () =&gt; document.getElementById('mp-lobby-screen')!;
-const el = <span class="fstat-no" title="function not covered" >(i</span>d: string) =&gt; <span class="cstat-no" title="statement not covered" >document.getElementById(id)!;</span>
+const el = (id: string) =&gt; document.getElementById(id)!;
 const setStatus = <span class="fstat-no" title="function not covered" >(i</span>d: string, txt: string, cls?: 'ok' | 'error') =&gt; {
     const e = <span class="cstat-no" title="statement not covered" >el(id);</span>
 <span class="cstat-no" title="statement not covered" >    e.textContent = txt;</span>
@@ -675,12 +692,15 @@ const setStatus = <span class="fstat-no" title="function not covered" >(i</span>
 const show = <span class="fstat-no" title="function not covered" >(i</span>d: string) =&gt; { <span class="cstat-no" title="statement not covered" >el(id).style.display = 'flex'; }</span>;
 const hide = <span class="fstat-no" title="function not covered" >(i</span>d: string) =&gt; { <span class="cstat-no" title="statement not covered" >el(id).style.display = 'none'; }</span>;
 &nbsp;
+let _initialBackBtn: HTMLElement;
+let _hostBackBtn: HTMLElement;
+let _guestBackBtn: HTMLElement;
+&nbsp;
 // ─── mount (called once at startup) ──────────────────────────────────────────
 &nbsp;
 export const mountMpLobby = (): void =&gt; {
     _ensureEl('mp-lobby-screen').classList.add('ui-screen');
     const heliCards = HELI_TYPES
-        .filter(h =&gt; h.id !== 'glider')
         .map(h =&gt; `
             &lt;div class="mp-heli-card" data-id="${h.id}"&gt;
                 &lt;div class="mp-heli-card-label"&gt;${h.selectLabel}&lt;/div&gt;
@@ -695,7 +715,6 @@ export const mountMpLobby = (): void =&gt; {
         &lt;div id="mp-lobby-initial"&gt;
             &lt;button class="mp-btn" id="mp-create-btn"&gt;${I18N.MP_CREATE}&lt;/button&gt;
             &lt;button class="mp-btn" id="mp-join-btn"&gt;${I18N.MP_JOIN}&lt;/button&gt;
-            &lt;div class="back-btn" id="mp-back-btn"&gt;${I18N.BACK}&lt;/div&gt;
         &lt;/div&gt;
 &nbsp;
         &lt;!-- Host flow --&gt;
@@ -709,7 +728,6 @@ export const mountMpLobby = (): void =&gt; {
             &lt;div class="mp-label"&gt;${I18N.MP_STEP2_HOST}&lt;/div&gt;
             &lt;textarea id="mp-answer-input" class="mp-textarea" placeholder="${I18N.MP_PASTE_HINT}"&gt;&lt;/textarea&gt;
             &lt;button class="mp-btn" id="mp-connect-btn" disabled&gt;${I18N.MP_CONNECT}&lt;/button&gt;
-            &lt;div class="back-btn" id="mp-host-back-btn"&gt;${I18N.BACK}&lt;/div&gt;
         &lt;/div&gt;
 &nbsp;
         &lt;!-- Guest flow --&gt;
@@ -723,7 +741,6 @@ export const mountMpLobby = (): void =&gt; {
             &lt;div class="mp-row" id="mp-guest-copy-row" style="display:none"&gt;
                 &lt;button class="mp-btn mp-btn-small" id="mp-copy-answer-btn"&gt;${I18N.MP_COPY}&lt;/button&gt;
             &lt;/div&gt;
-            &lt;div class="back-btn" id="mp-guest-back-btn"&gt;${I18N.BACK}&lt;/div&gt;
         &lt;/div&gt;
 &nbsp;
         &lt;!-- Heli select + ready phase (shared by host and guest) --&gt;
@@ -735,6 +752,13 @@ export const mountMpLobby = (): void =&gt; {
             &lt;button class="mp-btn" id="mp-ready-btn" disabled&gt;${I18N.MP_READY_BTN}&lt;/button&gt;
             &lt;div id="mp-countdown-display" class="mp-countdown" style="display:none"&gt;&lt;/div&gt;
         &lt;/div&gt;`;
+&nbsp;
+    _initialBackBtn = createBackButton(<span class="fstat-no" title="function not covered" >() =&gt; {</span>});
+    el('mp-lobby-initial').appendChild(_initialBackBtn);
+    _hostBackBtn = createBackButton(<span class="fstat-no" title="function not covered" >() =&gt; {</span>});
+    el('mp-host-flow').appendChild(_hostBackBtn);
+    _guestBackBtn = createBackButton(<span class="fstat-no" title="function not covered" >() =&gt; {</span>});
+    el('mp-guest-flow').appendChild(_guestBackBtn);
 };
 &nbsp;
 // ─── Heli select + Ready phase ────────────────────────────────────────────────
@@ -751,7 +775,7 @@ const _showHeliAndReadyPhase = <span class="fstat-no" title="function not covere
 <span class="cstat-no" title="statement not covered" >    show('mp-heli-flow');</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    el('mp-ready-peer-label').textContent =</span>
-        (peerCallsign ? peerCallsign : 'PILOT') + ' ' + I18N.MP_CONNECTED;
+        (peerCallsign || 'WOLF') + ' ' + I18N.MP_CONNECTED;
 &nbsp;
     let selectedHeli = <span class="cstat-no" title="statement not covered" >'';</span>
     let localReady = <span class="cstat-no" title="statement not covered" >false;</span>
@@ -814,7 +838,7 @@ const _showHeliAndReadyPhase = <span class="fstat-no" title="function not covere
 <span class="cstat-no" title="statement not covered" >    readyBtn.onclick = <span class="fstat-no" title="function not covered" >() =&gt; {</span></span>
 <span class="cstat-no" title="statement not covered" >        localReady = true;</span>
 <span class="cstat-no" title="statement not covered" >        readyBtn.disabled = true;</span>
-<span class="cstat-no" title="statement not covered" >        setStatus('mp-ready-status', I18N.MP_WAIT_READY);</span>
+<span class="cstat-no" title="statement not covered" >        setStatus('mp-ready-status', I18N.MP_WAIT_READY!);</span>
 <span class="cstat-no" title="statement not covered" >        channels.sendEvent({ t: 'ready' });</span>
 <span class="cstat-no" title="statement not covered" >        if (peerReady) <span class="cstat-no" title="statement not covered" >bothReady();</span></span>
     };
@@ -830,13 +854,13 @@ export const showMpLobby = <span class="fstat-no" title="function not covered" >
 <span class="cstat-no" title="statement not covered" >    hide('mp-heli-flow');</span>
 <span class="cstat-no" title="statement not covered" >    screen().style.display = 'flex';</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    el('mp-back-btn').onclick = cb.onBack;</span>
+<span class="cstat-no" title="statement not covered" >    _initialBackBtn.onclick = cb.onBack;</span>
 &nbsp;
     // ── Host flow ─────────────────────────────────────────────────────────────
 <span class="cstat-no" title="statement not covered" >    el('mp-create-btn').onclick = <span class="fstat-no" title="function not covered" >async () =&gt; {</span></span>
 <span class="cstat-no" title="statement not covered" >        hide('mp-lobby-initial');</span>
 <span class="cstat-no" title="statement not covered" >        show('mp-host-flow');</span>
-<span class="cstat-no" title="statement not covered" >        setStatus('mp-host-status', I18N.MP_GENERATING);</span>
+<span class="cstat-no" title="statement not covered" >        setStatus('mp-host-status', I18N.MP_GENERATING!);</span>
 &nbsp;
         const <span class="cstat-no" title="statement not covered" >peer = createRTCPeer();</span>
 &nbsp;
@@ -854,7 +878,7 @@ export const showMpLobby = <span class="fstat-no" title="function not covered" >
 <span class="cstat-no" title="statement not covered" >        try {</span>
             const offerB64 = <span class="cstat-no" title="statement not covered" >await peer.createOffer();</span>
             (<span class="cstat-no" title="statement not covered" >el('mp-offer-txt') as HTMLTextAreaElement).value = offerB64;</span>
-<span class="cstat-no" title="statement not covered" >            setStatus('mp-host-status', I18N.MP_WAIT_ANSWER);</span>
+<span class="cstat-no" title="statement not covered" >            setStatus('mp-host-status', I18N.MP_WAIT_ANSWER!);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >            el('mp-copy-offer-btn').onclick = <span class="fstat-no" title="function not covered" >() =&gt; {</span></span>
 <span class="cstat-no" title="statement not covered" >                navigator.clipboard.writeText(offerB64).catch(<span class="fstat-no" title="function not covered" >() =&gt; {</span>});</span>
@@ -868,18 +892,18 @@ export const showMpLobby = <span class="fstat-no" title="function not covered" >
 <span class="cstat-no" title="statement not covered" >            connectBtn.onclick = <span class="fstat-no" title="function not covered" >async () =&gt; {</span></span>
 <span class="cstat-no" title="statement not covered" >                try {</span>
 <span class="cstat-no" title="statement not covered" >                    connectBtn.disabled = true;</span>
-<span class="cstat-no" title="statement not covered" >                    setStatus('mp-host-status', I18N.MP_CONNECTING);</span>
+<span class="cstat-no" title="statement not covered" >                    setStatus('mp-host-status', I18N.MP_CONNECTING!);</span>
 <span class="cstat-no" title="statement not covered" >                    await peer.applyAnswer(answerInput.value.trim());</span>
                 } catch {
-<span class="cstat-no" title="statement not covered" >                    setStatus('mp-host-status', I18N.MP_ERROR, 'error');</span>
+<span class="cstat-no" title="statement not covered" >                    setStatus('mp-host-status', I18N.MP_ERROR!, 'error');</span>
 <span class="cstat-no" title="statement not covered" >                    connectBtn.disabled = false;</span>
                 }
             };
         } catch {
-<span class="cstat-no" title="statement not covered" >            setStatus('mp-host-status', I18N.MP_ERROR, 'error');</span>
+<span class="cstat-no" title="statement not covered" >            setStatus('mp-host-status', I18N.MP_ERROR!, 'error');</span>
         }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >        el('mp-host-back-btn').onclick = <span class="fstat-no" title="function not covered" >() =&gt; {</span></span>
+<span class="cstat-no" title="statement not covered" >        _hostBackBtn.onclick = <span class="fstat-no" title="function not covered" >() =&gt; {</span></span>
 <span class="cstat-no" title="statement not covered" >            peer.close();</span>
 <span class="cstat-no" title="statement not covered" >            hide('mp-host-flow');</span>
 <span class="cstat-no" title="statement not covered" >            show('mp-lobby-initial');</span>
@@ -907,7 +931,7 @@ export const showMpLobby = <span class="fstat-no" title="function not covered" >
 <span class="cstat-no" title="statement not covered" >        el('mp-gen-answer-btn').onclick = <span class="fstat-no" title="function not covered" >async () =&gt; {</span></span>
             const offerTxt = (<span class="cstat-no" title="statement not covered" >el('mp-offer-input') as HTMLTextAreaElement).value.trim();</span>
 <span class="cstat-no" title="statement not covered" >            if (!offerTxt) <span class="cstat-no" title="statement not covered" >return;</span></span>
-<span class="cstat-no" title="statement not covered" >            setStatus('mp-guest-status', I18N.MP_GENERATING);</span>
+<span class="cstat-no" title="statement not covered" >            setStatus('mp-guest-status', I18N.MP_GENERATING!);</span>
             (<span class="cstat-no" title="statement not covered" >el('mp-gen-answer-btn') as HTMLButtonElement).disabled = true;</span>
 <span class="cstat-no" title="statement not covered" >            try {</span>
                 const answerB64 = <span class="cstat-no" title="statement not covered" >await peer.createAnswer(offerTxt);</span>
@@ -915,18 +939,18 @@ export const showMpLobby = <span class="fstat-no" title="function not covered" >
 <span class="cstat-no" title="statement not covered" >                el('mp-answer-txt').style.display = 'block';</span>
 <span class="cstat-no" title="statement not covered" >                el('mp-guest-step2-label').style.display = 'block';</span>
 <span class="cstat-no" title="statement not covered" >                el('mp-guest-copy-row').style.display = 'flex';</span>
-<span class="cstat-no" title="statement not covered" >                setStatus('mp-guest-status', I18N.MP_WAIT_CONNECT);</span>
+<span class="cstat-no" title="statement not covered" >                setStatus('mp-guest-status', I18N.MP_WAIT_CONNECT!);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >                el('mp-copy-answer-btn').onclick = <span class="fstat-no" title="function not covered" >() =&gt; {</span></span>
 <span class="cstat-no" title="statement not covered" >                    navigator.clipboard.writeText(answerB64).catch(<span class="fstat-no" title="function not covered" >() =&gt; {</span>});</span>
                 };
             } catch {
-<span class="cstat-no" title="statement not covered" >                setStatus('mp-guest-status', I18N.MP_ERROR, 'error');</span>
+<span class="cstat-no" title="statement not covered" >                setStatus('mp-guest-status', I18N.MP_ERROR!, 'error');</span>
                 (<span class="cstat-no" title="statement not covered" >el('mp-gen-answer-btn') as HTMLButtonElement).disabled = false;</span>
             }
         };
 &nbsp;
-<span class="cstat-no" title="statement not covered" >        el('mp-guest-back-btn').onclick = <span class="fstat-no" title="function not covered" >() =&gt; {</span></span>
+<span class="cstat-no" title="statement not covered" >        _guestBackBtn.onclick = <span class="fstat-no" title="function not covered" >() =&gt; {</span></span>
 <span class="cstat-no" title="statement not covered" >            peer.close();</span>
 <span class="cstat-no" title="statement not covered" >            hide('mp-guest-flow');</span>
 <span class="cstat-no" title="statement not covered" >            show('mp-lobby-initial');</span>
@@ -949,7 +973,7 @@ export const setLobbyCallsign = <span class="fstat-no" title="function not cover
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-22T08:15:01.607Z
+                at 2026-05-18T18:53:12.653Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

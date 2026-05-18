@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">29.09% </span>
+                <span class="strong">25.53% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>16/55</span>
+                <span class='fraction'>12/47</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">25% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/2</span>
+                <span class='fraction'>1/4</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">29.62% </span>
+                <span class="strong">26.66% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>16/54</span>
+                <span class='fraction'>12/45</span>
             </div>
         
             
@@ -142,10 +142,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-yes">1x</span>
@@ -162,7 +160,6 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
@@ -175,10 +172,13 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -214,44 +214,44 @@ import { soundHandler, musicConfig } from '../../main';
 import { I18N } from '../../i18n';
 &nbsp;
 import { ensureEl as _ensureEl } from '../dom-helpers';
+import { showScreenCrtEnter } from '../nav';
+import { mountScreenShell } from '../screen-shell/screen-shell';
 &nbsp;
 export const mountCreditsScreen = (onBack: () =&gt; void): void =&gt; {
     const root = _ensureEl('credits-screen');
-    root.classList.add('ui-screen');
+    <span class="missing-if-branch" title="if path not taken" >I</span>if (root.children.length &gt; 0) <span class="cstat-no" title="statement not covered" >return;</span>
+    const body = mountScreenShell('credits-screen', I18N.MENU_CREDITS, '', onBack);
     const canvas = document.createElement('canvas');
     canvas.id = 'credits-canvas';
     const inner = document.createElement('div');
     inner.id = 'credits-inner';
-    const back = document.createElement('div');
-    back.className = 'back-btn';
-    back.innerHTML = '&amp;#9664; ZURÜCK';
-    back.addEventListener('click', onBack);
-    root.appendChild(canvas);
-    root.appendChild(inner);
-    root.appendChild(back);
+    body.appendChild(canvas);
+    body.appendChild(inner);
 };
 &nbsp;
 export const toCredits = <span class="fstat-no" title="function not covered" >() =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >    document.getElementById('main-menu')!.style.display = 'none';</span>
 <span class="cstat-no" title="statement not covered" >    _buildCredits();</span>
-<span class="cstat-no" title="statement not covered" >    document.getElementById('credits-screen')!.style.display = 'flex';</span>
+<span class="cstat-no" title="statement not covered" >    showScreenCrtEnter('credits-screen');</span>
 <span class="cstat-no" title="statement not covered" >    if (musicConfig.credits) <span class="cstat-no" title="statement not covered" >soundHandler.play(musicConfig.credits, true);</span></span>
 };
 &nbsp;
 const _buildCredits = <span class="fstat-no" title="function not covered" >() =&gt; {</span>
     const inner = <span class="cstat-no" title="statement not covered" >document.getElementById('credits-inner')!;</span>
 <span class="cstat-no" title="statement not covered" >    inner.innerHTML = '';</span>
-    const sections = <span class="cstat-no" title="statement not covered" >[</span>
+    const sections: { role: string; names: string[] }[] = <span class="cstat-no" title="statement not covered" >[</span>
         { role: I18N.CREDITS_ROLE_DEVELOPMENT, names: ['Yarrick'] },
-        { role: I18N.CREDITS_ROLE_CAMPAIGN, names: ['Yarrick', 'Jay "G" Man'] },
-        { role: I18N.CREDITS_ROLE_SOUND, names: ['Gaunt'] },
-        { role: I18N.CREDITS_ROLE_TEST, names: ['Da Harp', 'Jay "G" Man', 'DBuhn', 'Bri B.'] },
+        { role: I18N.CREDITS_ROLE_CAMPAIGN, names: ['Jay "G" Man'] },
+        { role: I18N.CREDITS_ROLE_CONSULTGS, names: ['DBuhn'] },
+        { role: I18N.CREDITS_ROLE_SOUND, names: ['Chris "Loud" E.'] },
+        { role: I18N.CREDITS_ROLE_RECORDING, names: ['Yarrick'] },
+        { role: I18N.CREDITS_ROLE_VOICEARTIST, names: ['Bri B.'] },
+        { role: I18N.CREDITS_ROLE_LEADERTEST, names: ['Steven J. McG.'] },
+        {
+            role: I18N.CREDITS_ROLE_TEST,
+            names: ['Da Harp, Jay "G" Man', 'DBuhn, Gaunt', 'Bigwilli, Bri B.', 'Schollfried, Sarahm'],
+        },
         { role: I18N.CREDITS_ROLE_INSPIREDBY, names: ['Zeewolf (Binary Asylum, 1994)'] },
     ];
-    const title = <span class="cstat-no" title="statement not covered" >document.createElement('div');</span>
-<span class="cstat-no" title="statement not covered" >    title.className = 'credits-title';</span>
-<span class="cstat-no" title="statement not covered" >    title.textContent = I18N.MENU_CREDITS;</span>
-<span class="cstat-no" title="statement not covered" >    inner.appendChild(title);</span>
     let delay = <span class="cstat-no" title="statement not covered" >0.15;</span>
 <span class="cstat-no" title="statement not covered" >    sections.forEach(<span class="fstat-no" title="function not covered" >s =&gt; {</span></span>
         const sec = <span class="cstat-no" title="statement not covered" >document.createElement('div');</span>
@@ -289,7 +289,7 @@ const _buildCredits = <span class="fstat-no" title="function not covered" >() =&
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-22T08:15:01.607Z
+                at 2026-05-18T18:53:12.653Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

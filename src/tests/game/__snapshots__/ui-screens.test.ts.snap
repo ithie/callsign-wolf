@@ -39,11 +39,12 @@ exports[`UI screen snapshots > main-menu 1`] = `
         <div class="subtitle">MAIN SYSTEM</div>
         <div class="screen-body">
         <nav class="menu-nav">
-            <div class="menu-item" id="menu-item-start">START GAME</div>
-            <div class="menu-item" id="menu-item-multiplayer">MULTIPLAYER</div>
-            <div class="menu-item" id="menu-item-settings">SETTINGS</div>
-            <div class="menu-item" id="menu-item-credits">CREDITS</div>
-        </nav></div>"
+            <div class="menu-item" id="menu-item-start"></div>
+            <div class="menu-item" id="menu-item-multiplayer"></div>
+            <div class="menu-item" id="menu-item-settings"></div>
+            <div class="menu-item" id="menu-item-credits"></div>
+        </nav>
+        <div id="menu-item-legal" class="menu-legal-link">LEGAL</div></div>"
 `;
 
 exports[`UI screen snapshots > mp-lobby-screen 1`] = `
@@ -107,35 +108,6 @@ exports[`UI screen snapshots > mp-lobby-screen 1`] = `
             <button class="mp-btn" id="mp-ready-btn" disabled="">READY</button>
             <div id="mp-countdown-display" class="mp-countdown" style="display:none"></div>
         </div>"
-`;
-
-exports[`UI screen snapshots > mute-button 1`] = `
-"
-<svg xmlns="http://www.w3.org/2000/svg" id="audio-mute-inactive" viewBox="0 0 32 32" width="32" height="32">
-  <defs><filter id="glow"><feGaussianBlur stdDeviation="1.5" result="blur"></feGaussianBlur>
-    <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
-  </filter></defs>
-  <g filter="url(#glow)">
-    <polygon points="4,11 4,21 9,21 16,27 16,5 9,11" fill="#ff6600" stroke="#ff8800" stroke-width="0.5"></polygon>
-    <path d="M19,11 Q23,16 19,21" fill="none" stroke="#ff6600" stroke-width="2" stroke-linecap="round"></path>
-    <path d="M22,8 Q28,16 22,24" fill="none" stroke="#ff6600" stroke-width="2" stroke-linecap="round" opacity="0.7"></path>
-  </g>
-</svg>
-<svg xmlns="http://www.w3.org/2000/svg" id="audio-mute-active" viewBox="0 0 32 32" width="32" height="32">
-  <defs>
-    <filter id="glow-red"><feGaussianBlur stdDeviation="1.5" result="blur"></feGaussianBlur>
-      <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
-    </filter>
-    <filter id="glow-grey"><feGaussianBlur stdDeviation="0.8" result="blur"></feGaussianBlur>
-      <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
-    </filter>
-  </defs>
-  <polygon points="4,11 4,21 9,21 16,27 16,5 9,11" fill="#444" stroke="#555" stroke-width="0.5" filter="url(#glow-grey)"></polygon>
-  <g filter="url(#glow-red)">
-    <line x1="20" y1="11" x2="28" y2="21" stroke="#ff2200" stroke-width="2.5" stroke-linecap="round"></line>
-    <line x1="28" y1="11" x2="20" y2="21" stroke="#ff2200" stroke-width="2.5" stroke-linecap="round"></line>
-  </g>
-</svg>"
 `;
 
 exports[`UI screen snapshots > rankup-overlay 1`] = `
@@ -216,10 +188,10 @@ exports[`UI screen snapshots > settings-screen 1`] = `
 
 exports[`UI screen snapshots > whats-new 1`] = `
 "
-        <div id="whats-new-version">WHAT'S NEW · v26.4.0</div>
-        <div id="whats-new-title">IOS APP</div>
+        <div id="whats-new-version">WHAT'S NEW · v26.5.0</div>
+        <div id="whats-new-title">CAMPAIGN: CALLSIGN WOLF</div>
         <ul id="whats-new-items">
-            <li>Now available as a native iOS app</li>
+            <li>Now available as a native iOS app</li><li>🐺 Demo campaign available: Callsign Wolf</li>
         </ul>
         <div id="whats-new-hint">CLICK TO CONTINUE</div>"
 `;

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { applyParts, applyRotateNodes } from '../../game/def-utils';
+import { applyParts, applyRotateNodes, getTransformedPivots } from '../../game/def-utils';
 import type { DEF } from '../../game/defs';
 
 const CLOSE = 4; // decimal places for float comparisons
@@ -195,5 +195,83 @@ describe('applyRotateNodes', () => {
         const r1 = applyParts(def, { a: 1.2 });
         const r2 = applyRotateNodes(def, { a: 1.2 });
         expect(r1.faces[0].verts[0]).toEqual(r2.faces[0].verts[0]);
+    });
+});
+
+// ─── getTransformedPivots ─────────────────────────────────────────────────────
+
+describe('getTransformedPivots', () => {
+    it('returns empty map for def with no parts', () => {
+        const def: DEF = { id: 'test', faces: [] };
+        expect(getTransformedPivots(def, {}).size).toBe(0);
+    });
+
+    it('excludes parts without a rotate property', () => {
+        const def: DEF = {
+            id: 'test',
+            faces: [],
+            parts: [{ id: 'static', faces: [] }],
+        };
+        expect(getTransformedPivots(def, {}).size).toBe(0);
+    });
+
+    it('returns the pivot unchanged for a root part with no parent', () => {
+        const def: DEF = {
+            id: 'test',
+            faces: [],
+            parts: [{
+                id: 'arm',
+                faces: [],
+                rotate: { pivot: [2, 0, 0], axis: [0, 0, 1], param: 'angle' },
+            }],
+        };
+        const pivots = getTransformedPivots(def, { angle: Math.PI / 2 });
+        const [px, py, pz] = pivots.get('arm')!;
+        expect(px).toBeCloseTo(2, CLOSE);
+        expect(py).toBeCloseTo(0, CLOSE);
+        expect(pz).toBeCloseTo(0, CLOSE);
+    });
+
+    it('transforms child pivot through parent rotation', () => {
+        // Parent rotates 90° around Z at origin.
+        // Child has pivot at [2, 0, 0] relative to world.
+        // After parent's 90° rotation: child pivot should be at [0, 2, 0].
+        const def: DEF = {
+            id: 'test',
+            faces: [],
+            parts: [
+                {
+                    id: 'parent',
+                    faces: [],
+                    rotate: { pivot: [0, 0, 0], axis: [0, 0, 1], param: 'angle' },
+                },
+                {
+                    id: 'child',
+                    parent: 'parent',
+                    faces: [],
+                    rotate: { pivot: [2, 0, 0], axis: [0, 0, 1], param: 'angle' },
+                },
+            ],
+        };
+        const pivots = getTransformedPivots(def, { angle: Math.PI / 2 });
+        const [px, py] = pivots.get('child')!;
+        expect(px).toBeCloseTo(0, CLOSE);
+        expect(py).toBeCloseTo(2, CLOSE);
+    });
+
+    it('all rotating parts appear in the result map', () => {
+        const def: DEF = {
+            id: 'test',
+            faces: [],
+            parts: [
+                { id: 'a', faces: [], rotate: { pivot: [0,0,0], axis: [0,0,1], param: 'p' } },
+                { id: 'b', faces: [] },
+                { id: 'c', faces: [], rotate: { pivot: [1,0,0], axis: [0,0,1], param: 'p' } },
+            ],
+        };
+        const pivots = getTransformedPivots(def, {});
+        expect(pivots.has('a')).toBe(true);
+        expect(pivots.has('b')).toBe(false);
+        expect(pivots.has('c')).toBe(true);
     });
 });

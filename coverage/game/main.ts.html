@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/68</span>
+                <span class='fraction'>0/73</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/20</span>
+                <span class='fraction'>0/29</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/64</span>
+                <span class='fraction'>0/67</span>
             </div>
         
             
@@ -240,18 +240,13 @@
 <a name='L175'></a><a href='#L175'>175</a>
 <a name='L176'></a><a href='#L176'>176</a>
 <a name='L177'></a><a href='#L177'>177</a>
-<a name='L178'></a><a href='#L178'>178</a>
-<a name='L179'></a><a href='#L179'>179</a>
-<a name='L180'></a><a href='#L180'>180</a>
-<a name='L181'></a><a href='#L181'>181</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L178'></a><a href='#L178'>178</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -302,11 +297,9 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -325,9 +318,6 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -359,6 +349,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -404,6 +395,7 @@
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
@@ -423,15 +415,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { CampaignExport, MissionData } from '@/shared/types';
-export { COMMANDER_SVG } from './commander-svg';
 import Tutorial from './campaigns/tutorial.json';
-import AddCamp from './campaigns/addCamp.json';
-import ArchipelDemo from './campaigns/archipeldemo.json';
-import Glider from './campaigns/glider.json';
-import Julian from './campaigns/julian.json';
-import TransferDemo from './campaigns/transferdemo.json';
+import FreeFlight from './campaigns/freeFlight.json';
+import CallsignWolf from './campaigns/callsignwolf.json';
 import { MP_DEMO_CAMPAIGN } from './multiplayer/mp-mission';
+&nbsp;
+const _IS_APP = <span class="cstat-no" title="statement not covered" >import.meta.env.VITE_TARGET === 'app';</span>
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
 import SoundAnothermenu from './music/anothermenu.zsong';
@@ -451,16 +443,16 @@ export const musicConfig: { mainMenu: string; credits: string; success: string; 
 &nbsp;
 const <span class="cstat-no" title="statement not covered" >soundHandler = (<span class="fstat-no" title="function not covered" >() =&gt; {</span></span>
     const songList: Record&lt;string, SongData&gt; = <span class="cstat-no" title="statement not covered" >{</span>
-        anothermenu:  SoundAnothermenu,
+        anothermenu: SoundAnothermenu,
         anothersound: SoundAnothersound,
-        briefing:     SoundBriefing,
-        clike:        SoundClike,
-        destroid:     SoundDestroid,
-        final:        SoundFinal,
-        maintheme:    SoundMaintheme,
-        menusound:    SoundMenusound,
+        briefing: SoundBriefing,
+        clike: SoundClike,
+        destroid: SoundDestroid,
+        final: SoundFinal,
+        maintheme: SoundMaintheme,
+        menusound: SoundMenusound,
         spocktribute: SoundSpocktribute,
-        partytime:    SoundPartytime,
+        ...(!_IS_APP ? { partytime: SoundPartytime } : {}),
     };
 &nbsp;
     const state: { activeTheme: string; isMuted: boolean } = <span class="cstat-no" title="statement not covered" >{</span>
@@ -479,15 +471,13 @@ const <span class="cstat-no" title="statement not covered" >soundHandler = (<spa
 <span class="cstat-no" title="statement not covered" >            state.isMuted = false;</span>
 <span class="cstat-no" title="statement not covered" >            ZsynthPlayer.play(state.activeTheme);</span>
         },
-        play: <span class="fstat-no" title="function not covered" >(t</span>heme: string, fade: boolean) =&gt; {
-<span class="cstat-no" title="statement not covered" >            if (!songList[theme]) {</span>
-<span class="cstat-no" title="statement not covered" >                return;</span>
-            }
+        play: <span class="fstat-no" title="function not covered" >(t</span>heme: string, fade: boolean, volume: number = <span class="branch-0 cbranch-no" title="branch not covered" >1.0) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >            if (!songList[theme]) <span class="cstat-no" title="statement not covered" >return;</span></span>
+            const alreadyPlaying = <span class="cstat-no" title="statement not covered" >state.activeTheme === theme &amp;&amp; ZsynthPlayer.currentTrack?.isPlaying;</span>
 <span class="cstat-no" title="statement not covered" >            state.activeTheme = theme;</span>
-<span class="cstat-no" title="statement not covered" >            if (state.isMuted) {</span>
-<span class="cstat-no" title="statement not covered" >                return;</span>
-            }
-<span class="cstat-no" title="statement not covered" >            ZsynthPlayer.play(theme, fade ? 0.25 : 0);</span>
+<span class="cstat-no" title="statement not covered" >            if (state.isMuted) <span class="cstat-no" title="statement not covered" >return;</span></span>
+<span class="cstat-no" title="statement not covered" >            if (alreadyPlaying) <span class="cstat-no" title="statement not covered" >return;</span></span>
+<span class="cstat-no" title="statement not covered" >            ZsynthPlayer.play(theme, fade ? 0.25 : 0, volume);</span>
         },
         stop: <span class="fstat-no" title="function not covered" >() =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >            ZsynthPlayer.stop();</span>
@@ -500,12 +490,9 @@ const createCampaignHandler = <span class="cstat-no" title="statement not covere
 &nbsp;
     const campaigns: CampaignExport[] = <span class="cstat-no" title="statement not covered" >[</span>
         Tutorial as unknown as CampaignExport,
-        ArchipelDemo as unknown as CampaignExport,
-        AddCamp as unknown as CampaignExport,
-        Glider as unknown as CampaignExport,
-        Julian as unknown as CampaignExport,
-        MP_DEMO_CAMPAIGN,  // index 5 – must match MP_CAMPAIGN_INDEX in mp-mission.ts
-        TransferDemo as unknown as CampaignExport,  // index 6
+        FreeFlight as unknown as CampaignExport,
+        ...(!_IS_APP ? [MP_DEMO_CAMPAIGN] : []), // index 4 (web) / 4 (app) – matches MP_CAMPAIGN_INDEX in mp-mission.ts
+        CallsignWolf as unknown as CampaignExport,
     ];
 &nbsp;
     const campaignState = <span class="cstat-no" title="statement not covered" >{</span>
@@ -539,6 +526,7 @@ const createCampaignHandler = <span class="cstat-no" title="statement not covere
 &nbsp;
     const setActiveMission = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >(i</span>ndex: number) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >        campaignState.activeMission = index;</span>
+<span class="cstat-no" title="statement not covered" >        cachedTerrain = null;</span>
     };
 &nbsp;
     const getCurrentMissionData = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >(): MissionData =&gt; {</span></span>
@@ -590,10 +578,11 @@ export const campaignHandler = <span class="cstat-no" title="statement not cover
 <span class="cstat-no" title="statement not covered" >        campaignHandler.getCurrentMissionData = <span class="fstat-no" title="function not covered" >() =&gt; <span class="cstat-no" title="statement not covered" >_</span>previewLevel ?? _origGetMission();</span></span>
 <span class="cstat-no" title="statement not covered" >        campaignHandler.getTerrain = <span class="fstat-no" title="function not covered" >() =&gt; {</span></span>
 <span class="cstat-no" title="statement not covered" >            if (!_previewLevel) <span class="cstat-no" title="statement not covered" >return _origGetTerrain();</span></span>
-<span class="cstat-no" title="statement not covered" >            if (!_previewTerrain) <span class="cstat-no" title="statement not covered" >_previewTerrain = {</span></span>
-                terrain: decompressTerrain(_previewLevel.terrain as string, _previewLevel.gridSize),
-                gridSize: _previewLevel.gridSize,
-            };
+<span class="cstat-no" title="statement not covered" >            if (!_previewTerrain)</span>
+<span class="cstat-no" title="statement not covered" >                _previewTerrain = {</span>
+                    terrain: decompressTerrain(_previewLevel.terrain as string, _previewLevel.gridSize),
+                    gridSize: _previewLevel.gridSize,
+                };
 <span class="cstat-no" title="statement not covered" >            return _previewTerrain;</span>
         };
     };
@@ -602,7 +591,9 @@ export const campaignHandler = <span class="cstat-no" title="statement not cover
 }
 &nbsp;
 export { soundHandler };
-export const zinit = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >() =&gt; {</span> /* wired via mountMuteButton in game.ts */ };</span>
+export const zinit = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >() =&gt; {</span></span>
+    /* wired via mountMuteButton in game.ts */
+};
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -610,7 +601,7 @@ export const zinit = <span class="cstat-no" title="statement not covered" ><span
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-22T08:15:01.607Z
+                at 2026-05-18T18:53:12.653Z
             </div>
         <script src="../prettify.js"></script>
         <script>

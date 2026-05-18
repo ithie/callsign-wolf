@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/109</span>
+                <span class='fraction'>0/111</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/61</span>
+                <span class='fraction'>0/64</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/102</span>
+                <span class='fraction'>0/104</span>
             </div>
         
             
@@ -300,7 +300,12 @@
 <a name='L235'></a><a href='#L235'>235</a>
 <a name='L236'></a><a href='#L236'>236</a>
 <a name='L237'></a><a href='#L237'>237</a>
-<a name='L238'></a><a href='#L238'>238</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L238'></a><a href='#L238'>238</a>
+<a name='L239'></a><a href='#L239'>239</a>
+<a name='L240'></a><a href='#L240'>240</a>
+<a name='L241'></a><a href='#L241'>241</a>
+<a name='L242'></a><a href='#L242'>242</a>
+<a name='L243'></a><a href='#L243'>243</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -378,6 +383,11 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -613,10 +623,15 @@ const ZsynthPlayer = <span class="cstat-no" title="statement not covered" >{</sp
 <span class="cstat-no" title="statement not covered" >        ZsynthPlayer.masterGain.connect(ZsynthPlayer.ctx.destination);</span>
     },
 &nbsp;
-    play: <span class="fstat-no" title="function not covered" >(k</span>ey: string, crossfade: number = <span class="branch-0 cbranch-no" title="branch not covered" >0.5): void =&gt; {</span>
+    play: <span class="fstat-no" title="function not covered" >(k</span>ey: string, crossfade: number = <span class="branch-0 cbranch-no" title="branch not covered" >0.5, v</span>olume: number = <span class="branch-0 cbranch-no" title="branch not covered" >1.0): void =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >        if (!ZsynthPlayer.ctx || !ZsynthPlayer.masterGain) {</span>
 <span class="cstat-no" title="statement not covered" >            console.error('ZSynthPlayer nicht initialisiert!');</span>
 <span class="cstat-no" title="statement not covered" >            return;</span>
+        }
+&nbsp;
+        // iOS suspends AudioContext before a user gesture — resume on every play call
+<span class="cstat-no" title="statement not covered" >        if (ZsynthPlayer.ctx.state === 'suspended') {</span>
+<span class="cstat-no" title="statement not covered" >            ZsynthPlayer.ctx.resume();</span>
         }
 &nbsp;
         const songData = <span class="cstat-no" title="statement not covered" >ZsynthPlayer.songs[key];</span>
@@ -648,12 +663,12 @@ const ZsynthPlayer = <span class="cstat-no" title="statement not covered" >{</sp
             isPlaying: true,
             currentStep: 0,
             gainNode: ZsynthPlayer.ctx.createGain(),
-            nextNoteTime: 0,
+            nextNoteTime: ZsynthPlayer.ctx.currentTime + 0.05,
             stepMap,
         };
 &nbsp;
 <span class="cstat-no" title="statement not covered" >        track.gainNode.gain.setValueAtTime(0.0001, startTime);</span>
-<span class="cstat-no" title="statement not covered" >        track.gainNode.gain.exponentialRampToValueAtTime(1.0, startTime + crossfade);</span>
+<span class="cstat-no" title="statement not covered" >        track.gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), startTime + crossfade);</span>
 <span class="cstat-no" title="statement not covered" >        track.gainNode.connect(ZsynthPlayer.masterGain);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >        ZsynthPlayer.currentTrack = track;</span>
@@ -781,7 +796,7 @@ export default ZsynthPlayer;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-22T08:15:01.607Z
+                at 2026-05-18T18:53:12.653Z
             </div>
         <script src="../prettify.js"></script>
         <script>

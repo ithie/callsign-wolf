@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>3/3</span>
+                <span class='fraction'>0/9</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/0</span>
+                <span class='fraction'>0/32</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>3/3</span>
+                <span class='fraction'>0/9</span>
             </div>
         
             
@@ -61,17 +61,68 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
 <a name='L3'></a><a href='#L3'>3</a>
-<a name='L4'></a><a href='#L4'>4</a></td><td class="line-coverage quiet"><span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">export const tileW = 64;
-export const tileH = 32;
-export const stepH = 25;
+<a name='L4'></a><a href='#L4'>4</a>
+<a name='L5'></a><a href='#L5'>5</a>
+<a name='L6'></a><a href='#L6'>6</a>
+<a name='L7'></a><a href='#L7'>7</a>
+<a name='L8'></a><a href='#L8'>8</a>
+<a name='L9'></a><a href='#L9'>9</a>
+<a name='L10'></a><a href='#L10'>10</a>
+<a name='L11'></a><a href='#L11'>11</a>
+<a name='L12'></a><a href='#L12'>12</a>
+<a name='L13'></a><a href='#L13'>13</a>
+<a name='L14'></a><a href='#L14'>14</a>
+<a name='L15'></a><a href='#L15'>15</a>
+<a name='L16'></a><a href='#L16'>16</a>
+<a name='L17'></a><a href='#L17'>17</a>
+<a name='L18'></a><a href='#L18'>18</a>
+<a name='L19'></a><a href='#L19'>19</a>
+<a name='L20'></a><a href='#L20'>20</a>
+<a name='L21'></a><a href='#L21'>21</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">const _isMobile =
+    typeof window !== 'undefined' &amp;&amp;
+    ('ontouchstart' in window || navigator.maxTouchPoints &gt; <span class="cstat-no" title="statement not covered" >0) &amp;&amp;</span>
+    window.matchMedia('(pointer: coarse)').matches;
+&nbsp;
+const _isApp = <span class="cstat-no" title="statement not covered" >import.meta.env.VITE_TARGET === 'app';</span>
+&nbsp;
+export const CANVAS_SCALE = <span class="cstat-no" title="statement not covered" >_isMobile ? 0.5 : 1.0;</span>
+export const DESKTOP_RENDER_SCALE = <span class="cstat-no" title="statement not covered" >0.6;</span>
+// Applied only to web-desktop: keeps the same number of visible tiles while rendering fewer pixels
+export const gameRenderScale = (<span class="cstat-no" title="statement not covered" >!_isApp &amp;&amp; !_isMobile) ? DESKTOP_RENDER_SCALE : 1;</span>
+&nbsp;
+// App phone: canvas is 3× downscaled → tiles must be ~64/3≈21 for desktop parity; 20 gives slight zoom-out
+const _isIPad = <span class="cstat-no" title="statement not covered" >_isApp &amp;&amp; (</span>
+    navigator.userAgent.includes('iPad') ||
+    (navigator.maxTouchPoints &gt; 1 &amp;&amp; /Macintosh/.test(navigator.userAgent))
+);
+export const tileW = <span class="cstat-no" title="statement not covered" >_isIPad ? 28 : _isApp ? 20 : _isMobile ? 24 : 64;</span>
+export const tileH = <span class="cstat-no" title="statement not covered" >_isIPad ? 14 : _isApp ? 10 : _isMobile ? 12 : 32;</span>
+export const stepH = <span class="cstat-no" title="statement not covered" >_isIPad ? 10.9 : _isApp ? 7.8 : _isMobile ? 9.4 : 25;</span>
 &nbsp;</pre></td></tr></table></pre>
 
                 <div class='push'></div><!-- for sticky footer -->
@@ -79,7 +130,7 @@ export const stepH = 25;
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-22T08:15:01.607Z
+                at 2026-05-18T18:53:12.653Z
             </div>
         <script src="../prettify.js"></script>
         <script>
