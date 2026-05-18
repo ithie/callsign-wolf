@@ -39,8 +39,8 @@ function initVessel(obj: any, vessel: any, seaTimeRef: { t: number }) {
     const angleRad = (obj.angle ?? 0) * (Math.PI / 180);
     vessel.w = obj.type === 'carrier' ? 8.0 : 1.5;
     vessel.l = obj.type === 'carrier' ? 3.5 : 3.0;
-    vessel.zDeck = obj.type === 'carrier' ? 4.2 : 0.35;
-    vessel.zHull = obj.type === 'carrier' ? 3.8 : 0.15;
+    vessel.zDeck = obj.type === 'carrier' ? G.waterLevel + 4.2 : G.waterLevel + 0.35;
+    vessel.zHull = obj.type === 'carrier' ? G.waterLevel + 3.8 : G.waterLevel + 0.15;
     vessel.path = obj.path ?? 'static';
     vessel.speedKnots = obj.speed ?? 0;
     const knotsToUnits = 0.001663;
@@ -147,7 +147,7 @@ export function initSubmarinesFromMission() {
         const st = { get t() { return s._seaTime; }, set t(v) { s._seaTime = v; } };
         initVessel(obj, s, st);
         // initVessel overwrites w/l/zDeck with generic boat values — restore submarine-specific ones
-        s.w = 0.7; s.l = 5.4; s.zDeck = 0.25;
+        s.w = 0.7; s.l = 5.4; s.zDeck = G.waterLevel + 0.25;
         return s;
     });
 }
@@ -175,6 +175,8 @@ export function initBoatsFromMission() {
         };
         const st = { get t() { return b._seaTime; }, set t(v) { b._seaTime = v; } };
         initVessel(obj, b, st);
+        // initVessel overwrites w/l/zDeck with generic values — restore per-type dimensions
+        b.w = cfg.w; b.l = cfg.l; b.zDeck = G.waterLevel + cfg.zDeck; b.zHull = G.waterLevel + 0.15;
         return b;
     });
 }

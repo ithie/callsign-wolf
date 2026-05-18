@@ -13,10 +13,11 @@ export function generateTerrain(
     PAD: { xMin: number; xMax: number; yMin: number; yMax: number; z: number } | null
 ) {
     const { terrain, gridSize } = campaignHandler.getTerrain();
+    const wl = G.waterLevel;
     for (let x = 0; x <= gridSize; x++) {
         for (let y = 0; y <= gridSize; y++) {
             if (PAD && x >= PAD.xMin && x <= PAD.xMax + 1 && y >= PAD.yMin && y <= PAD.yMax + 1) points[x][y] = PAD.z;
-            else points[x][y] = terrain[x][y];
+            else points[x][y] = Math.max(terrain[x][y], wl);
         }
     }
 }

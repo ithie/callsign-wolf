@@ -10,8 +10,8 @@ export const buildStartZone = (): StartZone =>
     campaignHandler.getCurrentMissionData().spawnObject === 'carrier'
         ? {
               getPos: () => ({
-                  x: G.CARRIER.x + -4.0 * Math.cos(G.CARRIER.angle),
-                  y: G.CARRIER.y + -14.0 * Math.sin(G.CARRIER.angle),
+                  x: G.CARRIER.x - 4.0 * Math.cos(G.CARRIER.angle),
+                  y: G.CARRIER.y - 4.0 * Math.sin(G.CARRIER.angle),
                   z: G.CARRIER.zDeck + 0.1,
               }),
               getAngle: () => G.CARRIER.angle,

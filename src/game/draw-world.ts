@@ -126,16 +126,16 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
     const _drawBoatModel = (b: any, cx: number, cy: number) => {
         if (b.objectType === 'pilot_boat') {
             const radarAngle = (Date.now() * 0.002) % (Math.PI * 2);
-            SceneRenderer.add(applyParts(PILOT_BOAT_DEF as any, { radarAngle }), { x: b.x, y: b.y, z: 0, angle: b.angle });
+            SceneRenderer.add(applyParts(PILOT_BOAT_DEF as any, { radarAngle }), { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
         } else {
             const def = b.objectType === 'salvage_tug' ? SALVAGE_TUG_DEF : SAILBOAT_DEF;
-            SceneRenderer.add(def, { x: b.x, y: b.y, z: 0, angle: b.angle });
+            SceneRenderer.add(def, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
         }
         SceneRenderer.flush(cx, cy);
     };
 
     const _drawSubmarine = (sX: number, sY: number, angle: number, cx: number, cy: number) => {
-        SceneRenderer.add(SUBMARINE_DEF, { x: sX, y: sY, z: 0, angle });
+        SceneRenderer.add(SUBMARINE_DEF, { x: sX, y: sY, z: G.waterLevel, angle });
         SceneRenderer.flush(cx, cy);
     };
 
@@ -214,9 +214,10 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
     const _drawLighthouse = (cx: number, cy: number) => {
         const lh = getLighthouse();
         if (!lh) return;
-        SceneRenderer.add(LIGHTHOUSE_DEF, { x: lh.x, y: lh.y, z: 0 });
+        const lhZ = Math.max(G.waterLevel, getGround(lh.x, lh.y));
+        SceneRenderer.add(LIGHTHOUSE_DEF, { x: lh.x, y: lh.y, z: lhZ });
         SceneRenderer.flush(cx, cy);
-        const p = isoFn(lh.x, lh.y, 8.1, cx, cy);
+        const p = isoFn(lh.x, lh.y, lhZ + 8.1, cx, cy);
         ctx.fillStyle = '#333';
         ctx.fillRect(p.x - 2, p.y - 10, 4, 10);
         if (Math.floor(Date.now() / 300) % 2 === 0) {
@@ -240,7 +241,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             x: objX + rx * cosA - ry * sinA,
             y: objY + rx * sinA + ry * cosA,
         });
-        SceneRenderer.add(applyParts(CARRIER_DEF, {}, { only: ['hull'] }), { x: objX, y: objY, z: 0, angle });
+        SceneRenderer.add(applyParts(CARRIER_DEF, {}, { only: ['hull'] }), { x: objX, y: objY, z: G.waterLevel, angle });
         SceneRenderer.flush(cx, cy);
 
         const ix = -5.5, iy = 2.6, iw = 4.5, il = 1.5, ih = 2.5;
@@ -267,11 +268,11 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         const towerWX = objX + (ix + iw / 2) * cosA - (iy + il / 2) * sinA;
         const towerWY = objY + (ix + iw / 2) * sinA + (iy + il / 2) * cosA;
         SceneRenderer.add(applyParts(CARRIER_DEF, {}, { only: ['tower'] }), {
-            x: objX, y: objY, z: 0, angle, depth: towerWX + towerWY,
+            x: objX, y: objY, z: G.waterLevel, angle, depth: towerWX + towerWY,
         });
         SceneRenderer.add(
             applyParts(CARRIER_DEF, { radarAngle: Date.now() * 0.002 }, { only: ['radar_mast', 'radar_arm'] }),
-            { x: objX, y: objY, z: 0, angle, depth: towerWX + towerWY + 0.01 }
+            { x: objX, y: objY, z: G.waterLevel, angle, depth: towerWX + towerWY + 0.01 }
         );
         _drawPadLights(G.CARRIER.zDeck, true);
         SceneRenderer.flush(cx, cy);
@@ -288,24 +289,21 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         ctx.stroke();
     };
 
-    const _drawParkedHelis = (cx: number, cy: number) => {
-        if (!hasCarrier()) return;
-        const angle = G.CARRIER.angle;
-        const deckZ = G.CARRIER.zDeck;
-        G.parkedHelis.forEach((h: any) => {
-            if (!isVisible(G.CARRIER.x, G.CARRIER.y)) return;
-            const cosA = Math.cos(angle), sinA = Math.sin(angle);
-            const wx = G.CARRIER.x + h.xRel * cosA - h.yRel * sinA;
-            const wy = G.CARRIER.y + h.xRel * sinA + h.yRel * cosA;
-            const totalAng = h.angle + angle;
-            drawHeli(h.type, wx, wy, deckZ + 0.1, totalAng, 0, 0, 0, cx, cy, {
+    const _drawNpcHelis = (cx: number, cy: number, visMargin: number) => {
+        for (const npc of G.npcHelis) {
+            const visible = npc.state === 'PARKED'
+                ? isVisible(G.CARRIER.x, G.CARRIER.y, visMargin)
+                : isVisible(npc.x, npc.y, visMargin);
+            if (!visible) continue;
+            const groundBelow = npc.state === 'PARKED' ? npc.z : Math.max(G.waterLevel, getGround(npc.x, npc.y));
+            drawHeli(npc.type, npc.x, npc.y, npc.z, npc.angle, npc.tilt, npc.roll, npc.rotationPos, cx, cy, {
                 isShadow: true, scaleOverride: 1, fillColor: '#556b2f', strokeColor: '#3a4a1f',
-                shadowGetGround: () => deckZ + 0.1,
+                shadowGetGround: () => groundBelow,
             });
-            drawHeli(h.type, wx, wy, deckZ + 0.1, totalAng, 0, 0, 0, cx, cy, {
+            drawHeli(npc.type, npc.x, npc.y, npc.z, npc.angle, npc.tilt, npc.roll, npc.rotationPos, cx, cy, {
                 scaleOverride: 1, fillColor: '#556b2f', strokeColor: '#3a4a1f',
             });
-        });
+        }
     };
 
     // ─── public ────────────────────────────────────────────────────────────────
@@ -326,7 +324,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         });
 
         if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, visMargin)) _drawVectorCarrier(camX, camY);
-        _drawParkedHelis(camX, camY);
+        _drawNpcHelis(camX, camY, visMargin);
         G.BOATS.forEach((b: any) => { if (isVisible(b.x, b.y, visMargin)) _drawBoatModel(b, camX, camY); });
         G.SUBMARINES.forEach((s: any) => { if (isVisible(s.x, s.y, visMargin)) _drawSubmarine(s.x, s.y, s.angle, camX, camY); });
         G.RESEARCH_PLATFORMS.forEach((rp: any) => { if (isVisible(rp.x, rp.y, visMargin)) _drawResearchPlatform(rp.x, rp.y); });
@@ -410,7 +408,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
 
             if (night && !payload.hanging && !payload.attachTo) {
                 const dx = payload.x - G.heli.x, dy = payload.y - G.heli.y;
-                const alt = G.heli.z - getGround(G.heli.x, G.heli.y);
+                const alt = G.heli.z - Math.max(G.waterLevel, getGround(G.heli.x, G.heli.y));
                 if (Math.hypot(dx, dy) > 10 + alt * 2.0) return;
                 let diff = Math.atan2(dy, dx) - G.heli.angle;
                 while (diff < -Math.PI) diff += Math.PI * 2;
@@ -711,18 +709,12 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, cx, cy, ca, -5.5, -1.0, 2.6, 4.1, deckZ, deckZ + 2.5))
                     triggerCrash(I18N.CRASH_CARRIER_TOWER);
             }
-            const cosC = Math.cos(ca), sinC = Math.sin(ca);
-            G.parkedHelis.forEach((h: any) => {
-                const pos = {
-                    x: cx + h.xRel * cosC - h.yRel * sinC,
-                    y: cy + h.xRel * sinC + h.yRel * cosC,
-                };
-                const totalAng = h.angle + ca;
+            G.npcHelis.filter(h => h.state === 'PARKED').forEach(h => {
                 const _hcb = getHeliType(h.type).collisionBox;
                 const hb = { x1: _hcb.xMin, x2: _hcb.xMax, y1: _hcb.yMin, y2: _hcb.yMax, z2: _hcb.zMax };
-                if (showCB) drawCollisionBox(pos.x, pos.y, totalAng, hb.x1, hb.x2, hb.y1, hb.y2, deckZ + 0.1, deckZ + 0.1 + hb.z2, 'rgba(0,255,100,0.8)');
+                if (showCB) drawCollisionBox(h.x, h.y, h.angle, hb.x1, hb.x2, hb.y1, hb.y2, deckZ + 0.1, deckZ + 0.1 + hb.z2, 'rgba(0,255,100,0.8)');
                 if (!zstate.crashed && G.heli.inAir) {
-                    if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, pos.x, pos.y, totalAng, hb.x1, hb.x2, hb.y1, hb.y2, deckZ + 0.1, deckZ + 0.1 + hb.z2))
+                    if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, h.x, h.y, h.angle, hb.x1, hb.x2, hb.y1, hb.y2, deckZ + 0.1, deckZ + 0.1 + hb.z2))
                         triggerCrash(I18N.CRASH_PARKED_HELI);
                 }
             });

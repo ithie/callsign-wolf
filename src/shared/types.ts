@@ -10,6 +10,7 @@ type CarrierObject = {
     path: 'circle' | 'straight' | 'static';
     speed: number;
     radius: number;
+    coordinatorHeli?: boolean;
 };
 type BoatObject = {
     type: 'boat';

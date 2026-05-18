@@ -1,5 +1,21 @@
 import { HELI_TYPES } from './heli-types';
 
+// ─── NPC heli ─────────────────────────────────────────────────────────────────
+export interface NpcHeli {
+    type: string;
+    x: number; y: number; z: number;
+    angle: number;
+    tilt: number; roll: number;
+    rotorRPM: number;
+    rotationPos: number;
+    state: 'PARKED' | 'TAKEOFF' | 'PATROL';
+    autoTakeoff: boolean;
+    parkXRel: number; parkYRel: number; parkAngle: number;
+    waypoints: { x: number; y: number }[];
+    wpI: number;
+    cruiseZ: number;
+}
+
 // ─── Remote heli (Multiplayer) ────────────────────────────────────────────────
 export interface RemoteHeli {
     type: string;
@@ -54,11 +70,7 @@ export const G = {
     payloads: [] as any[],
     activePayload: null as any,
     rescuerSwing: { x: 0, y: 0, vx: 0, vy: 0 },
-    parkedHelis: [
-        { type: 'coasthawk', xRel: 7.0, yRel: -2.5, angle: Math.PI * 0.19 },
-        { type: 'coasthawk', xRel: 1.5, yRel: -2.7, angle: Math.PI * 0.15 },
-        { type: 'dolphin', xRel: 7.0, yRel: 2.5, angle: Math.PI * 0.55 },
-    ],
+    npcHelis: [] as NpcHeli[],
     deliverMode: false,
     heli: {
         type: 'dolphin',

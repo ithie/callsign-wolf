@@ -46,9 +46,7 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
                 const h0 = G.points[x][y], h1 = G.points[x + 1][y];
                 const h2 = G.points[x + 1][y + 1], h3 = G.points[x][y + 1];
                 const fill = getFill(x, y, h0);
-                const wl = G.waterLevel;
-                const rh0 = Math.max(h0, wl), rh1 = Math.max(h1, wl);
-                const rh2 = Math.max(h2, wl), rh3 = Math.max(h3, wl);
+                const rh0 = h0, rh1 = h1, rh2 = h2, rh3 = h3;
                 const p0x = hw + (x - y) * htW - ccX;
                 const p0y = hh + (x + y) * htH - rh0 * stepH - ccY;
                 const p1x = hw + (x + 1 - y) * htW - ccX;
@@ -108,7 +106,7 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
         const yTo = Math.ceil(ry + _tileRange);
 
         if (isNight) {
-            const alt = G.heli.z - getGround(G.heli.x, G.heli.y, G.points, G.CARRIER);
+            const alt = G.heli.z - Math.max(G.waterLevel, getGround(G.heli.x, G.heli.y, G.points, G.CARRIER));
             const coneWidth = 0.3 + alt * 0.05;
             const range = 10 + alt * 2.0;
             const range2 = range * range;

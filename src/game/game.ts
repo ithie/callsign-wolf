@@ -45,6 +45,7 @@ import { initBirds, updateBirds, updateDebris, spawnExplosion } from './sim/part
 import { updatePhysics } from './sim/simulation';
 import { createDrawObjects } from './draw-objects';
 import { initFoliageFromMission, createFoliage } from './foliage';
+import { initNpcHelisFromMission, updateNpcHelis } from './sim/npc-helis';
 import { createDrawTerrain } from './draw-terrain';
 import { tileW as _tileW, tileH as _tileH, stepH as _stepH, gameRenderScale } from './render-config';
 const tileW = Math.round(_tileW * gameRenderScale);
@@ -556,6 +557,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     initBirds();
     G.deliverMode = false;
     initPayloadsFromMission();
+    initNpcHelisFromMission();
     _maybeSpawnOrniWreck();
     if (hasPad()) fuelTruck.init();
     handle?.step('Umgebung…', 0.75);
@@ -690,6 +692,8 @@ function drawScene() {
 
     drawTrees(camX, camY, rx, ry);
 
+    updateNpcHelis(dt);
+
     // Vögel
     updateBirds();
     drawBirds(camX, camY);
@@ -710,7 +714,7 @@ function drawScene() {
             G.heli.rotationPos,
             camX,
             camY,
-            { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER), flapRate: _flapRate }
+            { isShadow: true, shadowGetGround: (x, y) => Math.max(G.waterLevel, getGround(x, y, G.points, G.CARRIER)), flapRate: _flapRate }
         );
         if (G.remoteHeli) {
             drawHeli(
@@ -724,7 +728,7 @@ function drawScene() {
                 G.remoteHeli.rotationPos,
                 camX,
                 camY,
-                { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER) }
+                { isShadow: true, shadowGetGround: (x, y) => Math.max(G.waterLevel, getGround(x, y, G.points, G.CARRIER)) }
             );
         }
     }
