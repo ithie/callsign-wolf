@@ -31,10 +31,9 @@ export interface FuelVehicleCfg {
     hasArm: boolean;
 }
 
-// ── Shared Bezier pathfinding ─────────────────────────────────────────────────
-// wps[0] = park (t=0), wps[N] = heli (t=1), in the vehicle's local coord space.
-// DRIVING: navigate forward through wps, final direct approach to heli.
-// RETURNING: on-rails, t decrements 1→0 — no steering, t=0 = exact park.
+// wps[0] = park, wps[1] = stop point — straight line in local coord space.
+// DRIVING: navigate forward, then final approach to heli.
+// RETURNING: on-rails t 1→0, t=0 = exact park.
 
 export const runFuelVehicle = (v: FuelVehicleState, dt: number, ctx: PhysicsCtx, cfg: FuelVehicleCfg) => {
     const heli = G.heli;
@@ -51,29 +50,13 @@ export const runFuelVehicle = (v: FuelVehicleState, dt: number, ctx: PhysicsCtx,
         return dist;
     };
 
-    const buildWps = (): { lx: number; ly: number }[] => {
-        const N = 30;
+    const buildWps = () => {
         const p0 = { lx: v.localParkX, ly: v.localParkY };
         const heliLoc = cfg.worldToLocal(heli.x, heli.y);
         const fullDx = heliLoc.lx - p0.lx, fullDy = heliLoc.ly - p0.ly;
         const fullDist = Math.hypot(fullDx, fullDy) || 1;
         const stopScale = Math.max(0, fullDist - cfg.STOP_DIST) / fullDist;
-        const p3 = { lx: p0.lx + fullDx * stopScale, ly: p0.ly + fullDy * stopScale };
-        const dx = p3.lx - p0.lx, dy = p3.ly - p0.ly;
-        const dist = Math.hypot(dx, dy) || 1;
-        const p1 = { lx: p0.lx + Math.cos(v.localParkAngle) * dist * 0.4,
-                     ly: p0.ly + Math.sin(v.localParkAngle) * dist * 0.4 };
-        const p2 = { lx: p3.lx - (dx / dist) * dist * 0.4,
-                     ly: p3.ly - (dy / dist) * dist * 0.4 };
-        const wps: { lx: number; ly: number }[] = [];
-        for (let i = 0; i <= N; i++) {
-            const t = i / N, u = 1 - t;
-            wps.push({
-                lx: u*u*u*p0.lx + 3*u*u*t*p1.lx + 3*u*t*t*p2.lx + t*t*t*p3.lx,
-                ly: u*u*u*p0.ly + 3*u*u*t*p1.ly + 3*u*t*t*p2.ly + t*t*t*p3.ly,
-            });
-        }
-        return wps;
+        return [p0, { lx: p0.lx + fullDx * stopScale, ly: p0.ly + fullDy * stopScale }];
     };
 
     const sampleWorld = (t: number) => {
@@ -88,11 +71,10 @@ export const runFuelVehicle = (v: FuelVehicleState, dt: number, ctx: PhysicsCtx,
 
     const pathLength = () =>
         (v.wps ?? []).reduce((s, p, i, arr) =>
-            i > 0 ? s + Math.hypot(p.lx - arr[i-1].lx, p.ly - arr[i-1].ly) : 0, 0) || 1;
+            i > 0 ? s + Math.hypot(p.lx - arr[i - 1].lx, p.ly - arr[i - 1].ly) : 0, 0) || 1;
 
     if (v.state === 'PARKED') { cfg.parkSnapFn?.(); return; }
 
-    // Abort immediately when heli engine starts — prevent vehicle driving into lifting heli
     if (heli.engineOn && v.state !== 'RETURNING') {
         v.arm = 0;
         if (!v.wps) { v.wps = buildWps(); v.wpI = 0; }
