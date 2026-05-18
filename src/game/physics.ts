@@ -1278,17 +1278,29 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     // payload physics
     if (G.activePayload) {
         let p = G.activePayload;
-        let hookZ = G.heli.z - G.heli.winch;
         const isPersonLike = p.type === 'person' || p.type === 'rescuer';
         const damping = isPersonLike ? 0.88 : 0.95;
         const tension = isPersonLike ? 0.018 : 0.005;
-        let ax = (G.heli.x - p.x) * tension + G.wind.x * 2.0;
-        let ay = (G.heli.y - p.y) * tension + G.wind.y * 2.0;
+
+        // Rope slack: clamp payload z to ground, compute available horizontal rope
+        const groundZp = getGround(p.x, p.y);
+        const clampedZ = Math.max(groundZp, G.heli.z - G.heli.winch);
+        p.z = clampedZ;
+        const verticalDrop = G.heli.z - clampedZ;
+        const horizRopeAvail = Math.sqrt(Math.max(0, G.heli.winch * G.heli.winch - verticalDrop * verticalDrop));
+        const horizDist = Math.hypot(G.heli.x - p.x, G.heli.y - p.y);
+        const ropeIsTaut = horizDist > horizRopeAvail;
+
+        // Only apply horizontal tension when rope is taut (or for person-like payloads always)
+        let ax = G.wind.x * 2.0, ay = G.wind.y * 2.0;
+        if (ropeIsTaut || isPersonLike) {
+            ax += (G.heli.x - p.x) * tension;
+            ay += (G.heli.y - p.y) * tension;
+        }
         p.vx += ax * dt;
         p.vy += ay * dt;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
-        p.z = hookZ;
         p.vx *= Math.pow(damping, dt);
         p.vy *= Math.pow(damping, dt);
         const baseMass = PAYLOAD_DEFS[p.type]?.baseMass ?? 0.2;
@@ -1463,7 +1475,19 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     // deliver-mode toggle (R key — rising edge only)
     const keyR = !!G.keys['KeyR'];
     if (keyR && !_prevKeyR) {
-        if (G.deliverMode) {
+        const ap = G.activePayload as any;
+        if (ap?.type === 'crate' && ap.hanging) {
+            const crateZ = G.heli.z - G.heli.winch;
+            const groundZ = getGround(G.rescuerSwing.x, G.rescuerSwing.y);
+            if (crateZ <= groundZ + 0.4) {
+                ap.hanging = false;
+                ap.x = G.rescuerSwing.x;
+                ap.y = G.rescuerSwing.y;
+                ap.z = groundZ;
+                ap.dropCooldown = 180;
+                G.activePayload = null;
+            }
+        } else if (G.deliverMode) {
             G.deliverMode = false;
         } else if (G.heli.onboard > 0 && !G.activePayload) {
             G.deliverMode = true;
@@ -1494,6 +1518,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     if (!G.activePayload && !G.deliverMode) {
         for (let p of G.payloads) {
             if (p.rescued || p.hanging || p.npcTarget || p.isDelivery) continue;
+            if ((p as any).dropCooldown > 0) { (p as any).dropCooldown -= dt; continue; }
             let dist = Math.hypot(G.rescuerSwing.x - p.x, G.rescuerSwing.y - p.y);
             let hZ = Math.max(G.heli.z - G.heli.winch, getGround(G.rescuerSwing.x, G.rescuerSwing.y));
             if (dist < 1.8 && Math.abs(hZ - getGround(p.x, p.y)) < 1.0) {
@@ -1520,7 +1545,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
 
     // orni wreck touchdown delivery → mission aborted, rank promotion
     if (G.activePayload?.type === 'orni_wreck' && onPad && !onCarrierDeck) {
-        const crateZ = G.heli.z - G.heli.winch;
+        const crateZ = G.activePayload.z;
         const padSurfaceZ = G.PAD?.z ?? 0;
         if (crateZ <= padSurfaceZ + 0.4) {
             G.activePayload.hanging = false;
@@ -1537,7 +1562,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
         const padTypeOk = !dt || (onCarrierDeck ? dt === 'carrier' : dt === 'pad');
         if (padTypeOk) {
             const padSurfaceZ = onCarrierDeck ? G.CARRIER.zDeck : G.PAD.z;
-            const crateZ = G.heli.z - G.heli.winch;
+            const crateZ = (G.activePayload as any).z;
             if (crateZ <= padSurfaceZ + 0.4) {
                 p.hanging = false;
                 p.rescued = true;
