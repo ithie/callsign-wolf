@@ -13,7 +13,7 @@ export const fuelTruck: FuelVehicle = {
         ft.y = ft.localParkY;
         ft.angle = ft.localParkAngle;
         ft.arm = 0;
-        ft.state = 'PARKED'; ft.t = 0; ft.wps = null; ft.wpI = 0;
+        ft.state = 'PARKED'; ft.t = 0; ft.wps = null;
     },
 
     update(dt: number, ctx: PhysicsCtx) {
@@ -22,7 +22,7 @@ export const fuelTruck: FuelVehicle = {
         runFuelVehicle(ft, dt, ctx, {
             localToWorld: (lx, ly) => ({ x: lx, y: ly }),
             worldToLocal: (wx, wy) => ({ lx: wx, ly: wy }),
-            SPEED: 0.045, SPEED_REV: 0.028, MAX_STEER: 0.025, STOP_DIST: 3.5, FUEL_RATE: 0.25,
+            SPEED: 0.045, SPEED_REV: 0.028, STOP_DIST: 3.5, FUEL_RATE: 0.25,
             hasArm: true,
         });
     },

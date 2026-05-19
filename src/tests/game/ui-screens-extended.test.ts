@@ -33,7 +33,7 @@ import { initHeliSelect, mountHeliSelect, showHeliSelect } from '../../game/ui/h
 import { initTutorial, tutorialTick, destroyTutorial, isTutorialRunning } from '../../game/ui/tutorial/tutorial';
 import { HELI_TYPES } from '../../game/heli-types';
 import type { PlayerSession } from '../../game/session';
-import type { CampaignExport } from '../../../shared/types';
+import type { CampaignExport } from '../../shared/types';
 import type { GameState } from '../../game/state';
 
 // ─── Canvas & AudioContext stubs ──────────────────────────────────────────────
@@ -525,7 +525,6 @@ describe('tutorial', () => {
 
     it('tutorialTick advances when step-1 condition (engineOn) is met', () => {
         initTutorial(false, 'heading', mkGameState(), vi.fn());
-        const textBefore = document.getElementById('tutorial-step-text')!.textContent;
         tutorialTick(mkGameState({ engineOn: true }));
         // After advance the text changes (flashing, then next step)
         expect(isTutorialRunning()).toBe(true);

@@ -115,7 +115,6 @@ export const G = {
         localParkAngle: 0,
         t: 0,
         wps: null as { lx: number; ly: number }[] | null,
-        wpI: 0,
     },
     carrierFuelCar: {
         state: 'PARKED' as 'PARKED' | 'DRIVING' | 'FUELING' | 'RETURNING',
@@ -129,7 +128,6 @@ export const G = {
         localParkAngle: Math.PI / 2 + 0.25 + Math.PI,
         t: 0,
         wps: null as { lx: number; ly: number }[] | null,
-        wpI: 0,
     },
     /** Remote player's heli – set when multiplayer is active, null otherwise */
     remoteHeli: null as RemoteHeli | null,

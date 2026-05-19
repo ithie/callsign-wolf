@@ -10,7 +10,7 @@ export const carrierCar: FuelVehicle = {
         car.x = G.CARRIER.x + car.localParkX * cosA - car.localParkY * sinA;
         car.y = G.CARRIER.y + car.localParkX * sinA + car.localParkY * cosA;
         car.angle = car.localParkAngle + G.CARRIER.angle;
-        car.state = 'PARKED'; car.t = 0; car.wps = null; car.wpI = 0;
+        car.state = 'PARKED'; car.t = 0; car.wps = null;
     },
 
     update(dt: number, ctx: PhysicsCtx) {
@@ -34,7 +34,7 @@ export const carrierCar: FuelVehicle = {
                 car.angle = car.localParkAngle + G.CARRIER.angle;
             },
             getParentAngle: () => G.CARRIER.angle,
-            SPEED: 0.042, SPEED_REV: 0.026, MAX_STEER: 0.028, STOP_DIST: 3.2, FUEL_RATE: 0.3,
+            SPEED: 0.042, SPEED_REV: 0.026, STOP_DIST: 3.2, FUEL_RATE: 0.3,
             hasArm: false,
         });
     },

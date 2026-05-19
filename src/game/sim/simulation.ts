@@ -201,7 +201,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     }
     if (ctx.hasCarrier && onCarrierDeck && !G.heli.engineOn && !G.heli.inAir && G.heli.rotorRPM < 0.05
         && G.carrierFuelCar.state === 'PARKED' && (G.heli.fuel < 99 || G.heli.onboard > 0)) {
-        G.carrierFuelCar.state = 'DRIVING'; G.carrierFuelCar.wps = null; G.carrierFuelCar.wpI = 0;
+        G.carrierFuelCar.state = 'DRIVING'; G.carrierFuelCar.wps = null;
     }
     G.heli.rotorRPM =
         G.heli.engineOn && G.heli.fuel > 0
