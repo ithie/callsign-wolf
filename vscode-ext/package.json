@@ -1,0 +1,114 @@
+{
+    "name": "zeewolf-sar-tools",
+    "displayName": "Zeewolf SAR Tools",
+    "license": "UNLICENSED",
+    "description": "Campaign, ZSong, ZDEF and Sound Lab editors for Zeewolf SAR",
+    "version": "0.1.0",
+    "publisher": "zeewolf",
+    "private": true,
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onCustomEditor:zeewolf.campaignEditor",
+        "onCustomEditor:zeewolf.zsongEditor",
+        "onCustomEditor:zeewolf.zdefEditor",
+        "onCustomEditor:zeewolf.zsoundEditor"
+    ],
+    "main": "./dist/extension.js",
+    "contributes": {
+        "customEditors": [
+            {
+                "viewType": "zeewolf.campaignEditor",
+                "displayName": "Campaign Editor",
+                "selector": [
+                    {
+                        "filenamePattern": "*.zcampaign"
+                    }
+                ],
+                "priority": "default"
+            },
+            {
+                "viewType": "zeewolf.zsongEditor",
+                "displayName": "ZSong Editor",
+                "selector": [
+                    {
+                        "filenamePattern": "*.zsong"
+                    }
+                ],
+                "priority": "default"
+            },
+            {
+                "viewType": "zeewolf.zdefEditor",
+                "displayName": "ZDEF Editor",
+                "selector": [
+                    {
+                        "filenamePattern": "*.zdef"
+                    }
+                ],
+                "priority": "default"
+            },
+            {
+                "viewType": "zeewolf.zsoundEditor",
+                "displayName": "Sound Lab",
+                "selector": [
+                    {
+                        "filenamePattern": "*.zsound"
+                    }
+                ],
+                "priority": "default"
+            }
+        ],
+        "commands": [
+            {
+                "command": "zeewolf.openCampaignPreview",
+                "title": "Open Campaign Preview",
+                "icon": "$(open-preview)"
+            },
+            {
+                "command": "zeewolf.openUIPreview",
+                "title": "Zeewolf: Open UI Preview",
+                "icon": "$(symbol-color)"
+            }
+        ],
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "zeewolf.openCampaignPreview",
+                    "when": "resourceExtname == .zcampaign",
+                    "group": "navigation"
+                },
+                {
+                    "command": "zeewolf.openUIPreview",
+                    "when": "resourcePath =~ /game\\/ui\\// && (resourceExtname == .ts || resourceExtname == .css)",
+                    "group": "navigation"
+                }
+            ]
+        },
+        "configuration": {
+            "title": "Zeewolf SAR Tools",
+            "properties": {
+                "zeewolf.devServerPort": {
+                    "type": "number",
+                    "default": 5173,
+                    "description": "Port of the Vite dev server for campaign preview"
+                }
+            }
+        }
+    },
+    "scripts": {
+        "build": "node esbuild.mjs",
+        "watch": "node esbuild.mjs --watch",
+        "package": "npm run build && vsce package",
+        "deploy": "npm run package && \"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code\" --install-extension zeewolf-sar-tools-0.1.0.vsix --force"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.90.0",
+        "@vscode/vsce": "^3.0.0",
+        "esbuild": "^0.25.0",
+        "typescript": "^5.8.0"
+    }
+}

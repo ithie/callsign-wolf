@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="de">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>ZEEWOLF - Campaign Builder</title>
+        <style>
+            :root {
+                --bg: #1e1e1e;
+                --bg2: #252526;
+                --bg3: #2d2d2d;
+                --bg4: #3c3c3c;
+                --accent: #0e639c;
+                --accent2: #1177bb;
+                --text: #cccccc;
+                --text-dim: #858585;
+                --border: #3c3c3c;
+                --tree-hover: #2a2d2e;
+                --tree-active: #094771;
+            }
+
+            *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+            html, body {
+                width: 100%; height: 100%;
+                background: var(--bg);
+                color: var(--text);
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+                font-size: 13px;
+                overflow: hidden;
+            }
+
+            #app-layout { display: flex; height: 100%; }
+
+            /* ── Sidebar ────────────────────────────────────────────────────── */
+            #editor-controls {
+                width: 280px; min-width: 200px; flex-shrink: 0;
+                overflow-y: auto; overflow-x: hidden;
+                background: var(--bg2);
+                border-right: 1px solid var(--border);
+                font-size: 12px;
+            }
+            #editor-controls::-webkit-scrollbar { width: 6px; }
+            #editor-controls::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+            /* ── Canvas area ────────────────────────────────────────────────── */
+            #editor-canvas-area { flex: 1; overflow: auto; padding: 16px; }
+
+            /* ── Shared control styles ──────────────────────────────────────── */
+            .ed-section { border-bottom: 1px solid var(--border); padding: 8px 10px; }
+            .ed-section-title {
+                font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+                text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px;
+            }
+            .ed-section label { display: block; margin: 3px 0; color: var(--text); cursor: pointer; }
+            .ed-section input[type='text'],
+            .ed-section input[type='number'],
+            .ed-section textarea,
+            .ed-section select {
+                background: var(--bg3); color: var(--text);
+                border: 1px solid var(--border); border-radius: 2px;
+                padding: 3px 6px; font-size: 11px; font-family: inherit;
+                width: 100%;
+            }
+            .ed-section textarea { resize: vertical; min-height: 44px; }
+            .ed-section input[type='text']:focus,
+            .ed-section input[type='number']:focus,
+            .ed-section textarea:focus,
+            .ed-section select:focus { outline: none; border-color: var(--accent2); }
+            .ed-section input[type='range'] { width: 100%; cursor: pointer; }
+            .ed-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+            .ed-row label { margin: 0; }
+            .ed-row input[type='number'] { width: 52px; }
+            .ed-radio-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+            .ed-radio { cursor: pointer; }
+            .ed-mission-item {
+                display: flex; align-items: center; justify-content: space-between;
+                padding: 4px 6px; border-radius: 3px; cursor: pointer;
+                border: 1px solid transparent; margin-bottom: 3px;
+            }
+            .ed-mission-item:hover { background: var(--tree-hover); }
+            .ed-mission-item.active { background: var(--tree-active); border-color: var(--accent); color: #fff; }
+            .ed-mission-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+            .ed-mission-controls { display: flex; gap: 2px; flex-shrink: 0; }
+            .ed-mission-controls button, .ed-btn-sm {
+                background: var(--bg4); color: var(--text);
+                border: 1px solid var(--border); border-radius: 2px;
+                padding: 1px 5px; font-size: 10px; cursor: pointer;
+            }
+            .ed-mission-controls button:hover, .ed-btn-sm:hover { background: var(--accent2); color: #fff; }
+            .ed-mission-controls .ed-del:hover { background: #7a2020; }
+            .ed-btn {
+                display: block; width: 100%; background: var(--bg4); color: var(--text);
+                border: 1px solid var(--border); border-radius: 2px;
+                padding: 4px 8px; font-size: 11px; cursor: pointer;
+                text-align: left; margin-top: 4px;
+            }
+            .ed-btn:hover { background: var(--accent); border-color: var(--accent2); color: #fff; }
+            .ed-btn-danger:hover { background: #7a2020 !important; border-color: #a33 !important; }
+            .ed-list-row {
+                display: flex; align-items: center; gap: 4px;
+                padding: 2px 0; font-size: 11px; color: var(--text-dim);
+            }
+            .ed-list-row span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+            .ed-empty { color: var(--text-dim); font-size: 11px; font-style: italic; }
+        </style>
+    </head>
+    <body>
+        <div id="app-layout">
+            <!-- ── Sidebar controls ──────────────────────────────────────────── -->
+            <div id="editor-controls">
+                <div class="ed-section"><div class="ed-empty">Lade Editor…</div></div>
+            </div>
+
+            <!-- ── Canvas area ───────────────────────────────────────────────── -->
+            <div id="editor-canvas-area">
+                <div class="workspace">
+                    <div class="canvas-container">
+                        <div class="canvas-header header-2d">
+                            <span>2D Editor & Tactical Map</span>
+                            <span class="canvas-hint">Klick auf Pad/Träger/Wind für Details</span>
+                        </div>
+                        <div class="editor-wrapper">
+                            <canvas id="editorCanvas" width="600" height="600"></canvas>
+
+                            <div id="ui_wt" class="floating-ui">
+                                <span class="close-btn" id="close-wt">✖</span>
+                                <strong style="color: #4f4">🌀 WINDRAD</strong><br />
+                                <label><input type="checkbox" id="m_wt_spinning" /> Rotiert</label>
+                            </div>
+
+                            <div id="ui_wind" class="floating-ui" style="left: 90px; top: 15px">
+                                <span class="close-btn" id="close-wind">✖</span>
+                                <strong style="color: cyan">💨 WIND VECTOR</strong><br />
+                                Direction:
+                                <input type="number" id="m_wind_dir" value="45" min="0" max="359" style="width: 50px" /><br />
+                                Force: &nbsp;&nbsp;&nbsp;&nbsp;<input type="number" id="m_wind_str" value="1.0" step="0.1" min="0" max="10" style="width: 50px" /><br />
+                                <label><input type="checkbox" id="m_wind_var" /> Dynamic Variance</label>
+                            </div>
+
+                            <div id="ui_carrier" class="floating-ui">
+                                <span class="close-btn" id="close-carrier">✖</span>
+                                <strong style="color: #88aaff">🚢 CARRIER OPS</strong><br />
+                                <button id="btn_spawn_carrier" style="width: 100%; margin: 5px 0">Set Start Point</button>
+                                Angle (°): <input type="number" id="m_carrier_angle" value="0" min="0" max="359" style="width: 45px" /><br />
+                                Speed (kn): <input type="number" id="m_carrier_speed" value="0" step="0.5" style="width: 45px" /><br />
+                                Path: <select id="m_carrier_path" style="width: 80px">
+                                    <option value="static">Static</option>
+                                    <option value="straight">Straight</option>
+                                    <option value="circle">Circle</option>
+                                </select><br />
+                                Radius: <input type="number" id="m_carrier_radius" value="40" step="5" style="width: 45px" />
+                            </div>
+
+                            <div id="ui_submarine" class="floating-ui">
+                                <span class="close-btn" id="close-submarine">✖</span>
+                                <strong style="color: #aaa">🤿 SUBMARINE</strong><br />
+                                Angle (°): <input type="number" id="m_submarine_angle" value="0" min="0" max="359" style="width: 45px" /><br />
+                                Speed (kn): <input type="number" id="m_submarine_speed" value="3" step="0.5" style="width: 45px" /><br />
+                                Path: <select id="m_submarine_path" style="width: 80px">
+                                    <option value="static">Static</option>
+                                    <option value="straight">Straight</option>
+                                    <option value="circle">Circle</option>
+                                </select><br />
+                                Radius: <input type="number" id="m_submarine_radius" value="20" step="5" style="width: 45px" />
+                            </div>
+
+                            <div id="ui_boat" class="floating-ui">
+                                <span class="close-btn" id="close-boat">✖</span>
+                                <strong style="color: #4af">⛵ BOAT OPS</strong><br />
+                                Angle (°): <input type="number" id="m_boat_angle" value="0" min="0" max="359" style="width: 45px" /><br />
+                                Speed (kn): <input type="number" id="m_boat_speed" value="3" step="0.5" style="width: 45px" /><br />
+                                Path: <select id="m_boat_path" style="width: 80px">
+                                    <option value="static">Static</option>
+                                    <option value="straight">Straight</option>
+                                    <option value="circle">Circle</option>
+                                </select><br />
+                                Radius: <input type="number" id="m_boat_radius" value="20" step="5" style="width: 45px" />
+                            </div>
+
+                            <div id="ui_pad" class="floating-ui">
+                                <span class="close-btn" id="close-pad">✖</span>
+                                <strong style="color: #5f5">🚁 BASE PAD</strong><br />
+                                <button id="btn_spawn_pad" style="width: 100%; margin: 5px 0">Set Start Point</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── State inputs: required by the TypeScript module, not displayed ─ -->
+        <div id="editor-state" hidden>
+            <input type="radio" name="tool" value="move" />
+            <input type="radio" name="tool" value="terrain" checked />
+            <input type="radio" name="tool" value="flatten" />
+            <input type="radio" name="tool" value="pad" />
+            <input type="radio" name="tool" value="lighthouse" />
+            <input type="radio" name="tool" value="carrier" />
+            <input type="radio" name="tool" value="boat" />
+            <input type="radio" name="tool" value="pilot_boat" />
+            <input type="radio" name="tool" value="salvage_tug" />
+            <input type="radio" name="tool" value="submarine" />
+            <input type="radio" name="tool" value="research_platform" />
+            <input type="radio" name="tool" value="wind_turbine" />
+            <input type="radio" name="tool" value="plane_wreck" />
+            <input type="radio" name="tool" value="sailboat_broken" />
+            <input type="radio" name="tool" value="ornithopter_wreck" />
+            <input type="radio" name="tool" value="person" />
+            <input type="radio" name="tool" value="rescuer" />
+            <input type="radio" name="tool" value="crate" />
+            <input type="radio" name="tool" value="foliage" />
+
+            <input type="radio" name="brush" value="0" />
+            <input type="radio" name="brush" value="1.5" checked />
+            <input type="radio" name="brush" value="5.0" />
+            <input type="radio" name="brush" value="15.0" />
+            <input type="radio" name="brush" value="custom" />
+            <input type="number" id="m_custom_brush" value="8" min="1" max="50" />
+
+            <select id="foliage-type">
+                <option value="pine" selected>pine</option>
+                <option value="oak">oak</option>
+                <option value="bush">bush</option>
+                <option value="dead">dead</option>
+            </select>
+            <input type="range" id="foliage-scale" min="0.5" max="2.0" step="0.1" value="1.0" />
+            <span id="foliage-scale-val">1.0</span>
+            <div id="foliage-type-bar"></div>
+
+            <input type="number" id="m_grid_size" value="100" step="10" min="40" max="400" />
+            <button id="btn-resize-map">Resize</button>
+            <button id="btn-zoom-in">+</button>
+            <button id="btn-zoom-out">-</button>
+
+            <input type="text" id="m_headline_de" value="Phase 1" />
+            <input type="text" id="m_headline_en" value="" />
+            <textarea id="m_sublines_de"></textarea>
+            <textarea id="m_sublines_en"></textarea>
+            <textarea id="m_briefing_de"></textarea>
+            <textarea id="m_briefing_en"></textarea>
+            <input type="checkbox" id="m_rain" />
+            <input type="checkbox" id="m_night" />
+            <input type="number" id="m_water_level" value="0" min="-5" max="30" step="0.5" style="width:60px" />
+            <input type="number" id="m_npc_heli_count" value="0" min="0" max="3" />
+            <select id="m_npc_heli_type">
+                <option value="random">Zufällig</option>
+                <option value="dolphin">Dolphin</option>
+                <option value="coasthawk">Coast-Hawk</option>
+                <option value="atlas">Atlas</option>
+            </select>
+
+            <input type="text" id="c_title_de" value="OPERATION ZEEWOLF" />
+            <input type="text" id="c_title_en" value="" />
+            <textarea id="c_sublines_de">Sichere den Archipel.
+Viel Glück, Pilot.</textarea>
+            <textarea id="c_sublines_en"></textarea>
+            <select id="c_type">
+                <option value="ZEEWOLF_CAMPAIGN">Kampagne</option>
+                <option value="tutorial">Tutorial</option>
+                <option value="free-flight">Free Flight</option>
+            </select>
+            <select id="c_music_briefing">
+                <option value="">— kein Song —</option>
+                <option value="main">main</option>
+                <option value="tutorial">tutorial</option>
+                <option value="final">final</option>
+            </select>
+            <select id="c_music_ingame">
+                <option value="">— kein Song —</option>
+                <option value="main">main</option>
+                <option value="tutorial">tutorial</option>
+                <option value="final">final</option>
+            </select>
+
+            <div id="mission-list"></div>
+            <div id="payload-list"></div>
+            <div id="object-list"></div>
+            <div id="foliage-list"></div>
+            <span id="foliage-count"></span>
+
+            <button id="btn-add-mission">Add</button>
+            <button id="btn-copy-mission">Copy</button>
+            <button id="btn-clear-foliage">Clear foliage</button>
+
+            <button id="btn-export-campaign">Export</button>
+            <button id="btn-import-campaign">Import</button>
+            <textarea id="output"></textarea>
+        </div>
+
+        <!-- ── Workbench bridge ────────────────────────────────────────────── -->
+        <script>
+            window.editorExport = function () {
+                var origAlert = window.alert;
+                window.alert = function () {};
+                document.getElementById('btn-export-campaign').click();
+                window.alert = origAlert;
+                return document.getElementById('output').value || null;
+            };
+
+            window.editorGetPreviewMission = function () {
+                var ed = window.__editor;
+                if (!ed) return null;
+                var m = ed.getCurrentMission();
+                if (!m) return null;
+                var utils = window.__editorUtils || {};
+                var compressTerrain = utils.compressTerrain;
+                var compressFoliage = utils.compressFoliage;
+                var decompressFoliage = utils.decompressFoliage;
+                var terrain = compressTerrain
+                    ? typeof m.terrain === 'string' ? m.terrain : compressTerrain(m.terrain)
+                    : m.terrain;
+                var foliage = compressFoliage
+                    ? compressFoliage(typeof m.foliage === 'string' ? decompressFoliage(m.foliage) : m.foliage || [])
+                    : m.foliage || [];
+                return {
+                    headline: m.headline || '', sublines: m.sublines || [],
+                    briefing: m.briefing || '', gridSize: m.gridSize,
+                    terrain: terrain, foliage: foliage,
+                    objects: m.objects || [], payloads: m.payloads || [],
+                    objectives: m.objectives || [], spawnObject: m.spawnObject || 'pad',
+                    rain: !!m.rain, night: !!m.night, waterLevel: m.waterLevel || 0,
+                    windDir: m.windDir || 0, windStr: m.windStr || 0, windVar: !!m.windVar,
+                    campaignType: 'ZEEWOLF_CAMPAIGN',
+                };
+            };
+
+            window.editorImport = function (content) {
+                document.getElementById('output').value = content;
+                document.getElementById('btn-import-campaign').click();
+            };
+
+            window.editorGetState = function () {
+                var ed = window.__editor;
+                if (!ed) return null;
+                var m = ed.getCurrentMission();
+                var s = ed.state;
+                var foliageArr = m && m.foliage ? m.foliage : [];
+                var foliageCounts = {};
+                var foliageIcons = { pine: '🌲', oak: '🌳', bush: '🌿', dead: '🪵' };
+                foliageArr.forEach(function (f) {
+                    foliageCounts[f.type] = (foliageCounts[f.type] || 0) + 1;
+                });
+                var foliageSummary = Object.entries(foliageCounts)
+                    .map(function (e) { return (foliageIcons[e[0]] || '🌲') + ' ' + e[0] + ': ' + e[1]; })
+                    .join(' | ');
+                return {
+                    campaignTitle: {
+                        de: document.getElementById('c_title_de').value,
+                        en: document.getElementById('c_title_en').value,
+                    },
+                    campaignSublines: {
+                        de: document.getElementById('c_sublines_de').value,
+                        en: document.getElementById('c_sublines_en').value,
+                    },
+                    campaignType: document.getElementById('c_type').value,
+                    musicBriefing: document.getElementById('c_music_briefing').value,
+                    musicIngame: document.getElementById('c_music_ingame').value,
+                    missions: s.campaign.map(function (mis, i) {
+                        return { idx: i, headline: mis.headline, active: i === s.curIdx };
+                    }),
+                    tool: s.currentTool,
+                    brushRadius: s.brushRadius,
+                    isCustomBrush: s.isCustomBrush,
+                    customBrushValue: document.getElementById('m_custom_brush').value,
+                    foliageType: document.getElementById('foliage-type').value,
+                    foliageScale: document.getElementById('foliage-scale').value,
+                    currentMission: m ? {
+                        headline: m.headline, sublines: m.sublines || [],
+                        briefing: m.briefing || '', gridSize: m.gridSize,
+                        rain: m.rain, night: m.night, waterLevel: m.waterLevel || 0,
+                        windDir: m.windDir, windStr: m.windStr, windVar: m.windVar,
+                        npcHeliCount: m.npcHeliCount || 0, npcHeliType: m.npcHeliType || 'random',
+                        objectives: (m.objectives || []).map(function (o, i) { return Object.assign({ idx: i }, o); }),
+                        objects: (m.objects || []).map(function (o, i) { return { idx: i, type: o.type, x: o.x, y: o.y }; }),
+                        payloads: (m.payloads || []).map(function (p, i) { return { idx: i, type: p.type, x: p.x, y: p.y, npcTarget: !!p.npcTarget }; }),
+                        foliageCount: foliageArr.length, foliageSummary: foliageSummary,
+                    } : null,
+                };
+            };
+
+            window.editorDispatch = function (action, data) {
+                var ed = window.__editor;
+                if (!ed) return;
+                var m = ed.getCurrentMission();
+                var get = function (id) { return document.getElementById(id); };
+                var set = function (id, v) { var el = get(id); if (el) el.value = v; };
+                var chk = function (id, v) { var el = get(id); if (el) el.checked = v; };
+                var clk = function (id) { var el = get(id); if (el) el.click(); };
+                var fire = function (id, ev) { var el = get(id); if (el) el.dispatchEvent(new Event(ev)); };
+
+                switch (action) {
+                    case 'set-campaign-title': set('c_title_' + (data.lang || 'de'), data.value); break;
+                    case 'set-campaign-sublines': set('c_sublines_' + (data.lang || 'de'), data.value); break;
+                    case 'set-campaign-type': set('c_type', data.value); break;
+                    case 'set-campaign-music-briefing': set('c_music_briefing', data.value); break;
+                    case 'set-campaign-music-ingame': set('c_music_ingame', data.value); break;
+                    case 'select-mission': ed.loadMission(data.idx); break;
+                    case 'add-mission': clk('btn-add-mission'); break;
+                    case 'copy-mission': clk('btn-copy-mission'); break;
+                    case 'delete-mission':
+                        if (ed.state.campaign.length <= 1) return;
+                        if (confirm('Mission wirklich löschen?')) {
+                            ed.state.campaign.splice(data.idx, 1);
+                            ed.loadMission(Math.max(0, data.idx - 1));
+                        }
+                        break;
+                    case 'move-mission': {
+                        var arr = ed.state.campaign;
+                        var ni = data.idx + data.dir;
+                        if (ni < 0 || ni >= arr.length) return;
+                        var tmp = arr[data.idx]; arr[data.idx] = arr[ni]; arr[ni] = tmp;
+                        ed.loadMission(ni);
+                        break;
+                    }
+                    case 'set-tool': {
+                        var r = document.querySelector('input[name="tool"][value="' + data.tool + '"]');
+                        if (r) { r.checked = true; r.dispatchEvent(new Event('change')); }
+                        break;
+                    }
+                    case 'set-brush': {
+                        var rb = document.querySelector('input[name="brush"][value="' + data.value + '"]');
+                        if (rb) { rb.checked = true; rb.dispatchEvent(new Event('change')); }
+                        else {
+                            var cr = document.querySelector('input[name="brush"][value="custom"]');
+                            if (cr) { cr.checked = true; cr.dispatchEvent(new Event('change')); }
+                            set('m_custom_brush', data.value);
+                            fire('m_custom_brush', 'input');
+                        }
+                        break;
+                    }
+                    case 'set-foliage-type': set('foliage-type', data.value); break;
+                    case 'set-foliage-scale':
+                        set('foliage-scale', data.value);
+                        var fsv = get('foliage-scale-val');
+                        if (fsv) fsv.innerText = data.value;
+                        break;
+                    case 'resize-map': set('m_grid_size', data.size); clk('btn-resize-map'); break;
+                    case 'zoom-in': clk('btn-zoom-in'); break;
+                    case 'zoom-out': clk('btn-zoom-out'); break;
+                    case 'set-headline': {
+                        var l = data.lang || 'de';
+                        set('m_headline_' + l, data.value); fire('m_headline_' + l, 'input');
+                        break;
+                    }
+                    case 'set-sublines': {
+                        var l2 = data.lang || 'de';
+                        set('m_sublines_' + l2, data.value); fire('m_sublines_' + l2, 'input');
+                        break;
+                    }
+                    case 'set-briefing': {
+                        var l3 = data.lang || 'de';
+                        set('m_briefing_' + l3, data.value); fire('m_briefing_' + l3, 'input');
+                        break;
+                    }
+                    case 'set-rain': chk('m_rain', data.value); fire('m_rain', 'input'); break;
+                    case 'set-night': chk('m_night', data.value); fire('m_night', 'input'); break;
+                    case 'set-water-level': set('m_water_level', data.value); fire('m_water_level', 'input'); break;
+                    case 'set-wind-dir': set('m_wind_dir', data.value); fire('m_wind_dir', 'input'); break;
+                    case 'set-wind-str': set('m_wind_str', data.value); fire('m_wind_str', 'input'); break;
+                    case 'set-wind-var': chk('m_wind_var', data.value); fire('m_wind_var', 'input'); break;
+                    case 'set-npc-count': set('m_npc_heli_count', data.value); fire('m_npc_heli_count', 'input'); break;
+                    case 'set-npc-type': set('m_npc_heli_type', data.value); fire('m_npc_heli_type', 'input'); break;
+                    case 'add-objective':
+                        if (m) {
+                            if (!m.objectives) m.objectives = [];
+                            var newObj = { type: data.type };
+                            if (data.target) newObj.target = data.target;
+                            m.objectives.push(newObj);
+                            ed.syncToData();
+                        }
+                        break;
+                    case 'delete-objective':
+                        if (m && m.objectives) { m.objectives.splice(data.idx, 1); ed.syncToData(); }
+                        break;
+                    case 'delete-payload':
+                        if (m && m.payloads) { m.payloads.splice(data.idx, 1); ed.renderPayloadList(); }
+                        break;
+                    case 'set-payload-npc':
+                        if (m && m.payloads && m.payloads[data.idx]) m.payloads[data.idx].npcTarget = data.value;
+                        break;
+                    case 'delete-object':
+                        if (m) { m.objects.splice(data.idx, 1); ed.renderObjectList(); }
+                        break;
+                    case 'clear-foliage': clk('btn-clear-foliage'); break;
+                }
+            };
+        </script>
+
+        <!-- ── Sidebar rendering ──────────────────────────────────────────── -->
+        <script>
+            var ED_TOOLS = [
+                { v: 'move', l: '✋ Drag & Pan' },
+                { v: 'terrain', l: '⛰️ Berge' },
+                { v: 'flatten', l: '🧽 Einebnen' },
+                { v: 'pad', l: '🚁 Landepad' },
+                { v: 'lighthouse', l: '🗼 Turm' },
+                { v: 'carrier', l: '🚢 Träger' },
+                { v: 'boat', l: '⛵ Boot' },
+                { v: 'pilot_boat', l: '🚤 Lotsenboot' },
+                { v: 'salvage_tug', l: '🛳 Schlepper' },
+                { v: 'submarine', l: '🤿 U-Boot' },
+                { v: 'research_platform', l: '🏗 Plattform' },
+                { v: 'wind_turbine', l: '🌀 Windrad' },
+                { v: 'plane_wreck', l: '✈️ Wrack' },
+                { v: 'sailboat_broken', l: '⛵ Gek. Mast' },
+                { v: 'ornithopter_wreck', l: '🛸 Orni-Wrack' },
+                { v: 'person', l: '🟡 Person' },
+                { v: 'rescuer', l: '🔵 Retter' },
+                { v: 'crate', l: '🟠 Crate' },
+                { v: 'foliage', l: '🌲 Bäume' },
+            ];
+            var OBJ_ICONS = { pad: '🟩', carrier: '🚢', boat: '⛵', submarine: '🤿', lighthouse: '🔦' };
+            var SONG_KEYS = ['', 'main', 'tutorial', 'final'];
+
+            var _edLang = 'de';
+            var edLastState = null;
+
+            var edH = function (s) {
+                return String(s == null ? '' : s)
+                    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            };
+
+            var edSetLang = function (lang) { _edLang = lang; if (edLastState) edRenderPanel(edLastState); };
+
+            var edTabs = function () {
+                return '<div style="display:flex;gap:4px;margin-bottom:4px">'
+                    + '<button class="ed-btn-sm' + (_edLang === 'de' ? ' active' : '') + '" onclick="edSetLang(\'de\')" style="' + (_edLang === 'de' ? 'background:var(--accent);color:#fff' : '') + '">DE</button>'
+                    + '<button class="ed-btn-sm' + (_edLang === 'en' ? ' active' : '') + '" onclick="edSetLang(\'en\')" style="' + (_edLang === 'en' ? 'background:var(--accent);color:#fff' : '') + '">EN</button>'
+                    + '</div>';
+            };
+
+            var edLs = function (ls, lang) {
+                if (!ls) return '';
+                if (typeof ls === 'string') return ls;
+                return ls[lang] || '';
+            };
+
+            var edSongOptions = function (selected) {
+                return SONG_KEYS.map(function (k) {
+                    return '<option value="' + k + '"' + (selected === k ? ' selected' : '') + '>' + (k || '— kein Song —') + '</option>';
+                }).join('');
+            };
+
+            var edDispatch = function (action, data) {
+                if (window.editorDispatch) {
+                    window.editorDispatch(action, data);
+                    setTimeout(edRefreshPanel, 80);
+                }
+            };
+
+            var edRefreshPanel = function () {
+                var controls = document.getElementById('editor-controls');
+                if (controls && controls.contains(document.activeElement)) return;
+                if (!window.editorGetState) return;
+                edRenderPanel(window.editorGetState());
+            };
+
+            var edRenderPanel = function (st) {
+                edLastState = st;
+                var controls = document.getElementById('editor-controls');
+                if (!st) {
+                    controls.innerHTML = '<div class="ed-section"><div class="ed-empty">Lade Editor…</div></div>';
+                    return;
+                }
+                var cm = st.currentMission;
+                controls.innerHTML =
+                    '<div class="ed-section">'
+                    + '<div class="ed-section-title">Kampagne</div>'
+                    + '<label style="font-size:10px;color:var(--text-dim)">Titel</label>'
+                    + edTabs()
+                    + '<input type="text" value="' + edH(edLs(st.campaignTitle, _edLang)) + '" oninput="edDispatch(\'set-campaign-title\',{lang:\'' + _edLang + '\',value:this.value})">'
+                    + '<label style="font-size:10px;color:var(--text-dim);margin-top:4px">Sublines (1 pro Zeile)</label>'
+                    + edTabs()
+                    + '<textarea rows="2" oninput="edDispatch(\'set-campaign-sublines\',{lang:\'' + _edLang + '\',value:this.value})">' + edH(edLs(st.campaignSublines, _edLang)) + '</textarea>'
+                    + '<label style="font-size:10px;color:var(--text-dim);margin-top:6px">Typ</label>'
+                    + '<select onchange="edDispatch(\'set-campaign-type\',{value:this.value})">'
+                    + '<option value="ZEEWOLF_CAMPAIGN"' + (st.campaignType === 'ZEEWOLF_CAMPAIGN' ? ' selected' : '') + '>Kampagne</option>'
+                    + '<option value="tutorial"' + (st.campaignType === 'tutorial' ? ' selected' : '') + '>Tutorial</option>'
+                    + '<option value="free-flight"' + (st.campaignType === 'free-flight' ? ' selected' : '') + '>Free Flight</option>'
+                    + '</select>'
+                    + '<label style="font-size:10px;color:var(--text-dim);margin-top:6px">Musik – Briefing</label>'
+                    + '<select onchange="edDispatch(\'set-campaign-music-briefing\',{value:this.value})">' + edSongOptions(st.musicBriefing) + '</select>'
+                    + '<label style="font-size:10px;color:var(--text-dim);margin-top:4px">Musik – In-Game</label>'
+                    + '<select onchange="edDispatch(\'set-campaign-music-ingame\',{value:this.value})">' + edSongOptions(st.musicIngame) + '</select>'
+                    + '</div>'
+
+                    + '<div class="ed-section">'
+                    + '<div class="ed-section-title">Missionen</div>'
+                    + st.missions.map(function (m) {
+                        return '<div class="ed-mission-item' + (m.active ? ' active' : '') + '" onclick="edDispatch(\'select-mission\',{idx:' + m.idx + '})">'
+                            + '<span>' + (m.idx + 1) + '. ' + edH(edLs(m.headline, 'de').substring(0, 20)) + '</span>'
+                            + '<div class="ed-mission-controls">'
+                            + '<button onclick="event.stopPropagation();edDispatch(\'move-mission\',{idx:' + m.idx + ',dir:-1})">↑</button>'
+                            + '<button onclick="event.stopPropagation();edDispatch(\'move-mission\',{idx:' + m.idx + ',dir:1})">↓</button>'
+                            + '<button class="ed-del" onclick="event.stopPropagation();edDispatch(\'delete-mission\',{idx:' + m.idx + '})">✕</button>'
+                            + '</div></div>';
+                    }).join('')
+                    + '<button class="ed-btn" onclick="edDispatch(\'add-mission\')">+ Mission hinzufügen</button>'
+                    + '<button class="ed-btn" onclick="edDispatch(\'copy-mission\')">📋 Duplizieren</button>'
+                    + '</div>'
+
+                    + '<div class="ed-section">'
+                    + '<div class="ed-section-title">Werkzeuge</div>'
+                    + '<div class="ed-radio-grid">'
+                    + ED_TOOLS.map(function (t) {
+                        return '<label class="ed-radio"><input type="radio" name="ed-tool" value="' + t.v + '" ' + (st.tool === t.v ? 'checked' : '') + ' onchange="edDispatch(\'set-tool\',{tool:\'' + t.v + '\'})">' + t.l + '</label>';
+                    }).join('')
+                    + '</div>'
+                    + (st.tool === 'foliage' ? '<div style="margin-top:6px">'
+                        + '<div class="ed-row" style="margin-bottom:4px"><label style="color:var(--text-dim)">Typ</label>'
+                        + '<select style="flex:1" onchange="edDispatch(\'set-foliage-type\',{value:this.value})">'
+                        + [['pine','🌲 Nadel'],['oak','🌳 Laub'],['bush','🌿 Busch'],['dead','🪵 Kahl']].map(function (e) {
+                            return '<option value="' + e[0] + '"' + (st.foliageType === e[0] ? ' selected' : '') + '>' + e[1] + '</option>';
+                        }).join('') + '</select></div>'
+                        + '<label style="color:var(--text-dim)">Scale: ' + st.foliageScale + '</label>'
+                        + '<input type="range" min="0.5" max="2.0" step="0.1" value="' + st.foliageScale + '" oninput="edDispatch(\'set-foliage-scale\',{value:this.value})">'
+                        + '</div>' : '')
+                    + '</div>'
+
+                    + '<div class="ed-section">'
+                    + '<div class="ed-section-title">Pinsel</div>'
+                    + [{ v: '0', l: '1px' }, { v: '1.5', l: '3 (Normal)' }, { v: '5.0', l: '10 (Groß)' }, { v: '15.0', l: '30 (Massiv)' }].map(function (b) {
+                        return '<label class="ed-radio"><input type="radio" name="ed-brush" value="' + b.v + '" '
+                            + (!st.isCustomBrush && st.brushRadius == b.v ? 'checked' : '')
+                            + ' onchange="edDispatch(\'set-brush\',{value:\'' + b.v + '\'})">' + b.l + '</label>';
+                    }).join('')
+                    + '<div class="ed-row" style="margin-top:4px">'
+                    + '<label class="ed-radio"><input type="radio" name="ed-brush" value="custom" ' + (st.isCustomBrush ? 'checked' : '') + ' onchange="edDispatch(\'set-brush\',{value:document.getElementById(\'ed-custom-brush\').value})"> Frei:</label>'
+                    + '<input type="number" id="ed-custom-brush" value="' + edH(st.customBrushValue) + '" min="1" max="50" style="width:50px" oninput="if(document.querySelector(\'input[name=ed-brush][value=custom]\').checked) edDispatch(\'set-brush\',{value:this.value})">'
+                    + '</div></div>'
+
+                    + '<div class="ed-section">'
+                    + '<div class="ed-section-title">Karte</div>'
+                    + '<div class="ed-row"><label style="color:var(--text-dim)">Größe</label>'
+                    + '<input type="number" id="ed-map-size" value="' + (cm ? cm.gridSize : 100) + '" min="40" max="400" step="10" style="width:60px">'
+                    + '<button class="ed-btn-sm" onclick="edDispatch(\'resize-map\',{size:document.getElementById(\'ed-map-size\').value})">Resize</button>'
+                    + '</div><div class="ed-row" style="margin-top:6px"><label style="color:var(--text-dim)">Zoom</label>'
+                    + '<button class="ed-btn-sm" onclick="edDispatch(\'zoom-in\')">+</button>'
+                    + '<button class="ed-btn-sm" onclick="edDispatch(\'zoom-out\')">−</button>'
+                    + '</div></div>'
+
+                    + (cm ? (
+                        '<div class="ed-section">'
+                        + '<div class="ed-section-title">Mission: ' + edH(edLs(cm.headline, 'de')) + '</div>'
+                        + '<label style="font-size:10px;color:var(--text-dim)">Name</label>'
+                        + edTabs()
+                        + '<input type="text" value="' + edH(edLs(cm.headline, _edLang)) + '" oninput="edDispatch(\'set-headline\',{lang:\'' + _edLang + '\',value:this.value})">'
+                        + '<label style="font-size:10px;color:var(--text-dim);margin-top:4px">Ziele (1 pro Zeile)</label>'
+                        + edTabs()
+                        + '<textarea rows="2" oninput="edDispatch(\'set-sublines\',{lang:\'' + _edLang + '\',value:this.value})">' + edH((cm.sublines || []).map(function (s) { return edLs(s, _edLang); }).join('\n')) + '</textarea>'
+                        + '<label style="font-size:10px;color:var(--text-dim);margin-top:4px">Briefing</label>'
+                        + edTabs()
+                        + '<textarea rows="3" oninput="edDispatch(\'set-briefing\',{lang:\'' + _edLang + '\',value:this.value})">' + edH(edLs(cm.briefing, _edLang)) + '</textarea>'
+                        + '<div style="margin-top:6px">'
+                        + '<label><input type="checkbox" ' + (cm.rain ? 'checked' : '') + ' onchange="edDispatch(\'set-rain\',{value:this.checked})"> 🌧️ Regen / Sturm</label>'
+                        + '<label><input type="checkbox" ' + (cm.night ? 'checked' : '') + ' onchange="edDispatch(\'set-night\',{value:this.checked})"> 🌙 Nacht</label>'
+                        + '</div>'
+                        + '<div class="ed-row" style="margin-top:6px"><label style="color:var(--text-dim)">🌊 Meeresspiegel</label>'
+                        + '<input type="number" value="' + (cm.waterLevel != null ? cm.waterLevel : 0) + '" step="0.5" min="-5" max="30" style="width:60px" oninput="edDispatch(\'set-water-level\',{value:parseFloat(this.value)||0})">'
+                        + '</div>'
+                        + '<div class="ed-row" style="margin-top:6px"><label style="color:var(--text-dim)">Wind °</label>'
+                        + '<input type="number" value="' + cm.windDir + '" min="0" max="359" style="width:52px" oninput="edDispatch(\'set-wind-dir\',{value:this.value})">'
+                        + '<label style="color:var(--text-dim)">Stärke</label>'
+                        + '<input type="number" value="' + cm.windStr + '" step="0.1" min="0" max="3.5" style="width:52px" oninput="edDispatch(\'set-wind-str\',{value:this.value})">'
+                        + '</div>'
+                        + '<label style="margin-top:4px"><input type="checkbox" ' + (cm.windVar ? 'checked' : '') + ' onchange="edDispatch(\'set-wind-var\',{value:this.checked})"> Dyn. Windvarianz</label>'
+                        + '<div class="ed-row" style="margin-top:6px"><label style="color:var(--text-dim)">NPC-Helis</label>'
+                        + '<input type="number" value="' + cm.npcHeliCount + '" min="0" max="3" style="width:40px" oninput="edDispatch(\'set-npc-count\',{value:this.value})">'
+                        + '<select onchange="edDispatch(\'set-npc-type\',{value:this.value})" style="flex:1">'
+                        + [['random','Zufällig'],['dolphin','Dolphin'],['coasthawk','Coast-Hawk'],['atlas','Atlas']].map(function (e) {
+                            return '<option value="' + e[0] + '"' + ((cm.npcHeliType === e[0] || (!cm.npcHeliType && e[0] === 'random')) ? ' selected' : '') + '>' + e[1] + '</option>';
+                        }).join('') + '</select>'
+                        + '</div></div>'
+
+                        + '<div class="ed-section"><div class="ed-section-title">Objekte</div>'
+                        + (cm.objects.length ? cm.objects.map(function (o) {
+                            return '<div class="ed-list-row"><span>' + (OBJ_ICONS[o.type] || '?') + ' ' + o.type + ' @ (' + o.x + ', ' + o.y + ')</span>'
+                                + '<button class="ed-btn-sm ed-del" onclick="edDispatch(\'delete-object\',{idx:' + o.idx + '})">✕</button></div>';
+                        }).join('') : '<div class="ed-empty">Keine Objekte</div>')
+                        + '</div>'
+
+                        + '<div class="ed-section"><div class="ed-section-title">Ziele</div>'
+                        + (cm.objectives.length ? cm.objectives.map(function (o) {
+                            return '<div class="ed-list-row"><span>' + (o.type === 'rescue_all' ? '🚁 Alle retten' : '🎯 Landen: ' + o.target) + '</span>'
+                                + '<button class="ed-btn-sm ed-del" onclick="edDispatch(\'delete-objective\',{idx:' + o.idx + '})">✕</button></div>';
+                        }).join('') : '<div class="ed-empty">Keine Ziele</div>')
+                        + '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">'
+                        + '<button class="ed-btn" style="width:auto" onclick="edDispatch(\'add-objective\',{type:\'rescue_all\'})">+ Alle retten</button>'
+                        + '<button class="ed-btn" style="width:auto" onclick="edDispatch(\'add-objective\',{type:\'land_at\',target:\'pad\'})">+ Landen: Pad</button>'
+                        + '<button class="ed-btn" style="width:auto" onclick="edDispatch(\'add-objective\',{type:\'land_at\',target:\'carrier\'})">+ Landen: Carrier</button>'
+                        + '</div></div>'
+
+                        + '<div class="ed-section"><div class="ed-section-title">Payloads</div>'
+                        + (cm.payloads.length ? cm.payloads.map(function (p) {
+                            return '<div class="ed-list-row"><span>' + (p.type === 'person' ? '🟡' : p.type === 'rescuer' ? '🔵' : '🟠') + ' ' + p.type + ' @ (' + p.x + ', ' + p.y + ')</span>'
+                                + '<label style="font-size:10px;color:#8af;white-space:nowrap"><input type="checkbox" ' + (p.npcTarget ? 'checked' : '') + ' onchange="edDispatch(\'set-payload-npc\',{idx:' + p.idx + ',value:this.checked})"> NPC</label>'
+                                + '<button class="ed-btn-sm ed-del" onclick="edDispatch(\'delete-payload\',{idx:' + p.idx + '})">✕</button></div>';
+                        }).join('') : '<div class="ed-empty">Keine Payloads</div>')
+                        + '</div>'
+
+                        + '<div class="ed-section"><div class="ed-section-title">Beflockung (' + cm.foliageCount + ')</div>'
+                        + (cm.foliageCount ? '<div style="font-size:10px;color:var(--text-dim);margin-bottom:4px">' + edH(cm.foliageSummary) + '</div><button class="ed-btn ed-btn-danger" onclick="edDispatch(\'clear-foliage\')">Alle löschen</button>'
+                            : '<div class="ed-empty">Keine Bäume</div>')
+                        + '</div>'
+                    ) : '');
+            };
+
+            window.__onEditorStateChanged = edRefreshPanel;
+        </script>
+
+    </body>
+</html>

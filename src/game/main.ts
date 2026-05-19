@@ -1,7 +1,7 @@
 import { CampaignExport, MissionData } from '@/shared/types';
-import Tutorial from './campaigns/tutorial.json';
-import FreeFlight from './campaigns/freeFlight.json';
-import CallsignWolf from './campaigns/callsignwolf.json';
+import Tutorial from './campaigns/tutorial.zcampaign';
+import FreeFlight from './campaigns/freeFlight.zcampaign';
+import CallsignWolf from './campaigns/callsignwolf.zcampaign';
 import { MP_DEMO_CAMPAIGN } from './multiplayer/mp-mission';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';

@@ -1,0 +1,7 @@
+src/**
+tracker-view/**
+esbuild.mjs
+tsconfig.json
+tsconfig.tracker.json
+node_modules/**
+**/*.map

@@ -1,0 +1,113 @@
+import * as vscode from 'vscode';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+
+interface CampaignDoc extends vscode.CustomDocument {
+    content: string;
+    panel?: vscode.WebviewPanel;
+    missionIndex: number;
+}
+
+export class CampaignEditorProvider implements vscode.CustomEditorProvider<CampaignDoc> {
+    private _lastActiveDoc: CampaignDoc | undefined;
+
+    /** Called by extension.ts to open preview for the currently active campaign */
+    openPreviewForActive(): void {
+        if (this._lastActiveDoc) openPreview(this._lastActiveDoc, this._lastActiveDoc.missionIndex);
+    }
+    private readonly _onChange = new vscode.EventEmitter<
+        vscode.CustomDocumentContentChangeEvent<CampaignDoc>
+    >();
+    readonly onDidChangeCustomDocument = this._onChange.event;
+
+    constructor(private readonly ctx: vscode.ExtensionContext) {}
+
+    async openCustomDocument(
+        uri: vscode.Uri,
+        _openContext: vscode.CustomDocumentOpenContext,
+        _token: vscode.CancellationToken,
+    ): Promise<CampaignDoc> {
+        const bytes = await vscode.workspace.fs.readFile(uri);
+        return { uri, content: Buffer.from(bytes).toString('utf-8'), missionIndex: 0, dispose: () => {} };
+    }
+
+    resolveCustomEditor(
+        document: CampaignDoc,
+        panel: vscode.WebviewPanel,
+        _token: vscode.CancellationToken,
+    ): void {
+        document.panel = panel;
+        this._lastActiveDoc = document;
+
+        const scriptUri = panel.webview.asWebviewUri(
+            vscode.Uri.joinPath(this.ctx.extensionUri, 'media', 'campaign-editor.js'),
+        );
+        panel.webview.options = {
+            enableScripts: true,
+            localResourceRoots: [vscode.Uri.joinPath(this.ctx.extensionUri, 'media')],
+        };
+
+        const htmlPath = join(this.ctx.extensionUri.fsPath, 'media', 'campaign-editor.html');
+        const raw = readFileSync(htmlPath, 'utf-8');
+        const csp = `<meta http-equiv="Content-Security-Policy" ` +
+            `content="default-src 'none'; script-src ${panel.webview.cspSource} 'unsafe-inline'; style-src 'unsafe-inline';">`;
+
+        panel.webview.html = raw
+            .replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n        ${csp}`)
+            .replace('</body>', `    <script src="${scriptUri}"></script>\n    </body>`);
+
+        panel.webview.onDidReceiveMessage((msg: { type: string; content?: string; value?: number }) => {
+            if (msg.type === 'ready') {
+                panel.webview.postMessage({ type: 'load', content: document.content });
+            } else if (msg.type === 'change' && msg.content !== undefined) {
+                document.content = msg.content;
+                this._onChange.fire({ document });
+            } else if (msg.type === 'missionIndex' && msg.value !== undefined) {
+                document.missionIndex = msg.value;
+            }
+        });
+    }
+
+    async saveCustomDocument(
+        doc: CampaignDoc,
+        _cancel: vscode.CancellationToken,
+    ): Promise<void> {
+        await vscode.workspace.fs.writeFile(doc.uri, Buffer.from(doc.content, 'utf-8'));
+    }
+
+    async saveCustomDocumentAs(
+        doc: CampaignDoc,
+        dest: vscode.Uri,
+        _cancel: vscode.CancellationToken,
+    ): Promise<void> {
+        await vscode.workspace.fs.writeFile(dest, Buffer.from(doc.content, 'utf-8'));
+    }
+
+    async revertCustomDocument(
+        doc: CampaignDoc,
+        _cancel: vscode.CancellationToken,
+    ): Promise<void> {
+        const bytes = await vscode.workspace.fs.readFile(doc.uri);
+        doc.content = Buffer.from(bytes).toString('utf-8');
+    }
+
+    backupCustomDocument(
+        _doc: CampaignDoc,
+        backupCtx: vscode.CustomDocumentBackupContext,
+        _cancel: vscode.CancellationToken,
+    ): Thenable<vscode.CustomDocumentBackup> {
+        return Promise.resolve({ id: backupCtx.destination.toString(), delete: async () => {} });
+    }
+}
+
+const openPreview = (doc: CampaignDoc, missionIndex: number): void => {
+    let campaignType = 'ZEEWOLF_CAMPAIGN';
+    try {
+        const parsed = JSON.parse(doc.content) as { type?: string };
+        if (parsed.type) campaignType = parsed.type;
+    } catch (_) { /* ignore parse errors */ }
+
+    const port = vscode.workspace.getConfiguration('zeewolf').get<number>('devServerPort', 5173);
+    const url = `http://localhost:${port}?preview=${encodeURIComponent(campaignType)}&mission=${missionIndex}`;
+    vscode.commands.executeCommand('simpleBrowser.show', url);
+};

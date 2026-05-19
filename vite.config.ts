@@ -6,6 +6,7 @@ import { gzipSync } from 'zlib';
 import type { Plugin } from 'vite';
 import { zsongPlugin } from './plugins/zsong';
 import { zdefPlugin } from './plugins/zdef';
+import { zcampaignPlugin } from './plugins/zcampaign';
 import { makeSingleFile } from './plugins/make-single-file';
 
 const GZIP_WARN_THRESHOLD = 500 * 1024; // 500 kB
@@ -73,7 +74,7 @@ export default defineConfig(({ command }) => {
             },
         },
         base: isApp ? './' : command === 'build' ? '/callsign-wolf/' : '/',
-        plugins: [zsongPlugin(), zdefPlugin(), makeSingleFile(), bundleSizeGuard(), ...(isApp ? [injectAppCsp()] : [])],
+        plugins: [zsongPlugin(), zdefPlugin(), zcampaignPlugin(), makeSingleFile(), bundleSizeGuard(), ...(isApp ? [injectAppCsp()] : [])],
         build: {
             outDir: 'dist/',
 

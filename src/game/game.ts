@@ -2,11 +2,7 @@ import './ui/base.css';
 import './ui/screens.css';
 import { showLoadingScreen } from './ui/loading-screen/loading-screen';
 import { ensureEl } from './ui/dom-helpers';
-import {
-    mountTouchControls,
-    initPitchWheel,
-    setRightStickProfi,
-} from './ui/touch-controls/touch-controls';
+import { mountTouchControls, initPitchWheel, setRightStickProfi } from './ui/touch-controls/touch-controls';
 import { iso } from './render';
 import { campaignHandler, soundHandler, zinit, musicConfig } from './main';
 import {
@@ -78,7 +74,7 @@ import {
 import { mountCookieBanner, notifyConsent } from './ui/cookie-banner/cookie-banner';
 import { mountBriefing, showBriefingOverlay, hideBriefing } from './ui/briefing/briefing';
 import { mountSettings, initSettings, toSettings } from './ui/settings/settings';
-import { mountRankup, showRankUp } from './ui/rankup/rankup';
+import { mountRankup, showRankUp, initRankup } from './ui/rankup/rankup';
 import { mountPauseButton, showPauseButton, hidePauseButton } from './ui/pause-overlay/pause-overlay';
 import { mountWhatsNew, showWhatsNewIfNeeded } from './ui/whats-new/whats-new';
 import { mountMainMenu } from './ui/main-menu/main-menu';
@@ -127,7 +123,7 @@ const _drawWorldFns = createDrawWorld({
     hasCarrier,
     hasPad,
     isVisible,
-    getLighthouse: () => _missionHasLighthouse ? { x: _lighthouseX, y: _lighthouseY } : null,
+    getLighthouse: () => (_missionHasLighthouse ? { x: _lighthouseX, y: _lighthouseY } : null),
     getWindStr: () => _missionWindStr,
     isNight: () => _missionNight,
     isApp: _IS_APP,
@@ -135,8 +131,16 @@ const _drawWorldFns = createDrawWorld({
     getShowCollisionBoxes: () => showCollisionBoxes,
     triggerCrash: (reason: string) => _physicsCtx.triggerCrash(reason),
 });
-const { drawWorldObjects, drawBirds, drawDebris, drawPayloadObjects, drawDiscoBall,
-        renderRain, drawDebugOverlay, handleCollisionBoxes } = _drawWorldFns;
+const {
+    drawWorldObjects,
+    drawBirds,
+    drawDebris,
+    drawPayloadObjects,
+    drawDiscoBall,
+    renderRain,
+    drawDebugOverlay,
+    handleCollisionBoxes,
+} = _drawWorldFns;
 
 const { drawTrees } = createFoliage({
     canvas,
@@ -148,6 +152,7 @@ const { drawTrees } = createFoliage({
 });
 
 initHeliSelect(G, drawHeli);
+initRankup(drawHeli);
 
 // ─── helper flags ────────────────────────────────────────────────────────────
 function hasCarrier() {
@@ -176,7 +181,6 @@ const { drawTerrain, precomputeDayColors } = createDrawTerrain({
 });
 
 import { buildStartZone } from './start-zone';
-
 
 // ─── UI helpers ──────────────────────────────────────────────────────────────
 function showMsg(txt: string) {
@@ -294,11 +298,7 @@ function missionComplete() {
         document.getElementById('campaign-complete-screen')!.style.display = 'flex';
         soundHandler.play(musicConfig.success || 'final', false);
         if (rankUpRank)
-            showRankUp(
-                rankUpRank,
-                _session.playerName,
-                HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel
-            );
+            showRankUp(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
         return;
     }
 
@@ -323,11 +323,7 @@ function missionComplete() {
         G.debris = [];
         _openMissionSelect();
         if (rankUpRank)
-            showRankUp(
-                rankUpRank,
-                _session.playerName,
-                HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel
-            );
+            showRankUp(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
     };
 }
 
@@ -843,7 +839,9 @@ function drawScene() {
     } // end if (!zstate.crashed)
 
     _hud.update({
-        camX, camY, dt,
+        camX,
+        camY,
+        dt,
         heli: G.heli,
         groundUnderHeli: getGround(G.heli.x, G.heli.y),
         totalRescued: G.totalRescued,
@@ -869,7 +867,6 @@ function drawScene() {
     _rafId = requestAnimationFrame(drawScene);
 }
 
-
 // ─── collision boxes ─────────────────────────────────────────────────────────
 let showCollisionBoxes = false;
 if (!_IS_APP) {
@@ -880,7 +877,6 @@ if (!_IS_APP) {
         }
     });
 }
-
 
 // ─── main menu ───────────────────────────────────────────────────────────────
 function toMainMenu() {
@@ -964,7 +960,7 @@ const _physicsCtx = {
         _session.rankOverride = RANKS.length - 1;
         saveSession(_session);
         _stopMission();
-        showRankUp(RANKS[RANKS.length - 1], _session.playerName, undefined);
+        showRankUp(RANKS[RANKS.length - 1], undefined);
     },
 } as import('./sim/simulation').PhysicsCtx;
 
@@ -1654,8 +1650,6 @@ const _onloadMain = () => {
     } else {
         _afterConsent();
     }
-
-
 };
 
 window.toCampaignSelect = toCampaignSelect;
