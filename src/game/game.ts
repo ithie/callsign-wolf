@@ -486,25 +486,23 @@ const _maybeSpawnOrniWreck = () => {
     if (Math.random() >= 1 / 12) return;
     const gridSize = campaignHandler.getTerrain().gridSize;
     const margin = 6;
-    for (let attempt = 0; attempt < 120; attempt++) {
-        const x = margin + Math.random() * (gridSize - margin * 2);
-        const y = margin + Math.random() * (gridSize - margin * 2);
-        const gz = getGround(x, y, G.points, G.CARRIER);
+    const corners = [
+        { x: margin, y: margin },
+        { x: gridSize - margin, y: margin },
+        { x: margin, y: gridSize - margin },
+        { x: gridSize - margin, y: gridSize - margin },
+    ];
+    const order = corners.sort(() => Math.random() - 0.5);
+    for (const c of order) {
+        const gz = getGround(c.x, c.y, G.points, G.CARRIER);
         if (gz <= G.waterLevel + 0.3) continue;
-        const sx = G.START_POS?.x ?? gridSize / 2;
-        const sy = G.START_POS?.y ?? gridSize / 2;
-        if (Math.hypot(x - sx, y - sy) < 14) continue;
         G.payloads.push({
             type: 'orni_wreck',
-            x,
-            y,
-            z: gz,
+            x: c.x, y: c.y, z: gz,
             angle: Math.random() * Math.PI * 2,
-            hanging: false,
-            rescued: false,
-            deliverTo: 'pad',
+            hanging: false, rescued: false, deliverTo: 'pad',
         });
-        break;
+        return;
     }
 };
 
