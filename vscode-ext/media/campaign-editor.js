@@ -1725,7 +1725,7 @@
   styleEl.textContent = style_default;
   document.head.appendChild(styleEl);
   var notifyTimer = null;
-  var isLoading = false;
+  var isLoading = true;
   var doExport = () => {
     const origAlert = window.alert;
     window.alert = () => {
@@ -1748,12 +1748,28 @@
       if (content) vscode.postMessage({ type: "change", content });
     }, 400);
   };
+  var _showTutorialLock = () => {
+    document.body.innerHTML = "";
+    const el = document.createElement("div");
+    el.style.cssText = "display:flex;align-items:center;justify-content:center;height:100vh;font-family:monospace;font-size:13px;color:#555;letter-spacing:2px;";
+    el.textContent = "TUTORIAL KANN NICHT BEARBEITET WERDEN";
+    document.body.appendChild(el);
+  };
   setOnStateChanged(scheduleNotify);
   initUI();
   loadMission(0);
   window.addEventListener("message", (e) => {
     if (e.data.type === "load" && e.data.content !== void 0) {
-      isLoading = true;
+      let campaignType = "";
+      try {
+        campaignType = JSON.parse(e.data.content).type ?? "";
+      } catch {
+      }
+      if (campaignType === "tutorial") {
+        _showTutorialLock();
+        isLoading = false;
+        return;
+      }
       doImport(e.data.content);
       isLoading = false;
       setTimeout(() => window.__onEditorStateChanged?.(), 100);

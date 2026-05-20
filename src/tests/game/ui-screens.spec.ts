@@ -21,14 +21,14 @@ vi.mock('../../game/render', () => ({
 
 // ─── Imports (after mocks) ────────────────────────────────────────────────────
 
-import { mountWhatsNew } from '../../game/ui/whats-new/whats-new';
-import { mountMainMenu } from '../../game/ui/main-menu/main-menu';
-import { mountBriefing } from '../../game/ui/briefing/briefing';
-import { mountCookieBanner } from '../../game/ui/cookie-banner/cookie-banner';
-import { initSettings, mountSettings } from '../../game/ui/settings/settings';
-import { mountRankup } from '../../game/ui/rankup/rankup';
-import { mountCreditsScreen } from '../../game/ui/credits-screen/credits-screen';
-import { mountMpLobby } from '../../game/ui/mp-lobby/mp-lobby';
+import * as WhatsNew from '../../game/ui/whats-new/whats-new.ui';
+import * as MainMenu from '../../game/ui/main-menu/main-menu.ui';
+import * as Briefing from '../../game/ui/briefing/briefing.ui';
+import * as CookieBanner from '../../game/ui/cookie-banner/cookie-banner.ui';
+import * as Settings from '../../game/ui/settings/settings.ui';
+import * as Rankup from '../../game/ui/rankup/rankup.ui';
+import * as CreditsScreen from '../../game/ui/credits-screen/credits-screen.ui';
+import * as MpLobby from '../../game/ui/mp-lobby/mp-lobby.ui';
 import type { PlayerSession } from '../../game/session';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -78,45 +78,45 @@ beforeEach(() => { document.body.innerHTML = ''; });
 
 describe('UI screen snapshots', () => {
     it('whats-new', () => {
-        mountWhatsNew();
+        WhatsNew.mount();
         snap('whats-new-overlay');
     });
 
     it('main-menu', () => {
-        mountMainMenu(noopCallbacks);
+        MainMenu.mount(noopCallbacks);
         snap('main-menu');
     });
 
     it('briefing', () => {
-        mountBriefing();
+        Briefing.mount();
         snap('mission-briefing');
     });
 
     it('cookie-banner', () => {
-        mountCookieBanner();
+        CookieBanner.mount();
         snap('cookie-banner');
     });
 
 
     it('settings-screen', () => {
-        initSettings(mockSettingsDeps());
-        mountSettings(); mountRankup();
+        Settings.init(mockSettingsDeps());
+        Settings.mount(); Rankup.mount();
         snap('settings-screen');
     });
 
     it('rankup-overlay', () => {
-        initSettings(mockSettingsDeps());
-        mountSettings(); mountRankup();
+        Settings.init(mockSettingsDeps());
+        Settings.mount(); Rankup.mount();
         snap('rankup-overlay');
     });
 
     it('credits-screen', () => {
-        mountCreditsScreen(vi.fn());
+        CreditsScreen.mount(vi.fn());
         snap('credits-screen');
     });
 
     it('mp-lobby-screen', () => {
-        mountMpLobby();
+        MpLobby.mount();
         snap('mp-lobby-screen');
     });
 });

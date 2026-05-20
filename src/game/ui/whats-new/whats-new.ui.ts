@@ -1,8 +1,9 @@
 import './whats-new.css';
 import { I18N } from '../../i18n';
 import { ensureEl as _ensureEl } from '../dom-helpers';
+import { loadSession, saveSession } from '../../session';
 
-export const mountWhatsNew = () => {
+export const mount = () => {
     const el = _ensureEl('whats-new-overlay');
     el.classList.add('ui-screen');
     el.innerHTML = `
@@ -12,19 +13,22 @@ export const mountWhatsNew = () => {
             ${[...I18N.WHATS_NEW_ITEMS].map(item => `<li>${item}</li>`).join('')}
         </ul>
         <div id="whats-new-hint">${I18N.WHATS_NEW_HINT}</div>`;
-    el.addEventListener('click', hideWhatsNew);
+    el.addEventListener('click', _hide);
 };
 
-export const showWhatsNewIfNeeded = (lastSeenVersion: string, onDismiss: () => void): boolean => {
-    if (lastSeenVersion === I18N.WHATS_NEW_VERSION || !I18N.WHATS_NEW_VERSION) return false;
-    _onDismiss = onDismiss;
+export const show = (onProceed: () => void): boolean => {
+    if (loadSession().lastSeenVersion === I18N.WHATS_NEW_VERSION || !I18N.WHATS_NEW_VERSION) return false;
+    _onProceed = onProceed;
     document.getElementById('whats-new-overlay')!.style.display = 'flex';
     return true;
 };
 
-let _onDismiss: (() => void) | null = null;
+let _onProceed: (() => void) | null = null;
 
-const hideWhatsNew = () => {
+const _hide = () => {
     document.getElementById('whats-new-overlay')!.style.display = 'none';
-    _onDismiss?.();
+    const s = loadSession();
+    s.lastSeenVersion = I18N.WHATS_NEW_VERSION;
+    saveSession(s);
+    _onProceed?.();
 };

@@ -12,7 +12,7 @@ const _COMMODORE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 710
     <path fill="#eaeaea" fill-rule="evenodd" d="M 285,383 283,389 302,438 311,483 333,435 371,389 314,394 285,384 Z"/>
 </svg>`;
 
-export const mountBriefing = (): void => {
+export const mount = (): void => {
     _ensureEl('mission-briefing');
 };
 
@@ -25,14 +25,19 @@ export interface BriefingData {
 
 let _onDismiss: (() => void) | null = null;
 
+export const hide = (): void => {
+    const el = document.getElementById('mission-briefing');
+    if (el) el.style.display = 'none';
+};
+
 const _dismiss = (): void => {
-    hideBriefing();
+    hide();
     const cb = _onDismiss;
     _onDismiss = null;
     cb?.();
 };
 
-export const showBriefingOverlay = (data: BriefingData, onDismiss: () => void): void => {
+export const show = (data: BriefingData, onDismiss: () => void): void => {
     _onDismiss = onDismiss;
     const el = document.getElementById('mission-briefing')!;
     const sublinesHtml = Array.isArray(data.sublines) && data.sublines.length
@@ -54,9 +59,4 @@ export const showBriefingOverlay = (data: BriefingData, onDismiss: () => void): 
         </div>`;
     document.getElementById('briefing-ok-btn')!.addEventListener('click', _dismiss);
     el.style.display = 'flex';
-};
-
-export const hideBriefing = (): void => {
-    const el = document.getElementById('mission-briefing');
-    if (el) el.style.display = 'none';
 };

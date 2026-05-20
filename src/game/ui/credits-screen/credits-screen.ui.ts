@@ -6,7 +6,7 @@ import { ensureEl as _ensureEl } from '../dom-helpers';
 import { showScreenCrtEnter } from '../nav';
 import { mountScreenShell } from '../screen-shell/screen-shell';
 
-export const mountCreditsScreen = (onBack: () => void): void => {
+export const mount = (onBack: () => void): void => {
     const root = _ensureEl('credits-screen');
     if (root.children.length > 0) return;
     const body = mountScreenShell('credits-screen', I18N.MENU_CREDITS, '', onBack);
@@ -18,7 +18,7 @@ export const mountCreditsScreen = (onBack: () => void): void => {
     body.appendChild(inner);
 };
 
-export const toCredits = () => {
+export const show = () => {
     _buildCredits();
     showScreenCrtEnter('credits-screen');
     if (musicConfig.credits) soundHandler.play(musicConfig.credits, true);

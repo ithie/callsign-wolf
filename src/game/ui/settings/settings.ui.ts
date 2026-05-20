@@ -2,7 +2,7 @@ import './settings.css';
 import { I18N, LANG, setLanguage } from '../../i18n';
 import { getRank, encodeSession, decodeSession, getCampaignsDone, getMissionsDone, STORAGE_KEY, type PlayerSession } from '../../session';
 import { storageRemove } from '../../storage';
-import { rankBadgeHtml } from '../rankup/rankup';
+import { rankBadgeHtml } from '../rankup/rankup.ui';
 
 type Deps = {
     getSession: () => PlayerSession;
@@ -20,15 +20,15 @@ type Deps = {
 
 let _deps: Deps;
 
-export const initSettings = (deps: Deps) => {
+export const init = (deps: Deps) => {
     _deps = deps;
 };
 
 import { showScreen, showScreenCrtEnter } from '../nav';
 import { mountScreenShell } from '../screen-shell/screen-shell';
 
-export const mountSettings = () => {
-    const body = mountScreenShell('settings-screen', I18N.MENU_SETTINGS, I18N.PILOT_HEADING, fromSettings);
+export const mount = () => {
+    const body = mountScreenShell('settings-screen', I18N.MENU_SETTINGS, I18N.PILOT_HEADING, hide);
     body.innerHTML = `
         <div id="settings-badge"></div>
         <div class="settings-field">
@@ -93,8 +93,8 @@ export const mountSettings = () => {
     document.getElementById('music-off-btn')!.addEventListener('click', () => { _deps.setMusicEnabled(false); _refreshAudioButtons(); });
     document.getElementById('sfx-on-btn')!.addEventListener('click', () => { _deps.setSfxEnabled(true);  _refreshAudioButtons(); });
     document.getElementById('sfx-off-btn')!.addEventListener('click', () => { _deps.setSfxEnabled(false); _refreshAudioButtons(); });
-    document.getElementById('lang-de-btn')!.addEventListener('click', () => { setLanguage('de'); toSettings(); });
-    document.getElementById('lang-en-btn')!.addEventListener('click', () => { setLanguage('en'); toSettings(); });
+    document.getElementById('lang-de-btn')!.addEventListener('click', () => { setLanguage('de'); show(); });
+    document.getElementById('lang-en-btn')!.addEventListener('click', () => { setLanguage('en'); show(); });
     document.getElementById('ctrl-btn-profi')!.addEventListener('click', () => {
         _deps.setControlMode('heading');
         _refreshCtrlButtons();
@@ -153,7 +153,7 @@ const _refreshSettingsScreen = () => {
     statsEl.textContent = I18N.STATS(getCampaignsDone(session), getMissionsDone(session)) + noSave;
 };
 
-export const toSettings = () => {
+export const show = () => {
     _refreshSettingsScreen();
     const session = _deps.getSession();
     const input = document.getElementById('player-name-input') as HTMLInputElement;
@@ -181,7 +181,7 @@ export const toSettings = () => {
     showScreenCrtEnter('settings-screen');
 };
 
-export const fromSettings = () => {
+export const hide = () => {
     showScreen('main-menu');
     _deps.onBack();
 };

@@ -54,7 +54,7 @@ const _html = (): string => {
     </div>`;
 };
 
-export const mountCookieBanner = (onConsent?: () => void): void => {
+export const mount = (onConsent?: () => void): void => {
     _onConsent = onConsent ?? null;
     const el = _ensureEl('cookie-banner');
     el.innerHTML = _html();

@@ -9,7 +9,7 @@ type DrawHeliFn = (...args: any[]) => void;
 
 let _drawHeli: DrawHeliFn | null = null;
 
-export const initRankup = (drawHeli: DrawHeliFn): void => {
+export const init = (drawHeli: DrawHeliFn): void => {
     _drawHeli = drawHeli;
 };
 
@@ -19,7 +19,13 @@ export const rankBadgeHtml = (rank: Rank): string =>
     `<span class="rank-label">${rank.name.toUpperCase()}</span>` +
     `</div>`;
 
-export const mountRankup = (): void => {
+export const hide = (): void => {
+    _heliId = null;
+    _animRunning = false;
+    (document.getElementById('rankup-overlay') as HTMLElement).style.display = 'none';
+};
+
+export const mount = (): void => {
     const el = ensureEl('rankup-overlay');
     el.innerHTML = `
         <div id="rankup-main">
@@ -29,7 +35,7 @@ export const mountRankup = (): void => {
             </div>
         </div>
         <p class="start-hint" style="color: #cc9900; margin-top: 10px">${I18N.NEXT}</p>`;
-    el.addEventListener('click', dismissRankUp);
+    el.addEventListener('click', hide);
 };
 
 // ── Heli canvas animation ──────────────────────────────────────────────────
@@ -76,7 +82,7 @@ const _animLoop = (): void => {
     requestAnimationFrame(_animLoop);
 };
 
-export const showRankUp = (rank: Rank, unlockedHeli?: string): void => {
+export const show = (rank: Rank, unlockedHeli?: string): void => {
     (document.getElementById('rankup-badge') as HTMLElement).innerHTML = rankBadgeHtml(rank);
     const heliEl = document.getElementById('rankup-heli') as HTMLElement;
     if (unlockedHeli) {
@@ -95,8 +101,3 @@ export const showRankUp = (rank: Rank, unlockedHeli?: string): void => {
     (document.getElementById('rankup-overlay') as HTMLElement).style.display = 'flex';
 };
 
-export const dismissRankUp = (): void => {
-    _heliId = null;
-    _animRunning = false;
-    (document.getElementById('rankup-overlay') as HTMLElement).style.display = 'none';
-};

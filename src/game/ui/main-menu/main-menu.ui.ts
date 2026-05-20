@@ -37,7 +37,7 @@ const _typeBeep = () => {
     } catch {}
 };
 
-export const mountMainMenu = (cb: MainMenuCallbacks) => {
+export const mount = (cb: MainMenuCallbacks) => {
     const splash = _ensureEl('splash');
 
     if (_splashHandler) {

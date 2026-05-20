@@ -8,7 +8,7 @@ export type LoadingHandle = {
     done: () => Promise<void>;
 };
 
-export const showLoadingScreen = (title: string): LoadingHandle => {
+export const show = (title: string): LoadingHandle => {
     const el = ensureEl('loading-screen');
     el.innerHTML = `
         <div class="loading-title">${title}</div>

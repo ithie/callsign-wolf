@@ -132,13 +132,6 @@ canvas { background: #111; border: 1px solid var(--vscode-widget-border, #333); 
 </head>
 <body>
 <div id="toolbar">
-    <label>Type</label>
-    <select id="type-sel">
-        <option value="heli">Helicopter</option>
-        <option value="ornithopter">Ornithopter</option>
-        <option value="wind">Wind</option>
-        <option value="birds">Birds</option>
-    </select>
     <button id="btn-play">&#9654; Play</button>
     <button id="btn-stop">&#9632; Stop</button>
     <span id="status" style="font-size:11px;color:var(--vscode-descriptionForeground);margin-left:4px"></span>

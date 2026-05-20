@@ -20,16 +20,16 @@ vi.mock('../../game/render-config', () => ({
 }));
 
 // ─── Imports ──────────────────────────────────────────────────────────────────
-import { mountLegalScreen } from '../../game/ui/legal-screen/legal-screen';
-import { showLoadingScreen } from '../../game/ui/loading-screen/loading-screen';
-import { mountPauseButton, showPauseButton, hidePauseButton } from '../../game/ui/pause-overlay/pause-overlay';
-import { mountTouchControls, setDeliverToggle, setRightStickProfi } from '../../game/ui/touch-controls/touch-controls';
+import * as LegalScreen from '../../game/ui/legal-screen/legal-screen.ui';
+import * as LoadingScreen from '../../game/ui/loading-screen/loading-screen.ui';
+import * as PauseOverlay from '../../game/ui/pause-overlay/pause-overlay.ui';
+import * as TouchControls from '../../game/ui/touch-controls/touch-controls.ui';
 import { createSwipeCarousel } from '../../game/ui/swipe-carousel/swipe-carousel';
-import { mountMissionSelect, showMissionSelect } from '../../game/ui/mission-select/mission-select';
+import * as MissionSelect from '../../game/ui/mission-select/mission-select.ui';
 import { mountMinimap, showMinimap, updateMinimap, initMinimapTerrain, type MinimapData } from '../../game/ui/minimap/minimap';
 import { startMenuParticles, stopMenuParticles } from '../../game/ui/menu-particles/menu-particles';
 import { createHud } from '../../game/ui/hud/hud';
-import { initHeliSelect, mountHeliSelect, showHeliSelect } from '../../game/ui/heli-select/heli-select';
+import * as HeliSelect from '../../game/ui/heli-select/heli-select.ui';
 import { initTutorial, tutorialTick, destroyTutorial, isTutorialRunning } from '../../game/ui/tutorial/tutorial';
 import { HELI_TYPES } from '../../game/heli-types';
 import type { PlayerSession } from '../../game/session';
@@ -106,6 +106,7 @@ const mkPauseDeps = () => ({
     isSfxEnabled:   vi.fn(() => true),   setSfxEnabled:   vi.fn(),
     getControlMode: vi.fn(() => 'heading' as const),
     setControlMode: vi.fn(),
+    isTouchDevice: vi.fn(() => false),
     onPause: vi.fn(), onResume: vi.fn(), onAbort: vi.fn(),
 });
 
@@ -134,18 +135,18 @@ describe('legal-screen', () => {
     beforeEach(() => { document.body.innerHTML = ''; });
 
     it('mounts the screen', () => {
-        mountLegalScreen(vi.fn());
+        LegalScreen.mount(vi.fn());
         expect(document.getElementById('legal-screen')).not.toBeNull();
     });
 
     it('snapshot', () => {
-        mountLegalScreen(vi.fn());
+        LegalScreen.mount(vi.fn());
         snap('legal-screen');
     });
 
     it('does not mount twice', () => {
-        mountLegalScreen(vi.fn());
-        mountLegalScreen(vi.fn());
+        LegalScreen.mount(vi.fn());
+        LegalScreen.mount(vi.fn());
         expect(document.querySelectorAll('#legal-screen').length).toBe(1);
     });
 });
@@ -155,30 +156,30 @@ describe('loading-screen', () => {
     beforeEach(() => { document.body.innerHTML = ''; });
 
     it('shows on creation', () => {
-        const h = showLoadingScreen('Laden...');
+        const h = LoadingScreen.show('Laden...');
         expect(document.getElementById('loading-screen')!.style.display).toBe('flex');
         h.step('step', 0);
     });
 
     it('renders the title', () => {
-        showLoadingScreen('TEST MISSION');
+        LoadingScreen.show('TEST MISSION');
         expect(document.querySelector('.loading-title')!.textContent).toBe('TEST MISSION');
     });
 
     it('step updates the label', () => {
-        const h = showLoadingScreen('...');
+        const h = LoadingScreen.show('...');
         h.step('Terrain laden', 0.5);
         expect(document.querySelector('.loading-label')!.textContent).toBe('Terrain laden');
     });
 
     it('step updates the progress bar width', () => {
-        const h = showLoadingScreen('...');
+        const h = LoadingScreen.show('...');
         h.step('x', 0.75);
         expect(document.querySelector<HTMLElement>('.loading-bar-fill')!.style.width).toBe('75%');
     });
 
     it('done() hides the screen', async () => {
-        const h = showLoadingScreen('...');
+        const h = LoadingScreen.show('...');
         await h.done();
         expect(document.getElementById('loading-screen')!.style.display).toBe('none');
     });
@@ -194,25 +195,25 @@ describe('pause-overlay', () => {
     });
 
     it('mounts the pause button', () => {
-        mountPauseButton(mkPauseDeps());
+        PauseOverlay.mount(mkPauseDeps());
         expect(document.getElementById('pause-btn')).not.toBeNull();
     });
 
     it('snapshot of pause button', () => {
-        mountPauseButton(mkPauseDeps());
+        PauseOverlay.mount(mkPauseDeps());
         snap('pause-btn');
     });
 
     it('showPauseButton sets display to flex', () => {
-        mountPauseButton(mkPauseDeps());
-        showPauseButton();
+        PauseOverlay.mount(mkPauseDeps());
+        PauseOverlay.show();
         expect(document.getElementById('pause-btn')!.style.display).toBe('flex');
     });
 
     it('hidePauseButton hides the button', () => {
-        mountPauseButton(mkPauseDeps());
-        showPauseButton();
-        hidePauseButton();
+        PauseOverlay.mount(mkPauseDeps());
+        PauseOverlay.show();
+        PauseOverlay.hide();
         expect(document.getElementById('pause-btn')!.style.display).toBe('none');
     });
 });
@@ -222,40 +223,40 @@ describe('touch-controls', () => {
     beforeEach(() => { document.body.innerHTML = ''; });
 
     it('mounts the controls', () => {
-        mountTouchControls();
+        TouchControls.mount();
         expect(document.getElementById('touch-controls')).not.toBeNull();
     });
 
     it('does not mount twice', () => {
-        mountTouchControls();
-        mountTouchControls();
+        TouchControls.mount();
+        TouchControls.mount();
         expect(document.querySelectorAll('#touch-controls').length).toBe(1);
     });
 
     it('snapshot', () => {
-        mountTouchControls();
+        TouchControls.mount();
         snap('touch-controls');
     });
 
     it('setDeliverToggle adds "on" class', () => {
-        mountTouchControls();
-        setDeliverToggle(true);
+        TouchControls.mount();
+        TouchControls.setDeliverToggle(true);
         expect(document.getElementById('touch-deliver-toggle')!.classList.contains('on')).toBe(true);
     });
 
     it('setDeliverToggle removes "on" class', () => {
-        mountTouchControls();
-        setDeliverToggle(true);
-        setDeliverToggle(false);
+        TouchControls.mount();
+        TouchControls.setDeliverToggle(true);
+        TouchControls.setDeliverToggle(false);
         expect(document.getElementById('touch-deliver-toggle')!.classList.contains('on')).toBe(false);
     });
 
     it('setRightStickProfi toggles profi class on joystick-right', () => {
-        mountTouchControls();
+        TouchControls.mount();
         const rs = document.getElementById('joystick-right')!;
-        setRightStickProfi(true);
+        TouchControls.setRightStickProfi(true);
         expect(rs.classList.contains('profi')).toBe(true);
-        setRightStickProfi(false);
+        TouchControls.setRightStickProfi(false);
         expect(rs.classList.contains('profi')).toBe(false);
     });
 });
@@ -300,13 +301,13 @@ describe('mission-select', () => {
     beforeEach(() => { document.body.innerHTML = ''; });
 
     it('mountMissionSelect creates the element', () => {
-        mountMissionSelect();
+        MissionSelect.mount();
         expect(document.getElementById('mission-select')).not.toBeNull();
     });
 
     it('showMissionSelect renders mission cards', () => {
-        mountMissionSelect();
-        showMissionSelect({
+        MissionSelect.mount();
+        MissionSelect.show({
             campaign: mkCampaign(3),
             campaignIndex: 0,
             session: mkSession(),
@@ -317,8 +318,8 @@ describe('mission-select', () => {
     });
 
     it('completed missions show a done marker', () => {
-        mountMissionSelect();
-        showMissionSelect({
+        MissionSelect.mount();
+        MissionSelect.show({
             campaign: mkCampaign(2),
             campaignIndex: 1,
             session: mkSession({
@@ -415,7 +416,7 @@ describe('hud', () => {
     beforeAll(() => {
         document.body.innerHTML = '';
         mountMinimap();
-        mountTouchControls();
+        TouchControls.mount();
         showMinimap(true);
         const canvas = document.createElement('canvas');
         hud = createHud({ isoFn: vi.fn(() => ({ x: 50, y: 50 })), canvas });
@@ -478,24 +479,24 @@ describe('heli-select', () => {
         document.body.innerHTML = '';
         // initHeliSelect must be called before showHeliSelect — it provides G.menuAngles
         const mockG = { menuAngles: Object.fromEntries(HELI_TYPES.map(h => [h.id, 0])) };
-        initHeliSelect(mockG, vi.fn());
+        HeliSelect.init(mockG, vi.fn());
     });
 
     it('mountHeliSelect creates the element', () => {
-        mountHeliSelect();
+        HeliSelect.mount();
         expect(document.getElementById('heli-select')).not.toBeNull();
     });
 
     it('showHeliSelect renders a carousel with all heli cards', () => {
-        mountHeliSelect();
-        showHeliSelect({ rankIndex: 3, onSelect: vi.fn(), onBack: vi.fn() });
+        HeliSelect.mount();
+        HeliSelect.show({ rankIndex: 3, onSelect: vi.fn(), onBack: vi.fn() });
         const cards = document.querySelectorAll('.swipe-card');
         expect(cards.length).toBeGreaterThan(0);
     });
 
     it('snapshot', () => {
-        mountHeliSelect();
-        showHeliSelect({ rankIndex: 3, onSelect: vi.fn(), onBack: vi.fn() });
+        HeliSelect.mount();
+        HeliSelect.show({ rankIndex: 3, onSelect: vi.fn(), onBack: vi.fn() });
         snap('heli-select');
     });
 });

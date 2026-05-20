@@ -17,7 +17,7 @@ const _addParagraphs = (parent: HTMLElement, lines: readonly string[]) => {
     });
 };
 
-export const mountLegalScreen = (onBack: () => void): void => {
+export const mount = (onBack: () => void): void => {
     const root = ensureEl('legal-screen');
     if (root.children.length > 0) return;
     const body = mountScreenShell('legal-screen', I18N.LEGAL_TITLE, '', onBack);
@@ -50,6 +50,6 @@ export const mountLegalScreen = (onBack: () => void): void => {
     body.appendChild(content);
 };
 
-export const toLegalScreen = (): void => {
+export const show = (): void => {
     showScreenCrtEnter('legal-screen');
 };

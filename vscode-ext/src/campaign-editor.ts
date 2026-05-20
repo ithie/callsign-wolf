@@ -4,9 +4,14 @@ import { join } from 'path';
 
 interface CampaignDoc extends vscode.CustomDocument {
     content: string;
+    normalizedContent: string;
     panel?: vscode.WebviewPanel;
     missionIndex: number;
 }
+
+const normalizeJson = (s: string): string => {
+    try { return JSON.stringify(JSON.parse(s)); } catch { return s; }
+};
 
 export class CampaignEditorProvider implements vscode.CustomEditorProvider<CampaignDoc> {
     private _lastActiveDoc: CampaignDoc | undefined;
@@ -28,7 +33,8 @@ export class CampaignEditorProvider implements vscode.CustomEditorProvider<Campa
         _token: vscode.CancellationToken,
     ): Promise<CampaignDoc> {
         const bytes = await vscode.workspace.fs.readFile(uri);
-        return { uri, content: Buffer.from(bytes).toString('utf-8'), missionIndex: 0, dispose: () => {} };
+        const content = Buffer.from(bytes).toString('utf-8');
+        return { uri, content, normalizedContent: normalizeJson(content), missionIndex: 0, dispose: () => {} };
     }
 
     resolveCustomEditor(
@@ -61,7 +67,9 @@ export class CampaignEditorProvider implements vscode.CustomEditorProvider<Campa
                 panel.webview.postMessage({ type: 'load', content: document.content });
             } else if (msg.type === 'change' && msg.content !== undefined) {
                 document.content = msg.content;
-                this._onChange.fire({ document });
+                if (normalizeJson(msg.content) !== document.normalizedContent) {
+                    this._onChange.fire({ document });
+                }
             } else if (msg.type === 'missionIndex' && msg.value !== undefined) {
                 document.missionIndex = msg.value;
             }
@@ -73,6 +81,7 @@ export class CampaignEditorProvider implements vscode.CustomEditorProvider<Campa
         _cancel: vscode.CancellationToken,
     ): Promise<void> {
         await vscode.workspace.fs.writeFile(doc.uri, Buffer.from(doc.content, 'utf-8'));
+        doc.normalizedContent = normalizeJson(doc.content);
     }
 
     async saveCustomDocumentAs(
@@ -81,6 +90,7 @@ export class CampaignEditorProvider implements vscode.CustomEditorProvider<Campa
         _cancel: vscode.CancellationToken,
     ): Promise<void> {
         await vscode.workspace.fs.writeFile(dest, Buffer.from(doc.content, 'utf-8'));
+        doc.normalizedContent = normalizeJson(doc.content);
     }
 
     async revertCustomDocument(

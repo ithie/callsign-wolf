@@ -83,7 +83,7 @@
                 },
                 {
                     "command": "zeewolf.openUIPreview",
-                    "when": "resourcePath =~ /game\\/ui\\// && (resourceExtname == .ts || resourceExtname == .css)",
+                    "when": "resourcePath =~ /\\.ui\\.ts$/",
                     "group": "navigation"
                 }
             ]

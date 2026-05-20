@@ -3,24 +3,24 @@ import './screens.css';
 import { loadSession, getRank, RANKS } from '../session';
 import type { CampaignExport } from '../../shared/types';
 
-import { mountMainMenu } from './main-menu/main-menu';
-import { mountBriefing, showBriefingOverlay } from './briefing/briefing';
-import { mountCampaignSelect, showCampaignSelect } from './campaign-select/campaign-select';
-import { mountMissionSelect, showMissionSelect } from './mission-select/mission-select';
-import { mountHeliSelect, showHeliSelect } from './heli-select/heli-select';
-import { initSettings, mountSettings, toSettings } from './settings/settings';
-import { mountLegalScreen, toLegalScreen } from './legal-screen/legal-screen';
-import { mountCookieBanner } from './cookie-banner/cookie-banner';
-import { showLoadingScreen } from './loading-screen/loading-screen';
-import { mountPauseButton, showPauseButton } from './pause-overlay/pause-overlay';
-import { mountRankup, showRankUp, initRankup } from './rankup/rankup';
+import * as MainMenu from './main-menu/main-menu.ui';
+import * as Briefing from './briefing/briefing.ui';
+import * as CampaignSelect from './campaign-select/campaign-select.ui';
+import * as MissionSelect from './mission-select/mission-select.ui';
+import * as HeliSelect from './heli-select/heli-select.ui';
+import * as Settings from './settings/settings.ui';
+import * as LegalScreen from './legal-screen/legal-screen.ui';
+import * as CookieBanner from './cookie-banner/cookie-banner.ui';
+import * as LoadingScreen from './loading-screen/loading-screen.ui';
+import * as PauseOverlay from './pause-overlay/pause-overlay.ui';
+import * as Rankup from './rankup/rankup.ui';
 import { createDrawObjects } from '../draw-objects';
 import { iso } from '../render';
 import { tileW, tileH, stepH } from '../render-config';
-import { mountWhatsNew, showWhatsNewIfNeeded } from './whats-new/whats-new';
-import { mountCreditsScreen } from './credits-screen/credits-screen';
-import { mountTouchControls } from './touch-controls/touch-controls';
-import { mountMpLobby, showMpLobby } from './mp-lobby/mp-lobby';
+import * as WhatsNew from './whats-new/whats-new.ui';
+import * as CreditsScreen from './credits-screen/credits-screen.ui';
+import * as TouchControls from './touch-controls/touch-controls.ui';
+import * as MpLobby from './mp-lobby/mp-lobby.ui';
 import { showScreen, showScreenCrtEnter } from './nav';
 
 // ── Stub data ──────────────────────────────────────────────────────────────
@@ -97,27 +97,27 @@ const _dummyIso = (wx: number, wy: number, wz: number, camX: number, camY: numbe
     iso(wx, wy, wz, camX, camY, { canvas: _dummyCanvas, tileW, tileH, stepH });
 const _stubSceneRenderer = { add: () => {}, flush: () => {}, debugAltitude: false };
 const { drawHeli: _previewDrawHeli } = createDrawObjects(_dummyCtx, _dummyIso, tileW, tileH, _stubSceneRenderer as any);
-initRankup(_previewDrawHeli);
+Rankup.init(_previewDrawHeli);
 
 const showNav = (id: Parameters<typeof showScreenCrtEnter>[0]): void => showScreenCrtEnter(id);
 
 // ── Component setups ───────────────────────────────────────────────────────
 
 const setupMainMenu = (): void => {
-    mountMainMenu({
+    MainMenu.mount({
         onSplashClick: () => showNav('main-menu'),
         onStart: () => showNav('campaign-select'),
         onSettings: () => showNav('settings-screen'),
         onCredits: () => showNav('credits-screen'),
-        onLegal: () => toLegalScreen(),
+        onLegal: () => LegalScreen.show(),
     });
     showNav('main-menu');
 };
 
 const setupBriefing = (): void => {
-    mountBriefing();
+    Briefing.mount();
     showScreen(null);
-    showBriefingOverlay(
+    Briefing.show(
         {
             headline: { de: 'PHASE 1 — ERSTER KONTAKT', en: 'PHASE 1 — FIRST CONTACT' },
             sublines: [
@@ -135,8 +135,8 @@ const setupBriefing = (): void => {
 };
 
 const setupCampaignSelect = (): void => {
-    mountCampaignSelect();
-    showCampaignSelect({
+    CampaignSelect.mount();
+    CampaignSelect.show({
         session,
         campaigns: [STUB_FREE_FLIGHT, STUB_CAMPAIGN, STUB_CAMPAIGN],
         onSelect: () => {},
@@ -145,8 +145,8 @@ const setupCampaignSelect = (): void => {
 };
 
 const setupMissionSelect = (): void => {
-    mountMissionSelect();
-    showMissionSelect({
+    MissionSelect.mount();
+    MissionSelect.show({
         campaign: STUB_CAMPAIGN,
         campaignIndex: 1,
         session,
@@ -156,8 +156,8 @@ const setupMissionSelect = (): void => {
 };
 
 const setupHeliSelect = (): void => {
-    mountHeliSelect();
-    showHeliSelect({
+    HeliSelect.mount();
+    HeliSelect.show({
         rankIndex: RANKS.indexOf(getRank(session)),
         onSelect: () => {},
         onBack: () => {},
@@ -165,7 +165,7 @@ const setupHeliSelect = (): void => {
 };
 
 const setupSettings = (): void => {
-    initSettings({
+    Settings.init({
         getSession: () => session,
         saveSession: () => {},
         getRankMissions: () => 8,
@@ -178,68 +178,69 @@ const setupSettings = (): void => {
         setSfxEnabled: () => {},
         onBack: () => {},
     });
-    mountSettings();
-    toSettings();
+    Settings.mount();
+    Settings.show();
 };
 
 const setupLegalScreen = (): void => {
-    mountLegalScreen(() => {});
-    toLegalScreen();
+    LegalScreen.mount(() => {});
+    LegalScreen.show();
 };
 
 const setupCookieBanner = (): void => {
-    mountCookieBanner();
+    CookieBanner.mount();
 };
 
 const setupLoadingScreen = (): void => {
     showScreen(null);
-    const handle = showLoadingScreen('ZEEWOLF SAR — LADEN…');
+    const handle = LoadingScreen.show('ZEEWOLF SAR — LADEN…');
     handle.step('Terrain', 0.3);
     setTimeout(() => handle.step('Objekte', 0.6), 600);
     setTimeout(() => handle.step('Fertig', 1.0), 1200);
 };
 
 const setupPauseOverlay = (): void => {
-    mountPauseButton({
+    PauseOverlay.mount({
         isMusicEnabled: () => false,
         setMusicEnabled: () => {},
         isSfxEnabled: () => false,
         setSfxEnabled: () => {},
         getControlMode: () => 'screen',
         setControlMode: () => {},
+        isTouchDevice: () => false,
         onPause: () => {},
         onResume: () => {},
         onAbort: () => {},
     });
     showScreen(null);
-    showPauseButton();
+    PauseOverlay.show();
 };
 
 const setupRankup = (): void => {
-    mountRankup();
+    Rankup.mount();
     showScreen(null);
-    showRankUp(RANKS[1], 'atlas');
+    Rankup.show(RANKS[1], 'atlas');
 };
 
 const setupWhatsNew = (): void => {
-    mountWhatsNew();
+    WhatsNew.mount();
     showScreen(null);
-    showWhatsNewIfNeeded('0.0.0', () => {});
+    WhatsNew.show(() => {});
 };
 
 const setupCreditsScreen = (): void => {
-    mountCreditsScreen(() => {});
+    CreditsScreen.mount(() => {});
     showNav('credits-screen');
 };
 
 const setupTouchControls = (): void => {
-    mountTouchControls();
+    TouchControls.mount();
 };
 
 const setupMpLobby = (): void => {
-    mountMpLobby();
+    MpLobby.mount();
     showScreen(null);
-    showMpLobby({
+    MpLobby.show({
         onConnected: () => {},
         onBack: () => {},
     });

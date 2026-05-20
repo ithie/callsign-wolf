@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { TRACK_DEFS, INSTRUMENTS, NOTES, STEPS } from '../../shared/tracker-types';
+import { TRACK_DEFS, INSTRUMENTS, NOTES, STEPS } from './tracker-types';
 
 describe('STEPS', () => {
     it('is 64', () => {

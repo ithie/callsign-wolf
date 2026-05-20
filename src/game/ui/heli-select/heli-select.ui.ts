@@ -13,7 +13,7 @@ import { createSwipeCarousel } from '../swipe-carousel/swipe-carousel';
 let _G: any;
 let _drawHeli: (...args: any[]) => void;
 
-export const initHeliSelect = (G: any, drawHeli: (...args: any[]) => void) => {
+export const init = (G: any, drawHeli: (...args: any[]) => void) => {
     _G = G;
     _drawHeli = drawHeli;
 };
@@ -118,7 +118,7 @@ export const animateHeliPreviews = () => {
     _heliPreviewLoop();
 };
 
-export const mountHeliSelect = () => {
+export const mount = () => {
     ensureEl('heli-select');
 };
 
@@ -192,7 +192,7 @@ const _buildOverlayDetail = (ht: HeliType, onSelect: (heliId: string) => void): 
     return wrap;
 };
 
-export const showHeliSelect = (deps: HeliSelectDeps) => {
+export const show = (deps: HeliSelectDeps) => {
     const { rankIndex, onSelect, onBack } = deps;
 
     const body = mountScreenShell('heli-select', I18N.HELI_SELECT_TITLE, I18N.HELI_SELECT_SUB, onBack);

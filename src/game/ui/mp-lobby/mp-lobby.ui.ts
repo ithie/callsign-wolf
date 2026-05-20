@@ -22,8 +22,8 @@ const setStatus = (id: string, txt: string, cls?: 'ok' | 'error') => {
     e.textContent = txt;
     e.className = 'mp-status' + (cls ? ` ${cls}` : '');
 };
-const show = (id: string) => { el(id).style.display = 'flex'; };
-const hide = (id: string) => { el(id).style.display = 'none'; };
+const _showEl = (id: string) => { el(id).style.display = 'flex'; };
+const _hideEl = (id: string) => { el(id).style.display = 'none'; };
 
 let _initialBackBtn: HTMLElement;
 let _hostBackBtn: HTMLElement;
@@ -31,7 +31,7 @@ let _guestBackBtn: HTMLElement;
 
 // ─── mount (called once at startup) ──────────────────────────────────────────
 
-export const mountMpLobby = (): void => {
+export const mount = (): void => {
     _ensureEl('mp-lobby-screen').classList.add('ui-screen');
     const heliCards = HELI_TYPES
         .map(h => `
@@ -102,10 +102,10 @@ const _showHeliAndReadyPhase = (
     peerCallsign: string,
     cb: MpLobbyCallbacks,
 ): void => {
-    hide('mp-host-flow');
-    hide('mp-guest-flow');
-    hide('mp-lobby-initial');
-    show('mp-heli-flow');
+    _hideEl('mp-host-flow');
+    _hideEl('mp-guest-flow');
+    _hideEl('mp-lobby-initial');
+    _showEl('mp-heli-flow');
 
     el('mp-ready-peer-label').textContent =
         (peerCallsign || 'WOLF') + ' ' + I18N.MP_CONNECTED;
@@ -129,7 +129,7 @@ const _showHeliAndReadyPhase = (
     });
 
     const runCountdown = () => {
-        hide('mp-ready-btn');
+        _hideEl('mp-ready-btn');
         screen().querySelectorAll<HTMLElement>('.mp-heli-card').forEach(c => { c.style.pointerEvents = 'none'; });
         setStatus('mp-ready-status', '');
         const cdEl = el('mp-countdown-display');
@@ -142,7 +142,7 @@ const _showHeliAndReadyPhase = (
                 setTimeout(tick, 1000);
             } else {
                 setTimeout(() => {
-                    hideMpLobby();
+                    hide();
                     cb.onConnected(isHost, peerCallsign, channels, selectedHeli);
                 }, 700);
             }
@@ -179,20 +179,20 @@ const _showHeliAndReadyPhase = (
 
 // ─── show / hide ──────────────────────────────────────────────────────────────
 
-export const showMpLobby = (cb: MpLobbyCallbacks): void => {
+export const show = (cb: MpLobbyCallbacks): void => {
     // Reset to initial view
-    show('mp-lobby-initial');
-    hide('mp-host-flow');
-    hide('mp-guest-flow');
-    hide('mp-heli-flow');
+    _showEl('mp-lobby-initial');
+    _hideEl('mp-host-flow');
+    _hideEl('mp-guest-flow');
+    _hideEl('mp-heli-flow');
     screen().style.display = 'flex';
 
     _initialBackBtn.onclick = cb.onBack;
 
     // ── Host flow ─────────────────────────────────────────────────────────────
     el('mp-create-btn').onclick = async () => {
-        hide('mp-lobby-initial');
-        show('mp-host-flow');
+        _hideEl('mp-lobby-initial');
+        _showEl('mp-host-flow');
         setStatus('mp-host-status', I18N.MP_GENERATING!);
 
         const peer = createRTCPeer();
@@ -238,15 +238,15 @@ export const showMpLobby = (cb: MpLobbyCallbacks): void => {
 
         _hostBackBtn.onclick = () => {
             peer.close();
-            hide('mp-host-flow');
-            show('mp-lobby-initial');
+            _hideEl('mp-host-flow');
+            _showEl('mp-lobby-initial');
         };
     };
 
     // ── Guest flow ────────────────────────────────────────────────────────────
     el('mp-join-btn').onclick = () => {
-        hide('mp-lobby-initial');
-        show('mp-guest-flow');
+        _hideEl('mp-lobby-initial');
+        _showEl('mp-guest-flow');
 
         const peer = createRTCPeer();
 
@@ -285,13 +285,13 @@ export const showMpLobby = (cb: MpLobbyCallbacks): void => {
 
         _guestBackBtn.onclick = () => {
             peer.close();
-            hide('mp-guest-flow');
-            show('mp-lobby-initial');
+            _hideEl('mp-guest-flow');
+            _showEl('mp-lobby-initial');
         };
     };
 };
 
-export const hideMpLobby = (): void => {
+export const hide = (): void => {
     screen().style.display = 'none';
 };
 

@@ -6,7 +6,7 @@ export const setDeliverToggle = (on: boolean): void => {
     _toggleEl?.classList.toggle('on', on);
 };
 
-export const mountTouchControls = (): void => {
+export const mount = (): void => {
     if (document.getElementById('touch-controls')) return;
     const el = document.createElement('div');
     el.id = 'touch-controls';

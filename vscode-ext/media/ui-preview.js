@@ -845,6 +845,20 @@ body {
       return _default();
     }
   };
+  var saveSession = (s) => {
+    if (_IS_APP) {
+      try {
+        storageSet(STORAGE_KEY, JSON.stringify(s));
+      } catch {
+      }
+      return;
+    }
+    if (!s.cookieConsent) return;
+    try {
+      storageSet(STORAGE_KEY, JSON.stringify(s));
+    } catch {
+    }
+  };
   var getMissionsDone = (s) => Object.values(s.campaignProgress).reduce(
     (sum, cp) => sum + cp.missions.filter((m) => m.completed).length,
     0
@@ -1088,10 +1102,10 @@ body {
     CRASH_SUBMARINE: "KOLLISION MIT U-BOOT",
     CRASH_TREE: "BAUMKONTAKT",
     WHATS_NEW_HEADLINE: "NEUIGKEITEN",
-    WHATS_NEW_VERSION: "v26.5.0",
+    WHATS_NEW_VERSION: "v27.0.0",
     WHATS_NEW_TITLE: "Kampagne: Callsign Wolf",
     WHATS_NEW_HINT: "KLICKEN ZUM FORTFAHREN",
-    WHATS_NEW_ITEMS: ["Jetzt als native iOS App spielbar", "\u{1F43A} Demo-Kampagne verf\xFCgbar: Callsign Wolf"],
+    WHATS_NEW_ITEMS: ["Jetzt als native iOS App spielbar", "\u{1F43A} Demo-Kampagne verf\xFCgbar: Callsign Wolf", "\u{1FAA6} R.I.P. _isMobile \u2014 du wirst nicht vermisst"],
     PILOT_HEADING: "PROFIL",
     PILOT_CALLSIGN: "RUFZEICHEN (MAX. 8 ZEICHEN, A\u2013Z)",
     PILOT_SAVECODE: "SAVE CODE",
@@ -1280,10 +1294,10 @@ body {
     CRASH_SUBMARINE: "SUBMARINE COLLISION",
     CRASH_TREE: "TREE CONTACT",
     WHATS_NEW_HEADLINE: "WHAT'S NEW",
-    WHATS_NEW_VERSION: "v26.5.0",
+    WHATS_NEW_VERSION: "v27.0.0",
     WHATS_NEW_TITLE: "Campaign: Callsign Wolf",
     WHATS_NEW_HINT: "CLICK TO CONTINUE",
-    WHATS_NEW_ITEMS: ["Now available as a native iOS app", "\u{1F43A} Demo campaign available: Callsign Wolf"],
+    WHATS_NEW_ITEMS: ["Now available as a native iOS app", "\u{1F43A} Demo campaign available: Callsign Wolf", "\u{1FAA6} R.I.P. _isMobile \u2014 you will not be missed"],
     PILOT_HEADING: "PROFILE",
     PILOT_CALLSIGN: "CALLSIGN (MAX. 8 CHARS, A\u2013Z)",
     PILOT_SAVECODE: "SAVE CODE",
@@ -1471,7 +1485,7 @@ body {
     return root.querySelector(".screen-body");
   };
 
-  // ../src/game/ui/main-menu/main-menu.ts
+  // ../src/game/ui/main-menu/main-menu.ui.ts
   var _IS_APP3 = false;
   var _splashHandler = null;
   var _menuIntroPlayed = false;
@@ -1493,7 +1507,7 @@ body {
     } catch {
     }
   };
-  var mountMainMenu = (cb) => {
+  var mount = (cb) => {
     const splash = ensureEl("splash");
     if (_splashHandler) {
       splash.removeEventListener("click", _splashHandler);
@@ -1617,7 +1631,7 @@ body {
   __el5.textContent = "#mission-briefing {\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    background: transparent;\n    display: none;\n    justify-content: center;\n    align-items: center;\n    z-index: 300;\n}\n\n#briefing-panel {\n    display: flex;\n    flex-direction: row;\n    align-items: flex-end;\n    gap: 20px;\n    padding: 0 24px;\n    max-width: 700px;\n    width: 100%;\n    box-sizing: border-box;\n}\n\n#briefing-commander-img {\n    flex-shrink: 0;\n    height: clamp(140px, 32vh, 260px);\n    width: auto;\n    align-self: flex-end;\n}\n\n#briefing-text {\n    flex: 1;\n    display: flex;\n    flex-direction: column;\n    gap: 10px;\n    background: rgba(2, 8, 2, 0.94);\n    border: 1px solid #1a1a1a;\n    border-left: 2px solid #ff6600;\n    padding: 18px 22px;\n    box-shadow: -6px 6px 30px rgba(0, 0, 0, 0.8);\n    min-width: 0;\n}\n\n#briefing-address {\n    font-size: 11px;\n    color: #cc9900;\n    letter-spacing: 3px;\n    margin-bottom: 2px;\n}\n\n#briefing-headline {\n    font-size: 22px;\n    color: #ff6600;\n    text-shadow: 0 0 10px #ff6600;\n    font-weight: bold;\n    letter-spacing: 2px;\n}\n\n#briefing-sublines {\n    font-size: 12px;\n    color: #5f5;\n    line-height: 1.8;\n    letter-spacing: 1px;\n}\n\n#briefing-body {\n    font-size: 12px;\n    color: #aaa;\n    line-height: 1.7;\n    border-left: 2px solid #333;\n    padding-left: 12px;\n}\n\n#briefing-ok-btn {\n    align-self: flex-end;\n    margin-top: 6px;\n    font-family: monospace;\n    font-size: 13px;\n    letter-spacing: 3px;\n    color: #0f0;\n    background: transparent;\n    border: 1px solid #0f0;\n    padding: 7px 22px;\n    cursor: pointer;\n    animation: blink 1s infinite;\n    -webkit-tap-highlight-color: transparent;\n}\n\n#briefing-ok-btn:hover {\n    background: rgba(0, 255, 0, 0.1);\n}\n\n@media (max-height: 480px) {\n    #briefing-panel {\n        gap: 12px;\n        padding: 0 12px;\n    }\n    #briefing-commander-img {\n        height: clamp(110px, 28vh, 180px);\n    }\n    #briefing-text {\n        padding: 10px 14px;\n        gap: 6px;\n    }\n    #briefing-headline {\n        font-size: 17px;\n    }\n    #briefing-address {\n        font-size: 10px;\n        letter-spacing: 2px;\n    }\n    #briefing-sublines,\n    #briefing-body {\n        font-size: 11px;\n    }\n    #briefing-ok-btn {\n        font-size: 12px;\n        padding: 5px 16px;\n    }\n}\n";
   document.head.appendChild(__el5);
 
-  // ../src/game/ui/briefing/briefing.ts
+  // ../src/game/ui/briefing/briefing.ui.ts
   var _COMMODORE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 710 1070" style="height:100%;width:auto;display:block;">
     <path fill="#6a3010" fill-rule="evenodd" d="M 357,0 303,5 278,15 254,33 243,48 233,73 230,91 233,144 225,159 228,205 240,228 244,252 262,297 265,291 248,257 242,225 232,213 226,169 228,155 235,149 233,82 244,50 270,22 289,12 322,3 370,3 395,9 413,18 430,32 455,65 461,97 456,149 465,155 468,163 466,189 459,210 449,224 431,231 425,270 425,276 430,278 428,259 433,233 448,227 458,216 469,182 469,159 459,147 463,107 460,73 448,50 418,19 389,5 357,1 Z M 356,9 306,14 284,22 266,34 246,62 239,98 241,125 247,86 265,64 305,77 339,77 376,69 410,42 421,41 415,29 395,17 356,10 Z M 429,287 424,322 397,369 432,357 463,355 464,358 465,352 461,324 429,288 Z M 475,334 472,335 470,363 451,387 370,417 342,441 324,472 325,475 354,444 373,431 453,401 464,392 474,376 551,406 578,421 578,426 597,405 611,397 612,394 602,388 580,411 575,412 550,397 481,370 476,367 477,358 492,341 475,335 Z M 512,340 492,351 485,363 536,382 574,403 603,380 590,371 569,392 565,392 556,386 577,366 570,362 551,382 544,381 539,375 557,357 550,355 532,373 523,372 519,367 541,349 512,341 Z M 201,342 178,349 179,360 175,369 163,372 164,355 157,356 158,368 154,377 142,380 143,363 134,365 135,383 123,388 122,372 114,377 111,390 113,398 129,388 195,368 201,343 Z M 222,390 232,405 255,418 281,441 301,475 290,446 275,423 258,408 222,391 Z M 620,402 596,416 600,417 590,515 563,619 559,571 569,536 577,483 566,495 542,545 540,629 558,715 578,784 576,881 577,866 592,838 587,806 626,755 648,719 647,714 641,715 592,745 574,667 597,584 618,469 656,587 681,718 675,740 639,787 632,804 643,805 686,791 644,1070 669,1070 670,1066 693,939 702,822 701,747 673,564 655,490 632,424 620,403 Z M 514,481 362,626 361,721 361,788 382,787 383,637 511,516 509,579 491,621 483,660 472,743 468,808 466,811 443,812 522,807 547,696 532,627 538,525 514,482 Z M 138,489 126,511 223,635 219,785 240,785 243,667 242,623 138,490 Z M 320,509 314,558 309,568 310,579 310,569 322,566 320,510 Z M 112,546 117,647 126,717 123,718 94,674 90,675 90,682 94,704 118,769 107,771 73,761 57,761 60,770 106,813 111,826 91,834 89,841 71,940 60,1051 34,1051 85,1052 91,999 120,885 140,775 146,761 137,622 112,547 Z M 304,685 301,744 302,776 304,686 Z M 301,786 298,896 299,959 301,787 Z M 209,812 196,812 209,814 209,841 193,841 210,842 209,813 Z M 520,816 389,819 466,819 464,848 390,848 388,820 389,849 465,849 520,845 520,817 Z M 520,854 383,855 462,857 443,898 424,967 488,878 479,1070 547,1070 537,949 520,855 Z"/>
     <path fill="#1e0e06" fill-rule="evenodd" d="M 362,2 322,3 282,15 252,38 238,63 232,89 235,149 227,158 228,190 232,213 242,225 245,248 264,295 225,332 213,336 207,332 199,333 145,352 110,369 104,387 86,417 58,532 46,549 26,646 24,676 29,684 28,710 7,869 0,1011 0,1054 7,1059 7,1070 16,1070 17,1059 71,1060 77,1070 86,1070 85,1062 92,1058 99,1001 130,879 146,784 149,783 149,842 129,936 118,1024 115,1070 124,1070 134,959 156,846 217,848 216,807 156,800 144,618 109,510 101,461 98,410 102,402 111,406 200,374 207,347 221,342 215,361 218,387 234,399 264,412 280,429 300,468 304,496 304,501 297,508 288,552 291,563 302,565 296,677 291,956 291,1069 298,1070 302,709 309,568 314,558 318,528 318,493 328,462 350,432 381,411 441,393 463,375 473,354 472,335 475,334 492,341 477,358 476,367 481,370 550,397 575,412 580,411 602,388 612,396 588,413 565,444 550,477 539,518 532,586 532,627 547,703 522,807 468,812 384,812 382,854 520,854 537,949 547,1070 555,1070 546,953 528,851 530,806 552,717 570,785 567,856 576,978 568,1070 577,1070 583,999 583,932 575,861 578,784 558,715 540,629 542,545 554,489 570,451 598,414 620,402 638,439 669,544 701,747 702,822 693,939 669,1066 669,1070 677,1070 700,949 709,841 710,772 698,662 681,562 665,494 638,418 628,399 614,386 612,374 583,358 528,337 512,332 497,335 470,324 441,288 425,276 431,231 451,222 466,189 468,163 465,155 456,149 461,108 458,74 449,54 419,22 395,9 362,3 Z M 355,9 395,17 415,29 421,41 410,42 376,69 339,77 305,77 265,64 247,86 241,125 241,78 249,55 259,41 291,19 319,11 354,9 Z M 269,73 305,85 349,83 377,75 395,76 407,90 406,127 418,151 421,186 433,185 439,165 448,156 457,157 461,164 460,184 452,208 443,220 426,225 420,252 407,274 372,306 352,317 310,320 292,314 276,296 258,262 250,237 246,147 254,89 258,80 268,73 Z M 236,159 239,205 234,180 235,159 Z M 417,273 417,318 395,358 387,369 375,376 339,385 303,383 288,376 277,365 273,354 274,308 286,320 300,326 346,326 385,305 416,273 Z M 428,287 463,328 465,352 461,364 442,384 386,401 362,415 359,415 361,410 398,368 419,333 426,314 427,287 Z M 265,306 266,360 290,430 266,405 230,388 222,379 222,362 230,342 264,306 Z M 511,340 541,349 601,377 603,380 576,403 536,382 485,363 492,351 510,340 Z M 200,342 195,368 129,388 113,398 112,385 119,373 199,342 Z M 284,383 314,394 371,388 333,435 313,483 309,479 302,438 283,383 Z M 91,432 104,523 137,622 146,761 140,775 120,885 91,999 85,1052 8,1049 15,874 37,692 56,690 59,686 91,569 91,564 65,540 79,471 91,433 Z M 307,509 313,511 313,519 306,558 294,557 306,509 Z M 59,546 82,565 83,570 51,683 38,683 34,679 32,662 50,567 58,546 Z M 179,810 211,814 209,843 157,838 157,810 178,810 Z M 519,816 520,845 465,849 389,849 389,819 518,816 Z"/>
@@ -1626,17 +1640,21 @@ body {
     <path fill="#ffff00" fill-rule="evenodd" d="M 541,350 519,367 523,372 532,373 550,357 541,351 Z M 179,350 166,354 163,364 163,372 175,369 179,351 Z M 559,358 539,375 540,379 551,382 570,365 559,359 Z M 158,358 145,362 142,372 142,380 154,377 158,359 Z M 579,367 556,386 569,392 589,373 579,368 Z M 136,367 124,372 122,385 126,388 135,383 136,368 Z"/>
     <path fill="#eaeaea" fill-rule="evenodd" d="M 285,383 283,389 302,438 311,483 333,435 371,389 314,394 285,384 Z"/>
 </svg>`;
-  var mountBriefing = () => {
+  var mount2 = () => {
     ensureEl("mission-briefing");
   };
   var _onDismiss = null;
+  var hide = () => {
+    const el2 = document.getElementById("mission-briefing");
+    if (el2) el2.style.display = "none";
+  };
   var _dismiss = () => {
-    hideBriefing();
+    hide();
     const cb = _onDismiss;
     _onDismiss = null;
     cb?.();
   };
-  var showBriefingOverlay = (data, onDismiss) => {
+  var show = (data, onDismiss) => {
     _onDismiss = onDismiss;
     const el2 = document.getElementById("mission-briefing");
     const sublinesHtml = Array.isArray(data.sublines) && data.sublines.length ? `<div id="briefing-sublines">${data.sublines.map((s) => `\u25B8 ${localize(s)}`).join("<br>")}</div>` : "";
@@ -1654,10 +1672,6 @@ body {
         </div>`;
     document.getElementById("briefing-ok-btn").addEventListener("click", _dismiss);
     el2.style.display = "flex";
-  };
-  var hideBriefing = () => {
-    const el2 = document.getElementById("mission-briefing");
-    if (el2) el2.style.display = "none";
   };
 
   // ../src/game/ui/swipe-carousel/swipe-carousel.css
@@ -1831,12 +1845,12 @@ body {
     return root;
   };
 
-  // ../src/game/ui/campaign-select/campaign-select.ts
+  // ../src/game/ui/campaign-select/campaign-select.ui.ts
   var _IS_APP5 = false;
-  var mountCampaignSelect = () => {
+  var mount3 = () => {
     ensureEl("campaign-select");
   };
-  var showCampaignSelect = (deps) => {
+  var show2 = (deps) => {
     const { session: session2, campaigns, onSelect, onBack } = deps;
     const body = mountScreenShell("campaign-select", I18N.CAMPAIGN_SELECT_TITLE, I18N.CAMPAIGN_SELECT_SUB, onBack);
     const typePriority = (t) => t === "tutorial" ? 0 : t === "free-flight" ? 1 : 2;
@@ -1875,11 +1889,11 @@ body {
   __el7.textContent = "#mission-grid {\n    display: flex;\n    flex-wrap: wrap;\n    justify-content: center;\n    gap: 20px;\n    max-width: 1100px;\n    padding: 0 20px;\n    height: auto;\n}\n\n#mission-grid .grid-box {\n    flex: 0 0 300px;\n    min-height: 120px;\n    height: auto;\n}\n\n.mission-done {\n    color: #5f5;\n}\n\n.mission-time {\n    color: #8af;\n    font-family: monospace;\n}\n";
   document.head.appendChild(__el7);
 
-  // ../src/game/ui/mission-select/mission-select.ts
-  var mountMissionSelect = () => {
+  // ../src/game/ui/mission-select/mission-select.ui.ts
+  var mount4 = () => {
     ensureEl("mission-select");
   };
-  var showMissionSelect = (deps) => {
+  var show3 = (deps) => {
     const { campaign, campaignIndex, session: session2, onSelect, onBack } = deps;
     const key = String(campaignIndex);
     const cp = session2.campaignProgress[key];
@@ -3277,13 +3291,12 @@ body {
   }
 
   // ../src/game/render-config.ts
-  var _isMobile = typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0) && window.matchMedia("(pointer: coarse)").matches;
   var _isApp = false;
-  var CANVAS_SCALE = _isMobile ? 0.5 : 1;
   var _isIPad = _isApp && (navigator.userAgent.includes("iPad") || navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
-  var tileW = _isIPad ? 28 : _isApp ? 20 : _isMobile ? 24 : 64;
-  var tileH = _isIPad ? 14 : _isApp ? 10 : _isMobile ? 12 : 32;
-  var stepH = _isIPad ? 10.9 : _isApp ? 7.8 : _isMobile ? 9.4 : 25;
+  var CANVAS_SCALE = _isApp ? 0.5 : 1;
+  var tileW = _isIPad ? 28 : _isApp ? 20 : 64;
+  var tileH = _isIPad ? 14 : _isApp ? 10 : 32;
+  var stepH = _isIPad ? 10.9 : _isApp ? 7.8 : 25;
 
   // ../src/game/state.ts
   var createZstate = () => {
@@ -3383,7 +3396,7 @@ body {
     remoteHeli: null
   };
 
-  // ../src/game/ui/heli-select/heli-select.ts
+  // ../src/game/ui/heli-select/heli-select.ui.ts
   var _G;
   var _drawHeli;
   var _previewAnimRunning = false;
@@ -3450,7 +3463,7 @@ body {
     _activeHeliId = null;
     _heliPreviewLoop();
   };
-  var mountHeliSelect = () => {
+  var mount5 = () => {
     ensureEl("heli-select");
   };
   var _statBar = (label, pct) => {
@@ -3504,7 +3517,7 @@ body {
     wrap.appendChild(statsCol);
     return wrap;
   };
-  var showHeliSelect = (deps) => {
+  var show4 = (deps) => {
     const { rankIndex, onSelect, onBack } = deps;
     const body = mountScreenShell("heli-select", I18N.HELI_SELECT_TITLE, I18N.HELI_SELECT_SUB, onBack);
     const visibleTypes = HELI_TYPES.filter((ht) => !(ht.hideWhenLocked && ht.minRankIndex > rankIndex));
@@ -3548,13 +3561,18 @@ body {
   __el10.textContent = ".rank-board {\n    display: inline-flex;\n    flex-direction: column;\n    align-items: center;\n    gap: 8px;\n    background: #050a1a;\n    border: 2px solid #cc9900;\n    border-radius: 4px;\n    padding: 14px 36px;\n    min-width: 150px;\n}\n.rank-pips {\n    font-size: 28px;\n    color: #ffcc00;\n    letter-spacing: 10px;\n    text-shadow: 0 0 10px rgba(255, 204, 0, 0.6);\n}\n.rank-board.major .rank-pips {\n    font-size: 32px;\n    color: #ffdd44;\n    letter-spacing: 4px;\n    text-shadow: 0 0 16px rgba(255, 220, 68, 0.8);\n}\n.rank-label {\n    font-size: 11px;\n    color: #887700;\n    letter-spacing: 5px;\n}\n\n#rankup-overlay {\n    position: absolute;\n    inset: 0;\n    background: rgba(0, 4, 18, 0.97);\n    display: none;\n    flex-direction: column;\n    justify-content: safe center;\n    align-items: center;\n    z-index: 600;\n    cursor: pointer;\n    gap: 28px;\n}\n@keyframes rankup-pulse {\n    0%, 100% { transform: scale(1); }\n    50%       { transform: scale(1.06); }\n}\n#rankup-badge { animation: rankup-pulse 1.8s ease-in-out infinite; }\n\n#rankup-main {\n    display: flex;\n    flex-direction: row;\n    align-items: center;\n    gap: 40px;\n}\n\n#rankup-heli {\n    align-items: center;\n}\n\n#rankup-heli-canvas {\n    width: 200px;\n    height: 160px;\n    display: block;\n    background: #050a1a;\n    border: 2px solid #cc9900;\n    border-radius: 4px;\n}\n";
   document.head.appendChild(__el10);
 
-  // ../src/game/ui/rankup/rankup.ts
+  // ../src/game/ui/rankup/rankup.ui.ts
   var _drawHeli2 = null;
-  var initRankup = (drawHeli) => {
+  var init = (drawHeli) => {
     _drawHeli2 = drawHeli;
   };
   var rankBadgeHtml = (rank) => `<div class="rank-board${rank.name === "Major" ? " major" : ""}"><span class="rank-pips">${rank.pips}</span><span class="rank-label">${rank.name.toUpperCase()}</span></div>`;
-  var mountRankup = () => {
+  var hide2 = () => {
+    _heliId = null;
+    _animRunning = false;
+    document.getElementById("rankup-overlay").style.display = "none";
+  };
+  var mount6 = () => {
     const el2 = ensureEl("rankup-overlay");
     el2.innerHTML = `
         <div id="rankup-main">
@@ -3564,7 +3582,7 @@ body {
             </div>
         </div>
         <p class="start-hint" style="color: #cc9900; margin-top: 10px">${I18N.NEXT}</p>`;
-    el2.addEventListener("click", dismissRankUp);
+    el2.addEventListener("click", hide2);
   };
   var _heliId = null;
   var _animAngle = 0;
@@ -3600,7 +3618,7 @@ body {
     });
     requestAnimationFrame(_animLoop);
   };
-  var showRankUp = (rank, unlockedHeli) => {
+  var show5 = (rank, unlockedHeli) => {
     document.getElementById("rankup-badge").innerHTML = rankBadgeHtml(rank);
     const heliEl = document.getElementById("rankup-heli");
     if (unlockedHeli) {
@@ -3618,19 +3636,14 @@ body {
     }
     document.getElementById("rankup-overlay").style.display = "flex";
   };
-  var dismissRankUp = () => {
-    _heliId = null;
-    _animRunning = false;
-    document.getElementById("rankup-overlay").style.display = "none";
-  };
 
-  // ../src/game/ui/settings/settings.ts
+  // ../src/game/ui/settings/settings.ui.ts
   var _deps;
-  var initSettings = (deps) => {
+  var init2 = (deps) => {
     _deps = deps;
   };
-  var mountSettings = () => {
-    const body = mountScreenShell("settings-screen", I18N.MENU_SETTINGS, I18N.PILOT_HEADING, fromSettings);
+  var mount7 = () => {
+    const body = mountScreenShell("settings-screen", I18N.MENU_SETTINGS, I18N.PILOT_HEADING, hide3);
     body.innerHTML = `
         <div id="settings-badge"></div>
         <div class="settings-field">
@@ -3708,11 +3721,11 @@ body {
     });
     document.getElementById("lang-de-btn").addEventListener("click", () => {
       setLanguage("de");
-      toSettings();
+      show6();
     });
     document.getElementById("lang-en-btn").addEventListener("click", () => {
       setLanguage("en");
-      toSettings();
+      show6();
     });
     document.getElementById("ctrl-btn-profi").addEventListener("click", () => {
       _deps.setControlMode("heading");
@@ -3769,7 +3782,7 @@ body {
     const noSave = !session2.cookieConsent ? I18N.NO_SAVE_STATE : "";
     statsEl.textContent = I18N.STATS(getCampaignsDone(session2), getMissionsDone(session2)) + noSave;
   };
-  var toSettings = () => {
+  var show6 = () => {
     _refreshSettingsScreen();
     const session2 = _deps.getSession();
     const input = document.getElementById("player-name-input");
@@ -3793,7 +3806,7 @@ body {
     _refreshLangButtons();
     showScreenCrtEnter("settings-screen");
   };
-  var fromSettings = () => {
+  var hide3 = () => {
     showScreen("main-menu");
     _deps.onBack();
   };
@@ -3832,7 +3845,7 @@ body {
   __el11.textContent = "#legal-screen {\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    background: rgba(5, 5, 5, 0.88);\n    display: none;\n    flex-direction: column;\n    justify-content: safe center;\n    align-items: center;\n    z-index: 200;\n    cursor: default;\n}\n\n.legal-content {\n    max-width: 640px;\n    width: 100%;\n    padding: 0 24px;\n    box-sizing: border-box;\n}\n\n.legal-section-heading {\n    font-size: 12px;\n    color: #ff6600;\n    letter-spacing: 4px;\n    font-weight: bold;\n    margin: 24px 0 10px;\n    border-bottom: 1px solid #1a1a1a;\n    padding-bottom: 6px;\n}\n\n.legal-para {\n    font-size: 12px;\n    color: #666;\n    line-height: 1.8;\n    margin: 4px 0;\n    letter-spacing: 0.5px;\n}\n\n.legal-spacer {\n    height: 8px;\n}\n\n@media (max-height: 520px) {\n    .legal-section-heading { margin-top: 14px; }\n    .legal-para { font-size: 11px; line-height: 1.6; }\n}\n";
   document.head.appendChild(__el11);
 
-  // ../src/game/ui/legal-screen/legal-screen.ts
+  // ../src/game/ui/legal-screen/legal-screen.ui.ts
   var _IS_APP6 = false;
   var _addParagraphs = (parent, lines) => {
     lines.forEach((line) => {
@@ -3842,7 +3855,7 @@ body {
       parent.appendChild(el2);
     });
   };
-  var mountLegalScreen = (onBack) => {
+  var mount8 = (onBack) => {
     const root = ensureEl("legal-screen");
     if (root.children.length > 0) return;
     const body = mountScreenShell("legal-screen", I18N.LEGAL_TITLE, "", onBack);
@@ -3869,7 +3882,7 @@ body {
     }
     body.appendChild(content);
   };
-  var toLegalScreen = () => {
+  var show7 = () => {
     showScreenCrtEnter("legal-screen");
   };
 
@@ -3878,7 +3891,7 @@ body {
   __el12.textContent = "/* \u2500\u2500\u2500 cookie banner \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n#cookie-banner {\n    position: absolute;\n    inset: 0;\n    background: rgba(0, 0, 0, 0.92);\n    display: none;\n    flex-direction: column;\n    justify-content: flex-start;\n    align-items: center;\n    overflow-y: auto;\n    padding: 40px 16px;\n    z-index: 200;\n}\n#cookie-inner {\n    background: #080808;\n    border: 1px solid #2a2a2a;\n    border-top: 2px solid #cc9900;\n    padding: 28px 32px;\n    width: min(460px, 100%);\n    box-sizing: border-box;\n    flex-shrink: 0;\n    display: flex;\n    flex-direction: column;\n    gap: 14px;\n    font-size: 14px;\n    color: #777;\n    line-height: 1.75;\n    letter-spacing: 1px;\n}\n#cookie-buttons {\n    display: flex;\n    flex-wrap: wrap;\n    gap: 12px;\n    margin-top: 6px;\n    justify-content: center;\n}\n#cookie-buttons button {\n    font-family: monospace;\n    font-size: 12px;\n    letter-spacing: 4px;\n    font-weight: bold;\n    cursor: pointer;\n    padding: 10px 28px;\n    border: 1px solid;\n    background: none;\n    transition: all 0.2s;\n}\n#cookie-buttons button.approve {\n    color: #5f5;\n    border-color: #2a4a2a;\n}\n#cookie-buttons button.approve:hover {\n    background: rgba(0, 80, 0, 0.3);\n    border-color: #5f5;\n    box-shadow: 0 0 12px rgba(85, 255, 85, 0.2);\n}\n#cookie-buttons button.decline {\n    color: #444;\n    border-color: #222;\n}\n#cookie-buttons button.decline:hover {\n    color: #777;\n    border-color: #444;\n}\n.cookie-lang-row {\n    display: flex;\n    gap: 8px;\n    justify-content: center;\n    margin-bottom: 4px;\n}\n.cookie-lang-btn {\n    font-family: monospace;\n    font-size: 11px;\n    letter-spacing: 3px;\n    color: #444;\n    border: 1px solid #222;\n    background: none;\n    cursor: pointer;\n    padding: 5px 14px;\n    transition: all 0.15s;\n}\n.cookie-lang-btn.active {\n    color: #cc9900;\n    border-color: #cc9900;\n}\n.cookie-lang-btn:hover:not(.active) {\n    color: #666;\n    border-color: #444;\n}\n";
   document.head.appendChild(__el12);
 
-  // ../src/game/ui/cookie-banner/cookie-banner.ts
+  // ../src/game/ui/cookie-banner/cookie-banner.ui.ts
   var _IS_APP7 = false;
   var _onConsent = null;
   var _hasExistingData = () => storageGet(STORAGE_KEY) !== null;
@@ -3907,7 +3920,7 @@ body {
         </div>
     </div>`;
   };
-  var mountCookieBanner = (onConsent) => {
+  var mount9 = (onConsent) => {
     _onConsent = onConsent ?? null;
     const el2 = ensureEl("cookie-banner");
     el2.innerHTML = _html();
@@ -3926,9 +3939,9 @@ body {
   __el13.textContent = "#loading-screen {\n    display: none;\n    position: fixed;\n    inset: 0;\n    background: #050505;\n    flex-direction: column;\n    align-items: center;\n    justify-content: center;\n    z-index: 900;\n    gap: 20px;\n    opacity: 1;\n    transition: opacity 0.3s ease;\n}\n\n#loading-screen.loading-fade-out {\n    opacity: 0;\n}\n\n#loading-screen .loading-title {\n    font-size: clamp(22px, 5vw, 42px);\n    color: #ff6600;\n    text-shadow: 0 0 20px #ff6600;\n    letter-spacing: 4px;\n    font-weight: bold;\n    text-align: center;\n    padding: 0 20px;\n}\n\n#loading-screen .loading-bar-track {\n    width: min(400px, 80vw);\n    height: 3px;\n    background: #1a1a1a;\n    overflow: hidden;\n}\n\n#loading-screen .loading-bar-fill {\n    height: 100%;\n    width: 0%;\n    background: #5f5;\n    transition: width 0.25s ease;\n}\n\n#loading-screen .loading-label {\n    font-size: 11px;\n    letter-spacing: 4px;\n    color: #3a6e3a;\n    text-transform: uppercase;\n    min-height: 1em;\n}\n";
   document.head.appendChild(__el13);
 
-  // ../src/game/ui/loading-screen/loading-screen.ts
+  // ../src/game/ui/loading-screen/loading-screen.ui.ts
   var MIN_MS = 1e3;
-  var showLoadingScreen = (title) => {
+  var show8 = (title) => {
     const el2 = ensureEl("loading-screen");
     el2.innerHTML = `
         <div class="loading-title">${title}</div>
@@ -3962,7 +3975,7 @@ body {
   __el14.textContent = "#hud-tl {\n    position: fixed;\n    top: max(12px, env(safe-area-inset-top));\n    left: max(16px, env(safe-area-inset-left));\n    z-index: 300;\n    display: flex;\n    align-items: center;\n    gap: 8px;\n}\n\n#pause-btn {\n    cursor: pointer;\n    opacity: 0.85;\n    transition: opacity 0.15s;\n    display: none;\n    align-items: center;\n    justify-content: center;\n}\n#pause-btn:hover { opacity: 1; }\n\n#pause-overlay {\n    display: none;\n    position: fixed;\n    inset: 0;\n    z-index: 2000;\n    background: rgba(0, 0, 0, 0.82);\n    align-items: center;\n    justify-content: center;\n}\n#pause-overlay.visible {\n    display: flex;\n}\n\n#pause-panel {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    gap: 20px;\n    padding: 32px 28px;\n    background: #050d05;\n    border: 1px solid #2a4a2a;\n    box-shadow: 0 0 40px rgba(0, 255, 80, 0.06);\n    min-width: 260px;\n}\n\n#pause-title {\n    font: bold 14px monospace;\n    letter-spacing: 4px;\n    color: #5f5;\n}\n\n#pause-resume {\n    margin-top: 8px;\n    letter-spacing: 3px;\n    padding: 10px 28px;\n}\n\n.pause-field {\n    width: 100%;\n    display: flex;\n    flex-direction: column;\n    gap: 6px;\n}\n\n.pause-field label {\n    font: 11px monospace;\n    letter-spacing: 2px;\n    color: #5a5;\n}\n\n.pause-field .pause-row {\n    display: flex;\n    gap: 10px;\n}\n";
   document.head.appendChild(__el14);
 
-  // ../src/game/ui/pause-overlay/pause-overlay.ts
+  // ../src/game/ui/pause-overlay/pause-overlay.ui.ts
   var _deps2;
   var HL2 = "var(--accent, #4af)";
   var _refreshButtons = () => {
@@ -3995,11 +4008,11 @@ body {
     document.getElementById("pause-overlay").classList.remove("visible");
     _deps2.onAbort();
   };
-  var showPauseButton = () => {
+  var show9 = () => {
     const el2 = document.getElementById("pause-btn");
     if (el2) el2.style.display = "flex";
   };
-  var mountPauseButton = (deps) => {
+  var mount10 = (deps) => {
     _deps2 = deps;
     const container = ensureEl("hud-tl");
     let btn = document.getElementById("pause-btn");
@@ -4071,6 +4084,7 @@ body {
       _deps2.setControlMode("screen");
       _refreshButtons();
     };
+    document.querySelector("#pause-panel .pause-field:last-of-type").style.display = _deps2.isTouchDevice() ? "" : "none";
     document.getElementById("pause-resume").onclick = _hide;
     document.getElementById("pause-abort").onclick = _abort;
   };
@@ -5550,8 +5564,8 @@ body {
   __el15.textContent = "#whats-new-overlay {\n    position: absolute;\n    inset: 0;\n    background: rgba(0, 4, 18, 0.96);\n    display: none;\n    flex-direction: column;\n    justify-content: flex-start;\n    align-items: center;\n    padding: 40px 16px;\n    z-index: 200;\n    gap: 20px;\n    cursor: pointer;\n}\n#whats-new-version {\n    font-size: 11px;\n    color: #cc9900;\n    letter-spacing: 8px;\n    flex-shrink: 0;\n}\n#whats-new-title {\n    font-size: 28px;\n    color: #ffcc00;\n    letter-spacing: 4px;\n    text-shadow: 0 0 20px rgba(255, 204, 0, 0.4);\n    flex-shrink: 0;\n    text-align: center;\n}\n#whats-new-items {\n    list-style: none;\n    padding: 0;\n    margin: 0;\n    display: flex;\n    flex-direction: column;\n    gap: 10px;\n    width: min(560px, 100%);\n    text-align: center;\n    flex-shrink: 0;\n}\n#whats-new-items li {\n    font-size: 13px;\n    color: #888;\n    letter-spacing: 2px;\n    line-height: 1.6;\n}\n#whats-new-items li::before {\n    content: '\u25B8 ';\n    color: #cc9900;\n}\n#whats-new-hint {\n    font-size: 11px;\n    color: #333;\n    letter-spacing: 4px;\n    margin-top: 12px;\n    flex-shrink: 0;\n}\n";
   document.head.appendChild(__el15);
 
-  // ../src/game/ui/whats-new/whats-new.ts
-  var mountWhatsNew = () => {
+  // ../src/game/ui/whats-new/whats-new.ui.ts
+  var mount11 = () => {
     const el2 = ensureEl("whats-new-overlay");
     el2.classList.add("ui-screen");
     el2.innerHTML = `
@@ -5561,18 +5575,21 @@ body {
             ${[...I18N.WHATS_NEW_ITEMS].map((item) => `<li>${item}</li>`).join("")}
         </ul>
         <div id="whats-new-hint">${I18N.WHATS_NEW_HINT}</div>`;
-    el2.addEventListener("click", hideWhatsNew);
+    el2.addEventListener("click", _hide2);
   };
-  var showWhatsNewIfNeeded = (lastSeenVersion, onDismiss) => {
-    if (lastSeenVersion === I18N.WHATS_NEW_VERSION || !I18N.WHATS_NEW_VERSION) return false;
-    _onDismiss2 = onDismiss;
+  var show10 = (onProceed) => {
+    if (loadSession().lastSeenVersion === I18N.WHATS_NEW_VERSION || !I18N.WHATS_NEW_VERSION) return false;
+    _onProceed = onProceed;
     document.getElementById("whats-new-overlay").style.display = "flex";
     return true;
   };
-  var _onDismiss2 = null;
-  var hideWhatsNew = () => {
+  var _onProceed = null;
+  var _hide2 = () => {
     document.getElementById("whats-new-overlay").style.display = "none";
-    _onDismiss2?.();
+    const s = loadSession();
+    s.lastSeenVersion = I18N.WHATS_NEW_VERSION;
+    saveSession(s);
+    _onProceed?.();
   };
 
   // ../src/game/ui/credits-screen/credits-screen.css
@@ -5580,8 +5597,8 @@ body {
   __el16.textContent = "/* \u2500\u2500\u2500 credits \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n#credits-screen .title {\n    font-size: 42px;\n    letter-spacing: 14px;\n    margin-bottom: 44px;\n    animation: cTitlePulse 3s ease-in-out infinite;\n}\n#credits-screen {\n    position: absolute;\n    top: 0;\n    left: 0;\n    width: 100%;\n    height: 100%;\n    background: rgba(5, 5, 5, 0.88);\n    display: none;\n    flex-direction: column;\n    justify-content: safe center;\n    align-items: center;\n    z-index: 200;\n    cursor: default;\n}\n#credits-canvas {\n    position: absolute;\n    top: 0;\n    left: 0;\n    pointer-events: none;\n}\n#credits-inner {\n    position: relative;\n    z-index: 1;\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n}\n.credits-title {\n    font-size: 42px;\n    color: #ff6600;\n    font-weight: bold;\n    letter-spacing: 14px;\n    margin-bottom: 44px;\n    animation: cTitlePulse 3s ease-in-out infinite;\n}\n@keyframes cTitlePulse {\n    0%,\n    100% {\n        text-shadow: 0 0 16px #ff6600;\n    }\n    50% {\n        text-shadow:\n            0 0 38px #ff6600,\n            0 0 70px rgba(255, 102, 0, 0.3);\n    }\n}\n.credits-section {\n    text-align: center;\n    margin: 8px 0;\n}\n.credits-role {\n    font-size: 10px;\n    color: #666;\n    letter-spacing: 4px;\n    margin-bottom: 4px;\n}\n.credits-name {\n    font-size: 19px;\n    color: #3a5a3a;\n    letter-spacing: 3px;\n    font-weight: bold;\n    opacity: 0;\n    animation: cNameIn 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;\n}\n.credits-name {\n    color: #5f5;\n}\n@keyframes cNameIn {\n    0% {\n        opacity: 0;\n        transform: translateY(12px) rotateZ(-6deg);\n        filter: brightness(8) saturate(2);\n        text-shadow: 0 0 24px rgba(80, 255, 80, 0.9);\n    }\n    55% {\n        opacity: 1;\n        transform: translateY(-2px) rotateZ(1deg);\n        filter: brightness(2.5) saturate(1.5);\n        text-shadow: 0 0 8px rgba(80, 255, 80, 0.4);\n    }\n    100% {\n        opacity: 1;\n        transform: translateY(0) rotateZ(0deg);\n        filter: brightness(1) saturate(1);\n        text-shadow: none;\n    }\n}\n.credits-divider {\n    width: 160px;\n    height: 1px;\n    background: linear-gradient(to right, transparent, #1a2a1a, transparent);\n    margin: 14px auto;\n}\n.credits-made-with {\n    font-size: 13px;\n    letter-spacing: 3px;\n    margin-top: 36px;\n    animation: cGlow 2.5s ease-in-out infinite alternate;\n}\n@keyframes cGlow {\n    from {\n        color: #2a4a2a;\n        text-shadow: none;\n    }\n    to {\n        color: #5f5;\n        text-shadow: 0 0 10px rgba(80, 255, 80, 0.25);\n    }\n}\n.credits-copyright {\n    font-size: 11px;\n    color: #666;\n    letter-spacing: 2px;\n    margin-top: 10px;\n}\n/* \u2500\u2500\u2500 credits responsive \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n@media (max-height: 520px) {\n    #credits-screen .title { font-size: 26px; letter-spacing: 8px; margin-bottom: 16px; }\n    .credits-section { margin: 4px 0; }\n    .credits-role { font-size: 9px; letter-spacing: 3px; margin-bottom: 2px; }\n    .credits-name { font-size: 14px; letter-spacing: 2px; }\n    .credits-divider { margin: 8px auto; }\n    .credits-made-with { font-size: 11px; margin-top: 14px; }\n    #credits-screen { padding-top: 12px; }\n}\n";
   document.head.appendChild(__el16);
 
-  // ../src/game/ui/credits-screen/credits-screen.ts
-  var mountCreditsScreen = (onBack) => {
+  // ../src/game/ui/credits-screen/credits-screen.ui.ts
+  var mount12 = (onBack) => {
     const root = ensureEl("credits-screen");
     if (root.children.length > 0) return;
     const body = mountScreenShell("credits-screen", I18N.MENU_CREDITS, "", onBack);
@@ -5598,9 +5615,9 @@ body {
   __el17.textContent = "/* \u2500\u2500\u2500 debug toggle (mobile) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n#debug-toggle {\n    position: fixed;\n    top: 50%;\n    left: 50%;\n    transform: translate(-50%, -50%);\n    width: 60px;\n    height: 60px;\n    z-index: 198;\n    display: none;\n    border-radius: 50%;\n    opacity: 0;\n}\n/* \u2500\u2500\u2500 touch controls \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n#touch-controls {\n    position: fixed;\n    bottom: 0;\n    left: 0;\n    right: 0;\n    z-index: 199;\n    display: none;\n    justify-content: space-between;\n    align-items: flex-end;\n    padding: 12px 16px;\n    padding-bottom: max(12px, env(safe-area-inset-bottom));\n    padding-left: max(16px, env(safe-area-inset-left));\n    padding-right: max(16px, env(safe-area-inset-right));\n    pointer-events: none;\n    will-change: transform;\n}\n#touch-pad-left {\n    display: flex;\n    flex-direction: column;\n    gap: 8px;\n    pointer-events: all;\n}\n#touch-top-row {\n    display: flex;\n    justify-content: space-between;\n    align-items: flex-end;\n}\n\n/* \u2500\u2500\u2500 pitch wheel \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n#touch-pitch-wheel {\n    width: 52px;\n    height: 96px;\n    border-radius: 10px;\n    border: 1px solid rgba(255, 102, 0, 0.28);\n    background: rgba(255, 102, 0, 0.04);\n    box-shadow: 0 0 16px rgba(255, 102, 0, 0.06), inset 0 0 20px rgba(0,0,0,0.3);\n    position: relative;\n    overflow: hidden;\n    touch-action: none;\n    cursor: ns-resize;\n}\n#touch-pitch-drum {\n    position: absolute;\n    top: -100%;\n    left: 0; right: 0;\n    height: 300%;\n    background: repeating-linear-gradient(\n        180deg,\n        transparent 0px,\n        transparent 7px,\n        rgba(255, 102, 0, 0.10) 7px,\n        rgba(255, 102, 0, 0.10) 9px\n    );\n    pointer-events: none;\n}\n#touch-pitch-indicator {\n    position: absolute;\n    left: 5px; right: 5px;\n    height: 18px;\n    border-radius: 5px;\n    background: rgba(255, 102, 0, 0.18);\n    border: 1px solid rgba(255, 102, 0, 0.45);\n    top: 50%;\n    transform: translateY(-50%);\n    pointer-events: none;\n}\n#touch-pitch-indicator.active {\n    background: rgba(255, 102, 0, 0.32);\n    border-color: rgba(255, 102, 0, 0.9);\n    box-shadow: 0 0 10px rgba(255, 102, 0, 0.3);\n}\n#touch-pitch-wheel.active-up { border-color: rgba(255, 102, 0, 0.8); }\n#touch-pitch-wheel.active-dn { border-color: rgba(255, 102, 0, 0.8); }\n.pitch-label {\n    position: absolute;\n    left: 50%;\n    transform: translateX(-50%);\n    font-size: 11px;\n    font-family: monospace;\n    color: rgba(255, 102, 0, 0.28);\n    pointer-events: none;\n    line-height: 1;\n}\n.pitch-up { top: 5px; }\n.pitch-dn { bottom: 5px; }\n\n/* \u2500\u2500\u2500 deliver toggle (Kippschalter) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n#touch-deliver-toggle {\n    width: 52px;\n    height: 96px;\n    border-radius: 10px;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    cursor: pointer;\n    touch-action: none;\n    user-select: none;\n    -webkit-user-select: none;\n    background: transparent;\n    border: none;\n    box-shadow: none;\n}\n.toggle-housing {\n    width: 52px;\n    height: 96px;\n    border-radius: 10px;\n    background: transparent;\n    border: none;\n    box-shadow: none;\n    position: relative;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    perspective: 200px;\n    pointer-events: none;\n    transition: none;\n}\n.toggle-rocker {\n    width: 52px;\n    height: 96px;\n    border-radius: 10px;\n    background: linear-gradient(180deg,\n        rgba(255, 102, 0, 0.14) 0%,\n        rgba(0, 0, 0, 0.70) 25%,\n        rgba(0, 0, 0, 0.70) 75%,\n        rgba(255, 102, 0, 0.06) 100%\n    );\n    box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.9);\n    border: none;\n    transform: rotateX(-22deg);\n    transform-origin: center bottom;\n    transition: transform 0.15s ease-out, background 0.2s, border-color 0.2s, box-shadow 0.2s;\n    pointer-events: none;\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    justify-content: space-between;\n    padding: 6px 0;\n    box-sizing: border-box;\n}\n/* top pip = off indicator, bottom pip = on indicator */\n.toggle-rocker::before,\n.toggle-rocker::after {\n    content: '';\n    width: 8px;\n    height: 8px;\n    border-radius: 50%;\n    transition: background 0.2s, box-shadow 0.2s;\n}\n.toggle-rocker::before { background: rgba(255, 102, 0, 0.5); }\n.toggle-rocker::after  { background: rgba(255, 102, 0, 0.15); }\n\n#touch-deliver-toggle.on .toggle-housing {\n    box-shadow: none;\n}\n#touch-deliver-toggle.on .toggle-rocker {\n    transform: rotateX(22deg);\n    transform-origin: center top;\n    background: linear-gradient(180deg,\n        rgba(255, 102, 0, 0.06) 0%,\n        rgba(0, 0, 0, 0.60) 25%,\n        rgba(255, 102, 0, 0.30) 75%,\n        rgba(255, 102, 0, 0.55) 100%\n    );\n    box-shadow: 0 4px 20px rgba(255, 102, 0, 0.4), inset 0 2px 8px rgba(0, 0, 0, 0.9);\n}\n#touch-deliver-toggle.on .toggle-rocker::before { background: rgba(255, 102, 0, 0.15); }\n#touch-deliver-toggle.on .toggle-rocker::after  { background: #ff6600; box-shadow: 0 0 8px rgba(255, 102, 0, 1); }\n\n/* \u2500\u2500\u2500 joystick \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n.joystick {\n    width: 130px;\n    height: 130px;\n    border-radius: 50%;\n    border: 1px solid rgba(255, 102, 0, 0.28);\n    background: rgba(255, 102, 0, 0.04);\n    box-shadow: 0 0 24px rgba(255, 102, 0, 0.07), inset 0 0 30px rgba(0,0,0,0.35);\n    position: relative;\n    touch-action: none;\n    pointer-events: all;\n    will-change: transform;\n    user-select: none;\n    -webkit-user-select: none;\n    -webkit-touch-callout: none;\n}\n.joystick-knob {\n    width: 52px;\n    height: 52px;\n    border-radius: 50%;\n    background: rgba(255, 102, 0, 0.14);\n    border: 1px solid rgba(255, 102, 0, 0.55);\n    box-shadow: 0 0 14px rgba(255, 102, 0, 0.22);\n    position: absolute;\n    top: 50%;\n    left: 50%;\n    transform: translate(-50%, -50%);\n    pointer-events: none;\n    transition: transform 0.12s ease-out;\n    will-change: transform;\n}\n.js-n, .js-s, .js-w, .js-e {\n    position: absolute;\n    color: rgba(255, 102, 0, 0.28);\n    font-size: 11px;\n    font-family: monospace;\n    font-weight: bold;\n    pointer-events: none;\n    line-height: 1;\n}\n.js-n { top: 7px;    left: 50%; transform: translateX(-50%); }\n.js-s { bottom: 7px; left: 50%; transform: translateX(-50%); }\n.js-w { left: 7px;   top: 50%;  transform: translateY(-50%); }\n.js-e { right: 7px;  top: 50%;  transform: translateY(-50%); }\n\n/* \u2500\u2500\u2500 generic touch button \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n.touch-btn {\n    background: rgba(255, 102, 0, 0.06);\n    border: 1px solid rgba(255, 102, 0, 0.25);\n    border-radius: 8px;\n    color: rgba(255, 102, 0, 0.5);\n    font-family: monospace;\n    font-size: 18px;\n    font-weight: bold;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    cursor: pointer;\n    touch-action: none;\n    user-select: none;\n    -webkit-user-select: none;\n    padding: 0;\n    margin: 0;\n    line-height: 1;\n    transition:\n        background 0.08s,\n        border-color 0.08s,\n        color 0.08s,\n        box-shadow 0.08s;\n    text-shadow: 0 0 8px rgba(255, 102, 0, 0.4);\n}\n.touch-btn.active {\n    background: rgba(255, 102, 0, 0.18);\n    border-color: rgba(255, 102, 0, 0.85);\n    color: #ff6600;\n    text-shadow:\n        0 0 12px #ff6600,\n        0 0 24px rgba(255, 102, 0, 0.5);\n    box-shadow:\n        0 0 16px rgba(255, 102, 0, 0.3),\n        inset 0 0 12px rgba(255, 102, 0, 0.08);\n}\n\n/* \u2500\u2500\u2500 PROFI safe-zone overlay (right stick, screen-relative mode) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n/* safe zone = |dx| < |dy|*0.4 \u2192 \xB121.8\xB0 from top and bottom */\n.js-safe-zone {\n    position: absolute;\n    inset: 0;\n    border-radius: 50%;\n    pointer-events: none;\n    opacity: 0;\n    transition: opacity 0.3s ease;\n    background: conic-gradient(\n        from 0deg at center,\n        rgba(255, 102, 0, 0.13)   0deg,\n        rgba(255, 102, 0, 0.13)  35deg,\n        transparent              35deg,\n        transparent             145deg,\n        rgba(255, 102, 0, 0.13) 145deg,\n        rgba(255, 102, 0, 0.13) 215deg,\n        transparent             215deg,\n        transparent             325deg,\n        rgba(255, 102, 0, 0.13) 325deg,\n        rgba(255, 102, 0, 0.13) 360deg\n    );\n}\n.joystick.profi .js-safe-zone {\n    opacity: 1;\n}\n\n/* \u2500\u2500 Tutorial highlight (touch devices only) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n@media (pointer: coarse) {\n    @keyframes tutorial-pulse {\n        0%, 100% { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.75), 0 0 10px 4px rgba(255, 255, 255, 0.35); }\n        50%       { box-shadow: 0 0 0 4px rgba(255, 255, 255, 1.0),  0 0 20px 10px rgba(255, 255, 255, 0.55); }\n    }\n\n    .tutorial-highlight {\n        box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 0 16px 6px rgba(255, 255, 255, 0.45);\n        border-radius: inherit;\n        animation: tutorial-pulse 1.4s ease-in-out infinite;\n    }\n}\n";
   document.head.appendChild(__el17);
 
-  // ../src/game/ui/touch-controls/touch-controls.ts
+  // ../src/game/ui/touch-controls/touch-controls.ui.ts
   var _toggleEl = null;
-  var mountTouchControls = () => {
+  var mount13 = () => {
     if (document.getElementById("touch-controls")) return;
     const el2 = document.createElement("div");
     el2.id = "touch-controls";
@@ -5758,7 +5775,7 @@ body {
     };
   };
 
-  // ../src/game/ui/mp-lobby/mp-lobby.ts
+  // ../src/game/ui/mp-lobby/mp-lobby.ui.ts
   var screen = () => document.getElementById("mp-lobby-screen");
   var el = (id) => document.getElementById(id);
   var setStatus = (id, txt, cls) => {
@@ -5766,16 +5783,16 @@ body {
     e.textContent = txt;
     e.className = "mp-status" + (cls ? ` ${cls}` : "");
   };
-  var show = (id) => {
+  var _showEl = (id) => {
     el(id).style.display = "flex";
   };
-  var hide = (id) => {
+  var _hideEl = (id) => {
     el(id).style.display = "none";
   };
   var _initialBackBtn;
   var _hostBackBtn;
   var _guestBackBtn;
-  var mountMpLobby = () => {
+  var mount14 = () => {
     ensureEl("mp-lobby-screen").classList.add("ui-screen");
     const heliCards = HELI_TYPES.map((h) => `
             <div class="mp-heli-card" data-id="${h.id}">
@@ -5837,10 +5854,10 @@ body {
     el("mp-guest-flow").appendChild(_guestBackBtn);
   };
   var _showHeliAndReadyPhase = (channels, isHost, peerCallsign, cb) => {
-    hide("mp-host-flow");
-    hide("mp-guest-flow");
-    hide("mp-lobby-initial");
-    show("mp-heli-flow");
+    _hideEl("mp-host-flow");
+    _hideEl("mp-guest-flow");
+    _hideEl("mp-lobby-initial");
+    _showEl("mp-heli-flow");
     el("mp-ready-peer-label").textContent = (peerCallsign || "WOLF") + " " + I18N.MP_CONNECTED;
     let selectedHeli = "";
     let localReady = false;
@@ -5857,7 +5874,7 @@ body {
       };
     });
     const runCountdown = () => {
-      hide("mp-ready-btn");
+      _hideEl("mp-ready-btn");
       screen().querySelectorAll(".mp-heli-card").forEach((c) => {
         c.style.pointerEvents = "none";
       });
@@ -5872,7 +5889,7 @@ body {
           setTimeout(tick, 1e3);
         } else {
           setTimeout(() => {
-            hideMpLobby();
+            hide4();
             cb.onConnected(isHost, peerCallsign, channels, selectedHeli);
           }, 700);
         }
@@ -5901,16 +5918,16 @@ body {
       if (peerReady) bothReady();
     };
   };
-  var showMpLobby = (cb) => {
-    show("mp-lobby-initial");
-    hide("mp-host-flow");
-    hide("mp-guest-flow");
-    hide("mp-heli-flow");
+  var show11 = (cb) => {
+    _showEl("mp-lobby-initial");
+    _hideEl("mp-host-flow");
+    _hideEl("mp-guest-flow");
+    _hideEl("mp-heli-flow");
     screen().style.display = "flex";
     _initialBackBtn.onclick = cb.onBack;
     el("mp-create-btn").onclick = async () => {
-      hide("mp-lobby-initial");
-      show("mp-host-flow");
+      _hideEl("mp-lobby-initial");
+      _showEl("mp-host-flow");
       setStatus("mp-host-status", I18N.MP_GENERATING);
       const peer = createRTCPeer();
       peer.onConnect((channels) => {
@@ -5951,13 +5968,13 @@ body {
       }
       _hostBackBtn.onclick = () => {
         peer.close();
-        hide("mp-host-flow");
-        show("mp-lobby-initial");
+        _hideEl("mp-host-flow");
+        _showEl("mp-lobby-initial");
       };
     };
     el("mp-join-btn").onclick = () => {
-      hide("mp-lobby-initial");
-      show("mp-guest-flow");
+      _hideEl("mp-lobby-initial");
+      _showEl("mp-guest-flow");
       const peer = createRTCPeer();
       peer.onConnect((channels) => {
         channels.sendEvent({ t: "hello", callsign: _localCallsign });
@@ -5992,12 +6009,12 @@ body {
       };
       _guestBackBtn.onclick = () => {
         peer.close();
-        hide("mp-guest-flow");
-        show("mp-lobby-initial");
+        _hideEl("mp-guest-flow");
+        _showEl("mp-lobby-initial");
       };
     };
   };
-  var hideMpLobby = () => {
+  var hide4 = () => {
     screen().style.display = "none";
   };
   var _localCallsign = "";
@@ -6065,22 +6082,22 @@ body {
   }, flush: () => {
   }, debugAltitude: false };
   var { drawHeli: _previewDrawHeli } = createDrawObjects(_dummyCtx, _dummyIso, tileW, tileH, _stubSceneRenderer);
-  initRankup(_previewDrawHeli);
+  init(_previewDrawHeli);
   var showNav = (id) => showScreenCrtEnter(id);
   var setupMainMenu = () => {
-    mountMainMenu({
+    mount({
       onSplashClick: () => showNav("main-menu"),
       onStart: () => showNav("campaign-select"),
       onSettings: () => showNav("settings-screen"),
       onCredits: () => showNav("credits-screen"),
-      onLegal: () => toLegalScreen()
+      onLegal: () => show7()
     });
     showNav("main-menu");
   };
   var setupBriefing = () => {
-    mountBriefing();
+    mount2();
     showScreen(null);
-    showBriefingOverlay(
+    show(
       {
         headline: { de: "PHASE 1 \u2014 ERSTER KONTAKT", en: "PHASE 1 \u2014 FIRST CONTACT" },
         sublines: [
@@ -6098,8 +6115,8 @@ body {
     );
   };
   var setupCampaignSelect = () => {
-    mountCampaignSelect();
-    showCampaignSelect({
+    mount3();
+    show2({
       session,
       campaigns: [STUB_FREE_FLIGHT, STUB_CAMPAIGN, STUB_CAMPAIGN],
       onSelect: () => {
@@ -6109,8 +6126,8 @@ body {
     });
   };
   var setupMissionSelect = () => {
-    mountMissionSelect();
-    showMissionSelect({
+    mount4();
+    show3({
       campaign: STUB_CAMPAIGN,
       campaignIndex: 1,
       session,
@@ -6121,8 +6138,8 @@ body {
     });
   };
   var setupHeliSelect = () => {
-    mountHeliSelect();
-    showHeliSelect({
+    mount5();
+    show4({
       rankIndex: RANKS.indexOf(getRank(session)),
       onSelect: () => {
       },
@@ -6131,7 +6148,7 @@ body {
     });
   };
   var setupSettings = () => {
-    initSettings({
+    init2({
       getSession: () => session,
       saveSession: () => {
       },
@@ -6149,26 +6166,26 @@ body {
       onBack: () => {
       }
     });
-    mountSettings();
-    toSettings();
+    mount7();
+    show6();
   };
   var setupLegalScreen = () => {
-    mountLegalScreen(() => {
+    mount8(() => {
     });
-    toLegalScreen();
+    show7();
   };
   var setupCookieBanner = () => {
-    mountCookieBanner();
+    mount9();
   };
   var setupLoadingScreen = () => {
     showScreen(null);
-    const handle = showLoadingScreen("ZEEWOLF SAR \u2014 LADEN\u2026");
+    const handle = show8("ZEEWOLF SAR \u2014 LADEN\u2026");
     handle.step("Terrain", 0.3);
     setTimeout(() => handle.step("Objekte", 0.6), 600);
     setTimeout(() => handle.step("Fertig", 1), 1200);
   };
   var setupPauseOverlay = () => {
-    mountPauseButton({
+    mount10({
       isMusicEnabled: () => false,
       setMusicEnabled: () => {
       },
@@ -6178,6 +6195,7 @@ body {
       getControlMode: () => "screen",
       setControlMode: () => {
       },
+      isTouchDevice: () => false,
       onPause: () => {
       },
       onResume: () => {
@@ -6186,31 +6204,31 @@ body {
       }
     });
     showScreen(null);
-    showPauseButton();
+    show9();
   };
   var setupRankup = () => {
-    mountRankup();
+    mount6();
     showScreen(null);
-    showRankUp(RANKS[1], "atlas");
+    show5(RANKS[1], "atlas");
   };
   var setupWhatsNew = () => {
-    mountWhatsNew();
+    mount11();
     showScreen(null);
-    showWhatsNewIfNeeded("0.0.0", () => {
+    show10(() => {
     });
   };
   var setupCreditsScreen = () => {
-    mountCreditsScreen(() => {
+    mount12(() => {
     });
     showNav("credits-screen");
   };
   var setupTouchControls = () => {
-    mountTouchControls();
+    mount13();
   };
   var setupMpLobby = () => {
-    mountMpLobby();
+    mount14();
     showScreen(null);
-    showMpLobby({
+    show11({
       onConnected: () => {
       },
       onBack: () => {

@@ -17,11 +17,11 @@ type CampaignSelectDeps = {
 
 type CampaignItem = CampaignExport & { index: number };
 
-export const mountCampaignSelect = () => {
+export const mount = () => {
     ensureEl('campaign-select');
 };
 
-export const showCampaignSelect = (deps: CampaignSelectDeps) => {
+export const show = (deps: CampaignSelectDeps) => {
     const { session, campaigns, onSelect, onBack } = deps;
 
     const body = mountScreenShell('campaign-select', I18N.CAMPAIGN_SELECT_TITLE, I18N.CAMPAIGN_SELECT_SUB, onBack);

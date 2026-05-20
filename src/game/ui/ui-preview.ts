@@ -1,17 +1,17 @@
 import './base.css';
 import './screens.css';
-import { mountMainMenu } from './main-menu/main-menu';
-import { mountBriefing, showBriefingOverlay } from './briefing/briefing';
-import { mountCampaignSelect, showCampaignSelect } from './campaign-select/campaign-select';
-import { mountMissionSelect, showMissionSelect } from './mission-select/mission-select';
-import { mountHeliSelect, showHeliSelect } from './heli-select/heli-select';
-import { initSettings, mountSettings } from './settings/settings';
-import { mountLegalScreen, toLegalScreen } from './legal-screen/legal-screen';
-import { mountCookieBanner } from './cookie-banner/cookie-banner';
-import { showLoadingScreen } from './loading-screen/loading-screen';
-import { mountPauseButton, showPauseButton } from './pause-overlay/pause-overlay';
-import { mountRankup, showRankUp } from './rankup/rankup';
-import { mountWhatsNew, showWhatsNewIfNeeded } from './whats-new/whats-new';
+import * as MainMenu from './main-menu/main-menu.ui';
+import * as Briefing from './briefing/briefing.ui';
+import * as CampaignSelect from './campaign-select/campaign-select.ui';
+import * as MissionSelect from './mission-select/mission-select.ui';
+import * as HeliSelect from './heli-select/heli-select.ui';
+import * as Settings from './settings/settings.ui';
+import * as LegalScreen from './legal-screen/legal-screen.ui';
+import * as CookieBanner from './cookie-banner/cookie-banner.ui';
+import * as LoadingScreen from './loading-screen/loading-screen.ui';
+import * as PauseOverlay from './pause-overlay/pause-overlay.ui';
+import * as Rankup from './rankup/rankup.ui';
+import * as WhatsNew from './whats-new/whats-new.ui';
 import { showScreen, showScreenCrtEnter } from './nav';
 import { loadSession, getRank, RANKS } from '../session';
 import type { CampaignExport } from '../../shared/types';
@@ -157,7 +157,7 @@ const setup = (): void => {
     panel.appendChild(title);
 
     // ── Settings (needs init before mount) ─────────────────────────────────
-    initSettings({
+    Settings.init({
         getSession: () => session,
         saveSession: () => {},
         getRankMissions: () => 8,
@@ -172,39 +172,40 @@ const setup = (): void => {
     });
 
     // ── Mount overlay components ────────────────────────────────────────────
-    mountBriefing();
-    mountRankup();
-    mountWhatsNew();
-    mountCookieBanner();
-    mountPauseButton({
+    Briefing.mount();
+    Rankup.mount();
+    WhatsNew.mount();
+    CookieBanner.mount();
+    PauseOverlay.mount({
         isMusicEnabled: () => false,
         setMusicEnabled: () => {},
         isSfxEnabled: () => false,
         setSfxEnabled: () => {},
         getControlMode: () => 'screen',
         setControlMode: () => {},
+        isTouchDevice: () => false,
         onPause: () => {},
         onResume: () => {},
         onAbort: () => showNav('main-menu'),
     });
 
     // ── Mount nav screens ───────────────────────────────────────────────────
-    mountMainMenu({
+    MainMenu.mount({
         onSplashClick: () => showNav('main-menu'),
         onStart: () => showNav('campaign-select'),
         onSettings: () => showNav('settings-screen'),
         onCredits: () => showNav('credits-screen'),
-        onLegal: () => toLegalScreen(),
+        onLegal: () => LegalScreen.show(),
     });
-    mountCampaignSelect();
-    mountMissionSelect();
-    mountHeliSelect();
-    mountSettings();
-    mountLegalScreen(() => showNav('main-menu'));
+    CampaignSelect.mount();
+    MissionSelect.mount();
+    HeliSelect.mount();
+    Settings.mount();
+    LegalScreen.mount(() => showNav('main-menu'));
 
     // ── Show/hide helpers ────────────────────────────────────────────────────
     const showCampaign = () =>
-        showCampaignSelect({
+        CampaignSelect.show({
             session,
             campaigns: [STUB_FREE_FLIGHT, STUB_CAMPAIGN, STUB_CAMPAIGN],
             onSelect: i => showMission(i),
@@ -212,7 +213,7 @@ const setup = (): void => {
         });
 
     const showMission = (ci: number) =>
-        showMissionSelect({
+        MissionSelect.show({
             campaign: STUB_CAMPAIGN,
             campaignIndex: ci,
             session,
@@ -221,7 +222,7 @@ const setup = (): void => {
         });
 
     const showHeli = () =>
-        showHeliSelect({
+        HeliSelect.show({
             rankIndex: RANKS.indexOf(getRank(session)),
             onSelect: id => console.log('[ui-preview] heli selected:', id),
             onBack: () => showMission(0),
@@ -239,12 +240,12 @@ const setup = (): void => {
     addBtn('Settings', () => {
         showNav('settings-screen');
     });
-    addBtn('Legal', () => toLegalScreen());
+    addBtn('Legal', () => LegalScreen.show());
 
     addSection('Overlays');
     addBtn('Briefing', () => {
         showScreen(null);
-        showBriefingOverlay(
+        Briefing.show(
             {
                 headline: { de: 'PHASE 1 — ERSTER KONTAKT', en: 'PHASE 1 — FIRST CONTACT' },
                 sublines: [
@@ -261,25 +262,25 @@ const setup = (): void => {
         );
     });
     addBtn('Pause Button (show)', () => {
-        showPauseButton();
+        PauseOverlay.show();
     });
     addBtn('Rank Up', () => {
         showScreen(null);
-        showRankUp(RANKS[1], 'atlas');
+        Rankup.show(RANKS[1], 'atlas');
     });
     addBtn("What's New", () => {
         showScreen(null);
-        showWhatsNewIfNeeded('0.0.0', () => {});
+        WhatsNew.show(() => {});
     });
     addBtn('Cookie Banner', () => {
         showScreen(null);
-        mountCookieBanner();
+        CookieBanner.mount();
     });
 
     addSection('Loading');
     addBtn('Loading Screen', () => {
         showScreen(null);
-        const handle = showLoadingScreen('ZEEWOLF SAR — LADEN…');
+        const handle = LoadingScreen.show('ZEEWOLF SAR — LADEN…');
         handle.step('Terrain', 0.3);
         setTimeout(() => handle.step('Objekte', 0.6), 600);
         setTimeout(() => handle.step('Fertig', 1.0), 1200);

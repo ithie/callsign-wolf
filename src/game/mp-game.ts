@@ -3,7 +3,7 @@ import { mpState, resetMpState } from './multiplayer/mp-state';
 import { applyHeliSnap, applyWorldSnap, packHeli, packWorld } from './multiplayer/sync';
 import { MP_CAMPAIGN_INDEX, MP_COUNTDOWN_SEC, MP_PAD } from './multiplayer/mp-mission';
 import type { MpChannels } from './multiplayer/rtc';
-import { mountMpLobby, showMpLobby, hideMpLobby, setLobbyCallsign } from './ui/mp-lobby/mp-lobby';
+import * as MpLobby from './ui/mp-lobby/mp-lobby.ui';
 import { soundHandler, campaignHandler, musicConfig } from './main';
 import { stopMenuParticles } from './ui/menu-particles/menu-particles';
 import { initGrid } from './sim/terrain';
@@ -134,14 +134,14 @@ export const initMpGame = (deps: MpGameDeps): void => {
 
     const _toMpLobby = () => {
         document.getElementById('main-menu')!.style.display = 'none';
-        setLobbyCallsign(getPlayerName());
-        showMpLobby({
+        MpLobby.setLobbyCallsign(getPlayerName());
+        MpLobby.show({
             onConnected: (isHost: boolean, peerCallsign: string, channels: MpChannels, heliType: string) => {
                 _setupMpChannels(channels, isHost);
                 startMpGame(isHost, peerCallsign, heliType);
             },
             onBack: () => {
-                hideMpLobby();
+                MpLobby.hide();
                 document.getElementById('main-menu')!.style.display = 'flex';
             },
         });
@@ -197,7 +197,7 @@ export const initMpGame = (deps: MpGameDeps): void => {
     mpTriggerCrash = _mpTriggerCrash;
     mpTimeOut = _mpTimeOut;
 
-    mountMpLobby();
+    MpLobby.mount();
 };
 
 // ─── Render / tick helpers called from game.ts behind !_IS_APP guards ─────────

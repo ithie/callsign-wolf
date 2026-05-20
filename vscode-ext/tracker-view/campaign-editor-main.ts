@@ -13,7 +13,7 @@ styleEl.textContent = styleContent as unknown as string;
 document.head.appendChild(styleEl);
 
 let notifyTimer: ReturnType<typeof setTimeout> | null = null;
-let isLoading = false;
+let isLoading = true;
 
 const doExport = (): string | null => {
     const origAlert = window.alert;
@@ -39,6 +39,14 @@ const scheduleNotify = (): void => {
     }, 400);
 };
 
+const _showTutorialLock = (): void => {
+    document.body.innerHTML = '';
+    const el = document.createElement('div');
+    el.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100vh;font-family:monospace;font-size:13px;color:#555;letter-spacing:2px;';
+    el.textContent = 'TUTORIAL KANN NICHT BEARBEITET WERDEN';
+    document.body.appendChild(el);
+};
+
 // Wire up the state-changed callback before initUI so all changes are captured
 setOnStateChanged(scheduleNotify);
 
@@ -47,10 +55,15 @@ loadMission(0);
 
 window.addEventListener('message', (e: MessageEvent<{ type: string; content?: string }>) => {
     if (e.data.type === 'load' && e.data.content !== undefined) {
-        isLoading = true;
+        let campaignType = '';
+        try { campaignType = (JSON.parse(e.data.content) as { type?: string }).type ?? ''; } catch { /* ignore */ }
+        if (campaignType === 'tutorial') {
+            _showTutorialLock();
+            isLoading = false;
+            return;
+        }
         doImport(e.data.content);
         isLoading = false;
-        // Force sidebar refresh after import (in case scheduleNotify fired before __editor was set)
         setTimeout(() => (window as any).__onEditorStateChanged?.(), 100);
     }
 });

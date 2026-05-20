@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nGonRing, cylFaces, HANGAR_DEF, LIGHTHOUSE_DEF } from '../../game/defs';
+import { nGonRing, cylFaces, HANGAR_DEF, LIGHTHOUSE_DEF } from './defs';
 
 const TWO_PI = Math.PI * 2;
 

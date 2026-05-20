@@ -6,7 +6,7 @@ vi.mock('@capacitor/preferences', () => ({
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Preferences } from '@capacitor/preferences';
-import { storageGet, storageSet, storageRemove, initAppStorage } from '../../game/storage';
+import { storageGet, storageSet, storageRemove, initAppStorage } from './storage';
 
 // ─── Cache-Verhalten (in-memory, kein echtes Capacitor) ───────────────────────
 

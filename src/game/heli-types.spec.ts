@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { HELI_TYPES, getHeliType } from '../../game/heli-types';
+import { HELI_TYPES, getHeliType } from './heli-types';
 
 describe('HELI_TYPES', () => {
     it('contains at least one entry', () => {

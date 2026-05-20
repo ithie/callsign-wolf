@@ -13,7 +13,7 @@ import {
     isConsentExpired, isConsentOutdated,
     CONSENT_VERSION,
     type PlayerSession,
-} from '../../game/session';
+} from './session';
 
 const mkSession = (overrides: Partial<PlayerSession> = {}): PlayerSession => ({
     cookieConsent: null,

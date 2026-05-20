@@ -2,6 +2,7 @@ export {};
 declare const acquireVsCodeApi: () => { postMessage: (msg: unknown) => void };
 const vscode = acquireVsCodeApi();
 
+let _type: SoundParams['type'] = 'heli';
 let actx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
 let animId: number | null = null;
@@ -49,7 +50,7 @@ const clearCanvases = (): void => {
 };
 
 const getParams = (): SoundParams => {
-    const type = (document.getElementById('type-sel') as HTMLSelectElement).value as SoundParams['type'];
+    const type = _type;
     if (type === 'heli') return {
         type: 'heli',
         blades: parseInt((document.getElementById('heli-blades') as HTMLSelectElement).value, 10),
@@ -219,9 +220,8 @@ const scheduleNotify = (): void => {
 const loadData = (json: string): void => {
     let p: SoundParams;
     try { p = JSON.parse(json) as SoundParams; } catch (_) { return; }
-    const type = p.type ?? 'heli';
-    (document.getElementById('type-sel') as HTMLSelectElement).value = type;
-    showGroup(type);
+    _type = p.type ?? 'heli';
+    showGroup(_type);
 
     const setSlider = (id: string, val: number | undefined, dec: number): void => {
         if (val === undefined) return;
@@ -255,9 +255,6 @@ const loadData = (json: string): void => {
     }
 };
 
-(document.getElementById('type-sel') as HTMLSelectElement).addEventListener('change', function() {
-    showGroup(this.value); scheduleNotify();
-});
 document.getElementById('btn-play')?.addEventListener('click', play);
 document.getElementById('btn-stop')?.addEventListener('click', stopAll);
 
@@ -280,5 +277,4 @@ window.addEventListener('message', (e: MessageEvent<{ type: string; content?: st
 });
 
 clearCanvases();
-showGroup('heli');
 vscode.postMessage({ type: 'ready' });

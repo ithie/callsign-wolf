@@ -9,6 +9,7 @@ type PauseOverlayDeps = {
     setSfxEnabled: (v: boolean) => void;
     getControlMode: () => 'heading' | 'screen';
     setControlMode: (m: 'heading' | 'screen') => void;
+    isTouchDevice: () => boolean;
     onPause: () => void;
     onResume: () => void;
     onAbort: () => void;
@@ -54,18 +55,18 @@ const _abort = () => {
     _deps.onAbort();
 };
 
-export const showPauseButton = () => {
+export const show = () => {
     const el = document.getElementById('pause-btn');
     if (el) el.style.display = 'flex';
 };
 
-export const hidePauseButton = () => {
+export const hide = () => {
     const el = document.getElementById('pause-btn');
     if (el) el.style.display = 'none';
     document.getElementById('pause-overlay')?.classList.remove('visible');
 };
 
-export const mountPauseButton = (deps: PauseOverlayDeps) => {
+export const mount = (deps: PauseOverlayDeps) => {
     _deps = deps;
 
     // gear button — mounted inside #hud-tl alongside the mute button
@@ -120,6 +121,8 @@ export const mountPauseButton = (deps: PauseOverlayDeps) => {
     document.getElementById('pause-sfx-off')!.onclick   = () => { _deps.setSfxEnabled(false);   _refreshButtons(); };
     document.getElementById('pause-ctrl-simplified')!.onclick = () => { _deps.setControlMode('heading'); _refreshButtons(); };
     document.getElementById('pause-ctrl-profi')!.onclick      = () => { _deps.setControlMode('screen');  _refreshButtons(); };
+    (document.querySelector('#pause-panel .pause-field:last-of-type') as HTMLElement).style.display =
+        _deps.isTouchDevice() ? '' : 'none';
     document.getElementById('pause-resume')!.onclick = _hide;
     document.getElementById('pause-abort')!.onclick  = _abort;
 };

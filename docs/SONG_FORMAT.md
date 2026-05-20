@@ -102,4 +102,4 @@ const songList: Record<string, SongData> = {
 
 The key you use here is the theme name passed to `soundHandler.play('mysong')`. By convention the key matches the filename stem.
 
-> **Workbench dropdowns** (Campaign Editor and Musik tab) populate their song lists by reading `src/game/music/` directly via `window.workbench.readDir`. Any `.zsong` file placed there will appear in the dropdowns immediately — no restart required. However, the game itself still requires the static import and `songList` entry above to actually play the song at runtime.
+> **VS Code Campaign Editor** populates its song dropdowns by scanning `src/game/music/` for `.zsong` files. Any new file placed there appears immediately — no restart required. However, the game itself still requires the static import and `songList` entry above to actually play the song at runtime.

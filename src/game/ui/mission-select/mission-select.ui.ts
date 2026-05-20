@@ -23,11 +23,11 @@ type MissionItem = {
     bestTime: number | null;
 };
 
-export const mountMissionSelect = () => {
+export const mount = () => {
     ensureEl('mission-select');
 };
 
-export const showMissionSelect = (deps: MissionSelectDeps) => {
+export const show = (deps: MissionSelectDeps) => {
     const { campaign, campaignIndex, session, onSelect, onBack } = deps;
     const key = String(campaignIndex);
     const cp = session.campaignProgress[key];

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { compressFoliage, decompressFoliage, compressTerrain, decompressTerrain } from '../../shared/utils';
+import { compressFoliage, decompressFoliage, compressTerrain, decompressTerrain } from './utils';
 
 // ─── Foliage ──────────────────────────────────────────────────────────────────
 

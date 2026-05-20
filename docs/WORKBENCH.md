@@ -1,182 +1,110 @@
-# Workbench
+# Zeewolf SAR Tools — VS Code Extension
 
-The Workbench is an Electron application that runs alongside the Vite dev server. It provides the Mission Editor, the Model Editor, the ZSynth Tracker, a code editor, and Git integration in a single window.
+The old Electron-based workbench has been replaced by a VS Code extension. Install it once; all editors open directly inside VS Code as custom editor panels.
 
-Start everything with:
+---
+
+## Setup
 
 ```sh
-npm run dev
+cd vscode-ext
+npm run deploy
+```
+
+This builds the extension and installs it into the local VS Code instance. After installation, reload the window (`Cmd+Shift+P` → **Developer: Reload Window**).
+
+To rebuild and reinstall after changes:
+
+```sh
+npm run deploy
 ```
 
 ---
 
-## Architecture
+## Editors
 
-The Workbench consists of three layers:
+The extension registers custom editors for four file types. Opening a matching file in VS Code automatically opens the corresponding editor.
 
-| Layer        | Location                        | Description                                                  |
-| ------------ | ------------------------------- | ------------------------------------------------------------ |
-| Main process | `workbench/main/index.ts`       | Electron main — IPC handlers, dialogs, file I/O              |
-| Preload      | `workbench/main/preload.ts`     | Exposes `window.workbench` API to renderer via contextBridge |
-| Renderer     | `workbench/renderer/index.html` | UI shell — hosts iframes for editor, tracker, code editor    |
-
-The renderer and all iframes are served from `http://localhost:5173` (Vite). Because they share the same origin, iframes can access `window.parent.workbench` directly.
-
----
-
-## `window.workbench` API
-
-All methods are available in any iframe via `window.parent.workbench`.
-
-### File I/O
-
-#### `readFile(filePath: string): Promise<string>`
-
-Reads a file. `filePath` is relative to the project root.
-
-```js
-const content = await window.parent.workbench.readFile('src/game/music/maintheme.json');
-```
-
-#### `writeFile(filePath: string, content: string): Promise<void>`
-
-Writes a file. `filePath` is relative to the project root. Creates or overwrites.
-
-```js
-await window.parent.workbench.writeFile('src/game/music/mysong.json', json);
-```
-
-#### `readDir(dirPath: string): Promise<Array<{ name: string; isDir: boolean }>>`
-
-Lists a directory. `dirPath` is relative to the project root. Excludes `node_modules`, `dist`, `.`-prefixed entries, and `workbench/`.
-
----
-
-### Campaign Dialogs
-
-#### `showOpenDialog(): Promise<{ cancelled: boolean; filename?: string; content?: string }>`
-
-Opens a native file picker defaulting to `src/game/campaigns/`. Returns the filename and full file content on success.
-
-#### `showSaveDialog(defaultName?: string): Promise<{ cancelled: boolean; filename?: string }>`
-
-Opens a native save dialog defaulting to `src/game/campaigns/`. Returns only the chosen filename (basename), not a path. Write the file separately with `saveCampaignFile`.
-
-#### `saveCampaignFile(filename: string, content: string): Promise<{ ok: boolean }>`
-
-Writes a campaign to `src/game/campaigns/{filename}` and automatically registers it in `src/game/main.ts` (adds the import and array entry) if it is not already present.
-
----
-
-### Song Dialogs
-
-#### `showOpenSongDialog(): Promise<{ cancelled: boolean; filename?: string; relativePath?: string; content?: string }>`
-
-Opens a native file picker defaulting to `src/game/music/`. Returns the filename, the path relative to the project root, and the full file content.
-
-#### `showSaveSongDialog(defaultName?: string): Promise<{ cancelled: boolean; filename?: string; relativePath?: string }>`
-
-Opens a native save dialog defaulting to `src/game/music/`. Returns the filename and the path relative to the project root. Write the file with `writeFile(relativePath, content)`.
-
----
-
-### Git
-
-All methods wrap the project-root Git repository.
-
-#### `git.getBranch(): Promise<string>`
-
-Returns the current branch name.
-
-#### `git.pull(): Promise<string>`
-
-Runs `git pull` and returns stdout.
-
-#### `git.commit(message: string): Promise<string>`
-
-Stages all changes (`git add -A`) and commits with the given message. Returns stdout.
-
-#### `git.push(): Promise<string>`
-
-Runs `git push` and returns stdout.
-
----
-
-## IPC Handlers
-
-The following IPC channels are registered in the main process. They are not called directly — use the `window.workbench` API instead.
-
-| Channel                 | Description                               |
-| ----------------------- | ----------------------------------------- |
-| `read-file`             | Read file relative to project root        |
-| `write-file`            | Write file relative to project root       |
-| `read-dir`              | List directory relative to project root   |
-| `show-open-dialog`      | Campaign open dialog                      |
-| `show-save-dialog`      | Campaign save dialog                      |
-| `save-campaign-file`    | Write campaign + auto-register in main.ts |
-| `show-open-song-dialog` | Song open dialog                          |
-| `show-save-song-dialog` | Song save dialog                          |
-| `git-branch`            | Get current branch                        |
-| `git-pull`              | Pull from remote                          |
-| `git-commit`            | Stage all and commit                      |
-| `git-push`              | Push to remote                            |
+| File extension | Editor | Description |
+| --- | --- | --- |
+| `*.zcampaign` | Campaign Editor | Paint terrain, place objects, configure missions |
+| `*.zsong` | ZSong Editor | Step-sequencer tracker for in-game music |
+| `*.zdef` | ZDEF Editor | Isometric geometry editor (vertices, faces, colors) |
+| `*.zsound` | Sound Lab | Synthesizer parameter editor |
 
 ---
 
 ## Campaign Editor
 
-Embedded in the **Editor** tab. Provides full mission editing with a sidebar panel on the left.
+Opens when you click a `*.zcampaign` file. Provides:
 
-Campaign-level fields:
+- Terrain painter (tile types, foliage, water)
+- Object placement (carriers, boats, submarines, pads, rescue zones, wind zones)
+- Mission-level fields: title, objectives, music selection
+- Campaign-level fields: title, sublines, briefing/in-game music
 
-| Field            | Control    | Description                                                   |
-| ---------------- | ---------- | ------------------------------------------------------------- |
-| Title            | text input | `campaignTitle` — shown on the campaign select screen         |
-| Sublines         | textarea   | `campaignSublines` — one subtitle per line                    |
-| Musik – Briefing | dropdown   | Song played when the mission briefing screen opens (optional) |
-| Musik – In-Game  | dropdown   | Song played when the mission itself starts (optional)         |
+A **preview button** (`$(open-preview)`) in the editor title bar opens a live isometric preview of the current mission alongside the editor.
 
-Each music dropdown has a ▶ play button to preview the selected song in the browser (requires the Vite dev server to be running). A **■ Stop** button stops playback.
+The preview connects to the running Vite dev server (`localhost:5173` by default). The port is configurable via **Settings → Zeewolf SAR Tools → Dev Server Port**.
 
 ---
 
-## Musik Tab
+## ZSong Editor
 
-A dedicated tab for assigning background music to global game screens. Changes are saved to `src/game/music-config.json`.
+Opens when you click a `*.zsong` file. Provides:
 
-| Screen     | Config key | Default     |
-| ---------- | ---------- | ----------- |
-| Hauptmenü  | `mainMenu` | `maintheme` |
-| Credits    | `credits`  | (none)      |
-| Erfolg     | `success`  | `final`     |
-| Niederlage | `defeat`   | `final`     |
+- 3 drum tracks (Kick, Snare, Hi-Hat) with toggle pads per step
+- 3 synth tracks with per-step note selection
+- Per-track controls: instrument preset, waveform, filter, attack, release, detune
+- Global BPM control
+- ▶ / ■ live preview buttons
 
-Each screen shows a color-coded canvas preview and a song dropdown. The dropdown is populated from all `.zsong` files in `src/game/music/`. Each row has ▶ and ■ buttons for live preview (requires the Vite dev server).
-
-Click **Speichern** to write the config to disk.
-
-> **Note:** Song preview uses ZsynthPlayer loaded directly via `<script type="module">` in the workbench renderer — no separate iframe needed. Preview will not work if the dev server is not running.
+Changes are saved directly to the file on disk.
 
 ---
 
-## Model Editor
+## ZDEF Editor
 
-An interactive editor for the game's isometric DEF geometry (`src/modeleditor.html`).
+Opens when you click a `*.zdef` file. Provides:
 
-- Browse all preset models: Hangar, Lighthouse, Sailboat, Carrier (Hull + Tower), Fuel Truck, and all helicopters
-- Open any `.zdef` file from `src/game/models/` directly via the native file dialog
-- Add, select, move, and delete vertices and faces directly on the isometric canvas
-- Per-face controls: color picker, stroke color, normal direction for backface culling
-- Save the current DEF as a `.zdef` file directly into `src/game/models/`
-
-The Model Editor is served by Vite and embedded as an iframe in the Workbench. It uses the same `SceneRenderer` and DEF pipeline as the game.
+- Isometric canvas with the current model rendered
+- Add / select / move / delete vertices and faces
+- Per-face controls: fill color, stroke color, normal for backface culling
+- Saves directly to the `.zdef` file
 
 ---
 
-## Adding a New Tool
+## Sound Lab
 
-1. Add any required IPC handler(s) in `workbench/main/index.ts`
-2. Expose them via `contextBridge` in `workbench/main/preload.ts`
-3. Rebuild the workbench: `npm run workbench:build`
-4. Add an iframe (or panel) in `workbench/renderer/index.html`
-5. Access the API from the iframe via `window.parent.workbench`
+Opens when you click a `*.zsound` file. Synthesizer parameter editor for sound effect design.
+
+---
+
+## UI Preview
+
+Any `*.ui.ts` file gains a preview button (`$(symbol-color)`) in the editor title bar. Clicking it opens a Webview panel that renders the component in isolation — no dev server required.
+
+The extension auto-starts an esbuild watcher when it activates. The preview panel reloads automatically whenever the bundle changes.
+
+See [UI.md](./UI.md) for component documentation.
+
+---
+
+## Extension source
+
+```text
+vscode-ext/
+  src/
+    extension.ts          Entry point, registers all providers
+    campaign-editor.ts    Campaign editor WebviewPanel
+    zsong-editor.ts       ZSong editor WebviewPanel
+    zdef-editor.ts        ZDEF editor WebviewPanel
+    zsound-editor.ts      Sound Lab WebviewPanel
+    ui-preview-provider.ts  UI component preview WebviewPanel
+  editor-view/            Campaign editor renderer (bundled separately)
+  tracker-view/           ZSong/ZDEF/Sound Lab renderers (bundled separately)
+  esbuild.mjs             Build script (bundles all views + extension host)
+  package.json
+```
+
+Build output goes to `vscode-ext/dist/`. The `.vsix` package is produced by `npm run package`.

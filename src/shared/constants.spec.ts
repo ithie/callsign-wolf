@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { getLandColor, COLORS } from '../../shared/constants';
+import { getLandColor, COLORS } from './constants';
 
 describe('getLandColor', () => {
     it('returns rgb() format', () => {

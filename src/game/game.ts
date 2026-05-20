@@ -1,8 +1,8 @@
 import './ui/base.css';
 import './ui/screens.css';
-import { showLoadingScreen } from './ui/loading-screen/loading-screen';
+import * as LoadingScreen from './ui/loading-screen/loading-screen.ui';
 import { ensureEl } from './ui/dom-helpers';
-import { mountTouchControls, initPitchWheel, setRightStickProfi } from './ui/touch-controls/touch-controls';
+import * as TouchControls from './ui/touch-controls/touch-controls.ui';
 import { iso } from './render';
 import { campaignHandler, soundHandler, zinit, musicConfig } from './main';
 import {
@@ -47,8 +47,8 @@ import { tileW as _tileW, tileH as _tileH, stepH as _stepH, gameRenderScale } fr
 const tileW = Math.round(_tileW * gameRenderScale);
 const tileH = Math.round(_tileH * gameRenderScale);
 const stepH = _stepH * gameRenderScale;
-import { mountCreditsScreen, toCredits } from './ui/credits-screen/credits-screen';
-import { mountLegalScreen, toLegalScreen } from './ui/legal-screen/legal-screen';
+import * as CreditsScreen from './ui/credits-screen/credits-screen.ui';
+import * as LegalScreen from './ui/legal-screen/legal-screen.ui';
 import { createBackButton } from './ui/back-button/back-button';
 import { startMenuParticles, stopMenuParticles } from './ui/menu-particles/menu-particles';
 import {
@@ -60,7 +60,7 @@ import {
     mpGetMissionComplete,
     mpGetTriggerCrash,
 } from './mp-game';
-import { initHeliSelect, mountHeliSelect, showHeliSelect, animMainMenuBg } from './ui/heli-select/heli-select';
+import * as HeliSelect from './ui/heli-select/heli-select.ui';
 import {
     I18N,
     I18N_DE,
@@ -71,15 +71,15 @@ import {
     onLanguageChange,
     setLanguage,
 } from './i18n';
-import { mountCookieBanner, notifyConsent } from './ui/cookie-banner/cookie-banner';
-import { mountBriefing, showBriefingOverlay, hideBriefing } from './ui/briefing/briefing';
-import { mountSettings, initSettings, toSettings } from './ui/settings/settings';
-import { mountRankup, showRankUp, initRankup } from './ui/rankup/rankup';
-import { mountPauseButton, showPauseButton, hidePauseButton } from './ui/pause-overlay/pause-overlay';
-import { mountWhatsNew, showWhatsNewIfNeeded } from './ui/whats-new/whats-new';
-import { mountMainMenu } from './ui/main-menu/main-menu';
-import { mountMissionSelect, showMissionSelect } from './ui/mission-select/mission-select';
-import { mountCampaignSelect, showCampaignSelect } from './ui/campaign-select/campaign-select';
+import * as CookieBanner from './ui/cookie-banner/cookie-banner.ui';
+import * as Briefing from './ui/briefing/briefing.ui';
+import * as Settings from './ui/settings/settings.ui';
+import * as Rankup from './ui/rankup/rankup.ui';
+import * as PauseOverlay from './ui/pause-overlay/pause-overlay.ui';
+import * as WhatsNew from './ui/whats-new/whats-new.ui';
+import * as MainMenu from './ui/main-menu/main-menu.ui';
+import * as MissionSelect from './ui/mission-select/mission-select.ui';
+import * as CampaignSelect from './ui/campaign-select/campaign-select.ui';
 import { showScreen } from './ui/nav';
 import { mountMinimap, initMinimapTerrain } from './ui/minimap/minimap';
 import { createHud } from './ui/hud/hud';
@@ -151,8 +151,8 @@ const { drawTrees } = createFoliage({
     getPartyMode: () => _partyMode,
 });
 
-initHeliSelect(G, drawHeli);
-initRankup(drawHeli);
+HeliSelect.init(G, drawHeli);
+Rankup.init(drawHeli);
 
 // ─── helper flags ────────────────────────────────────────────────────────────
 function hasCarrier() {
@@ -208,7 +208,7 @@ const _stopMission = () => {
     cancelAnimationFrame(_rafId);
     _rafId = 0;
     destroyTutorial();
-    hidePauseButton();
+    PauseOverlay.hide();
     stopHeliSound();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     _hud.showAll(false);
@@ -298,7 +298,7 @@ function missionComplete() {
         document.getElementById('campaign-complete-screen')!.style.display = 'flex';
         soundHandler.play(musicConfig.success || 'final', false);
         if (rankUpRank)
-            showRankUp(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
+            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
         return;
     }
 
@@ -323,7 +323,7 @@ function missionComplete() {
         G.debris = [];
         _openMissionSelect();
         if (rankUpRank)
-            showRankUp(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
+            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
     };
 }
 
@@ -353,7 +353,7 @@ function returnToBase() {
     document.getElementById('campaign-failed-screen')!.style.display = 'none';
     document.getElementById('mission-success-screen')!.style.display = 'none';
     document.getElementById('crash-screen')!.style.display = 'none';
-    hideBriefing();
+    Briefing.hide();
     _openMissionSelect(); // calls showScreen('mission-select')
     soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
 }
@@ -365,13 +365,13 @@ const returnToCampaignSelect = () => {
     zstate.gameStarted = false;
     _resetHeliState();
     document.getElementById('campaign-complete-screen')!.style.display = 'none';
-    hideBriefing();
+    Briefing.hide();
     _openCampaignSelect(); // calls showScreen('campaign-select')
     soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
 };
 
 const _openCampaignSelect = () => {
-    showCampaignSelect({
+    CampaignSelect.show({
         session: _session,
         campaigns: campaignHandler.getCampaigns(),
         onSelect: idx => selectCampaign(String(idx)),
@@ -431,7 +431,7 @@ const _doSelectCampaign = (idx: number) => {
 
 const _openMissionSelect = () => {
     const campaigns = campaignHandler.getCampaigns();
-    showMissionSelect({
+    MissionSelect.show({
         campaign: campaigns[_selectedCampaignIndex],
         campaignIndex: _selectedCampaignIndex,
         session: _session,
@@ -455,7 +455,7 @@ const selectMission = (missionIndex: number) => {
         return;
     }
 
-    showHeliSelect({
+    HeliSelect.show({
         rankIndex: RANKS.indexOf(getRank(_session, _getRankMissions())),
         onSelect: startGame,
         onBack: backFromHeliSelect,
@@ -526,7 +526,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     _lighthouseY = _lhObj ? _lhObj.y : -1;
     _missionGridSize = campaignHandler.getTerrain().gridSize;
 
-    const handle = showLoader ? showLoadingScreen(localize(_lmd.headline) || 'MISSION') : null;
+    const handle = showLoader ? LoadingScreen.show(localize(_lmd.headline) || 'MISSION') : null;
 
     // Step 1 — terrain
     generateTerrain(G.points, _missionHasPad ? { ...G.PAD, yMin: G.PAD.yMin - 3 } : null);
@@ -592,14 +592,14 @@ const launchMission = async (showLoader = true): Promise<void> => {
     initHeliSound(G.heli.type);
     _briefingActive = true;
     _rafId = requestAnimationFrame(drawScene);
-    showPauseButton();
+    PauseOverlay.show();
 
     const rank = getRank(_session, _getRankMissions());
     const address = I18N.BRIEFING_ADDRESS(rank.name, _session.playerName).toUpperCase();
     const briefingSong = campaignHandler.getActiveCampaignMusic().briefing;
     if (briefingSong) soundHandler.play(briefingSong, true);
 
-    showBriefingOverlay({ headline: _lmd.headline, sublines: _lmd.sublines, briefing: _lmd.briefing, address }, () => {
+    Briefing.show({ headline: _lmd.headline, sublines: _lmd.sublines, briefing: _lmd.briefing, address }, () => {
         _briefingActive = false;
         _missionStartTime = Date.now();
         soundHandler.play(campaignHandler.getActiveCampaignMusic().ingame || 'clike', false, 0.4);
@@ -880,7 +880,7 @@ if (!_IS_APP) {
 
 // ─── main menu ───────────────────────────────────────────────────────────────
 function toMainMenu() {
-    hidePauseButton();
+    PauseOverlay.hide();
     cancelAnimationFrame(_rafId);
     _rafId = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -888,7 +888,7 @@ function toMainMenu() {
     if (!_IS_APP) _partyMode = false;
     showScreen('main-menu');
     soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
-    animMainMenuBg();
+    HeliSelect.animMainMenuBg();
     startMenuParticles();
 }
 
@@ -960,7 +960,7 @@ const _physicsCtx = {
         _session.rankOverride = RANKS.length - 1;
         saveSession(_session);
         _stopMission();
-        showRankUp(RANKS[RANKS.length - 1], undefined);
+        Rankup.show(RANKS[RANKS.length - 1], undefined);
     },
 } as import('./sim/simulation').PhysicsCtx;
 
@@ -997,14 +997,14 @@ const approveCookies = () => {
     _session.consentVersion = CONSENT_VERSION;
     saveSession(_session);
     (document.getElementById('cookie-banner') as HTMLElement).style.display = 'none';
-    notifyConsent();
+    CookieBanner.notifyConsent();
 };
 
 const declineCookies = () => {
     _session.cookieConsent = false;
     storageRemove(STORAGE_KEY);
     (document.getElementById('cookie-banner') as HTMLElement).style.display = 'none';
-    notifyConsent();
+    CookieBanner.notifyConsent();
 };
 
 window.onkeydown = e => {
@@ -1092,7 +1092,7 @@ const CTRL_MODE_KEY = 'zeewolf-ctrl-mode';
 const getControlMode = (): 'heading' | 'screen' => (storageGet(CTRL_MODE_KEY) === 'screen' ? 'screen' : 'heading');
 const setControlMode = (m: 'heading' | 'screen') => {
     storageSet(CTRL_MODE_KEY, m);
-    setRightStickProfi(m === 'screen');
+    TouchControls.setRightStickProfi(m === 'screen');
 };
 
 const _setupJoystick = (id: string, up: string, down: string, left: string, right: string, safeVertical = false) => {
@@ -1232,8 +1232,8 @@ const _setupRightJoystick = () => {
 
 const setupTouchControls = () => {
     if (!_isTouchDevice()) return;
-    mountTouchControls();
-    setRightStickProfi(getControlMode() === 'screen');
+    TouchControls.mount();
+    TouchControls.setRightStickProfi(getControlMode() === 'screen');
     if (!_IS_APP) {
         document.getElementById('debug-toggle')?.addEventListener('click', () => {
             showCollisionBoxes = !showCollisionBoxes;
@@ -1241,7 +1241,7 @@ const setupTouchControls = () => {
         });
     }
     // pitch wheel (winch)
-    initPitchWheel((key, val) => {
+    TouchControls.initPitchWheel((key, val) => {
         (G.keys as Record<string, boolean>)[key] = val;
     });
     // touch buttons (R / any future data-key buttons)
@@ -1307,9 +1307,9 @@ const mountGameScreens = () => {
     ].forEach(id => {
         _ensureEl(id).classList.add('ui-screen');
     });
-    mountMissionSelect();
-    mountCampaignSelect();
-    mountHeliSelect();
+    MissionSelect.mount();
+    CampaignSelect.mount();
+    HeliSelect.mount();
 
     document.getElementById('crash-screen')!.innerHTML = `
         <div class="title" style="color: #fff">${I18N.TERMINATED}</div>
@@ -1385,7 +1385,7 @@ const _previewLaunch = !import.meta.env.DEV
           if (_flashEl) _flashEl.style.opacity = '0';
 
           showScreen(null);
-          hideBriefing();
+          Briefing.hide();
 
           // Reset heli + state
           zstate.crashed = false;
@@ -1441,7 +1441,7 @@ const _onloadPreview = !import.meta.env.DEV
           assertDom();
           mountGameOverlays();
           mountGameScreens();
-          mountBriefing();
+          Briefing.mount();
           mountMinimap();
           zinit();
           soundHandler.mute();
@@ -1530,19 +1530,19 @@ const _onloadMain = () => {
         });
     }
     const _mountScreens = () => {
-        mountCreditsScreen(toMainMenu);
-        mountLegalScreen(toMainMenu);
-        mountMainMenu({
+        CreditsScreen.mount(toMainMenu);
+        LegalScreen.mount(toMainMenu);
+        MainMenu.mount({
             onSplashClick: toMainMenu,
             onStart: toCampaignSelect,
             ...(!_IS_APP ? { onMultiplayer: toMpLobby } : {}),
-            onSettings: toSettings,
-            onCredits: toCredits,
-            onLegal: toLegalScreen,
+            onSettings: Settings.show,
+            onCredits: CreditsScreen.show,
+            onLegal: LegalScreen.show,
         });
-        mountBriefing();
-        mountSettings();
-        mountRankup();
+        Briefing.mount();
+        Settings.mount();
+        Rankup.mount();
         mountGameScreens();
     };
 
@@ -1566,36 +1566,35 @@ const _onloadMain = () => {
         setSfxEnabled(false);
     }
 
-    if (_isTouchDevice()) {
-        mountPauseButton({
-            isMusicEnabled: () => !soundHandler.state.isMuted,
-            setMusicEnabled: (v: boolean) => {
-                v ? soundHandler.unmute() : soundHandler.mute();
-                _setPref('zw_music', v);
-            },
-            isSfxEnabled: () => isSfxEnabled(),
-            setSfxEnabled: (v: boolean) => {
-                setSfxEnabled(v);
-                _setPref('zw_sfx', v);
-            },
-            getControlMode,
-            setControlMode,
-            onPause: () => {
-                cancelAnimationFrame(_rafId);
-                _rafId = 0;
-                stopHeliSound();
-                soundHandler.stop();
-            },
-            onResume: () => {
-                if (!soundHandler.state.isMuted) soundHandler.play(soundHandler.state.activeTheme, false, 0.4);
-                initHeliSound(G.heli.type);
-                _rafId = requestAnimationFrame(drawScene);
-            },
-            onAbort: () => returnToBase(),
-        });
-    }
+    PauseOverlay.mount({
+        isMusicEnabled: () => !soundHandler.state.isMuted,
+        setMusicEnabled: (v: boolean) => {
+            v ? soundHandler.unmute() : soundHandler.mute();
+            _setPref('zw_music', v);
+        },
+        isSfxEnabled: () => isSfxEnabled(),
+        setSfxEnabled: (v: boolean) => {
+            setSfxEnabled(v);
+            _setPref('zw_sfx', v);
+        },
+        getControlMode,
+        setControlMode,
+        isTouchDevice: _isTouchDevice,
+        onPause: () => {
+            cancelAnimationFrame(_rafId);
+            _rafId = 0;
+            stopHeliSound();
+            soundHandler.stop();
+        },
+        onResume: () => {
+            if (!soundHandler.state.isMuted) soundHandler.play(soundHandler.state.activeTheme, false, 0.4);
+            initHeliSound(G.heli.type);
+            _rafId = requestAnimationFrame(drawScene);
+        },
+        onAbort: () => returnToBase(),
+    });
 
-    initSettings({
+    Settings.init({
         getSession: () => _session,
         saveSession,
         getRankMissions: _getRankMissions,
@@ -1612,9 +1611,9 @@ const _onloadMain = () => {
             setSfxEnabled(v);
             _setPref('zw_sfx', v);
         },
-        onBack: animMainMenuBg,
+        onBack: HeliSelect.animMainMenuBg,
     });
-    if (!_IS_APP) mountWhatsNew();
+    if (!_IS_APP) WhatsNew.mount();
     onLanguageChange(_mountScreens);
     setupTouchControls();
     startMenuParticles();
@@ -1625,16 +1624,7 @@ const _onloadMain = () => {
 
     const _afterConsent = () => {
         if (!_IS_APP) {
-            const shown = showWhatsNewIfNeeded(_session.lastSeenVersion, () => {
-                _session.lastSeenVersion = I18N.WHATS_NEW_VERSION;
-                saveSession(_session);
-                _showSplash();
-            });
-            if (!shown) {
-                _session.lastSeenVersion = I18N.WHATS_NEW_VERSION;
-                saveSession(_session);
-                _showSplash();
-            }
+            if (!WhatsNew.show(_showSplash)) _showSplash();
         } else {
             _showSplash();
         }
@@ -1645,7 +1635,7 @@ const _onloadMain = () => {
         _session.cookieConsent = null;
         _session.consentTimestamp = null;
         _session.consentVersion = '';
-        mountCookieBanner(_afterConsent);
+        CookieBanner.mount(_afterConsent);
         (document.getElementById('cookie-banner') as HTMLElement).style.display = 'flex';
     } else {
         _afterConsent();
@@ -1654,13 +1644,13 @@ const _onloadMain = () => {
 
 window.toCampaignSelect = toCampaignSelect;
 window.toMainMenu = toMainMenu;
-window.toCredits = toCredits;
+window.toCredits = CreditsScreen.show;
 window.backFromHeliSelect = backFromHeliSelect;
 window.returnToBase = returnToBase;
 window.selectCampaign = selectCampaign;
 window.selectMission = selectMission;
 window.startGame = startGame;
-window.toSettings = toSettings;
+window.toSettings = Settings.show;
 if (!_IS_APP) {
     window.approveCookies = approveCookies;
     window.declineCookies = declineCookies;

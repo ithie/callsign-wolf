@@ -1,5 +1,5 @@
 import { showMinimap, updateMinimap, type MinimapData } from '../minimap/minimap';
-import { setDeliverToggle } from '../touch-controls/touch-controls';
+import { setDeliverToggle } from '../touch-controls/touch-controls.ui';
 
 type IsoFn = (wx: number, wy: number, wz: number, cx: number, cy: number) => { x: number; y: number };
 

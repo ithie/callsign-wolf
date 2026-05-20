@@ -1,5 +1,27 @@
 # SAR: Callsign WOLF — Changelog
 
+## v27.0.0 — UI Architecture Overhaul & VS Code Tooling
+
+### New
+
+- **VS Code Extension: Zeewolf SAR Tools** — custom editors for `.zcampaign`, `.zsong`, `.zdef` and `.zsound` files, replacing the old Electron-based workbench. Live preview reloads automatically when source files change.
+- **Per-component UI preview** — each UI screen can be previewed individually in VS Code via the `$(symbol-color)` button on any `*.ui.ts` file. No dev server required; bundled on-the-fly via esbuild.
+- **Rankup overlay: rotating helicopter model** — the "rank up" screen now shows the newly unlocked helicopter as an animated 3D isometric model with spinning rotors instead of just displaying the name.
+
+### Changed
+
+- **UI component naming convention** — all UI component files renamed to `*.ui.ts` to distinguish them from state modules and helpers. VS Code preview is scoped to `*.ui.ts` files only.
+- **Test layout** — unit tests moved next to their source files as `*.spec.ts`. Only integration tests remain in `src/tests/`.
+- **`render-config.ts` simplified** — `_isMobile` removed entirely. The web build is desktop-only; the native app is always `_isApp`. All tile/scale values now branch on `_isApp` / `_isIPad` directly.
+
+### Technical
+
+- Campaign files renamed from `.json` to `.zcampaign`; loaded via the new `zcampaignPlugin` in vite.
+- `vitest.config.ts` updated to `include: ['src/**/*.spec.ts']`.
+- 🪦 R.I.P. `_isMobile` — du wirst nicht vermisst.
+
+---
+
 ## v26.6.0 — Bug Fixes & Rendering Polish
 
 ### Fixes

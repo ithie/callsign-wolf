@@ -64,9 +64,9 @@ export default defineConfig(({ command }) => {
                           [resolve(__dirname, 'src/game/multiplayer/mp-state')]: mpStub,
                           [resolve(__dirname, 'src/game/multiplayer/sync')]: mpStub,
                           [resolve(__dirname, 'src/game/multiplayer/mp-mission')]: mpStub,
-                          [resolve(__dirname, 'src/game/ui/mp-lobby/mp-lobby')]: mpStub,
+                          [resolve(__dirname, 'src/game/ui/mp-lobby/mp-lobby.ui')]: mpStub,
                           [resolve(__dirname, 'src/game/mp-game')]: mpGameStub,
-                          [resolve(__dirname, 'src/game/ui/whats-new/whats-new')]: whatsNewStub,
+                          [resolve(__dirname, 'src/game/ui/whats-new/whats-new.ui')]: whatsNewStub,
                       }
                     : {
                           [resolve(__dirname, 'src/game/storage')]: storageWebStub,

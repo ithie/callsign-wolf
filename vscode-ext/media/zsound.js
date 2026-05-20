@@ -2,6 +2,7 @@
 (() => {
   // tracker-view/zsound-main.ts
   var vscode = acquireVsCodeApi();
+  var _type = "heli";
   var actx = null;
   var analyser = null;
   var animId = null;
@@ -54,7 +55,7 @@
     });
   };
   var getParams = () => {
-    const type = document.getElementById("type-sel").value;
+    const type = _type;
     if (type === "heli") return {
       type: "heli",
       blades: parseInt(document.getElementById("heli-blades").value, 10),
@@ -243,9 +244,8 @@
     } catch (_) {
       return;
     }
-    const type = p.type ?? "heli";
-    document.getElementById("type-sel").value = type;
-    showGroup(type);
+    _type = p.type ?? "heli";
+    showGroup(_type);
     const setSlider = (id, val, dec) => {
       if (val === void 0) return;
       const el = document.getElementById(id);
@@ -279,10 +279,6 @@
       setSel("birds-birdType", p.birdType);
     }
   };
-  document.getElementById("type-sel").addEventListener("change", function() {
-    showGroup(this.value);
-    scheduleNotify();
-  });
   document.getElementById("btn-play")?.addEventListener("click", play);
   document.getElementById("btn-stop")?.addEventListener("click", stopAll);
   bindSlider("heli-clip", 1);
@@ -302,7 +298,6 @@
     if (e.data.type === "load" && e.data.content !== void 0) loadData(e.data.content);
   });
   clearCanvases();
-  showGroup("heli");
   vscode.postMessage({ type: "ready" });
 })();
 //# sourceMappingURL=zsound.js.map

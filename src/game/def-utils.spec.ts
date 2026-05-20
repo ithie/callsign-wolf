@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { applyParts, applyRotateNodes, getTransformedPivots } from '../../game/def-utils';
-import type { DEF } from '../../game/defs';
+import { applyParts, applyRotateNodes, getTransformedPivots } from './def-utils';
+import type { DEF } from './defs';
 
 const CLOSE = 4; // decimal places for float comparisons
 

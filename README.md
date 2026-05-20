@@ -30,18 +30,18 @@ Physics-based flight, winch operations, dynamic weather, procedural terrain, car
 
 ## Features
 
--   **Isometric renderer** with painter's-algorithm depth sorting, backface culling, and declarative geometry (DEF system)
--   **Physics-based flight** — inertia, tilt, wind drift, ground effect
--   **Three helicopters** with distinct handling profiles:
-    -   _Dolphin_ — agile, lightweight, no cargo
-    -   _Coast-Hawk_ — heavy-lift workhorse, cargo-capable
-    -   _Atlas_ — tandem rotor, maximum capacity
--   **Winch & rescue** — lower a rescuer, pick up survivors, haul them to safety
--   **Cargo transport** — sling loads with pendulum physics
--   **Fuel management** — refuel at fuel trucks on carrier or pad
--   **Dynamic weather** — wind affects flight and rope physics
--   **Campaigns** with multiple missions, briefings, and a commander portrait
--   **ZSynth soundtrack** — original in-game music composed in the built-in tracker
+- **Isometric renderer** with painter's-algorithm depth sorting, backface culling, and declarative geometry (DEF system)
+- **Physics-based flight** — inertia, tilt, wind drift, ground effect
+- **Three helicopters** with distinct handling profiles:
+    - _Dolphin_ — agile, lightweight, no cargo
+    - _Coast-Hawk_ — heavy-lift workhorse, cargo-capable
+    - _Atlas_ — tandem rotor, maximum capacity
+- **Winch & rescue** — lower a rescuer, pick up survivors, haul them to safety
+- **Cargo transport** — sling loads with pendulum physics
+- **Fuel management** — refuel at fuel trucks on carrier or pad
+- **Dynamic weather** — wind affects flight and rope physics
+- **Campaigns** with multiple missions, briefings, and a commander portrait
+- **ZSynth soundtrack** — original in-game music composed in the built-in tracker
 
 ---
 
@@ -59,13 +59,13 @@ Select a campaign from the main menu, then choose your airframe. Each campaign h
 npm install
 ```
 
-### Dev server + Workbench
+### Dev server
 
 ```sh
 npm run dev
 ```
 
-Starts the Vite dev server and launches the **Zeewolf Workbench** — an Electron-based development environment with integrated tools (see below).
+Starts the Vite dev server at `http://localhost:5173`.
 
 ### Build (single-file HTML for deployment)
 
@@ -100,6 +100,8 @@ A `Content-Security-Policy` header (`default-src 'self' 'unsafe-inline' data:; m
 npm test
 ```
 
+Unit tests live next to their source files as `*.spec.ts`. Integration tests are in `src/tests/`.
+
 ### Deploy to GitHub Pages
 
 Deployment runs automatically via GitHub Actions on every push to `main`. Manual deploy:
@@ -110,40 +112,17 @@ npm run deploy
 
 ---
 
-## Workbench
+## VS Code Extension
 
-The Workbench is an Electron app that opens alongside the Vite dev server (`npm run dev`). It provides four integrated tools accessible from the toolbar.
+Install the **Zeewolf SAR Tools** extension for custom editors and live UI preview:
 
-### Mission Editor
+```sh
+cd vscode-ext && npm run deploy
+```
 
-Two synchronized windows:
+Reload VS Code after installation. The extension provides custom editors for `.zcampaign`, `.zsong`, `.zdef`, and `.zsound` files, plus a per-component UI preview for any `*.ui.ts` file.
 
--   **Preview** — isometric 3D view (filled left, wireframe right), updates live
--   **Map Editor** — paint terrain tiles, place carriers, boats, rescue pads, wind zones, foliage, and NPCs
-
-Missions are saved as JSON to `src/game/campaigns/` and automatically available in the game.
-
-### Model Editor
-
-An interactive DEF (Decoupled Element Facets) editor for the game's isometric geometry:
-
--   Browse and edit all preset models (Hangar, Lighthouse, Sailboat, Carrier, Fuel Truck, all helicopters)
--   Add, move, and delete vertices and faces directly on the isometric canvas
--   Export DEF JSON for use in the game
-
-### ZSynth Tracker
-
-A step sequencer for composing in-game music:
-
--   **3 drum tracks** (Kick, Snare, Hi-Hat) — toggle pads per step
--   **3 synth tracks** — select a note per step (or leave empty)
--   Per-track controls: instrument preset, waveform, filter, attack, release, detune
--   Global BPM control
--   Open / Save / Save As via native file dialogs — songs saved to `src/game/music/`
-
-### Git Integration
-
-Branch display, pull, commit, and push — directly from the workbench toolbar.
+See [docs/WORKBENCH.md](./docs/WORKBENCH.md) for full documentation.
 
 ---
 
@@ -152,29 +131,33 @@ Branch display, pull, commit, and push — directly from the workbench toolbar.
 ```text
 src/
   game/
-    campaigns/     Mission JSON files
-    models/        Isometric geometry definitions (one file per object)
-    music/         Song JSON files
-    ui/            Menu screens + shared CSS (base, screens)
+    campaigns/     Mission files (.zcampaign)
+    models/        Isometric geometry definitions (.zdef)
+    music/         Song files (.zsong)
+    ui/            UI components (one directory per screen/overlay)
+      <name>/
+        <name>.ui.ts      Component (mount / show / hide)
+        <name>.state.ts   Isolated state (where needed)
+        <name>.css
+        <name>.spec.ts    Unit tests
   shared/          Types and utilities shared across modules (incl. ZSynth library)
-  tests/           Unit and snapshot tests
-  workbench/
-    main/          Electron main process + IPC handlers
-    renderer/
-      editor/      Mission editor source
-      tracker/     ZSynth tracker UI
+  tests/           Integration tests
+vscode-ext/        VS Code extension (campaign, zsong, zdef, zsound editors + UI preview)
+plugins/           Vite/esbuild plugins (zsong, zdef, zcampaign, make-single-file)
+docs/              Architecture and format documentation
 ```
 
 ---
 
 ## Documentation
 
--   [docs/RELEASE.md](./docs/RELEASE.md) — release process, branching, tagging, app build
--   [docs/DEF_SPEC.md](./DEF_SPEC.md) — isometric geometry system (DEF format, SceneRenderer API)
--   [docs/SESSION_SYSTEM.md](./docs/SESSION_SYSTEM.md) — session system, rank progression, save code format, GDPR
--   [docs/WORKBENCH.md](./docs/WORKBENCH.md) — Workbench architecture and `window.workbench` API
--   [docs/CAMPAIGN_FORMAT.md](./docs/CAMPAIGN_FORMAT.md) — campaign and mission JSON format
--   [docs/SONG_FORMAT.md](./docs/SONG_FORMAT.md) — ZSynth song JSON format
+- [docs/UI.md](./docs/UI.md) — UI component architecture, naming conventions, component list
+- [docs/WORKBENCH.md](./docs/WORKBENCH.md) — VS Code extension setup and editor reference
+- [docs/RELEASE.md](./docs/RELEASE.md) — release process, branching, tagging, app build
+- [docs/DEF_SPEC.md](./docs/DEF_SPEC.md) — isometric geometry system (DEF format, SceneRenderer API)
+- [docs/SESSION_SYSTEM.md](./docs/SESSION_SYSTEM.md) — session system, rank progression, save code format, GDPR
+- [docs/CAMPAIGN_FORMAT.md](./docs/CAMPAIGN_FORMAT.md) — campaign and mission format
+- [docs/SONG_FORMAT.md](./docs/SONG_FORMAT.md) — ZSynth song format
 
 ## Changelog
 
