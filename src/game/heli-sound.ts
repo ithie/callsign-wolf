@@ -37,8 +37,26 @@ interface HeliSoundNodes {
 
 let _nodes: HeliSoundNodes | null = null;
 let _sfxEnabled = true;
+let _sfxCtx: AudioContext | null = null;
 
 export const isSfxEnabled = (): boolean => _sfxEnabled;
+
+export const playSfx = (freq: number, duration: number, gain = 0.15, type: OscillatorType = 'sine'): void => {
+    if (!_sfxEnabled) return;
+    try {
+        if (!_sfxCtx) _sfxCtx = new AudioContext();
+        const osc = _sfxCtx.createOscillator();
+        const g = _sfxCtx.createGain();
+        osc.connect(g);
+        g.connect(_sfxCtx.destination);
+        osc.type = type;
+        osc.frequency.value = freq;
+        g.gain.setValueAtTime(gain, _sfxCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, _sfxCtx.currentTime + duration);
+        osc.start(_sfxCtx.currentTime);
+        osc.stop(_sfxCtx.currentTime + duration);
+    } catch {}
+};
 
 export const setSfxEnabled = (enabled: boolean): void => {
     _sfxEnabled = enabled;

@@ -1,68 +1,101 @@
-import { I18N, localize } from '../../i18n';
-import { isCampaignUnlocked, type PlayerSession } from '../../session';
+import { mount, show } from './campaign-select';
+import type { PlayerSession } from '../../session';
 import type { CampaignExport } from '../../../shared/types';
-import { ensureEl } from '../dom-helpers';
-import { showScreenCrtEnter } from '../nav';
-import { mountScreenShell } from '../screen-shell/screen-shell';
-import { createSwipeCarousel } from '../swipe-carousel/swipe-carousel';
 
-const _IS_APP = import.meta.env.VITE_TARGET === 'app';
+const _noop = () => {};
 
-type CampaignSelectDeps = {
-    session: PlayerSession;
-    campaigns: CampaignExport[];
-    onSelect: (index: number) => void;
-    onBack: () => void;
+const _baseSession = (): PlayerSession => ({
+    cookieConsent: true,
+    consentTimestamp: Date.now(),
+    consentVersion: 'v25.0',
+    playerName: 'WOLF',
+    activeCampaignIndex: 0,
+    highestUnlockedCampaignIndex: 0,
+    campaignProgress: {},
+    rankOverride: 0,
+    allUnlocked: false,
+    lastSeenVersion: '',
+});
+
+const _campaigns: CampaignExport[] = [
+    {
+        type: 'tutorial',
+        campaignTitle: { de: 'Tutorial', en: 'Tutorial' },
+        campaignSublines: [{ de: 'Grundlagen lernen', en: 'Learn the basics' }],
+        levels: [{ name: 'tut-1' } as any],
+    },
+    {
+        type: 'standard',
+        campaignTitle: { de: 'Operation Nordsee', en: 'Operation North Sea' },
+        campaignSublines: [{ de: '5 Missionen', en: '5 Missions' }],
+        levels: Array.from({ length: 5 }, (_, i) => ({ name: `m${i}` }) as any),
+    },
+    {
+        type: 'standard',
+        campaignTitle: { de: 'Operation Atlantik', en: 'Operation Atlantic' },
+        campaignSublines: [{ de: '4 Missionen', en: '4 Missions' }],
+        levels: Array.from({ length: 4 }, (_, i) => ({ name: `a${i}` }) as any),
+    },
+    {
+        type: 'free-flight',
+        campaignTitle: { de: 'Freier Flug', en: 'Free Flight' },
+        campaignSublines: [{ de: 'Kein Ziel, freie Erkundung', en: 'No goal, free exploration' }],
+        levels: [{ name: 'ff' } as any],
+    },
+];
+
+/** Frischer Start: Tutorial verfügbar, alle regulären Kampagnen gesperrt. */
+export const FreshStart = () => {
+    mount();
+    show({ session: _baseSession(), campaigns: _campaigns, onSelect: _noop, onBack: _noop });
 };
 
-type CampaignItem = CampaignExport & { index: number };
-
-export const mount = () => {
-    ensureEl('campaign-select');
-};
-
-export const show = (deps: CampaignSelectDeps) => {
-    const { session, campaigns, onSelect, onBack } = deps;
-
-    const body = mountScreenShell('campaign-select', I18N.CAMPAIGN_SELECT_TITLE, I18N.CAMPAIGN_SELECT_SUB, onBack);
-
-    const typePriority = (t: string) => (t === 'tutorial' ? 0 : t === 'free-flight' ? 1 : 2);
-    const displayOrder: CampaignItem[] = campaigns
-        .map((c, i) => ({ ...c, index: i }))
-        .filter(c => (!_IS_APP ? c.type !== 'multiplayer' : true))
-        .sort((a, b) => typePriority(a.type) - typePriority(b.type));
-
-    const carousel = createSwipeCarousel<CampaignItem>({
-        items: displayOrder,
-        isLocked: c => !isCampaignUnlocked(session, campaigns, c.index),
-        renderCard: (c, locked) => {
-            const isTutorial = c.type === 'tutorial';
-            const isActive = !isTutorial && c.type !== 'free-flight' && session.activeCampaignIndex === c.index;
-            const cp = session.campaignProgress[String(c.index)];
-            const completedCount = cp?.missions.filter(m => m?.completed).length ?? 0;
-
-            const card = document.createElement('div');
-
-            let content = `<div class="box-label"${isTutorial ? ` style="color:#ff9900"` : ''}>` +
-                `${localize(c.campaignTitle)}</div>`;
-
-            if (locked) {
-                content += `<div class="box-sub" style="color:#333">${I18N.CAMPAIGN_LOCKED}</div>`;
-            } else {
-                content += c.campaignSublines.map(s => `<div class="box-sub">${localize(s)}</div>`).join('');
-                content += `<div class="box-sub">${I18N.CAMPAIGN_SELECT_MISSIONS}: ${c.levels.length}</div>`;
-                if (isActive && completedCount > 0) {
-                    content += `<div class="box-sub" style="color:#8af">${completedCount}/${c.levels.length} ${I18N.DONE}</div>`;
-                }
-            }
-
-            card.innerHTML = content;
-            if (isTutorial) card.style.borderColor = '#ff9900';
-            return card;
+/** Tutorial abgeschlossen, erste reguläre Kampagne freigeschaltet. */
+export const TutorialDone = () => {
+    mount();
+    show({
+        session: {
+            ..._baseSession(),
+            campaignProgress: {
+                '0': { completed: true, missions: [{ completed: true, bestTimeMs: 180000 }] },
+            },
+            highestUnlockedCampaignIndex: 1,
+            activeCampaignIndex: 1,
         },
-        onTap: c => onSelect(c.index),
+        campaigns: _campaigns,
+        onSelect: _noop,
+        onBack: _noop,
     });
+};
 
-    body.appendChild(carousel);
-    showScreenCrtEnter('campaign-select');
+/** Erste Kampagne halb durch, zweite noch gesperrt. */
+export const InProgress = () => {
+    mount();
+    show({
+        session: {
+            ..._baseSession(),
+            campaignProgress: {
+                '0': { completed: true, missions: [{ completed: true, bestTimeMs: 180000 }] },
+                '1': {
+                    completed: false,
+                    missions: [
+                        { completed: true, bestTimeMs: 240000 },
+                        { completed: true, bestTimeMs: 310000 },
+                        null as any, null as any, null as any,
+                    ],
+                },
+            },
+            highestUnlockedCampaignIndex: 1,
+            activeCampaignIndex: 1,
+        },
+        campaigns: _campaigns,
+        onSelect: _noop,
+        onBack: _noop,
+    });
+};
+
+/** Alles freigeschaltet (allUnlocked). */
+export const AllUnlocked = () => {
+    mount();
+    show({ session: { ..._baseSession(), allUnlocked: true }, campaigns: _campaigns, onSelect: _noop, onBack: _noop });
 };

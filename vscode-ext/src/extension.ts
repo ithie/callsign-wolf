@@ -61,9 +61,10 @@ const startUiWatcher = (ctx: vscode.ExtensionContext): string | null => {
 export const activate = (ctx: vscode.ExtensionContext): void => {
     startDevServer(ctx);
 
-    const workspaceMediaDir = startUiWatcher(ctx);
+    startUiWatcher(ctx);
+    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
     const campaignProvider = new CampaignEditorProvider(ctx);
-    const uiPreviewProvider = new UiPreviewProvider(ctx, workspaceMediaDir ?? undefined);
+    const uiPreviewProvider = new UiPreviewProvider(ctx, workspaceRoot);
 
     ctx.subscriptions.push(
         vscode.window.registerCustomEditorProvider(

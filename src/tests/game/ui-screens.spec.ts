@@ -21,14 +21,14 @@ vi.mock('../../game/render', () => ({
 
 // ─── Imports (after mocks) ────────────────────────────────────────────────────
 
-import * as WhatsNew from '../../game/ui/whats-new/whats-new.ui';
-import * as MainMenu from '../../game/ui/main-menu/main-menu.ui';
-import * as Briefing from '../../game/ui/briefing/briefing.ui';
-import * as CookieBanner from '../../game/ui/cookie-banner/cookie-banner.ui';
-import * as Settings from '../../game/ui/settings/settings.ui';
-import * as Rankup from '../../game/ui/rankup/rankup.ui';
-import * as CreditsScreen from '../../game/ui/credits-screen/credits-screen.ui';
-import * as MpLobby from '../../game/ui/mp-lobby/mp-lobby.ui';
+import * as WhatsNew from '../../game/ui/whats-new/whats-new';
+import * as MainMenu from '../../game/ui/main-menu/main-menu';
+import * as Briefing from '../../game/ui/briefing/briefing';
+import * as CookieBanner from '../../game/ui/cookie-banner/cookie-banner';
+import * as Settings from '../../game/ui/settings/settings';
+import * as Rankup from '../../game/ui/rankup/rankup';
+import * as CreditsScreen from '../../game/ui/credits-screen/credits-screen';
+import * as MpLobby from '../../game/ui/mp-lobby/mp-lobby';
 import type { PlayerSession } from '../../game/session';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

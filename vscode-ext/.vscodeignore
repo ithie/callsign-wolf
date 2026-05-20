@@ -4,4 +4,6 @@ esbuild.mjs
 tsconfig.json
 tsconfig.tracker.json
 node_modules/**
+!node_modules/esbuild/**
+!node_modules/@esbuild/**
 **/*.map

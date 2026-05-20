@@ -3,7 +3,7 @@ import { mpState, resetMpState } from './multiplayer/mp-state';
 import { applyHeliSnap, applyWorldSnap, packHeli, packWorld } from './multiplayer/sync';
 import { MP_CAMPAIGN_INDEX, MP_COUNTDOWN_SEC, MP_PAD } from './multiplayer/mp-mission';
 import type { MpChannels } from './multiplayer/rtc';
-import * as MpLobby from './ui/mp-lobby/mp-lobby.ui';
+import * as MpLobby from './ui/mp-lobby/mp-lobby';
 import { soundHandler, campaignHandler, musicConfig } from './main';
 import { stopMenuParticles } from './ui/menu-particles/menu-particles';
 import { initGrid } from './sim/terrain';

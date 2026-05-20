@@ -115,11 +115,11 @@ export const isCampaignUnlocked = (
     // Cross-device import: highest reached campaign unlocks all up to that index
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return true;
 
+    if (type === 'free-flight') return true;
+
     const tutorialIndex = campaigns.findIndex(c => c.type === 'tutorial');
     const tutorialDone = tutorialIndex === -1 || !!(s.campaignProgress[String(tutorialIndex)]?.completed);
     if (!tutorialDone) return false;
-
-    if (type === 'free-flight') return true;
 
     const regular = campaigns
         .map((c, i) => ({ type: c.type, i }))
@@ -128,6 +128,20 @@ export const isCampaignUnlocked = (
     if (pos <= 0) return true;
     const prev = regular[pos - 1];
     return !!(s.campaignProgress[String(prev.i)]?.completed);
+};
+
+export const isCampaignLockedByTutorial = (
+    s: PlayerSession,
+    campaigns: ReadonlyArray<{ type: string }>,
+    index: number
+): boolean => {
+    if (s.allUnlocked) return false;
+    const type = campaigns[index]?.type;
+    if (!type || type === 'tutorial' || type === 'free-flight') return false;
+    if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return false;
+    const tutorialIndex = campaigns.findIndex(c => c.type === 'tutorial');
+    if (tutorialIndex === -1) return false;
+    return !(s.campaignProgress[String(tutorialIndex)]?.completed);
 };
 
 export const isMissionUnlocked = (

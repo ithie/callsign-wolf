@@ -5,6 +5,7 @@ export interface PhysicsCtx {
     hasPad: boolean;
     hasCarrier: boolean;
     isTutorialMode?: boolean;
+    isTutorialFuelLocked?: boolean;
     partyMode?: boolean;
     partyPalette?: readonly string[];
     showMsg: (txt: string) => void;

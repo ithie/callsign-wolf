@@ -1,8 +1,8 @@
 import './ui/base.css';
 import './ui/screens.css';
-import * as LoadingScreen from './ui/loading-screen/loading-screen.ui';
+import * as LoadingScreen from './ui/loading-screen/loading-screen';
 import { ensureEl } from './ui/dom-helpers';
-import * as TouchControls from './ui/touch-controls/touch-controls.ui';
+import * as TouchControls from './ui/touch-controls/touch-controls';
 import { iso } from './render';
 import { campaignHandler, soundHandler, zinit, musicConfig } from './main';
 import {
@@ -47,8 +47,8 @@ import { tileW as _tileW, tileH as _tileH, stepH as _stepH, gameRenderScale } fr
 const tileW = Math.round(_tileW * gameRenderScale);
 const tileH = Math.round(_tileH * gameRenderScale);
 const stepH = _stepH * gameRenderScale;
-import * as CreditsScreen from './ui/credits-screen/credits-screen.ui';
-import * as LegalScreen from './ui/legal-screen/legal-screen.ui';
+import * as CreditsScreen from './ui/credits-screen/credits-screen';
+import * as LegalScreen from './ui/legal-screen/legal-screen';
 import { createBackButton } from './ui/back-button/back-button';
 import { startMenuParticles, stopMenuParticles } from './ui/menu-particles/menu-particles';
 import {
@@ -60,7 +60,7 @@ import {
     mpGetMissionComplete,
     mpGetTriggerCrash,
 } from './mp-game';
-import * as HeliSelect from './ui/heli-select/heli-select.ui';
+import * as HeliSelect from './ui/heli-select/heli-select';
 import {
     I18N,
     I18N_DE,
@@ -71,19 +71,19 @@ import {
     onLanguageChange,
     setLanguage,
 } from './i18n';
-import * as CookieBanner from './ui/cookie-banner/cookie-banner.ui';
-import * as Briefing from './ui/briefing/briefing.ui';
-import * as Settings from './ui/settings/settings.ui';
-import * as Rankup from './ui/rankup/rankup.ui';
-import * as PauseOverlay from './ui/pause-overlay/pause-overlay.ui';
-import * as WhatsNew from './ui/whats-new/whats-new.ui';
-import * as MainMenu from './ui/main-menu/main-menu.ui';
-import * as MissionSelect from './ui/mission-select/mission-select.ui';
-import * as CampaignSelect from './ui/campaign-select/campaign-select.ui';
+import * as CookieBanner from './ui/cookie-banner/cookie-banner';
+import * as Briefing from './ui/briefing/briefing';
+import * as Settings from './ui/settings/settings';
+import * as Rankup from './ui/rankup/rankup';
+import * as PauseOverlay from './ui/pause-overlay/pause-overlay';
+import * as WhatsNew from './ui/whats-new/whats-new';
+import * as MainMenu from './ui/main-menu/main-menu';
+import * as MissionSelect from './ui/mission-select/mission-select';
+import * as CampaignSelect from './ui/campaign-select/campaign-select';
 import { showScreen } from './ui/nav';
 import { mountMinimap, initMinimapTerrain } from './ui/minimap/minimap';
 import { createHud } from './ui/hud/hud';
-import { initTutorial, tutorialTick, destroyTutorial, isTutorialRunning } from './ui/tutorial/tutorial';
+import { initTutorial, tutorialTick, destroyTutorial, isTutorialRunning, getAllowedKeys, isTutorialFuelLocked } from './ui/tutorial/tutorial';
 import { requestReview } from './reviewRequest';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
@@ -605,7 +605,16 @@ const launchMission = async (showLoader = true): Promise<void> => {
         soundHandler.play(campaignHandler.getActiveCampaignMusic().ingame || 'clike', false, 0.4);
         setTouchVisible(true);
         if (_lmd.campaignType === 'tutorial') {
-            initTutorial(_isTouchDevice(), getControlMode(), G, missionComplete);
+            initTutorial(_isTouchDevice(), G, getGround(G.heli.x, G.heli.y, G.points, G.CARRIER), missionComplete, () => {
+                const personDef = campaignHandler.getCurrentMissionData()
+                    .payloads?.find((p: any) => p.type === 'person');
+                if (!personDef) return;
+                const gz = getGround(personDef.x, personDef.y, G.points, G.CARRIER);
+                G.payloads.push({
+                    type: 'person', x: personDef.x, y: personDef.y, z: gz,
+                    angle: 0, hanging: false, rescued: false, deliverTo: 'pad',
+                } as any);
+            });
         }
     });
 };
@@ -938,8 +947,12 @@ const _physicsCtx = {
     get isTutorialMode() {
         return campaignHandler.getCurrentMissionData().campaignType === 'tutorial';
     },
+    get isTutorialFuelLocked() {
+        return isTutorialFuelLocked();
+    },
     showMsg,
     get missionComplete() {
+        if (isTutorialRunning()) return () => {};
         return !_IS_APP ? mpGetMissionComplete(missionComplete) : missionComplete;
     },
     get triggerCrash() {
@@ -1007,8 +1020,13 @@ const declineCookies = () => {
     CookieBanner.notifyConsent();
 };
 
+const _isKeyAllowed = (code: string): boolean => {
+    const allowed = getAllowedKeys();
+    return allowed === null || allowed.has(code);
+};
+
 window.onkeydown = e => {
-    G.keys[e.code] = true;
+    if (_isKeyAllowed(e.code)) G.keys[e.code] = true;
     if ((document.activeElement as HTMLElement)?.tagName === 'INPUT') return;
     if (!_IS_APP) {
         _unlockSeq = (_unlockSeq + e.key.toUpperCase()).slice(-6);
@@ -1107,10 +1125,10 @@ const _setupJoystick = (id: string, up: string, down: string, left: string, righ
     const setKeys = (dx: number, dy: number) => {
         const dead = jr * 0.18;
         const inVertSector = safeVertical && Math.abs(dy) > dead && Math.abs(dx) < Math.abs(dy) * 0.4;
-        (G.keys as Record<string, boolean>)[up] = dy < -dead;
-        (G.keys as Record<string, boolean>)[down] = dy > dead;
-        (G.keys as Record<string, boolean>)[left] = !inVertSector && dx < -dead;
-        (G.keys as Record<string, boolean>)[right] = !inVertSector && dx > dead;
+        (G.keys as Record<string, boolean>)[up]    = _isKeyAllowed(up)    && dy < -dead;
+        (G.keys as Record<string, boolean>)[down]  = _isKeyAllowed(down)  && dy > dead;
+        (G.keys as Record<string, boolean>)[left]  = _isKeyAllowed(left)  && !inVertSector && dx < -dead;
+        (G.keys as Record<string, boolean>)[right] = _isKeyAllowed(right) && !inVertSector && dx > dead;
     };
     el.addEventListener('pointerdown', e => {
         e.preventDefault();
@@ -1176,13 +1194,13 @@ const _setupRightJoystick = () => {
         knob.style.transform = `translate(calc(-50% + ${dx * clamped}px), calc(-50% + ${dy * clamped}px))`;
         _stickDx = dx;
         _stickDy = dy;
-        if (getControlMode() === 'screen') {
+        if (isTutorialRunning() || getControlMode() === 'screen') {
             const dead = jr * 0.18;
             const inVertSector = Math.abs(dy) > dead && Math.abs(dx) < Math.abs(dy) * 0.4;
-            (G.keys as Record<string, boolean>)['ArrowUp'] = dy < -dead;
-            (G.keys as Record<string, boolean>)['ArrowDown'] = dy > dead;
-            (G.keys as Record<string, boolean>)['ArrowLeft'] = !inVertSector && dx < -dead;
-            (G.keys as Record<string, boolean>)['ArrowRight'] = !inVertSector && dx > dead;
+            (G.keys as Record<string, boolean>)['ArrowUp']    = _isKeyAllowed('ArrowUp')    && dy < -dead;
+            (G.keys as Record<string, boolean>)['ArrowDown']  = _isKeyAllowed('ArrowDown')  && dy > dead;
+            (G.keys as Record<string, boolean>)['ArrowLeft']  = _isKeyAllowed('ArrowLeft')  && !inVertSector && dx < -dead;
+            (G.keys as Record<string, boolean>)['ArrowRight'] = _isKeyAllowed('ArrowRight') && !inVertSector && dx > dead;
         }
     });
     const release = () => {
@@ -1201,9 +1219,11 @@ const _setupRightJoystick = () => {
     el.addEventListener('pointercancel', release);
 
     // Heading mode: run each frame, maps stick direction relative to heli heading
+    // Disabled during tutorial (tutorial always forces screen/PROFI mode)
     const tick = () => {
         if (
             active &&
+            !isTutorialRunning() &&
             getControlMode() === 'heading' &&
             zstate.gameStarted &&
             Math.hypot(_stickDx, _stickDy) > jr * 0.18

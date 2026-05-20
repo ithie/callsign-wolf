@@ -4,6 +4,7 @@ import { hapticImpact, ImpactStyle } from '../../haptics';
 export type SwipeCarouselOpts<T> = {
     items: T[];
     renderCard: (item: T, locked: boolean) => HTMLElement;
+    renderStamp?: (item: T, locked: boolean) => HTMLElement | null;
     renderDetail?: (item: T, close: () => void) => HTMLElement | null;
     isLocked?: (item: T) => boolean;
     onTap?: (item: T) => void;
@@ -26,7 +27,7 @@ const DRAG_THRESHOLD = 20;
 const AXIS_LOCK_THRESHOLD = 10;
 
 export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement => {
-    const { items, renderCard, renderDetail, isLocked, onTap, onDetailClose } = opts;
+    const { items, renderCard, renderStamp, renderDetail, isLocked, onTap, onDetailClose } = opts;
 
     const root = document.createElement('div');
     root.className = 'swipe-carousel';
@@ -49,11 +50,20 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
 
     const cardEls: HTMLElement[] = items.map((item, i) => {
         const locked = isLocked?.(item) ?? false;
+
+        const slot = document.createElement('div');
+        slot.className = 'swipe-slot';
+
         const card = renderCard(item, locked);
         card.classList.add('swipe-card');
         if (locked) card.classList.add('locked');
         card.dataset.index = String(i);
-        track.appendChild(card);
+        slot.appendChild(card);
+
+        const stamp = renderStamp?.(item, locked);
+        if (stamp) slot.appendChild(stamp);
+
+        track.appendChild(slot);
         return card;
     });
 

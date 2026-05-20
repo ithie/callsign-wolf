@@ -63,7 +63,7 @@ const _computeLandingState = (ctx: PhysicsCtx, groundH: number) => {
 interface _DepositState { ctx: PhysicsCtx; onCarrierDeck: boolean; onPadSurface: boolean; }
 
 const _deliveryDeposit = (p: any, { ctx }: _DepositState) => {
-    const inZone = ctx.isTutorialMode || _inDropzone(p.x, p.y);
+    const inZone = _inDropzone(p.x, p.y);
     G.payloads.splice(G.payloads.indexOf(p), 1);
     p.hanging = false; p.rescued = true; G.activePayload = null;
     if (inZone) {
@@ -313,7 +313,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
             else if (G.keys['KeyS']) G.heli.vz -= 0.002 * dt;
             else G.heli.vz *= Math.pow(0.9, dt);
 
-            if (!ctx.isTutorialMode) G.heli.fuel -= G.heli.fuelRate * mod * dt;
+            if (!ctx.isTutorialFuelLocked) G.heli.fuel -= G.heli.fuelRate * mod * dt;
         } else {
             G.heli.tilt *= Math.pow(0.98, dt);
             G.heli.roll = Math.sin(Date.now() * 0.01) * 0.1;
@@ -331,6 +331,10 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     } else {
         G.heli.vx += G.wind.x * 5 * dt; G.heli.vy += G.wind.y * 5 * dt;
     }
+    // Guard against NaN propagating into position (pre-existing physics bug: vx/vy can go NaN under certain cargo/wind conditions)
+    if (!isFinite(G.heli.vx)) G.heli.vx = 0;
+    if (!isFinite(G.heli.vy)) G.heli.vy = 0;
+    if (!isFinite(G.heli.vz)) G.heli.vz = 0;
     G.heli.x += G.heli.vx * dt; G.heli.y += G.heli.vy * dt; G.heli.z += G.heli.vz * dt;
     const margin = 2;
     if (G.heli.x < margin) { G.heli.x = margin; G.heli.vx = 0; }

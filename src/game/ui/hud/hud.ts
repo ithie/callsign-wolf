@@ -1,5 +1,6 @@
 import { showMinimap, updateMinimap, type MinimapData } from '../minimap/minimap';
-import { setDeliverToggle } from '../touch-controls/touch-controls.ui';
+import { setDeliverToggle } from '../touch-controls/touch-controls';
+import { playSfx } from '../../heli-sound';
 
 type IsoFn = (wx: number, wy: number, wz: number, cx: number, cy: number) => { x: number; y: number };
 
@@ -59,21 +60,7 @@ export const createHud = ({ isoFn, canvas }: HudOpts) => {
     const deliver = d('hud-deliver', 'left:0;right:0;top:20px;text-align:center;font:bold 14px monospace;color:#f90;');
 
     let _fuelBeepTimer = 0;
-    const _playFuelBeep = () => {
-        try {
-            const ac = new AudioContext();
-            const osc = ac.createOscillator();
-            const gain = ac.createGain();
-            osc.connect(gain);
-            gain.connect(ac.destination);
-            osc.frequency.value = 880;
-            gain.gain.setValueAtTime(0.18, ac.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.15);
-            osc.start(ac.currentTime);
-            osc.stop(ac.currentTime + 0.15);
-            osc.onended = () => ac.close();
-        } catch {}
-    };
+    const _playFuelBeep = () => playSfx(880, 0.15, 0.18);
 
     const showAll = (v: boolean) => {
         panel.style.display = v ? 'block' : 'none';

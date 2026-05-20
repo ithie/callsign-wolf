@@ -57,7 +57,7 @@ const extCtx = await esbuild.context({
     bundle: true,
     platform: 'node',
     format: 'cjs',
-    external: ['vscode'],
+    external: ['vscode', 'esbuild'],
     outfile: 'dist/extension.js',
     sourcemap: true,
     minify: false,
@@ -118,24 +118,6 @@ const zdefCtx = await esbuild.context({
     tsconfig: '../tsconfig.json',
 });
 
-const uiPreviewCtx = await esbuild.context({
-    entryPoints: ['../src/game/ui/ui-component-preview.ts'],
-    bundle: true,
-    platform: 'browser',
-    format: 'iife',
-    outfile: 'media/ui-preview.js',
-    sourcemap: true,
-    minify: false,
-    loader: { '.zdef': 'json' },
-    define: {
-        'import.meta.env.VITE_TARGET': '"web"',
-        'import.meta.env.DEV': 'false',
-        'import.meta.env.PROD': 'true',
-    },
-    plugins: [cssInjectPlugin, previewStubsPlugin],
-    tsconfig: '../tsconfig.json',
-});
-
 if (watch) {
     await extCtx.watch();
     await trackerCtx.watch();
@@ -143,9 +125,8 @@ if (watch) {
     await campaignEditorCtx.watch();
     await zsoundCtx.watch();
     await zdefCtx.watch();
-    await uiPreviewCtx.watch();
     console.log('Watching…');
 } else {
-    await Promise.all([extCtx.rebuild(), trackerCtx.rebuild(), campaignCtx.rebuild(), campaignEditorCtx.rebuild(), zsoundCtx.rebuild(), zdefCtx.rebuild(), uiPreviewCtx.rebuild()]);
-    await Promise.all([extCtx.dispose(), trackerCtx.dispose(), campaignCtx.dispose(), campaignEditorCtx.dispose(), zsoundCtx.dispose(), zdefCtx.dispose(), uiPreviewCtx.dispose()]);
+    await Promise.all([extCtx.rebuild(), trackerCtx.rebuild(), campaignCtx.rebuild(), campaignEditorCtx.rebuild(), zsoundCtx.rebuild(), zdefCtx.rebuild()]);
+    await Promise.all([extCtx.dispose(), trackerCtx.dispose(), campaignCtx.dispose(), campaignEditorCtx.dispose(), zsoundCtx.dispose(), zdefCtx.dispose()]);
 }

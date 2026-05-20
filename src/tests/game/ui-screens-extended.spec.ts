@@ -20,16 +20,16 @@ vi.mock('../../game/render-config', () => ({
 }));
 
 // ─── Imports ──────────────────────────────────────────────────────────────────
-import * as LegalScreen from '../../game/ui/legal-screen/legal-screen.ui';
-import * as LoadingScreen from '../../game/ui/loading-screen/loading-screen.ui';
-import * as PauseOverlay from '../../game/ui/pause-overlay/pause-overlay.ui';
-import * as TouchControls from '../../game/ui/touch-controls/touch-controls.ui';
+import * as LegalScreen from '../../game/ui/legal-screen/legal-screen';
+import * as LoadingScreen from '../../game/ui/loading-screen/loading-screen';
+import * as PauseOverlay from '../../game/ui/pause-overlay/pause-overlay';
+import * as TouchControls from '../../game/ui/touch-controls/touch-controls';
 import { createSwipeCarousel } from '../../game/ui/swipe-carousel/swipe-carousel';
-import * as MissionSelect from '../../game/ui/mission-select/mission-select.ui';
+import * as MissionSelect from '../../game/ui/mission-select/mission-select';
 import { mountMinimap, showMinimap, updateMinimap, initMinimapTerrain, type MinimapData } from '../../game/ui/minimap/minimap';
 import { startMenuParticles, stopMenuParticles } from '../../game/ui/menu-particles/menu-particles';
 import { createHud } from '../../game/ui/hud/hud';
-import * as HeliSelect from '../../game/ui/heli-select/heli-select.ui';
+import * as HeliSelect from '../../game/ui/heli-select/heli-select';
 import { initTutorial, tutorialTick, destroyTutorial, isTutorialRunning } from '../../game/ui/tutorial/tutorial';
 import { HELI_TYPES } from '../../game/heli-types';
 import type { PlayerSession } from '../../game/session';
@@ -513,41 +513,41 @@ describe('tutorial', () => {
     });
 
     it('initTutorial starts the tutorial and creates DOM', () => {
-        initTutorial(false, 'heading', mkGameState(), vi.fn());
+        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
         expect(isTutorialRunning()).toBe(true);
         expect(document.getElementById('tutorial-hud')).not.toBeNull();
     });
 
     it('first step text is set after init', () => {
-        initTutorial(false, 'heading', mkGameState(), vi.fn());
+        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
         const text = document.getElementById('tutorial-step-text')!.textContent;
         expect(text!.length).toBeGreaterThan(0);
     });
 
     it('tutorialTick advances when step-1 condition (engineOn) is met', () => {
-        initTutorial(false, 'heading', mkGameState(), vi.fn());
-        tutorialTick(mkGameState({ engineOn: true }));
+        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
+        tutorialTick(mkGameState({ z: 10 }));
         // After advance the text changes (flashing, then next step)
         expect(isTutorialRunning()).toBe(true);
         // The step index moved — test only that it didn't crash
     });
 
     it('tutorialTick does not advance when condition is not met', () => {
-        initTutorial(false, 'heading', mkGameState(), vi.fn());
+        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
         const textBefore = document.getElementById('tutorial-step-text')!.textContent;
-        tutorialTick(mkGameState({ engineOn: false }));
+        tutorialTick(mkGameState({ z: 0 }));
         expect(document.getElementById('tutorial-step-text')!.textContent).toBe(textBefore);
     });
 
     it('destroyTutorial stops the tutorial', () => {
-        initTutorial(false, 'heading', mkGameState(), vi.fn());
+        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
         destroyTutorial();
         expect(isTutorialRunning()).toBe(false);
     });
 
     it('calling initTutorial twice restarts cleanly', () => {
-        initTutorial(false, 'heading', mkGameState(), vi.fn());
-        initTutorial(false, 'screen', mkGameState(), vi.fn());
+        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
+        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
         expect(document.querySelectorAll('#tutorial-hud').length).toBe(1);
         expect(isTutorialRunning()).toBe(true);
     });
