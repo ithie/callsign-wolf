@@ -117,7 +117,7 @@ export const updateMinimap = (data: MinimapData): void => {
     _heli.style.top     = `${data.heli.y * sc}px`;
     _heli.style.display = 'block';
 
-    const activePays = data.payloads.filter(p => !p.rescued && !p.npcTarget && !p.hanging);
+    const activePays = data.payloads.filter(p => !p.rescued && !p.npcTarget && !p.hanging && p.type !== 'orni_wreck');
     activePays.forEach((p, i) => {
         const dot = _getDot(i);
         dot.style.left       = `${p.x * sc}px`;
