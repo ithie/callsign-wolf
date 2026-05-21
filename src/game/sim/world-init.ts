@@ -36,7 +36,7 @@ export const resolveAttachTo = (attachTo: any): { x: number; y: number; z: numbe
 
 // ─── carrier ─────────────────────────────────────────────────────────────────
 
-function initVessel(obj: any, vessel: any, seaTimeRef: { t: number }) {
+const initVessel = (obj: any, vessel: any, seaTimeRef: { t: number }) => {
     const angleRad = (obj.angle ?? 0) * (Math.PI / 180);
     vessel.w = obj.type === VESSEL.CARRIER ? 8.0 : 1.5;
     vessel.l = obj.type === VESSEL.CARRIER ? 3.5 : 3.0;
@@ -93,7 +93,7 @@ const updateVesselPath = (v: any, dt: number) => {
     }
 };
 
-export function updateCarrierPos(CARRIER: any, seaTimeRef: any, forceUpdate = false, dt = 1) {
+export const updateCarrierPos = (CARRIER: any, seaTimeRef: any, forceUpdate = false, dt = 1) => {
     if (!CARRIER || CARRIER.x === undefined) return;
     if (CARRIER.path === VESSEL_PATH.STATIC) return;
 
@@ -123,7 +123,7 @@ export function updateCarrierPos(CARRIER: any, seaTimeRef: any, forceUpdate = fa
     }
 }
 
-export function initCarrierFromMission() {
+export const initCarrierFromMission = () => {
     const carrierObj = getObjectByType(VESSEL.CARRIER);
     if (!carrierObj) return;
     const seaTimeRef = {
@@ -134,7 +134,7 @@ export function initCarrierFromMission() {
     updateCarrierPos(G.CARRIER, seaTimeRef, true);
 }
 
-export function initSubmarinesFromMission() {
+export const initSubmarinesFromMission = () => {
     const allObjects = getObjects();
     G.SUBMARINES = getObjectsByType(VESSEL.SUBMARINE).map((obj: any) => {
         const s = {
@@ -162,7 +162,7 @@ const BOAT_CFG: Record<string, { w: number; l: number; zDeck: number }> = {
     salvage_tug: { w: 1.2, l: 3.5, zDeck: 1.20 },
 };
 
-export function initBoatsFromMission() {
+export const initBoatsFromMission = () => {
     const allObjects = getObjects();
     const boatTypes = [VESSEL.BOAT, VESSEL.PILOT_BOAT, VESSEL.SALVAGE_TUG];
     G.BOATS = boatTypes.flatMap(type => getObjectsByType(type)).map((obj: any) => {
@@ -185,7 +185,7 @@ export function initBoatsFromMission() {
 export const updateBoats = (BOATS: any[], dt: number) =>
     BOATS.forEach(b => updateVesselPath(b, dt));
 
-export function initStaticObjectsFromMission() {
+export const initStaticObjectsFromMission = () => {
     const allObjects = getObjects();
     G.RESEARCH_PLATFORMS = getObjectsByType(VESSEL.RESEARCH_PLATFORM).map((obj: any) => ({
         x: obj.x, y: obj.y, angle: 0,
@@ -210,7 +210,7 @@ export function initStaticObjectsFromMission() {
     }));
 }
 
-export function initPayloadsFromMission() {
+export const initPayloadsFromMission = () => {
     const missionData = campaignHandler.getCurrentMissionData();
     G.objectives = missionData.objectives || [];
     const { payloads: missionPayloads } = missionData;

@@ -143,7 +143,7 @@ export const HELI_TYPES: HeliType[] = [
     },
 ];
 
-export function getHeliType(id: string): HeliType {
+export const getHeliType = (id: string): HeliType => {
     const ht = HELI_TYPES.find(h => h.id === id);
     if (!ht) throw new Error(`Unknown heli type: ${id}`);
     return ht;

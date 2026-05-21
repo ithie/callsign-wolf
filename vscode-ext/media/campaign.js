@@ -1,6 +1,6 @@
 "use strict";
 (() => {
-  // tracker-view/campaign-main.ts
+  // editor-view-entry/campaign-main.ts
   var vscode = acquireVsCodeApi();
   var campaign = null;
   var notifyTimer = null;

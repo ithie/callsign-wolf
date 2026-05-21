@@ -65,6 +65,7 @@ export const G = {
     SUBMARINES: [] as any[],
     RESEARCH_PLATFORMS: [] as any[],
     WIND_TURBINES: [] as any[],
+    LANDING_ZONES: [] as { xMin: number; xMax: number; yMin: number; yMax: number; z: number }[],
     PLANE_WRECKS: [] as any[],
     BROKEN_SAILBOATS: [] as any[],
     seaTime: 0,

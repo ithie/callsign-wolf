@@ -23,7 +23,8 @@ import FUEL_TRUCK_TANK_RAW from '../../src/game/models/fuel_truck_tank.zdef';
 import FUEL_TRUCK_CAB_RAW from '../../src/game/models/fuel_truck_cab.zdef';
 
 interface RescueZone { x: number; y: number; w: number; h: number; z?: number; role: string; }
-interface DEFModel extends DEF { rescueZones?: RescueZone[]; }
+interface LandingZone { x: number; y: number; w: number; h: number; z: number; }
+interface DEFModel extends DEF { rescueZones?: RescueZone[]; landingZone?: LandingZone; }
 interface ZdefMeta { label: string; isStatic: boolean; movementType: string; }
 interface Grid { visible: boolean; x: number; y: number; z: number; selected: boolean; }
 interface Quad { angle: number; defaultAngle: number; cam: { x: number; y: number }; zoom: number; }
@@ -313,6 +314,21 @@ const draw = (): void => {
                 }
             }
 
+            if (state.def?.landingZone) {
+                const lz = state.def.landingZone;
+                const pts = [
+                    localToScreen(lz.x - lz.w, lz.y - lz.h, lz.z), localToScreen(lz.x + lz.w, lz.y - lz.h, lz.z),
+                    localToScreen(lz.x + lz.w, lz.y + lz.h, lz.z), localToScreen(lz.x - lz.w, lz.y + lz.h, lz.z),
+                ];
+                ctx.save();
+                ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < 4; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                ctx.closePath();
+                ctx.fillStyle = 'rgba(255,80,80,0.15)'; ctx.fill();
+                ctx.strokeStyle = 'rgba(255,80,80,0.85)'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke();
+                ctx.restore();
+            }
+
             if (gridDrag.active && gridDrag.snapFaceIdx >= 0) {
                 const allFaces = [...state.def.faces];
                 if (state.def.parts) state.def.parts.forEach(p => allFaces.push(...p.faces));
@@ -572,8 +588,39 @@ const renderZoneList = (): void => {
     });
 };
 
+const renderLandingZone = (): void => {
+    const panel = document.getElementById('landing-zone-panel')!;
+    const btnAdd = document.getElementById('btn-add-landing') as HTMLButtonElement;
+    const btnRemove = document.getElementById('btn-remove-landing') as HTMLButtonElement;
+    const lz = (state.def as DEFModel | null)?.landingZone;
+    if (!lz) {
+        panel.innerHTML = '<div class="empty">–</div>';
+        btnAdd.style.display = ''; btnRemove.style.display = 'none';
+        return;
+    }
+    btnAdd.style.display = 'none'; btnRemove.style.display = '';
+    panel.innerHTML = `
+    <div class="cbox-block"><div class="cbox-grid">
+      <label>X</label>
+      <input type="number" step="0.1" value="${lz.x}" class="lzi" data-f="x">
+      <input type="number" step="0.1" value="${lz.y}" class="lzi" data-f="y">
+      <label>W/H</label>
+      <input type="number" step="0.1" value="${lz.w}" class="lzi" data-f="w">
+      <input type="number" step="0.1" value="${lz.h}" class="lzi" data-f="h">
+      <label>Z</label>
+      <input type="number" step="0.05" value="${lz.z}" class="lzi" data-f="z" style="grid-column:2">
+    </div></div>`;
+    panel.querySelectorAll<HTMLInputElement>('.lzi').forEach(inp => {
+        inp.addEventListener('input', e => {
+            const t = e.target as HTMLInputElement;
+            (lz as unknown as Record<string, unknown>)[t.dataset['f']!] = parseFloat(t.value) || 0;
+            markDirty(); draw();
+        });
+    });
+};
+
 const renderAll = (): void => {
-    renderPartsList(); renderFaceList(); renderFaceEditor(); renderCboxList(); renderZoneList(); draw();
+    renderPartsList(); renderFaceList(); renderFaceEditor(); renderCboxList(); renderZoneList(); renderLandingZone(); draw();
 };
 
 const selectFace = (i: number): void => {
@@ -1011,6 +1058,16 @@ setupColorPair('face-stroke', 'face-stroke-hex', v => {
     state.def.rescueZones.push({ x: 0, y: 0, w: 1.5, h: 1.5, z: 0, role: 'both' });
     markDirty(); renderZoneList(); draw();
 });
+(document.getElementById('btn-add-landing') as HTMLButtonElement).addEventListener('click', () => {
+    if (!state.def) return;
+    (state.def as DEFModel).landingZone = { x: 0, y: 0, w: 1.5, h: 1.5, z: 0 };
+    markDirty(); renderLandingZone(); draw();
+});
+(document.getElementById('btn-remove-landing') as HTMLButtonElement).addEventListener('click', () => {
+    if (!state.def) return;
+    delete (state.def as DEFModel).landingZone;
+    markDirty(); renderLandingZone(); draw();
+});
 
 (document.getElementById('grid-visible') as HTMLInputElement).addEventListener('change', e => {
     grids[activeQ].visible = (e.target as HTMLInputElement).checked;
@@ -1061,6 +1118,7 @@ const toJSON = (): string => {
     };
     if (d.parts?.length) out['parts'] = d.parts;
     if (d.rescueZones?.length) out['rescueZones'] = d.rescueZones;
+    if ((d as DEFModel).landingZone) out['landingZone'] = (d as DEFModel).landingZone;
     return JSON.stringify(out, null, 2);
 };
 
@@ -1074,6 +1132,7 @@ const fromJSON = (content: string): void => {
         parts: d['parts'] as DEFPart[] | undefined,
         rotateNodes: d['rotateNodes'] as DEF['rotateNodes'],
         rescueZones: d['rescueZones'] as RescueZone[] | undefined,
+        landingZone: d['landingZone'] as LandingZone | undefined,
     };
     state.meta = {
         label: (d['label'] as string) || (d['id'] as string),

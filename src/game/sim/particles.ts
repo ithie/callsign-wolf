@@ -6,7 +6,7 @@ import { PhysicsCtx } from './ctx';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
-export function spawnExplosion(heli: any, particles: any[], debris: any[], points: number[][], CARRIER: any) {
+export const spawnExplosion = (heli: any, particles: any[], debris: any[], points: number[][], CARRIER: any) => {
     const impactSpeed = Math.hypot(heli.vx, heli.vy, heli.vz || 0);
     const intensity = Math.min(1.0, impactSpeed / 0.25);
     const count = Math.floor(30 + intensity * 80);
@@ -110,7 +110,7 @@ export function spawnExplosion(heli: any, particles: any[], debris: any[], point
     }
 }
 
-export function updateDebris() {
+export const updateDebris = () => {
     G.debris.forEach(d => {
         d.x += d.vx;
         d.y += d.vy;
@@ -141,7 +141,7 @@ export function updateDebris() {
     G.debris = G.debris.filter(d => d.life > 0);
 }
 
-export function initBirds() {
+export const initBirds = () => {
     G.flocks = [];
     const { gridSize } = campaignHandler.getTerrain();
     const numFlocks = 2 + Math.floor(Math.random() * 2);
@@ -174,7 +174,7 @@ export function initBirds() {
     }
 }
 
-export function updateBirds() {
+export const updateBirds = () => {
     const { gridSize } = campaignHandler.getTerrain();
     G.flocks.forEach((flock: any) => {
         const cx = flock.birds.reduce((s: number, b: any) => s + b.x, 0) / flock.birds.length;
@@ -227,7 +227,7 @@ const _getRotorPositions = () => {
     }));
 };
 
-export function handleParticles(dt: number, ctx: PhysicsCtx) {
+export const handleParticles = (dt: number, ctx: PhysicsCtx) => {
     const gH = getGround(G.heli.x, G.heli.y, G.points, G.CARRIER);
     const rotors = _getRotorPositions();
     if (G.heli.rotorRPM > 0.8) {

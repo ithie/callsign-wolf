@@ -290,27 +290,27 @@ Viel Glück, Pilot.</textarea>
 
         <!-- ── Workbench bridge ────────────────────────────────────────────── -->
         <script>
-            window.editorExport = function () {
-                var origAlert = window.alert;
-                window.alert = function () {};
+            window.editorExport = () => {
+                const origAlert = window.alert;
+                window.alert = () => {};
                 document.getElementById('btn-export-campaign').click();
                 window.alert = origAlert;
                 return document.getElementById('output').value || null;
             };
 
-            window.editorGetPreviewMission = function () {
-                var ed = window.__editor;
+            window.editorGetPreviewMission = () => {
+                const ed = window.__editor;
                 if (!ed) return null;
-                var m = ed.getCurrentMission();
+                const m = ed.getCurrentMission();
                 if (!m) return null;
-                var utils = window.__editorUtils || {};
-                var compressTerrain = utils.compressTerrain;
-                var compressFoliage = utils.compressFoliage;
-                var decompressFoliage = utils.decompressFoliage;
-                var terrain = compressTerrain
+                const utils = window.__editorUtils || {};
+                const compressTerrain = utils.compressTerrain;
+                const compressFoliage = utils.compressFoliage;
+                const decompressFoliage = utils.decompressFoliage;
+                const terrain = compressTerrain
                     ? typeof m.terrain === 'string' ? m.terrain : compressTerrain(m.terrain)
                     : m.terrain;
-                var foliage = compressFoliage
+                const foliage = compressFoliage
                     ? compressFoliage(typeof m.foliage === 'string' ? decompressFoliage(m.foliage) : m.foliage || [])
                     : m.foliage || [];
                 return {
@@ -325,24 +325,24 @@ Viel Glück, Pilot.</textarea>
                 };
             };
 
-            window.editorImport = function (content) {
+            window.editorImport = (content) => {
                 document.getElementById('output').value = content;
                 document.getElementById('btn-import-campaign').click();
             };
 
-            window.editorGetState = function () {
-                var ed = window.__editor;
+            window.editorGetState = () => {
+                const ed = window.__editor;
                 if (!ed) return null;
-                var m = ed.getCurrentMission();
-                var s = ed.state;
-                var foliageArr = m && m.foliage ? m.foliage : [];
-                var foliageCounts = {};
-                var foliageIcons = { pine: '🌲', oak: '🌳', bush: '🌿', dead: '🪵' };
-                foliageArr.forEach(function (f) {
+                const m = ed.getCurrentMission();
+                const s = ed.state;
+                const foliageArr = m && m.foliage ? m.foliage : [];
+                const foliageCounts = {};
+                const foliageIcons = { pine: '🌲', oak: '🌳', bush: '🌿', dead: '🪵' };
+                foliageArr.forEach((f) => {
                     foliageCounts[f.type] = (foliageCounts[f.type] || 0) + 1;
                 });
-                var foliageSummary = Object.entries(foliageCounts)
-                    .map(function (e) { return (foliageIcons[e[0]] || '🌲') + ' ' + e[0] + ': ' + e[1]; })
+                const foliageSummary = Object.entries(foliageCounts)
+                    .map((e) => (foliageIcons[e[0]] || '🌲') + ' ' + e[0] + ': ' + e[1])
                     .join(' | ');
                 return {
                     campaignTitle: {
@@ -356,9 +356,7 @@ Viel Glück, Pilot.</textarea>
                     campaignType: document.getElementById('c_type').value,
                     musicBriefing: document.getElementById('c_music_briefing').value,
                     musicIngame: document.getElementById('c_music_ingame').value,
-                    missions: s.campaign.map(function (mis, i) {
-                        return { idx: i, headline: mis.headline, active: i === s.curIdx };
-                    }),
+                    missions: s.campaign.map((mis, i) => ({ idx: i, headline: mis.headline, active: i === s.curIdx })),
                     tool: s.currentTool,
                     brushRadius: s.brushRadius,
                     isCustomBrush: s.isCustomBrush,
@@ -371,23 +369,23 @@ Viel Glück, Pilot.</textarea>
                         rain: m.rain, night: m.night, waterLevel: m.waterLevel || 0,
                         windDir: m.windDir, windStr: m.windStr, windVar: m.windVar,
                         npcHeliCount: m.npcHeliCount || 0, npcHeliType: m.npcHeliType || 'random',
-                        objectives: (m.objectives || []).map(function (o, i) { return Object.assign({ idx: i }, o); }),
-                        objects: (m.objects || []).map(function (o, i) { return { idx: i, type: o.type, x: o.x, y: o.y }; }),
-                        payloads: (m.payloads || []).map(function (p, i) { return { idx: i, type: p.type, x: p.x, y: p.y, npcTarget: !!p.npcTarget }; }),
+                        objectives: (m.objectives || []).map((o, i) => Object.assign({ idx: i }, o)),
+                        objects: (m.objects || []).map((o, i) => ({ idx: i, type: o.type, x: o.x, y: o.y })),
+                        payloads: (m.payloads || []).map((p, i) => ({ idx: i, type: p.type, x: p.x, y: p.y, npcTarget: !!p.npcTarget })),
                         foliageCount: foliageArr.length, foliageSummary: foliageSummary,
                     } : null,
                 };
             };
 
-            window.editorDispatch = function (action, data) {
-                var ed = window.__editor;
+            window.editorDispatch = (action, data) => {
+                const ed = window.__editor;
                 if (!ed) return;
-                var m = ed.getCurrentMission();
-                var get = function (id) { return document.getElementById(id); };
-                var set = function (id, v) { var el = get(id); if (el) el.value = v; };
-                var chk = function (id, v) { var el = get(id); if (el) el.checked = v; };
-                var clk = function (id) { var el = get(id); if (el) el.click(); };
-                var fire = function (id, ev) { var el = get(id); if (el) el.dispatchEvent(new Event(ev)); };
+                const m = ed.getCurrentMission();
+                const get = (id) => document.getElementById(id);
+                const set = (id, v) => { const el = get(id); if (el) el.value = v; };
+                const chk = (id, v) => { const el = get(id); if (el) el.checked = v; };
+                const clk = (id) => { const el = get(id); if (el) el.click(); };
+                const fire = (id, ev) => { const el = get(id); if (el) el.dispatchEvent(new Event(ev)); };
 
                 switch (action) {
                     case 'set-campaign-title': set('c_title_' + (data.lang || 'de'), data.value); break;
@@ -489,7 +487,7 @@ Viel Glück, Pilot.</textarea>
 
         <!-- ── Sidebar rendering ──────────────────────────────────────────── -->
         <script>
-            var ED_TOOLS = [
+            const ED_TOOLS = [
                 { v: 'move', l: '✋ Drag & Pan' },
                 { v: 'terrain', l: '⛰️ Berge' },
                 { v: 'flatten', l: '🧽 Einebnen' },
@@ -510,54 +508,51 @@ Viel Glück, Pilot.</textarea>
                 { v: 'crate', l: '🟠 Crate' },
                 { v: 'foliage', l: '🌲 Bäume' },
             ];
-            var OBJ_ICONS = { pad: '🟩', carrier: '🚢', boat: '⛵', submarine: '🤿', lighthouse: '🔦' };
-            var SONG_KEYS = ['', 'main', 'tutorial', 'final'];
+            const OBJ_ICONS = { pad: '🟩', carrier: '🚢', boat: '⛵', submarine: '🤿', lighthouse: '🔦' };
+            const SONG_KEYS = ['', 'main', 'tutorial', 'final'];
 
-            var _edLang = 'de';
-            var edLastState = null;
+            let _edLang = 'de';
+            let edLastState = null;
 
-            var edH = function (s) {
-                return String(s == null ? '' : s)
+            const edH = (s) =>
+                String(s == null ? '' : s)
                     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
                     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-            };
 
-            var edSetLang = function (lang) { _edLang = lang; if (edLastState) edRenderPanel(edLastState); };
+            const edSetLang = (lang) => { _edLang = lang; if (edLastState) edRenderPanel(edLastState); };
 
-            var edTabs = function () {
-                return '<div style="display:flex;gap:4px;margin-bottom:4px">'
+            const edTabs = () =>
+                '<div style="display:flex;gap:4px;margin-bottom:4px">'
                     + '<button class="ed-btn-sm' + (_edLang === 'de' ? ' active' : '') + '" onclick="edSetLang(\'de\')" style="' + (_edLang === 'de' ? 'background:var(--accent);color:#fff' : '') + '">DE</button>'
                     + '<button class="ed-btn-sm' + (_edLang === 'en' ? ' active' : '') + '" onclick="edSetLang(\'en\')" style="' + (_edLang === 'en' ? 'background:var(--accent);color:#fff' : '') + '">EN</button>'
                     + '</div>';
-            };
 
-            var edLs = function (ls, lang) {
+            const edLs = (ls, lang) => {
                 if (!ls) return '';
                 if (typeof ls === 'string') return ls;
                 return ls[lang] || '';
             };
 
-            var edSongOptions = function (selected) {
-                return SONG_KEYS.map(function (k) {
-                    return '<option value="' + k + '"' + (selected === k ? ' selected' : '') + '>' + (k || '— kein Song —') + '</option>';
-                }).join('');
-            };
+            const edSongOptions = (selected) =>
+                SONG_KEYS.map((k) =>
+                    '<option value="' + k + '"' + (selected === k ? ' selected' : '') + '>' + (k || '— kein Song —') + '</option>'
+                ).join('');
 
-            var edDispatch = function (action, data) {
+            const edDispatch = (action, data) => {
                 if (window.editorDispatch) {
                     window.editorDispatch(action, data);
                     setTimeout(edRefreshPanel, 80);
                 }
             };
 
-            var edRefreshPanel = function () {
-                var controls = document.getElementById('editor-controls');
+            const edRefreshPanel = () => {
+                const controls = document.getElementById('editor-controls');
                 if (controls && controls.contains(document.activeElement)) return;
                 if (!window.editorGetState) return;
                 edRenderPanel(window.editorGetState());
             };
 
-            var edRenderPanel = function (st) {
+            const edRenderPanel = (st) => {
                 edLastState = st;
                 var controls = document.getElementById('editor-controls');
                 if (!st) {
@@ -588,15 +583,15 @@ Viel Glück, Pilot.</textarea>
 
                     + '<div class="ed-section">'
                     + '<div class="ed-section-title">Missionen</div>'
-                    + st.missions.map(function (m) {
-                        return '<div class="ed-mission-item' + (m.active ? ' active' : '') + '" onclick="edDispatch(\'select-mission\',{idx:' + m.idx + '})">'
+                    + st.missions.map((m) =>
+                        '<div class="ed-mission-item' + (m.active ? ' active' : '') + '" onclick="edDispatch(\'select-mission\',{idx:' + m.idx + '})">'
                             + '<span>' + (m.idx + 1) + '. ' + edH(edLs(m.headline, 'de').substring(0, 20)) + '</span>'
                             + '<div class="ed-mission-controls">'
                             + '<button onclick="event.stopPropagation();edDispatch(\'move-mission\',{idx:' + m.idx + ',dir:-1})">↑</button>'
                             + '<button onclick="event.stopPropagation();edDispatch(\'move-mission\',{idx:' + m.idx + ',dir:1})">↓</button>'
                             + '<button class="ed-del" onclick="event.stopPropagation();edDispatch(\'delete-mission\',{idx:' + m.idx + '})">✕</button>'
-                            + '</div></div>';
-                    }).join('')
+                            + '</div></div>'
+                    ).join('')
                     + '<button class="ed-btn" onclick="edDispatch(\'add-mission\')">+ Mission hinzufügen</button>'
                     + '<button class="ed-btn" onclick="edDispatch(\'copy-mission\')">📋 Duplizieren</button>'
                     + '</div>'
@@ -604,16 +599,16 @@ Viel Glück, Pilot.</textarea>
                     + '<div class="ed-section">'
                     + '<div class="ed-section-title">Werkzeuge</div>'
                     + '<div class="ed-radio-grid">'
-                    + ED_TOOLS.map(function (t) {
-                        return '<label class="ed-radio"><input type="radio" name="ed-tool" value="' + t.v + '" ' + (st.tool === t.v ? 'checked' : '') + ' onchange="edDispatch(\'set-tool\',{tool:\'' + t.v + '\'})">' + t.l + '</label>';
-                    }).join('')
+                    + ED_TOOLS.map((t) =>
+                        '<label class="ed-radio"><input type="radio" name="ed-tool" value="' + t.v + '" ' + (st.tool === t.v ? 'checked' : '') + ' onchange="edDispatch(\'set-tool\',{tool:\'' + t.v + '\'})">' + t.l + '</label>'
+                    ).join('')
                     + '</div>'
                     + (st.tool === 'foliage' ? '<div style="margin-top:6px">'
                         + '<div class="ed-row" style="margin-bottom:4px"><label style="color:var(--text-dim)">Typ</label>'
                         + '<select style="flex:1" onchange="edDispatch(\'set-foliage-type\',{value:this.value})">'
-                        + [['pine','🌲 Nadel'],['oak','🌳 Laub'],['bush','🌿 Busch'],['dead','🪵 Kahl']].map(function (e) {
-                            return '<option value="' + e[0] + '"' + (st.foliageType === e[0] ? ' selected' : '') + '>' + e[1] + '</option>';
-                        }).join('') + '</select></div>'
+                        + [['pine','🌲 Nadel'],['oak','🌳 Laub'],['bush','🌿 Busch'],['dead','🪵 Kahl']].map((e) =>
+                            '<option value="' + e[0] + '"' + (st.foliageType === e[0] ? ' selected' : '') + '>' + e[1] + '</option>'
+                        ).join('') + '</select></div>'
                         + '<label style="color:var(--text-dim)">Scale: ' + st.foliageScale + '</label>'
                         + '<input type="range" min="0.5" max="2.0" step="0.1" value="' + st.foliageScale + '" oninput="edDispatch(\'set-foliage-scale\',{value:this.value})">'
                         + '</div>' : '')
@@ -621,11 +616,11 @@ Viel Glück, Pilot.</textarea>
 
                     + '<div class="ed-section">'
                     + '<div class="ed-section-title">Pinsel</div>'
-                    + [{ v: '0', l: '1px' }, { v: '1.5', l: '3 (Normal)' }, { v: '5.0', l: '10 (Groß)' }, { v: '15.0', l: '30 (Massiv)' }].map(function (b) {
-                        return '<label class="ed-radio"><input type="radio" name="ed-brush" value="' + b.v + '" '
+                    + [{ v: '0', l: '1px' }, { v: '1.5', l: '3 (Normal)' }, { v: '5.0', l: '10 (Groß)' }, { v: '15.0', l: '30 (Massiv)' }].map((b) =>
+                        '<label class="ed-radio"><input type="radio" name="ed-brush" value="' + b.v + '" '
                             + (!st.isCustomBrush && st.brushRadius == b.v ? 'checked' : '')
-                            + ' onchange="edDispatch(\'set-brush\',{value:\'' + b.v + '\'})">' + b.l + '</label>';
-                    }).join('')
+                            + ' onchange="edDispatch(\'set-brush\',{value:\'' + b.v + '\'})">' + b.l + '</label>'
+                    ).join('')
                     + '<div class="ed-row" style="margin-top:4px">'
                     + '<label class="ed-radio"><input type="radio" name="ed-brush" value="custom" ' + (st.isCustomBrush ? 'checked' : '') + ' onchange="edDispatch(\'set-brush\',{value:document.getElementById(\'ed-custom-brush\').value})"> Frei:</label>'
                     + '<input type="number" id="ed-custom-brush" value="' + edH(st.customBrushValue) + '" min="1" max="50" style="width:50px" oninput="if(document.querySelector(\'input[name=ed-brush][value=custom]\').checked) edDispatch(\'set-brush\',{value:this.value})">'
@@ -649,7 +644,7 @@ Viel Glück, Pilot.</textarea>
                         + '<input type="text" value="' + edH(edLs(cm.headline, _edLang)) + '" oninput="edDispatch(\'set-headline\',{lang:\'' + _edLang + '\',value:this.value})">'
                         + '<label style="font-size:10px;color:var(--text-dim);margin-top:4px">Ziele (1 pro Zeile)</label>'
                         + edTabs()
-                        + '<textarea rows="2" oninput="edDispatch(\'set-sublines\',{lang:\'' + _edLang + '\',value:this.value})">' + edH((cm.sublines || []).map(function (s) { return edLs(s, _edLang); }).join('\n')) + '</textarea>'
+                        + '<textarea rows="2" oninput="edDispatch(\'set-sublines\',{lang:\'' + _edLang + '\',value:this.value})">' + edH((cm.sublines || []).map((s) => edLs(s, _edLang)).join('\n')) + '</textarea>'
                         + '<label style="font-size:10px;color:var(--text-dim);margin-top:4px">Briefing</label>'
                         + edTabs()
                         + '<textarea rows="3" oninput="edDispatch(\'set-briefing\',{lang:\'' + _edLang + '\',value:this.value})">' + edH(edLs(cm.briefing, _edLang)) + '</textarea>'
@@ -669,23 +664,23 @@ Viel Glück, Pilot.</textarea>
                         + '<div class="ed-row" style="margin-top:6px"><label style="color:var(--text-dim)">NPC-Helis</label>'
                         + '<input type="number" value="' + cm.npcHeliCount + '" min="0" max="3" style="width:40px" oninput="edDispatch(\'set-npc-count\',{value:this.value})">'
                         + '<select onchange="edDispatch(\'set-npc-type\',{value:this.value})" style="flex:1">'
-                        + [['random','Zufällig'],['dolphin','Dolphin'],['coasthawk','Coast-Hawk'],['atlas','Atlas']].map(function (e) {
-                            return '<option value="' + e[0] + '"' + ((cm.npcHeliType === e[0] || (!cm.npcHeliType && e[0] === 'random')) ? ' selected' : '') + '>' + e[1] + '</option>';
-                        }).join('') + '</select>'
+                        + [['random','Zufällig'],['dolphin','Dolphin'],['coasthawk','Coast-Hawk'],['atlas','Atlas']].map((e) =>
+                            '<option value="' + e[0] + '"' + ((cm.npcHeliType === e[0] || (!cm.npcHeliType && e[0] === 'random')) ? ' selected' : '') + '>' + e[1] + '</option>'
+                        ).join('') + '</select>'
                         + '</div></div>'
 
                         + '<div class="ed-section"><div class="ed-section-title">Objekte</div>'
-                        + (cm.objects.length ? cm.objects.map(function (o) {
-                            return '<div class="ed-list-row"><span>' + (OBJ_ICONS[o.type] || '?') + ' ' + o.type + ' @ (' + o.x + ', ' + o.y + ')</span>'
-                                + '<button class="ed-btn-sm ed-del" onclick="edDispatch(\'delete-object\',{idx:' + o.idx + '})">✕</button></div>';
-                        }).join('') : '<div class="ed-empty">Keine Objekte</div>')
+                        + (cm.objects.length ? cm.objects.map((o) =>
+                            '<div class="ed-list-row"><span>' + (OBJ_ICONS[o.type] || '?') + ' ' + o.type + ' @ (' + o.x + ', ' + o.y + ')</span>'
+                                + '<button class="ed-btn-sm ed-del" onclick="edDispatch(\'delete-object\',{idx:' + o.idx + '})">✕</button></div>'
+                        ).join('') : '<div class="ed-empty">Keine Objekte</div>')
                         + '</div>'
 
                         + '<div class="ed-section"><div class="ed-section-title">Ziele</div>'
-                        + (cm.objectives.length ? cm.objectives.map(function (o) {
-                            return '<div class="ed-list-row"><span>' + (o.type === 'rescue_all' ? '🚁 Alle retten' : '🎯 Landen: ' + o.target) + '</span>'
-                                + '<button class="ed-btn-sm ed-del" onclick="edDispatch(\'delete-objective\',{idx:' + o.idx + '})">✕</button></div>';
-                        }).join('') : '<div class="ed-empty">Keine Ziele</div>')
+                        + (cm.objectives.length ? cm.objectives.map((o) =>
+                            '<div class="ed-list-row"><span>' + (o.type === 'rescue_all' ? '🚁 Alle retten' : '🎯 Landen: ' + o.target) + '</span>'
+                                + '<button class="ed-btn-sm ed-del" onclick="edDispatch(\'delete-objective\',{idx:' + o.idx + '})">✕</button></div>'
+                        ).join('') : '<div class="ed-empty">Keine Ziele</div>')
                         + '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px">'
                         + '<button class="ed-btn" style="width:auto" onclick="edDispatch(\'add-objective\',{type:\'rescue_all\'})">+ Alle retten</button>'
                         + '<button class="ed-btn" style="width:auto" onclick="edDispatch(\'add-objective\',{type:\'land_at\',target:\'pad\'})">+ Landen: Pad</button>'
@@ -693,11 +688,11 @@ Viel Glück, Pilot.</textarea>
                         + '</div></div>'
 
                         + '<div class="ed-section"><div class="ed-section-title">Payloads</div>'
-                        + (cm.payloads.length ? cm.payloads.map(function (p) {
-                            return '<div class="ed-list-row"><span>' + (p.type === 'person' ? '🟡' : p.type === 'rescuer' ? '🔵' : '🟠') + ' ' + p.type + ' @ (' + p.x + ', ' + p.y + ')</span>'
+                        + (cm.payloads.length ? cm.payloads.map((p) =>
+                            '<div class="ed-list-row"><span>' + (p.type === 'person' ? '🟡' : p.type === 'rescuer' ? '🔵' : '🟠') + ' ' + p.type + ' @ (' + p.x + ', ' + p.y + ')</span>'
                                 + '<label style="font-size:10px;color:#8af;white-space:nowrap"><input type="checkbox" ' + (p.npcTarget ? 'checked' : '') + ' onchange="edDispatch(\'set-payload-npc\',{idx:' + p.idx + ',value:this.checked})"> NPC</label>'
-                                + '<button class="ed-btn-sm ed-del" onclick="edDispatch(\'delete-payload\',{idx:' + p.idx + '})">✕</button></div>';
-                        }).join('') : '<div class="ed-empty">Keine Payloads</div>')
+                                + '<button class="ed-btn-sm ed-del" onclick="edDispatch(\'delete-payload\',{idx:' + p.idx + '})">✕</button></div>'
+                        ).join('') : '<div class="ed-empty">Keine Payloads</div>')
                         + '</div>'
 
                         + '<div class="ed-section"><div class="ed-section-title">Beflockung (' + cm.foliageCount + ')</div>'

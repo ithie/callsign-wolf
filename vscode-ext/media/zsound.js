@@ -1,6 +1,6 @@
 "use strict";
 (() => {
-  // tracker-view/zsound-main.ts
+  // editor-view-entry/zsound-main.ts
   var vscode = acquireVsCodeApi();
   var _type = "heli";
   var actx = null;

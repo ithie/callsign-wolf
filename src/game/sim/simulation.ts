@@ -54,8 +54,15 @@ const _computeLandingState = (ctx: PhysicsCtx, groundH: number) => {
     }
     if (ctx.hasPad && G.heli.x >= G.PAD.xMin && G.heli.x <= G.PAD.xMax && G.heli.y >= G.PAD.yMin && G.heli.y <= G.PAD.yMax)
         onPadSurface = true;
-    const onPad = onCarrierDeck || onPadSurface;
-    const effectiveGroundH = onPadSurface && G.PAD ? G.PAD.z : onCarrierDeck ? G.CARRIER.zDeck : groundH;
+    const landingZone = G.LANDING_ZONES.find(lz =>
+        G.heli.x >= lz.xMin && G.heli.x <= lz.xMax &&
+        G.heli.y >= lz.yMin && G.heli.y <= lz.yMax
+    ) ?? null;
+    const onPad = onCarrierDeck || onPadSurface || landingZone !== null;
+    const effectiveGroundH = landingZone ? landingZone.z
+        : onPadSurface && G.PAD ? G.PAD.z
+        : onCarrierDeck ? G.CARRIER.zDeck
+        : groundH;
     return { onCarrierDeck, onPadSurface, onPad, effectiveGroundH };
 };
 
@@ -138,7 +145,7 @@ const _depositHandlers: Record<string, (p: any, state: _DepositState) => void> =
 
 // ─── main physics update ──────────────────────────────────────────────────────
 
-export function updateWind(wind: any, dt: number, ctx: PhysicsCtx) {
+export const updateWind = (wind: any, dt: number, ctx: PhysicsCtx) => {
     const baseAngle = (ctx.windDir ?? 0) * (Math.PI / 180);
     const baseStrength = ((ctx.windStr ?? 1) / 10) * 0.0002;
     wind.phase += 0.01 * dt;
@@ -160,7 +167,7 @@ export function updateWind(wind: any, dt: number, ctx: PhysicsCtx) {
     wind.shelterFactor = shelterFactor;
 }
 
-export function updatePhysics(dt: number, ctx: PhysicsCtx) {
+export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     const { crashed } = zstate;
     const { gridSize } = campaignHandler.getTerrain();
 
@@ -362,7 +369,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
         G.heli.z = zMax; G.heli.vz = 0;
         if (Math.random() < 0.05) ctx.showMsg(I18N.MAX_ALTITUDE);
     }
-    if (G.heli.z < groundH + 0.1) { G.heli.z = groundH + 0.1; G.heli.vz = 0; }
+    if (G.heli.z < effectiveGroundH + 0.1) { G.heli.z = effectiveGroundH + 0.1; G.heli.vz = 0; }
 
     // winch
     if (G.keys['KeyQ']) G.heli.winch = Math.max(0, G.heli.winch - 0.02 * dt);

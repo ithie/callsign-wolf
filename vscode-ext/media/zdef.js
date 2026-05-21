@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // ../src/game/scene-renderer.ts
-  function createSceneRenderer(ctx2, iso2) {
+  var createSceneRenderer = (ctx2, iso2) => {
     const _instances = [];
     const _transform = (lx, ly, lz, pivot, angle, wx, wy, wz) => {
       const cosA = Math.cos(angle), sinA = Math.sin(angle);
@@ -141,7 +141,7 @@
       }
     };
     return renderer;
-  }
+  };
 
   // ../src/game/def-utils.ts
   var _rotateVerts = (verts, pivot, axis, angle) => {
@@ -5663,7 +5663,7 @@
     ]
   };
 
-  // tracker-view/zdef-main.ts
+  // editor-view-entry/zdef-main.ts
   var vscode = acquireVsCodeApi();
   var notifyTimer = null;
   var scheduleNotify = () => {
@@ -5976,6 +5976,27 @@
             ctx.restore();
           }
         }
+        if (state.def?.landingZone) {
+          const lz = state.def.landingZone;
+          const pts = [
+            localToScreen(lz.x - lz.w, lz.y - lz.h, lz.z),
+            localToScreen(lz.x + lz.w, lz.y - lz.h, lz.z),
+            localToScreen(lz.x + lz.w, lz.y + lz.h, lz.z),
+            localToScreen(lz.x - lz.w, lz.y + lz.h, lz.z)
+          ];
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < 4; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.closePath();
+          ctx.fillStyle = "rgba(255,80,80,0.15)";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255,80,80,0.85)";
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 3]);
+          ctx.stroke();
+          ctx.restore();
+        }
         if (gridDrag.active && gridDrag.snapFaceIdx >= 0) {
           const allFaces = [...state.def.faces];
           if (state.def.parts) state.def.parts.forEach((p) => allFaces.push(...p.faces));
@@ -6276,12 +6297,46 @@
       });
     });
   };
+  var renderLandingZone = () => {
+    const panel = document.getElementById("landing-zone-panel");
+    const btnAdd = document.getElementById("btn-add-landing");
+    const btnRemove = document.getElementById("btn-remove-landing");
+    const lz = state.def?.landingZone;
+    if (!lz) {
+      panel.innerHTML = '<div class="empty">\u2013</div>';
+      btnAdd.style.display = "";
+      btnRemove.style.display = "none";
+      return;
+    }
+    btnAdd.style.display = "none";
+    btnRemove.style.display = "";
+    panel.innerHTML = `
+    <div class="cbox-block"><div class="cbox-grid">
+      <label>X</label>
+      <input type="number" step="0.1" value="${lz.x}" class="lzi" data-f="x">
+      <input type="number" step="0.1" value="${lz.y}" class="lzi" data-f="y">
+      <label>W/H</label>
+      <input type="number" step="0.1" value="${lz.w}" class="lzi" data-f="w">
+      <input type="number" step="0.1" value="${lz.h}" class="lzi" data-f="h">
+      <label>Z</label>
+      <input type="number" step="0.05" value="${lz.z}" class="lzi" data-f="z" style="grid-column:2">
+    </div></div>`;
+    panel.querySelectorAll(".lzi").forEach((inp) => {
+      inp.addEventListener("input", (e) => {
+        const t = e.target;
+        lz[t.dataset["f"]] = parseFloat(t.value) || 0;
+        markDirty();
+        draw();
+      });
+    });
+  };
   var renderAll = () => {
     renderPartsList();
     renderFaceList();
     renderFaceEditor();
     renderCboxList();
     renderZoneList();
+    renderLandingZone();
     draw();
   };
   var selectFace = (i) => {
@@ -6838,6 +6893,20 @@
     renderZoneList();
     draw();
   });
+  document.getElementById("btn-add-landing").addEventListener("click", () => {
+    if (!state.def) return;
+    state.def.landingZone = { x: 0, y: 0, w: 1.5, h: 1.5, z: 0 };
+    markDirty();
+    renderLandingZone();
+    draw();
+  });
+  document.getElementById("btn-remove-landing").addEventListener("click", () => {
+    if (!state.def) return;
+    delete state.def.landingZone;
+    markDirty();
+    renderLandingZone();
+    draw();
+  });
   document.getElementById("grid-visible").addEventListener("change", (e) => {
     grids[activeQ].visible = e.target.checked;
     if (!grids[activeQ].visible) grids[activeQ].selected = false;
@@ -6907,6 +6976,7 @@
     };
     if (d.parts?.length) out["parts"] = d.parts;
     if (d.rescueZones?.length) out["rescueZones"] = d.rescueZones;
+    if (d.landingZone) out["landingZone"] = d.landingZone;
     return JSON.stringify(out, null, 2);
   };
   var fromJSON = (content) => {
@@ -6918,7 +6988,8 @@
       collisionBoxes: d["collisionBoxes"] || [],
       parts: d["parts"],
       rotateNodes: d["rotateNodes"],
-      rescueZones: d["rescueZones"]
+      rescueZones: d["rescueZones"],
+      landingZone: d["landingZone"]
     };
     state.meta = {
       label: d["label"] || d["id"],

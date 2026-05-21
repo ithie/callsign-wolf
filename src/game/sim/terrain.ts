@@ -1,17 +1,17 @@
 import { campaignHandler } from '../main';
 import { G } from '../state';
 
-export function initGrid(size: number, points: number[][]) {
+export const initGrid = (size: number, points: number[][]) => {
     for (let x = 0; x <= size; x++) {
         points[x] = [];
         for (let y = 0; y <= size; y++) points[x][y] = 0;
     }
 }
 
-export function generateTerrain(
+export const generateTerrain = (
     points: number[][],
     PAD: { xMin: number; xMax: number; yMin: number; yMax: number; z: number } | null
-) {
+) => {
     const { terrain, gridSize } = campaignHandler.getTerrain();
     const wl = G.waterLevel;
     for (let x = 0; x <= gridSize; x++) {
@@ -22,7 +22,7 @@ export function generateTerrain(
     }
 }
 
-export function getCarrierLocal(globX: number, globY: number, CARRIER = G.CARRIER) {
+export const getCarrierLocal = (globX: number, globY: number, CARRIER = G.CARRIER) => {
     const dx = globX - CARRIER.x, dy = globY - CARRIER.y;
     const ang = -CARRIER.angle;
     return {
@@ -31,7 +31,7 @@ export function getCarrierLocal(globX: number, globY: number, CARRIER = G.CARRIE
     };
 }
 
-export function getGround(fx: number, fy: number, points = G.points, CARRIER = G.CARRIER) {
+export const getGround = (fx: number, fy: number, points = G.points, CARRIER = G.CARRIER) => {
     if (CARRIER && CARRIER.x !== undefined) {
         const local = getCarrierLocal(fx, fy, CARRIER);
         if (local.x >= -CARRIER.w && local.x <= CARRIER.w && local.y >= -CARRIER.l && local.y <= CARRIER.l) {

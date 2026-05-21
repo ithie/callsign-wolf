@@ -11,6 +11,12 @@ import { makeSingleFile } from './plugins/make-single-file';
 
 const GZIP_WARN_THRESHOLD = 500 * 1024; // 500 kB
 
+const swapEntry = (): Plugin => ({
+    name: 'swap-entry',
+    transformIndexHtml: html =>
+        isApp ? html : html.replace('/src/game/game.ts', '/src/game/ui/promo/promo.ts'),
+});
+
 const bundleSizeGuard = (): Plugin => ({
     name: 'bundle-size-guard',
     closeBundle() {
@@ -73,14 +79,14 @@ export default defineConfig(({ command }) => {
             },
         },
         base: isApp ? './' : command === 'build' ? '/callsign-wolf/' : '/',
-        plugins: [zsongPlugin(), zdefPlugin(), zcampaignPlugin(), makeSingleFile(), bundleSizeGuard(), ...(isApp ? [injectAppCsp()] : [])],
+        plugins: [zsongPlugin(), zdefPlugin(), zcampaignPlugin(), makeSingleFile(), swapEntry(), bundleSizeGuard(), ...(isApp ? [injectAppCsp()] : [])],
         build: {
             outDir: 'dist/',
 
             emptyOutDir: false,
 
             rollupOptions: {
-                input: resolve(__dirname, 'index.html'),
+                input: { index: resolve(__dirname, 'index.html') },
                 output: {
                     inlineDynamicImports: true,
                 },

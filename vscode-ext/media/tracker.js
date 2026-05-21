@@ -411,7 +411,7 @@
     "C1"
   ];
 
-  // tracker-view/main.ts
+  // editor-view-entry/main.ts
   var vscode = acquireVsCodeApi();
   var activeData = {};
   var knobValues = {};

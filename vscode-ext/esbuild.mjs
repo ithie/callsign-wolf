@@ -64,7 +64,7 @@ const extCtx = await esbuild.context({
 });
 
 const trackerCtx = await esbuild.context({
-    entryPoints: ['tracker-view/main.ts'],
+    entryPoints: ['editor-view-entry/main.ts'],
     bundle: true,
     platform: 'browser',
     format: 'iife',
@@ -74,7 +74,7 @@ const trackerCtx = await esbuild.context({
 });
 
 const campaignCtx = await esbuild.context({
-    entryPoints: ['tracker-view/campaign-main.ts'],
+    entryPoints: ['editor-view-entry/campaign-main.ts'],
     bundle: true,
     platform: 'browser',
     format: 'iife',
@@ -84,7 +84,7 @@ const campaignCtx = await esbuild.context({
 });
 
 const campaignEditorCtx = await esbuild.context({
-    entryPoints: ['tracker-view/campaign-editor-main.ts'],
+    entryPoints: ['editor-view-entry/campaign-editor-main.ts'],
     bundle: true,
     platform: 'browser',
     format: 'iife',
@@ -97,7 +97,7 @@ const campaignEditorCtx = await esbuild.context({
 });
 
 const zsoundCtx = await esbuild.context({
-    entryPoints: ['tracker-view/zsound-main.ts'],
+    entryPoints: ['editor-view-entry/zsound-main.ts'],
     bundle: true,
     platform: 'browser',
     format: 'iife',
@@ -107,7 +107,7 @@ const zsoundCtx = await esbuild.context({
 });
 
 const zdefCtx = await esbuild.context({
-    entryPoints: ['tracker-view/zdef-main.ts'],
+    entryPoints: ['editor-view-entry/zdef-main.ts'],
     bundle: true,
     platform: 'browser',
     format: 'iife',

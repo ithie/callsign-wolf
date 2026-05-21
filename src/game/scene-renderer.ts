@@ -49,7 +49,7 @@ interface _Instance {
     drawFn: DrawFn | null;
 }
 
-export function createSceneRenderer(ctx: CanvasRenderingContext2D, iso: IsoFn): SceneRenderer {
+export const createSceneRenderer = (ctx: CanvasRenderingContext2D, iso: IsoFn): SceneRenderer => {
     const _instances: _Instance[] = [];
 
     const _transform = (

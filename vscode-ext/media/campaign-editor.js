@@ -1881,7 +1881,7 @@
     };
   };
 
-  // tracker-view/campaign-editor-main.ts
+  // editor-view-entry/campaign-editor-main.ts
   var vscode = acquireVsCodeApi();
   var styleEl = document.createElement("style");
   styleEl.textContent = style_default;

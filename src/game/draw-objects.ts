@@ -53,15 +53,15 @@ export interface DrawFuelTruckOpts {
     getFuelingState?: () => boolean;
 }
 
-export function createDrawObjects(
+export const createDrawObjects = (
     ctx: CanvasRenderingContext2D,
     iso: IsoFn,
     tileW: number,
     tileH: number,
     SceneRenderer: SceneRenderer
-) {
+) => {
     // ── internal helper ────────────────────────────────────────────────────────
-    function _drawFace(
+    const _drawFace = (
         drawCtx: CanvasRenderingContext2D,
         isoFn: IsoFn,
         points: { x: number; y: number; z: number }[],
@@ -70,7 +70,7 @@ export function createDrawObjects(
         zOffset: number,
         cX: number,
         cY: number
-    ) {
+    ) => {
         drawCtx.fillStyle = color;
         drawCtx.beginPath();
         const first = isoFn(points[0].x, points[0].y, points[0].z + zOffset, cX, cY);
@@ -89,19 +89,19 @@ export function createDrawObjects(
     }
 
     // Public drawFace — uses factory ctx/iso. Used by drawTractor.
-    function drawFace(
+    const drawFace = (
         points: { x: number; y: number; z: number }[],
         color: string,
         strokeColor: string | null,
         zOffset: number,
         cX: number,
         cY: number
-    ) {
+    ) => {
         _drawFace(ctx, iso, points, color, strokeColor, zOffset, cX, cY);
     }
 
     // ── drawTree ───────────────────────────────────────────────────────────────
-    function drawTree(
+    const drawTree = (
         tX: number,
         tY: number,
         cx: number,
@@ -111,7 +111,7 @@ export function createDrawObjects(
         type = 'pine',
         wind: WindState = { x: 0, y: 0, phase: 0 },
         partyMode = false
-    ) {
+    ) => {
         const _PARTY_GREENS = ['#00ff44', '#44ff00', '#88ff00', '#33ff33', '#00ff88', '#66ff22', '#00cc44', '#aaff00'];
         const _treeSpeed = 0.0008 + (Math.abs(Math.round(tX * 7 + tY * 13)) % 7) * 0.00022;
         const _treeOff = Math.abs(tX * 31 + tY * 17) % 80;
@@ -257,7 +257,7 @@ export function createDrawObjects(
     }
 
     // ── drawPerson ─────────────────────────────────────────────────────────────
-    function drawPerson(
+    const drawPerson = (
         pX: number,
         pY: number,
         pZ: number,
@@ -268,7 +268,7 @@ export function createDrawObjects(
         outfit?: string,
         colors?: { shirt: string; pants: string },
         submerged = false
-    ) {
+    ) => {
         const base = iso(pX, pY, pZ, cx, cy);
         const s = tileW / 64;
         const headR = Math.max(1, 2.5 * s),
@@ -342,7 +342,7 @@ export function createDrawObjects(
     // tx/ty: tractor position relative to platform origin (in platform-local space)
     // tAngle: tractor heading relative to platform (added to objAngle)
     // bc/bs/bd/cc/cs/ct: body/cab color variants (top, side, dark, cab top/side/top)
-    function drawTractor(
+    const drawTractor = (
         objX: number,
         objY: number,
         objAngle: number,
@@ -358,7 +358,7 @@ export function createDrawObjects(
         cc: string,
         cs: string,
         ct: string
-    ) {
+    ) => {
         const cosA = Math.cos(objAngle),
             sinA = Math.sin(objAngle);
         const bodyL = 1.0,
@@ -372,18 +372,18 @@ export function createDrawObjects(
             wH = 0.25;
         const cosT = Math.cos(tAngle + objAngle),
             sinT = Math.sin(tAngle + objAngle);
-        function vt(lx: number, ly: number) {
+        const vt = (lx: number, ly: number) => {
             return lx * cosT - ly * sinT + (lx * sinT + ly * cosT) > 0;
         }
         const ox = objX + tx * cosA - ty * sinA;
         const oy = objY + tx * sinA + ty * cosA;
-        function rr(rx: number, ry: number) {
+        const rr = (rx: number, ry: number) => {
             return { x: ox + rx * cosT - ry * sinT, y: oy + rx * sinT + ry * cosT };
         }
-        function H(p: { x: number; y: number }, z: number) {
+        const H = (p: { x: number; y: number }, z: number) => {
             return { x: p.x, y: p.y, z };
         }
-        function face(pts: { x: number; y: number; z: number }[], col: string, stroke?: string) {
+        const face = (pts: { x: number; y: number; z: number }[], col: string, stroke?: string) => {
             drawFace(pts, col, stroke ?? null, 0, cx, cy);
         }
 
@@ -441,7 +441,7 @@ export function createDrawObjects(
 
     // ── drawFuelTruck ──────────────────────────────────────────────────────────
     // Does NOT call SceneRenderer.flush() — caller is responsible.
-    function drawFuelTruck(tX: number, tY: number, angle: number, opts: DrawFuelTruckOpts = {}) {
+    const drawFuelTruck = (tX: number, tY: number, angle: number, opts: DrawFuelTruckOpts = {}) => {
         const { z = 0, armExtend = 0, armTarget = null, getFuelingState } = opts;
         const cosA = Math.cos(angle),
             sinA = Math.sin(angle);
@@ -521,7 +521,7 @@ export function createDrawObjects(
     }
 
     // ── drawHeli ───────────────────────────────────────────────────────────────
-    function drawHeli(
+    const drawHeli = (
         type: string,
         hX: number,
         hY: number,
@@ -533,7 +533,7 @@ export function createDrawObjects(
         camX: number,
         camY: number,
         opts: DrawHeliOpts = {}
-    ) {
+    ) => {
         const {
             targetCtx: tCtx,
             targetIso: tIso,
@@ -556,7 +556,7 @@ export function createDrawObjects(
         if (scaleOverride > 0) s = scaleOverride * _baseScale;
         const lineScale = tileW / 64; // normalises lineWidth across canvas scales
 
-        function p(lx: number, ly: number, lz: number) {
+        const p = (lx: number, ly: number, lz: number) => {
             lx *= s;
             ly *= s;
             lz *= s;
@@ -575,14 +575,14 @@ export function createDrawObjects(
             return actualIso(rx, ry, rz, camX, camY);
         }
 
-        function faceFn(
+        const faceFn = (
             pts: { x: number; y: number; z: number }[],
             color: string,
             stroke: string | null,
             zOffset: number,
             cX: number,
             cY: number
-        ) {
+        ) => {
             _drawFace(actualCtx, actualIso, pts, color, stroke, zOffset, cX, cY);
         }
 

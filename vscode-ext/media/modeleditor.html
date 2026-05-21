@@ -526,6 +526,15 @@
                 </div>
 
                 <div class="sec">
+                    <div class="sec-title">Landezone</div>
+                    <div id="landing-zone-panel"><div class="empty">–</div></div>
+                    <div class="flex-row" style="margin-top: 6px">
+                        <button class="btn btn-sm" id="btn-add-landing">+ Landezone</button>
+                        <button class="btn btn-sm btn-danger" id="btn-remove-landing" style="display:none">✕ Entfernen</button>
+                    </div>
+                </div>
+
+                <div class="sec">
                     <div class="sec-title">Boden-Gitter <span class="grid-q-tag" id="grid-q-label"></span></div>
                     <label><input type="checkbox" id="grid-visible" checked /> Sichtbar</label>
                     <div class="row" style="margin-top: 5px">
@@ -710,7 +719,7 @@
             };
             new ResizeObserver(resize).observe(area);
 
-            function iso(wx, wy, wz, camX, camY) {
+            const iso = (wx, wy, wz, camX, camY) => {
                 return {
                     x: renderCx + (wx - wy) * ((TW * renderZoom) / 2) - camX,
                     y: renderCy + (wx + wy) * ((TH * renderZoom) / 2) - wz * SH * renderZoom - camY,
@@ -864,7 +873,7 @@
             };
 
             // ── Main draw ──────────────────────────────────────────────────────────────────
-            function draw() {
+            const draw = () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 const qw = canvas.width / 2,
                     qh = canvas.height / 2;
@@ -971,6 +980,29 @@
                             }
                         }
 
+                        // Landing zone
+                        const lz = state.def?.landingZone;
+                        if (lz) {
+                            const pts = [
+                                localToScreen(lz.x - lz.w, lz.y - lz.h, lz.z),
+                                localToScreen(lz.x + lz.w, lz.y - lz.h, lz.z),
+                                localToScreen(lz.x + lz.w, lz.y + lz.h, lz.z),
+                                localToScreen(lz.x - lz.w, lz.y + lz.h, lz.z),
+                            ];
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.moveTo(pts[0].x, pts[0].y);
+                            for (let i = 1; i < 4; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                            ctx.closePath();
+                            ctx.fillStyle = 'rgba(255,80,80,0.15)';
+                            ctx.fill();
+                            ctx.strokeStyle = 'rgba(255,80,80,0.85)';
+                            ctx.lineWidth = 1.5;
+                            ctx.setLineDash([4, 3]);
+                            ctx.stroke();
+                            ctx.restore();
+                        }
+
                         if (gridDrag.active && gridDrag.snapFaceIdx >= 0) {
                             const allFaces = [...state.def.faces];
                             if (state.def.parts) state.def.parts.forEach(p => allFaces.push(...p.faces));
@@ -1019,7 +1051,7 @@
             }
 
             // ── Sidebar ────────────────────────────────────────────────────────────────────
-            function renderPartsList() {
+            const renderPartsList = () => {
                 const sec = document.getElementById('parts-sec');
                 const list = document.getElementById('parts-list');
                 if (!state.def?.parts?.length) {
@@ -1107,7 +1139,7 @@
                 });
             }
 
-            function renderFaceList() {
+            const renderFaceList = () => {
                 const list = document.getElementById('face-list');
                 const count = document.getElementById('face-count');
                 const faces = getActiveFaces();
@@ -1133,7 +1165,7 @@
                 });
             }
 
-            function renderFaceEditor() {
+            const renderFaceEditor = () => {
                 const sec = document.getElementById('face-editor');
                 const faces = getActiveFaces();
                 if (state.selectedFaceIdx < 0 || !state.def || !faces.length) {
@@ -1161,7 +1193,7 @@
                 renderVertList(face);
             }
 
-            function renderVertList(face) {
+            const renderVertList = (face) => {
                 const list = document.getElementById('vert-list');
                 list.innerHTML = face.verts
                     .map(
@@ -1199,7 +1231,7 @@
                 });
             }
 
-            function renderCboxList() {
+            const renderCboxList = () => {
                 const list = document.getElementById('cbox-list');
                 const boxes = state.def?.collisionBoxes;
                 if (!boxes?.length) {
@@ -1251,7 +1283,7 @@
                 });
             }
 
-            function renderZoneList() {
+            const renderZoneList = () => {
                 const list = document.getElementById('zone-list');
                 const zones = state.def?.rescueZones;
                 if (!zones?.length) {
@@ -1306,12 +1338,43 @@
                 });
             }
 
+            const renderLandingZone = () => {
+                const panel = document.getElementById('landing-zone-panel');
+                const btnAdd = document.getElementById('btn-add-landing');
+                const btnRemove = document.getElementById('btn-remove-landing');
+                const lz = state.def?.landingZone;
+                if (!lz) {
+                    panel.innerHTML = '<div class="empty">–</div>';
+                    btnAdd.style.display = ''; btnRemove.style.display = 'none';
+                    return;
+                }
+                btnAdd.style.display = 'none'; btnRemove.style.display = '';
+                panel.innerHTML = `
+    <div class="cbox-block"><div class="cbox-grid">
+      <label>X</label>
+      <input type="number" step="0.1" value="${lz.x}" class="lzi" data-f="x">
+      <input type="number" step="0.1" value="${lz.y}" class="lzi" data-f="y">
+      <label>W/H</label>
+      <input type="number" step="0.1" value="${lz.w}" class="lzi" data-f="w">
+      <input type="number" step="0.1" value="${lz.h}" class="lzi" data-f="h">
+      <label>Z</label>
+      <input type="number" step="0.05" value="${lz.z ?? 0}" class="lzi" data-f="z" style="grid-column:2">
+    </div></div>`;
+                panel.querySelectorAll('.lzi').forEach(inp => {
+                    inp.addEventListener('input', e => {
+                        state.def.landingZone[e.target.dataset.f] = parseFloat(e.target.value) || 0;
+                        markDirty(); draw();
+                    });
+                });
+            }
+
             const renderAll = () => {
                 renderPartsList();
                 renderFaceList();
                 renderFaceEditor();
                 renderCboxList();
                 renderZoneList();
+                renderLandingZone();
                 draw();
             };
 
@@ -1323,7 +1386,7 @@
                 draw();
             };
 
-            function loadPreset(key) {
+            const loadPreset = (key) => {
                 const p = PRESETS[key];
                 if (!p) return;
                 state.def = JSON.parse(JSON.stringify(p.def));
@@ -1338,7 +1401,7 @@
                 renderAll();
             }
 
-            function syncMetaToUI() {
+            const syncMetaToUI = () => {
                 document.getElementById('meta-id').value = state.def ? state.def.id : '';
                 document.getElementById('meta-label').value = state.meta.label;
                 document.getElementById('r-static').checked = state.meta.isStatic;
@@ -1442,7 +1505,7 @@
                     gridDrag.snapVertIdx = -1;
                 }
             };
-            function pointInPolygon(mx, my, pts) {
+            const pointInPolygon = (mx, my, pts) => {
                 let inside = false;
                 for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
                     const xi = pts[i].x,
@@ -1946,6 +2009,17 @@
                 draw();
             });
 
+            document.getElementById('btn-add-landing').addEventListener('click', () => {
+                if (!state.def) return;
+                state.def.landingZone = { x: 0, y: 0, w: 1.5, h: 1.5, z: 0 };
+                markDirty(); renderLandingZone(); draw();
+            });
+            document.getElementById('btn-remove-landing').addEventListener('click', () => {
+                if (!state.def) return;
+                delete state.def.landingZone;
+                markDirty(); renderLandingZone(); draw();
+            });
+
             // Grid UI events — all operate on the ACTIVE quadrant's grid
             document.getElementById('grid-visible').addEventListener('change', e => {
                 grids[activeQ].visible = e.target.checked;
@@ -2007,7 +2081,7 @@
             });
 
             // ── Serialization ──────────────────────────────────────────────────────────────
-            function toJSON() {
+            const toJSON = () => {
                 const out = {
                     id: state.def.id,
                     label: state.meta.label,
@@ -2019,9 +2093,10 @@
                 };
                 if (state.def.parts?.length) out.parts = state.def.parts;
                 if (state.def.rescueZones?.length) out.rescueZones = state.def.rescueZones;
+                if (state.def.landingZone) out.landingZone = state.def.landingZone;
                 return JSON.stringify(out, null, 2);
             }
-            function fromJSON(content) {
+            const fromJSON = (content) => {
                 const d = JSON.parse(content);
                 state.def = {
                     id: d.id,
@@ -2031,6 +2106,7 @@
                     parts: d.parts,
                     rotateNodes: d.rotateNodes,
                     rescueZones: d.rescueZones,
+                    landingZone: d.landingZone,
                 };
                 state.meta = {
                     label: d.label || d.id,

@@ -114,6 +114,19 @@ const { drawTree, drawPerson, drawTractor, drawFuelTruck, drawHeli } = createDra
     SceneRenderer
 );
 
+const hasCarrier = () => _missionHasCarrier;
+const hasPad = () => _missionHasPad;
+const isVisible = (objX: number, objY: number, margin = 16) => {
+    if (_isTouchDevice()) {
+        const viewCX = zstate.cam.x / tileW + zstate.cam.y / tileH;
+        const viewCY = zstate.cam.y / tileH - zstate.cam.x / tileW;
+        return Math.abs(objX - viewCX) < margin && Math.abs(objY - viewCY) < margin;
+    }
+    const rx = G.heli.x;
+    const ry = G.heli.y;
+    return Math.abs(objX - rx) < margin && Math.abs(objY - ry) < margin;
+};
+
 const _drawWorldFns = createDrawWorld({
     ctx,
     canvas,
@@ -158,12 +171,6 @@ HeliSelect.init(G, drawHeli);
 Rankup.init(drawHeli);
 
 // ─── helper flags ────────────────────────────────────────────────────────────
-function hasCarrier() {
-    return _missionHasCarrier;
-}
-function hasPad() {
-    return _missionHasPad;
-}
 const _isPadTile = (x: number, y: number): boolean =>
     hasPad() && x >= G.PAD.xMin && x <= G.PAD.xMax && y >= G.PAD.yMin && y <= G.PAD.yMax;
 const _isServiceTile = (x: number, y: number): boolean =>
@@ -186,24 +193,13 @@ const { drawTerrain, precomputeDayColors } = createDrawTerrain({
 import { buildStartZone } from './start-zone';
 
 // ─── UI helpers ──────────────────────────────────────────────────────────────
-function showMsg(txt: string) {
+const showMsg = (txt: string) => {
     const m = document.getElementById('msg')!;
     m.innerHTML = txt;
     m.style.opacity = '1';
     setTimeout(() => {
         m.style.opacity = '0';
     }, 2000);
-}
-
-function isVisible(objX: number, objY: number, margin = 16) {
-    if (_isTouchDevice()) {
-        const viewCX = zstate.cam.x / tileW + zstate.cam.y / tileH;
-        const viewCY = zstate.cam.y / tileH - zstate.cam.x / tileW;
-        return Math.abs(objX - viewCX) < margin && Math.abs(objY - viewCY) < margin;
-    }
-    const rx = G.heli.x;
-    const ry = G.heli.y;
-    return Math.abs(objX - rx) < margin && Math.abs(objY - ry) < margin;
 }
 
 // ─── screens ────────────────────────────────────────────────────────────────
@@ -221,7 +217,7 @@ const _stopMission = () => {
     if (flashEl) flashEl.style.opacity = '0';
 };
 
-function triggerCrash() {
+const triggerCrash = () => {
     if (zstate.crashed) return;
     stopHeliSound();
     soundHandler.play(musicConfig.defeat || 'final', false);
@@ -233,7 +229,7 @@ function triggerCrash() {
     }, 1800);
 }
 
-function missionComplete() {
+const missionComplete = () => {
     destroyTutorial();
     const { campaignType } = campaignHandler.getCurrentMissionData();
     const isTutorial = campaignType === CAMPAIGN_TYPE.TUTORIAL;
@@ -342,7 +338,7 @@ const _resetHeliState = () => {
     G.totalRescued = 0;
 };
 
-function returnToBase() {
+const returnToBase = () => {
     _stopMission();
     if (!_IS_APP && _partyMode) soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
     if (!_IS_APP) _partyMode = false;
@@ -380,12 +376,12 @@ const _openCampaignSelect = () => {
 };
 
 // ─── campaign / G.heli select ──────────────────────────────────────────────────
-function toCampaignSelect() {
+const toCampaignSelect = () => {
     soundHandler.play(musicConfig.mainMenu || 'maintheme', false);
     _openCampaignSelect();
 }
 
-function selectCampaign(index: string) {
+const selectCampaign = (index: string) => {
     const idx = Number(index);
     const campaigns = campaignHandler.getCampaigns();
     const type = campaigns[idx]?.type;
@@ -540,8 +536,19 @@ const launchMission = async (showLoader = true): Promise<void> => {
     initBoatsFromMission();
     initSubmarinesFromMission();
     initStaticObjectsFromMission();
+    G.LANDING_ZONES = [];
     G.RESEARCH_PLATFORMS.forEach((rp: any) => {
         rp.rescueZones = (RESEARCH_PLATFORM_DEF as any).rescueZones || [];
+        const lz = (RESEARCH_PLATFORM_DEF as any).landingZone;
+        if (lz) {
+            G.LANDING_ZONES.push({
+                xMin: rp.x + lz.x - lz.w,
+                xMax: rp.x + lz.x + lz.w,
+                yMin: rp.y + lz.y - lz.h,
+                yMax: rp.y + lz.y + lz.h,
+                z: G.waterLevel + lz.z,
+            });
+        }
     });
     handle?.step('Objekte…', 0.5);
     if (handle) await _tick();
@@ -644,7 +651,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
 //   parkAngle = +PI/2        (Nase zeigt in +Y = Richtung Landeplatz)
 //
 let _fpsLastTime = 0;
-function drawScene() {
+const drawScene = () => {
     const _now = performance.now();
     if (_isTouchDevice() && _fpsLastTime > 0 && _now - _fpsLastTime < 1000 / 30 - 1) {
         _rafId = requestAnimationFrame(drawScene);
@@ -890,7 +897,7 @@ if (!_IS_APP) {
 }
 
 // ─── main menu ───────────────────────────────────────────────────────────────
-function toMainMenu() {
+const toMainMenu = () => {
     PauseOverlay.hide();
     cancelAnimationFrame(_rafId);
     _rafId = 0;
@@ -903,7 +910,7 @@ function toMainMenu() {
     startMenuParticles();
 }
 
-function backFromHeliSelect() {
+const backFromHeliSelect = () => {
     _openMissionSelect();
 }
 
