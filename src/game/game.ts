@@ -698,7 +698,81 @@ const drawScene = () => {
 
     const _visMargin = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH)) + 4;
 
-    drawWorldObjects(camX, camY, _visMargin);
+    // flapRate: vertical climb + horizontal speed (braking from speed → faster flapping)
+    const _flapRate = Math.max(0.5, Math.min(3.0, 1.0 + G.heli.vz * 20 + Math.hypot(G.heli.vx, G.heli.vy) * 8));
+
+    // shadow pass — before world objects so shadow appears on terrain, not over objects
+    if (!zstate.crashed) {
+        drawHeli(
+            G.heli.type, G.heli.x, G.heli.y, G.heli.z,
+            G.heli.angle, G.heli.tilt, G.heli.roll, G.heli.rotationPos,
+            camX, camY,
+            { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER), flapRate: _flapRate }
+        );
+        if (G.remoteHeli) {
+            drawHeli(
+                G.remoteHeli.type, G.remoteHeli.x, G.remoteHeli.y, G.remoteHeli.z,
+                G.remoteHeli.angle, G.remoteHeli.tilt, G.remoteHeli.roll, G.remoteHeli.rotationPos,
+                camX, camY,
+                { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER) }
+            );
+        }
+    }
+
+    // ground persons drawn before world objects for correct depth order
+    if (!zstate.crashed) drawPayloadObjects(false);
+
+    drawWorldObjects(camX, camY, _visMargin, !zstate.crashed ? {
+        x: G.heli.x,
+        y: G.heli.y,
+        fn: (cx, cy) => {
+            // ropes, payload figures + rescuer all BEFORE heli — heli always on top
+            drawPayloadObjects(true, true);
+            drawPayloadObjects(true, false);
+
+            // winch line (only when extended and nothing hanging)
+            if (!G.activePayload && G.heli.winch > 0.05) {
+                const rs = G.rescuerSwing;
+                const winchTipZ = Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
+                const hP = iso(G.heli.x, G.heli.y, G.heli.z, cx, cy, { stepH, tileW, tileH, canvas });
+                const wP = iso(rs.x, rs.y, winchTipZ, cx, cy, { stepH, tileW, tileH, canvas });
+                ctx.strokeStyle = '#bbb';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(hP.x, hP.y);
+                ctx.lineTo(wP.x, wP.y);
+                ctx.stroke();
+            }
+            // rescuer at winch tip drawn BEFORE heli (appears behind heli body)
+            if (G.heli.winch > 0.3) {
+                const rs = G.rescuerSwing;
+                const winchTipZ = G.activePayload
+                    ? G.activePayload.z +
+                      (G.activePayload.type === PAYLOAD.PERSON || G.activePayload.type === PAYLOAD.RESCUER ? 0.35 : 0)
+                    : Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
+                drawPerson(
+                    rs.x, rs.y, winchTipZ, 0, false, cx, cy,
+                    PAYLOAD.RESCUER,
+                    !_IS_APP && _partyMode ? { shirt: '#ffffff', pants: '#ffffff' } : undefined
+                );
+            }
+
+            if (!_IS_APP && _partyMode && Math.floor(Date.now() / 80) % 2 === 0) _refreshPartyColors();
+            drawHeli(
+                G.heli.type, G.heli.x, G.heli.y, G.heli.z,
+                G.heli.angle, G.heli.tilt, G.heli.roll, G.heli.rotationPos,
+                cx, cy,
+                {
+                    shadowGetGround: (x, y) => getGround(x, y),
+                    flapRate: _flapRate,
+                    tailRotorRate: 1.0 + Math.abs(G.heli.roll) * 4,
+                    ...(!_IS_APP && _partyMode ? { fillColor: _partyColors[0], strokeColor: _partyColors[1] } : {}),
+                }
+            );
+
+            if (!_IS_APP) mpRenderRemoteHeli(ctx, cx, cy, drawHeli, isoFn);
+        },
+    } : undefined);
 
     drawTrees(camX, camY, rx, ry);
 
@@ -707,41 +781,6 @@ const drawScene = () => {
     // Vögel
     updateBirds();
     drawBirds(camX, camY);
-
-    // flapRate: vertical climb + horizontal speed (braking from speed → faster flapping)
-    const _flapRate = Math.max(0.5, Math.min(3.0, 1.0 + G.heli.vz * 20 + Math.hypot(G.heli.vx, G.heli.vy) * 8));
-
-    // shadow pass
-    if (!zstate.crashed) {
-        drawHeli(
-            G.heli.type,
-            G.heli.x,
-            G.heli.y,
-            G.heli.z,
-            G.heli.angle,
-            G.heli.tilt,
-            G.heli.roll,
-            G.heli.rotationPos,
-            camX,
-            camY,
-            { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER), flapRate: _flapRate }
-        );
-        if (G.remoteHeli) {
-            drawHeli(
-                G.remoteHeli.type,
-                G.remoteHeli.x,
-                G.remoteHeli.y,
-                G.remoteHeli.z,
-                G.remoteHeli.angle,
-                G.remoteHeli.tilt,
-                G.remoteHeli.roll,
-                G.remoteHeli.rotationPos,
-                camX,
-                camY,
-                { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER) }
-            );
-        }
-    }
 
     // G.particles
     G.particles.forEach(p => {
@@ -782,75 +821,11 @@ const drawScene = () => {
         drawDebris(G.debris, camX, camY);
     }
 
-    // Heli nur rendern wenn nicht gecrasht
     if (!zstate.crashed) {
-        // ground persons drawn BEFORE heli for correct depth order
-        drawPayloadObjects(false);
-        // ropes, payload figures + rescuer all BEFORE heli — heli always on top
-        drawPayloadObjects(true, true);
-        drawPayloadObjects(true, false);
-
-        // winch line (only when extended and nothing hanging)
-        if (!G.activePayload && G.heli.winch > 0.05) {
-            const rs = G.rescuerSwing;
-            const winchTipZ = Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
-            const hP = iso(G.heli.x, G.heli.y, G.heli.z, camX, camY, { stepH, tileW, tileH, canvas });
-            const wP = iso(rs.x, rs.y, winchTipZ, camX, camY, { stepH, tileW, tileH, canvas });
-            ctx.strokeStyle = '#bbb';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(hP.x, hP.y);
-            ctx.lineTo(wP.x, wP.y);
-            ctx.stroke();
-        }
-        // rescuer at winch tip drawn BEFORE heli (appears behind heli body)
-        if (G.heli.winch > 0.3) {
-            const rs = G.rescuerSwing;
-            const winchTipZ = G.activePayload
-                ? G.activePayload.z +
-                  (G.activePayload.type === PAYLOAD.PERSON || G.activePayload.type === PAYLOAD.RESCUER ? 0.35 : 0)
-                : Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
-            drawPerson(
-                rs.x,
-                rs.y,
-                winchTipZ,
-                0,
-                false,
-                camX,
-                camY,
-                PAYLOAD.RESCUER,
-                !_IS_APP && _partyMode ? { shirt: '#ffffff', pants: '#ffffff' } : undefined
-            );
-        }
-
-        if (!_IS_APP && _partyMode && Math.floor(Date.now() / 80) % 2 === 0) _refreshPartyColors();
-        drawHeli(
-            G.heli.type,
-            G.heli.x,
-            G.heli.y,
-            G.heli.z,
-            G.heli.angle,
-            G.heli.tilt,
-            G.heli.roll,
-            G.heli.rotationPos,
-            camX,
-            camY,
-            {
-                shadowGetGround: (x, y) => getGround(x, y),
-                flapRate: _flapRate,
-                tailRotorRate: 1.0 + Math.abs(G.heli.roll) * 4,
-                ...(!_IS_APP && _partyMode ? { fillColor: _partyColors[0], strokeColor: _partyColors[1] } : {}),
-            }
-        );
-
-        if (!_IS_APP) mpRenderRemoteHeli(ctx, camX, camY, drawHeli, isoFn);
-
         renderRain();
-
-        // collision box checks + optional debug rendering
         handleCollisionBoxes();
         if (!_IS_APP && showCollisionBoxes) drawDebugOverlay(camX, camY);
-    } // end if (!zstate.crashed)
+    }
 
     _hud.update({
         camX,

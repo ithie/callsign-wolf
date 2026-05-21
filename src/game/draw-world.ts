@@ -308,7 +308,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
 
     // ─── public ────────────────────────────────────────────────────────────────
 
-    const drawWorldObjects = (camX: number, camY: number, visMargin: number) => {
+    const drawWorldObjects = (camX: number, camY: number, visMargin: number, heliAt?: { x: number; y: number; fn: (camX: number, camY: number) => void }) => {
         const lh = getLighthouse();
         if (lh && isVisible(lh.x, lh.y, visMargin)) _drawLighthouse(camX, camY);
 
@@ -349,6 +349,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 getFuelingState: () => G.fuelTruck.state === VEHICLE_STATE.FUELING,
             });
         if (hasPad()) _drawPadLights(G.PAD.z, false);
+        if (heliAt) SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt.x + heliAt.y, drawFn: (cx, cy) => heliAt.fn(cx, cy) });
         SceneRenderer.flush(camX, camY);
         if (hasPad() && isVisible(G.PAD.xMin, G.PAD.yMin)) _drawWindsock(camX, camY);
     };
