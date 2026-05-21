@@ -14,5 +14,9 @@ export const mount = (onClick: () => void): void => {
     _el.addEventListener('click', onClick);
 };
 
-export const show = (): void => { if (_el) _el.style.display = 'flex'; };
-export const hide = (): void => { if (_el) _el.style.display = 'none'; };
+export const show = (): void => {
+    if (_el) _el.style.display = 'flex';
+};
+export const hide = (): void => {
+    if (_el) _el.style.display = 'none';
+};

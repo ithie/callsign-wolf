@@ -117,11 +117,11 @@ const _DE = {
     HELI_SELECT_CONFIRM: 'AUSWÄHLEN',
     HELI_LOCKED_FROM: (rank: string) => `ab ${rank}`,
 
-    MISSION_COMPLETE: 'MISSION COMPLETE',
-    OBJECTIVES_CLEARED: 'ALL OBJECTIVES CLEARED',
-    MISSION_FAILED: 'MISSION FAILED',
-    CAMPAIGN_COMPLETE: 'CAMPAIGN COMPLETE',
-    ALL_MISSIONS_CLEARED: 'ALL MISSIONS CLEARED',
+    MISSION_COMPLETE: 'MISSION GESCHAFFT',
+    OBJECTIVES_CLEARED: 'ALLE ZIELE ERFÜLLT',
+    MISSION_FAILED: 'MISSION GESCHEITERT',
+    CAMPAIGN_COMPLETE: 'KAMPAGNE GESCHAFFT',
+    ALL_MISSIONS_CLEARED: 'ALLE MISSIOSNEN ABGESCHLOSSEN',
 
     CLICK_TO_DEPLOY: 'KLICKEN ZUM EINSATZ',
 
@@ -147,7 +147,11 @@ const _DE = {
     WHATS_NEW_VERSION: 'v27.0.0',
     WHATS_NEW_TITLE: 'Kampagne: Callsign Wolf',
     WHATS_NEW_HINT: 'KLICKEN ZUM FORTFAHREN',
-    WHATS_NEW_ITEMS: ['Jetzt als native iOS App spielbar', '🐺 Demo-Kampagne verfügbar: Callsign Wolf', '🪦 R.I.P. _isMobile — du wirst nicht vermisst'],
+    WHATS_NEW_ITEMS: [
+        'Jetzt als native iOS App spielbar',
+        '🐺 Demo-Kampagne verfügbar: Callsign Wolf',
+        '🪦 R.I.P. _isMobile — du wirst nicht vermisst',
+    ],
 
     PILOT_HEADING: 'PROFIL',
     PILOT_CALLSIGN: 'RUFZEICHEN (MAX. 8 ZEICHEN, A–Z)',
@@ -354,7 +358,11 @@ const _EN = {
     WHATS_NEW_VERSION: 'v27.0.0',
     WHATS_NEW_TITLE: 'Campaign: Callsign Wolf',
     WHATS_NEW_HINT: 'CLICK TO CONTINUE',
-    WHATS_NEW_ITEMS: ['Now available as a native iOS app', '🐺 Demo campaign available: Callsign Wolf', '🪦 R.I.P. _isMobile — you will not be missed'],
+    WHATS_NEW_ITEMS: [
+        'Now available as a native iOS app',
+        '🐺 Demo campaign available: Callsign Wolf',
+        '🪦 R.I.P. _isMobile — you will not be missed',
+    ],
 
     PILOT_HEADING: 'PROFILE',
     PILOT_CALLSIGN: 'CALLSIGN (MAX. 8 CHARS, A–Z)',

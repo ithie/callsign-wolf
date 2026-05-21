@@ -138,6 +138,20 @@ body {
         opacity: 0;
     }
 }
+@keyframes crtCollapse {
+    0%   { transform: scaleY(1)     scaleX(1);    filter: brightness(1); }
+    50%  { transform: scaleY(0.012) scaleX(1);    filter: brightness(4); }
+    72%  { transform: scaleY(0.012) scaleX(0.35); filter: brightness(2.5); }
+    88%  { transform: scaleY(0.012) scaleX(0.04); filter: brightness(5); }
+    100% { transform: scaleY(0.012) scaleX(0);    filter: brightness(0); }
+}
+@keyframes crtExpand {
+    0%   { transform: scaleY(0.012) scaleX(0);    filter: brightness(0); }
+    12%  { transform: scaleY(0.012) scaleX(0.04); filter: brightness(5); }
+    28%  { transform: scaleY(0.012) scaleX(0.35); filter: brightness(2.5); }
+    50%  { transform: scaleY(0.012) scaleX(1);    filter: brightness(4); }
+    100% { transform: scaleY(1)     scaleX(1);    filter: brightness(1); }
+}
 #msg {
     position: absolute;
     top: 20%;

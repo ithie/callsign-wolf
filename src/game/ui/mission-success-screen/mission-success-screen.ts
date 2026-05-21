@@ -10,7 +10,7 @@ export const mount = (): void => {
     _el.classList.add('ui-screen');
     _el.innerHTML = `
         <div class="title" style="color:#fff">${I18N.MISSION_COMPLETE}</div>
-        <p style="color:rgb(50,74,50);font-size:24px">${I18N.OBJECTIVES_CLEARED}</p>
+        <p style="color:#ffd700">${I18N.OBJECTIVES_CLEARED}</p>
         <p class="start-hint">${I18N.ACKNOWLEDGE}</p>`;
 };
 
@@ -20,4 +20,6 @@ export const show = (onClick: () => void): void => {
     _el.style.display = 'flex';
 };
 
-export const hide = (): void => { if (_el) _el.style.display = 'none'; };
+export const hide = (): void => {
+    if (_el) _el.style.display = 'none';
+};
