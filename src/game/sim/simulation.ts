@@ -484,7 +484,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     }
 
     // crash detection
-    if (!onPad && G.heli.z < G.waterLevel + 0.1 && getGround(G.heli.x, G.heli.y, G.points, G.CARRIER) <= G.waterLevel + 0.01)
+    if (!onPad && G.heli.z <= G.waterLevel + 0.1 && getGround(G.heli.x, G.heli.y, G.points, G.CARRIER) <= G.waterLevel + 0.01)
         ctx.triggerCrash();
     if (G.heli.z < groundH + 0.25) {
         if (!onPad && !onFlatTerrain && groundH > G.waterLevel + 0.1) ctx.triggerCrash();
