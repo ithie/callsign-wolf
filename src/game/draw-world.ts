@@ -2,9 +2,9 @@ import type { IsoFn, SceneRenderer as SceneRendererType } from './scene-renderer
 import type { createDrawObjects } from './draw-objects';
 import { getGround } from './sim/terrain';
 import { G, zstate } from './state';
+import { VEHICLE_STATE, VESSEL, PAYLOAD } from '../shared/types';
 import { applyParts } from './def-utils';
 import { getHeliType } from './heli-types';
-import { I18N } from './i18n';
 
 import SAILBOAT_DEF from './models/sailboat.zdef';
 import PILOT_BOAT_DEF from './models/pilot_boat.zdef';
@@ -41,7 +41,7 @@ export interface DrawWorldCtx {
     isApp: boolean;
     isMissionRain: () => boolean;
     getShowCollisionBoxes: () => boolean;
-    triggerCrash: (reason: string) => void;
+    triggerCrash: () => void;
 }
 
 export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
@@ -124,11 +124,11 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
     };
 
     const _drawBoatModel = (b: any, cx: number, cy: number) => {
-        if (b.objectType === 'pilot_boat') {
+        if (b.objectType === VESSEL.PILOT_BOAT) {
             const radarAngle = (Date.now() * 0.002) % (Math.PI * 2);
             SceneRenderer.add(applyParts(PILOT_BOAT_DEF as any, { radarAngle }), { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
         } else {
-            const def = b.objectType === 'salvage_tug' ? SALVAGE_TUG_DEF : SAILBOAT_DEF;
+            const def = b.objectType === VESSEL.SALVAGE_TUG ? SALVAGE_TUG_DEF : SAILBOAT_DEF;
             SceneRenderer.add(def, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
         }
         SceneRenderer.flush(cx, cy);
@@ -291,11 +291,11 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
 
     const _drawNpcHelis = (cx: number, cy: number, visMargin: number) => {
         for (const npc of G.npcHelis) {
-            const visible = npc.state === 'PARKED'
+            const visible = npc.state === VEHICLE_STATE.PARKED
                 ? isVisible(G.CARRIER.x, G.CARRIER.y, visMargin)
                 : isVisible(npc.x, npc.y, visMargin);
             if (!visible) continue;
-            const groundBelow = npc.state === 'PARKED' ? npc.z : getGround(npc.x, npc.y);
+            const groundBelow = npc.state === VEHICLE_STATE.PARKED ? npc.z : getGround(npc.x, npc.y);
             drawHeli(npc.type, npc.x, npc.y, npc.z, npc.angle, npc.tilt, npc.roll, npc.rotationPos, cx, cy, {
                 isShadow: true, scaleOverride: 1, fillColor: '#556b2f', strokeColor: '#3a4a1f',
                 shadowGetGround: () => groundBelow,
@@ -331,7 +331,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         G.WIND_TURBINES.forEach((wt: any) => { if (isVisible(wt.x, wt.y, visMargin)) _drawWindTurbine(wt.x, wt.y, wt.spinning); });
         G.PLANE_WRECKS.forEach((pw: any) => { if (isVisible(pw.x, pw.y, visMargin)) _drawPlaneWreck(pw.x, pw.y, pw.angle); });
         G.payloads.forEach((p: any) => {
-            if (p.type !== 'orni_wreck' || !isVisible(p.x, p.y, visMargin)) return;
+            if (p.type !== PAYLOAD.ORNI_WRECK || !isVisible(p.x, p.y, visMargin)) return;
             const gz = getGround(p.x, p.y);
             SceneRenderer.add(ORNI_WRECK_RESIDUE_DEF as any, { x: p.x, y: p.y, z: gz, angle: p.angle ?? 0 });
             if (!p.hanging && !p.rescued)
@@ -346,7 +346,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 z: G.PAD ? G.PAD.z : 0,
                 armExtend: G.fuelTruck.arm,
                 armTarget: { x: G.heli.x, y: G.heli.y },
-                getFuelingState: () => G.fuelTruck.state === 'FUELING',
+                getFuelingState: () => G.fuelTruck.state === VEHICLE_STATE.FUELING,
             });
         if (hasPad()) _drawPadLights(G.PAD.z, false);
         SceneRenderer.flush(camX, camY);
@@ -403,7 +403,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             if (payload.rescued && !payload.hanging) return;
             if (hangingOnly && !payload.hanging) return;
             if (!hangingOnly && payload.hanging) return;
-            if (payload.type === 'orni_wreck' && !payload.hanging) return;
+            if (payload.type === PAYLOAD.ORNI_WRECK && !payload.hanging) return;
             if (!payload.hanging && !isVisible(payload.x, payload.y)) return;
 
             if (night && !payload.hanging && !payload.attachTo) {
@@ -424,7 +424,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 ctx.lineWidth = 1.5;
                 ctx.beginPath();
                 ctx.moveTo(hPos.x, hPos.y);
-                ctx.lineTo(pp.x, pp.y - (payload.type === 'person' || payload.type === 'rescuer' ? 5 : 0));
+                ctx.lineTo(pp.x, pp.y - (payload.type === PAYLOAD.PERSON || payload.type === PAYLOAD.RESCUER ? 5 : 0));
                 ctx.stroke();
                 return;
             }
@@ -432,13 +432,13 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             if (payload.hanging && G.heli.winch < 0.4) return;
 
             const p = isoFn(payload.x, payload.y, payload.z, cam.x, cam.y);
-            if (payload.type === 'orni_wreck') {
+            if (payload.type === PAYLOAD.ORNI_WRECK) {
                 SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, {
                     x: payload.x, y: payload.y, z: payload.z, angle: payload.angle ?? 0,
                 });
                 SceneRenderer.flush(cam.x, cam.y);
                 return;
-            } else if (payload.type === 'crate') {
+            } else if (payload.type === PAYLOAD.CRATE) {
                 ctx.fillStyle = '#d84';
                 ctx.strokeStyle = '#530';
                 ctx.lineWidth = Math.max(0.5, tileW / 64);
@@ -453,7 +453,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 drawPerson(
                     payload.x, payload.y, payload.z, 0, !payload.hanging,
                     cam.x, cam.y,
-                    payload.type === 'rescuer' ? 'rescuer' : undefined,
+                    payload.type === PAYLOAD.RESCUER ? PAYLOAD.RESCUER : undefined,
                     payload.outfitColors,
                     inWater
                 );
@@ -664,15 +664,15 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             if (showCB) drawCollisionBox(cx, cy, ca, -5.5, -1.0, 2.6, 4.1, deckZ, deckZ + 2.5, 'rgba(255,80,0,0.9)');
             if (!zstate.crashed && G.heli.inAir) {
                 if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, cx, cy, ca, -5.5, -1.0, 2.6, 4.1, deckZ, deckZ + 2.5))
-                    triggerCrash(I18N.CRASH_CARRIER_TOWER);
+                    triggerCrash();
             }
-            G.npcHelis.filter(h => h.state === 'PARKED').forEach(h => {
+            G.npcHelis.filter(h => h.state === VEHICLE_STATE.PARKED).forEach(h => {
                 const _hcb = getHeliType(h.type).collisionBox;
                 const hb = { x1: _hcb.xMin, x2: _hcb.xMax, y1: _hcb.yMin, y2: _hcb.yMax, z2: _hcb.zMax };
                 if (showCB) drawCollisionBox(h.x, h.y, h.angle, hb.x1, hb.x2, hb.y1, hb.y2, deckZ + 0.1, deckZ + 0.1 + hb.z2, 'rgba(0,255,100,0.8)');
                 if (!zstate.crashed && G.heli.inAir) {
                     if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, h.x, h.y, h.angle, hb.x1, hb.x2, hb.y1, hb.y2, deckZ + 0.1, deckZ + 0.1 + hb.z2))
-                        triggerCrash(I18N.CRASH_PARKED_HELI);
+                        triggerCrash();
                 }
             });
         }
@@ -684,23 +684,23 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             if (showCB) drawCollisionBox(hmx, hmy, 0, -2, 2, -1, 1, hZ, hZ + 1.8, 'rgba(255,80,0,0.9)');
             if (!zstate.crashed && G.heli.inAir) {
                 if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, hmx, hmy, 0, -2, 2, -1, 1, hZ, hZ + 1.8))
-                    triggerCrash(I18N.CRASH_HANGAR);
+                    triggerCrash();
             }
             const tmx = G.PAD.xMax - 0.5, tmy = G.PAD.yMin - 1, tZ = G.PAD.z;
             if (showCB) drawCollisionBox(tmx, tmy, 0, -0.5, 0.5, -0.5, 0.5, tZ, tZ + 5, 'rgba(255,200,0,0.9)');
             if (!zstate.crashed && G.heli.inAir) {
                 if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, tmx, tmy, 0, -0.5, 0.5, -0.5, 0.5, tZ, tZ + 5))
-                    triggerCrash(I18N.CRASH_TOWER);
+                    triggerCrash();
             }
         }
 
         // ── Fuel Truck ────────────────────────────────────────────────────────────
-        if (hasPad() && G.fuelTruck.state !== 'PARKED') {
+        if (hasPad() && G.fuelTruck.state !== VEHICLE_STATE.PARKED) {
             const ft = G.fuelTruck, fZ = G.PAD.z;
             if (showCB) drawCollisionBox(ft.x, ft.y, ft.angle, 0, 2.2, -0.45, 0.45, fZ, fZ + 0.9, 'rgba(255,200,0,0.8)');
             if (!zstate.crashed && G.heli.inAir) {
                 if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, ft.x, ft.y, ft.angle, 0, 2.2, -0.45, 0.45, fZ, fZ + 0.9))
-                    triggerCrash(I18N.CRASH_FUEL_TRUCK);
+                    triggerCrash();
             }
         }
 
@@ -713,13 +713,13 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             }
             if (!zstate.crashed) {
                 if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, lhPos.x, lhPos.y, 0, -1.0, 1.0, -1.0, 1.0, 0.4, 8.5))
-                    triggerCrash(I18N.CRASH_LIGHTHOUSE);
+                    triggerCrash();
             }
         }
 
         // ── Boats ─────────────────────────────────────────────────────────────────
         G.BOATS.forEach((b: any) => {
-            if (b.objectType === 'pilot_boat') {
+            if (b.objectType === VESSEL.PILOT_BOAT) {
                 if (showCB) {
                     drawCollisionBox(b.x, b.y, b.angle, -1.0, 1.0, -0.4, 0.4, 0, 0.3, 'rgba(0,255,100,0.8)');
                     drawCollisionBox(b.x, b.y, b.angle, -0.3, 0.5, -0.3, 0.3, 0.3, 0.9, 'rgba(255,80,0,0.9)');
@@ -727,9 +727,9 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 if (!zstate.crashed) {
                     if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -1.0, 1.0, -0.4, 0.4, 0, 0.3) ||
                         checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -0.3, 0.5, -0.3, 0.3, 0.3, 0.9))
-                        triggerCrash(I18N.CRASH_BOAT);
+                        triggerCrash();
                 }
-            } else if (b.objectType === 'salvage_tug') {
+            } else if (b.objectType === VESSEL.SALVAGE_TUG) {
                 if (showCB) {
                     drawCollisionBox(b.x, b.y, b.angle, -2.5, 3.2, -1.2, 1.2, 0, 1.2, 'rgba(0,255,100,0.8)');
                     drawCollisionBox(b.x, b.y, b.angle, 1.0, 2.2, -0.8, 0.8, 1.2, 3.2, 'rgba(255,80,0,0.9)');
@@ -737,7 +737,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 if (!zstate.crashed) {
                     if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -2.5, 3.2, -1.2, 1.2, 0, 1.2) ||
                         checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, 1.0, 2.2, -0.8, 0.8, 1.2, 3.2))
-                        triggerCrash(I18N.CRASH_BOAT);
+                        triggerCrash();
                 }
             } else {
                 if (showCB) {
@@ -747,7 +747,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 if (!zstate.crashed) {
                     if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -1.1, 1.3, -0.45, 0.45, 0, 0.35) ||
                         checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -0.4, -0.2, -0.1, 0.1, 0.35, 3.2))
-                        triggerCrash(I18N.CRASH_BOAT);
+                        triggerCrash();
                 }
             }
         });
@@ -761,7 +761,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             if (!zstate.crashed) {
                 if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, s.x, s.y, s.angle, -5.2, 5.6, -0.7, 0.7, 0, 0.3) ||
                     checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, s.x, s.y, s.angle, 0.8, 2.3, -0.32, 0.32, 0.3, 2.4))
-                    triggerCrash(I18N.CRASH_SUBMARINE);
+                    triggerCrash();
             }
         });
 
@@ -777,7 +777,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, rp.x, rp.y, 0, -0.4, 0.4, -0.4, 0.4, wl, wl + 6.0) ||
                     checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, rp.x, rp.y, 0, -1.5, 1.5, -1.5, 1.5, wl + 6.0, wl + 6.5) ||
                     checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, rp.x, rp.y, 0, 0.8, 1.2, -0.2, 0.2, wl + 6.5, wl + 15.0))
-                    triggerCrash(I18N.CRASH_LIGHTHOUSE);
+                    triggerCrash();
             }
         });
 
@@ -790,7 +790,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             if (!zstate.crashed) {
                 if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, wt.x, wt.y, 0, -0.3, 0.3, -0.3, 0.3, 0, 7.5) ||
                     checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, wt.x, wt.y, 0, -0.6, 1.2, -0.6, 0.6, 7.5, 8.5))
-                    triggerCrash(I18N.CRASH_LIGHTHOUSE);
+                    triggerCrash();
             }
         });
 
@@ -826,7 +826,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 if (!isVisible(t.x, t.y)) return;
                 const r = 0.35 * t.s, h = 2.3 * t.s;
                 if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, t.x, t.y, 0, -r, r, -r, r, t.gz, t.gz + h))
-                    triggerCrash(I18N.CRASH_TREE);
+                    triggerCrash();
             });
         }
 

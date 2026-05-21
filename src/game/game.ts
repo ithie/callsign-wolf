@@ -50,7 +50,7 @@ const tileH = Math.round(_tileH * gameRenderScale);
 const stepH = _stepH * gameRenderScale;
 import * as CreditsScreen from './ui/credits-screen/credits-screen';
 import * as LegalScreen from './ui/legal-screen/legal-screen';
-import { createBackButton } from './ui/back-button/back-button';
+import * as ImprintPage from './ui/imprint-page/imprint-page';
 import { startMenuParticles, stopMenuParticles } from './ui/menu-particles/menu-particles';
 import {
     toMpLobby,
@@ -64,11 +64,8 @@ import {
 import * as HeliSelect from './ui/heli-select/heli-select';
 import {
     I18N,
-    I18N_DE,
-    I18N_EN,
     LANG_PREF_KEY,
     LANG_PREF_KEY_LEGACY,
-    LEGAL_DATENSCHUTZ_IMPRINT,
     localize,
     onLanguageChange,
     setLanguage,
@@ -82,11 +79,16 @@ import * as WhatsNew from './ui/whats-new/whats-new';
 import * as MainMenu from './ui/main-menu/main-menu';
 import * as MissionSelect from './ui/mission-select/mission-select';
 import * as CampaignSelect from './ui/campaign-select/campaign-select';
+import * as MissionFailedScreen from './ui/mission-failed-screen/mission-failed-screen';
+import * as MissionSuccessScreen from './ui/mission-success-screen/mission-success-screen';
+import * as CampaignCompleteScreen from './ui/campaign-complete-screen/campaign-complete-screen';
+import * as CampaignSwitchWarning from './ui/campaign-switch-warning/campaign-switch-warning';
 import { showScreen } from './ui/nav';
 import { mountMinimap, initMinimapTerrain } from './ui/minimap/minimap';
 import { createHud } from './ui/hud/hud';
 import { initTutorial, tutorialTick, destroyTutorial, isTutorialRunning, getAllowedKeys, isTutorialFuelLocked } from './ui/tutorial/tutorial';
 import { requestReview } from './reviewRequest';
+import { VESSEL, PAYLOAD, CAMPAIGN_TYPE, CTRL_MODE } from '../shared/types';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 const _PARTY_PALETTE = ['#ff0044', '#ff6600', '#ffcc00', '#00ff88', '#00ccff', '#cc44ff', '#ff44cc', '#44ffcc'];
@@ -131,7 +133,7 @@ const _drawWorldFns = createDrawWorld({
     isApp: _IS_APP,
     isMissionRain: () => _missionRain,
     getShowCollisionBoxes: () => showCollisionBoxes,
-    triggerCrash: (reason: string) => _physicsCtx.triggerCrash(reason),
+    triggerCrash: () => _physicsCtx.triggerCrash(),
 });
 const {
     drawWorldObjects,
@@ -220,7 +222,7 @@ const _stopMission = () => {
     if (flashEl) flashEl.style.opacity = '0';
 };
 
-function triggerCrash(reason: string) {
+function triggerCrash() {
     if (zstate.crashed) return;
     stopHeliSound();
     soundHandler.play(musicConfig.defeat || 'final', false);
@@ -228,15 +230,14 @@ function triggerCrash(reason: string) {
     zstate.crashed = true;
     setTimeout(() => {
         _stopMission();
-        document.getElementById('campaign-failed-reason')!.innerHTML = reason;
-        document.getElementById('campaign-failed-screen')!.style.display = 'flex';
-    }, 1800); // Explosion erst austoben lassen
+        MissionFailedScreen.show();
+    }, 1800);
 }
 
 function missionComplete() {
     destroyTutorial();
     const { campaignType } = campaignHandler.getCurrentMissionData();
-    const isTutorial = campaignType === 'tutorial';
+    const isTutorial = campaignType === CAMPAIGN_TYPE.TUTORIAL;
 
     const prevRank = getRank(_session, _getRankMissions());
 
@@ -263,14 +264,14 @@ function missionComplete() {
     if (allDone) {
         cp.completed = true;
         // Unlock next regular campaign for cross-device import
-        if (campaignType !== 'tutorial' && campaignType !== 'free-flight') {
+        if (campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT) {
             const regular = campaigns
                 .map((c, i) => ({ type: c.type, i }))
                 .filter(
                     c =>
-                        (!_IS_APP ? c.type !== 'multiplayer' : true) &&
-                        c.type !== 'tutorial' &&
-                        c.type !== 'free-flight'
+                        (!_IS_APP ? c.type !== CAMPAIGN_TYPE.MULTIPLAYER : true) &&
+                        c.type !== CAMPAIGN_TYPE.TUTORIAL &&
+                        c.type !== CAMPAIGN_TYPE.FREE_FLIGHT
                 );
             const pos = regular.findIndex(c => c.i === _selectedCampaignIndex);
             if (pos >= 0 && pos + 1 < regular.length) {
@@ -296,18 +297,15 @@ function missionComplete() {
     if (allDone || rankUpRank) requestReview();
 
     if (allDone) {
-        document.getElementById('campaign-complete-name')!.textContent = '';
-        document.getElementById('campaign-complete-screen')!.style.display = 'flex';
+        CampaignCompleteScreen.show('');
         soundHandler.play(musicConfig.success || 'final', false);
         if (rankUpRank)
             Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
         return;
     }
 
-    const successEl = document.getElementById('mission-success-screen')!;
-    successEl.style.display = 'flex';
-    successEl.onclick = () => {
-        successEl.style.display = 'none';
+    MissionSuccessScreen.show(() => {
+        MissionSuccessScreen.hide();
         if (!_IS_APP && _partyMode) soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
         if (!_IS_APP) _partyMode = false;
         zstate.gameStarted = false;
@@ -327,7 +325,7 @@ function missionComplete() {
         _openMissionSelect();
         if (rankUpRank)
             Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
-    };
+    });
 }
 
 const _resetHeliState = () => {
@@ -353,10 +351,9 @@ function returnToBase() {
     if (!_IS_APP && mpHandleReturnToBase()) return;
     _resetHeliState();
 
-    document.getElementById('campaign-complete-screen')!.style.display = 'none';
-    document.getElementById('campaign-failed-screen')!.style.display = 'none';
-    document.getElementById('mission-success-screen')!.style.display = 'none';
-    document.getElementById('crash-screen')!.style.display = 'none';
+    CampaignCompleteScreen.hide();
+    MissionFailedScreen.hide();
+    MissionSuccessScreen.hide();
     Briefing.hide();
     _openMissionSelect(); // calls showScreen('mission-select')
     soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
@@ -368,7 +365,7 @@ const returnToCampaignSelect = () => {
     if (!_IS_APP) _partyMode = false;
     zstate.gameStarted = false;
     _resetHeliState();
-    document.getElementById('campaign-complete-screen')!.style.display = 'none';
+    CampaignCompleteScreen.hide();
     Briefing.hide();
     _openCampaignSelect(); // calls showScreen('campaign-select')
     soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
@@ -393,18 +390,18 @@ function selectCampaign(index: string) {
     const idx = Number(index);
     const campaigns = campaignHandler.getCampaigns();
     const type = campaigns[idx]?.type;
-    const isAlwaysAvailable = type === 'tutorial' || type === 'free-flight';
+    const isAlwaysAvailable = type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT;
 
     if (!isAlwaysAvailable && _session.activeCampaignIndex !== idx) {
         const activeKey = String(_session.activeCampaignIndex);
         const activeCp = _session.campaignProgress[activeKey];
         const activeType = campaigns[_session.activeCampaignIndex]?.type;
-        const activeIsRegular = activeType !== 'tutorial' && activeType !== 'free-flight';
+        const activeIsRegular = activeType !== CAMPAIGN_TYPE.TUTORIAL && activeType !== CAMPAIGN_TYPE.FREE_FLIGHT;
         const hasProgress = activeCp && activeCp.missions.some(m => m?.completed) && !activeCp.completed;
 
         if (activeIsRegular && hasProgress) {
             _pendingSwitchIndex = idx;
-            document.getElementById('campaign-switch-warning')!.style.display = 'flex';
+            CampaignSwitchWarning.show();
             return;
         }
     }
@@ -415,7 +412,7 @@ function selectCampaign(index: string) {
 const _doSelectCampaign = (idx: number) => {
     const campaigns = campaignHandler.getCampaigns();
     const type = campaigns[idx]?.type;
-    const isAlwaysAvailable = type === 'tutorial' || type === 'free-flight';
+    const isAlwaysAvailable = type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT;
 
     if (!isAlwaysAvailable) {
         _session.activeCampaignIndex = idx;
@@ -426,7 +423,7 @@ const _doSelectCampaign = (idx: number) => {
     _selectedMissionIndex = 0;
     campaignHandler.campaign.setActiveCampaign(idx);
 
-    if (type === 'tutorial') {
+    if (type === CAMPAIGN_TYPE.TUTORIAL) {
         selectMission(0);
         return;
     }
@@ -449,12 +446,12 @@ const selectMission = (missionIndex: number) => {
     campaignHandler.campaign.setActiveMission(missionIndex);
 
     const { gridSize, objects: selObjects, campaignType } = campaignHandler.getCurrentMissionData();
-    const selPad = (selObjects || []).find((o: any) => o.type === 'pad') || { x: 10, y: 10 };
+    const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
     G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5 };
     G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
     initGrid(gridSize, G.points);
 
-    if (campaignType === 'tutorial') {
+    if (campaignType === CAMPAIGN_TYPE.TUTORIAL) {
         startGame('dolphin');
         return;
     }
@@ -501,10 +498,10 @@ const _maybeSpawnOrniWreck = () => {
         const gz = getGround(c.x, c.y, G.points, G.CARRIER);
         if (gz <= G.waterLevel + 0.3) continue;
         G.payloads.push({
-            type: 'orni_wreck',
+            type: PAYLOAD.ORNI_WRECK,
             x: c.x, y: c.y, z: gz,
             angle: Math.random() * Math.PI * 2,
-            hanging: false, rescued: false, deliverTo: 'pad',
+            hanging: false, rescued: false, deliverTo: VESSEL.PAD,
         });
         return;
     }
@@ -514,16 +511,16 @@ const launchMission = async (showLoader = true): Promise<void> => {
     // Populate per-mission cache — never call getCurrentMissionData() in the render loop
     const _lmd = campaignHandler.getCurrentMissionData();
     const _lmdObjs = _lmd.objects || [];
-    _missionHasPad = !!_lmdObjs.find((o: any) => o.type === 'pad');
-    _missionHasCarrier = !!_lmdObjs.find((o: any) => o.type === 'carrier');
-    _missionHasLighthouse = !!_lmdObjs.find((o: any) => o.type === 'lighthouse');
+    _missionHasPad = !!_lmdObjs.find((o: any) => o.type === VESSEL.PAD);
+    _missionHasCarrier = !!_lmdObjs.find((o: any) => o.type === VESSEL.CARRIER);
+    _missionHasLighthouse = !!_lmdObjs.find((o: any) => o.type === VESSEL.LIGHTHOUSE);
     _missionRain = !!_lmd.rain;
     _missionNight = !!_lmd.night;
     _missionWindStr = _lmd.windStr ?? 1;
     _missionWindDir = _lmd.windDir ?? 0;
     _missionWindVar = !!_lmd.windVar;
     G.waterLevel = _lmd.waterLevel ?? 0;
-    const _lhObj = _lmdObjs.find((o: any) => o.type === 'lighthouse');
+    const _lhObj = _lmdObjs.find((o: any) => o.type === VESSEL.LIGHTHOUSE);
     _lighthouseX = _lhObj ? _lhObj.x : -1;
     _lighthouseY = _lhObj ? _lhObj.y : -1;
     _missionGridSize = campaignHandler.getTerrain().gridSize;
@@ -606,15 +603,15 @@ const launchMission = async (showLoader = true): Promise<void> => {
         _missionStartTime = Date.now();
         soundHandler.play(campaignHandler.getActiveCampaignMusic().ingame || 'clike', false, 0.4);
         setTouchVisible(true);
-        if (_lmd.campaignType === 'tutorial') {
+        if (_lmd.campaignType === CAMPAIGN_TYPE.TUTORIAL) {
             initTutorial(_isTouchDevice(), G, getGround(G.heli.x, G.heli.y, G.points, G.CARRIER), missionComplete, () => {
                 const personDef = campaignHandler.getCurrentMissionData()
-                    .payloads?.find((p: any) => p.type === 'person');
+                    .payloads?.find((p: any) => p.type === PAYLOAD.PERSON);
                 if (!personDef) return;
                 const gz = getGround(personDef.x, personDef.y, G.points, G.CARRIER);
                 G.payloads.push({
-                    type: 'person', x: personDef.x, y: personDef.y, z: gz,
-                    angle: 0, hanging: false, rescued: false, deliverTo: 'pad',
+                    type: PAYLOAD.PERSON, x: personDef.x, y: personDef.y, z: gz,
+                    angle: 0, hanging: false, rescued: false, deliverTo: VESSEL.PAD,
                 } as any);
             });
         }
@@ -805,7 +802,7 @@ function drawScene() {
             const rs = G.rescuerSwing;
             const winchTipZ = G.activePayload
                 ? G.activePayload.z +
-                  (G.activePayload.type === 'person' || G.activePayload.type === 'rescuer' ? 0.35 : 0)
+                  (G.activePayload.type === PAYLOAD.PERSON || G.activePayload.type === PAYLOAD.RESCUER ? 0.35 : 0)
                 : Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
             drawPerson(
                 rs.x,
@@ -815,7 +812,7 @@ function drawScene() {
                 false,
                 camX,
                 camY,
-                'rescuer',
+                PAYLOAD.RESCUER,
                 !_IS_APP && _partyMode ? { shirt: '#ffffff', pants: '#ffffff' } : undefined
             );
         }
@@ -865,8 +862,8 @@ function drawScene() {
             pad: hasPad() ? G.PAD : null,
             carrier: hasCarrier() ? G.CARRIER : null,
             vessels: [
-                ...G.SUBMARINES.map((s: any) => ({ x: s.x, y: s.y, type: 'submarine' })),
-                ...G.BOATS.map((b: any) => ({ x: b.x, y: b.y, type: 'boat' })),
+                ...G.SUBMARINES.map((s: any) => ({ x: s.x, y: s.y, type: VESSEL.SUBMARINE })),
+                ...G.BOATS.map((b: any) => ({ x: b.x, y: b.y, type: VESSEL.BOAT })),
             ],
             heli: G.heli,
             payloads: G.payloads,
@@ -951,7 +948,7 @@ const _physicsCtx = {
         return _missionHasCarrier;
     },
     get isTutorialMode() {
-        return campaignHandler.getCurrentMissionData().campaignType === 'tutorial';
+        return campaignHandler.getCurrentMissionData().campaignType === CAMPAIGN_TYPE.TUTORIAL;
     },
     get isTutorialFuelLocked() {
         return isTutorialFuelLocked();
@@ -963,7 +960,7 @@ const _physicsCtx = {
     },
     get triggerCrash() {
         if (import.meta.env.DEV && new URLSearchParams(location.search).has('preview') && _previewLaunch) {
-            return (_reason: string) => {
+            return () => {
                 if (zstate.crashed) return;
                 stopHeliSound();
                 spawnExplosion(G.heli, G.particles, G.debris, G.points, G.CARRIER);
@@ -995,7 +992,7 @@ const _getRankMissions = (): number => {
     const tutorialKeys = new Set(
         campaignHandler
             .getCampaigns()
-            .map((c, i) => (c.type === 'tutorial' ? String(i) : null))
+            .map((c, i) => (c.type === CAMPAIGN_TYPE.TUTORIAL ? String(i) : null))
             .filter((k): k is string => k !== null)
     );
     return Object.entries(_session.campaignProgress)
@@ -1114,10 +1111,10 @@ const setTouchVisible = (v: boolean) => {
 
 const CTRL_MODE_KEY = 'z_ctrl_mode';
 const CTRL_MODE_KEY_LEGACY = 'zeewolf-ctrl-mode';
-const getControlMode = (): 'heading' | 'screen' => (storageGet(CTRL_MODE_KEY) === 'screen' ? 'screen' : 'heading');
+const getControlMode = (): 'heading' | 'screen' => (storageGet(CTRL_MODE_KEY) === CTRL_MODE.SCREEN ? 'screen' : 'heading');
 const setControlMode = (m: 'heading' | 'screen') => {
     storageSet(CTRL_MODE_KEY, m);
-    TouchControls.setRightStickProfi(m === 'screen');
+    TouchControls.setRightStickProfi(m === CTRL_MODE.SCREEN);
 };
 
 const _setupJoystick = (id: string, up: string, down: string, left: string, right: string, safeVertical = false) => {
@@ -1201,7 +1198,7 @@ const _setupRightJoystick = () => {
         knob.style.transform = `translate(calc(-50% + ${dx * clamped}px), calc(-50% + ${dy * clamped}px))`;
         _stickDx = dx;
         _stickDy = dy;
-        if (isTutorialRunning() || getControlMode() === 'screen') {
+        if (isTutorialRunning() || getControlMode() === CTRL_MODE.SCREEN) {
             const dead = jr * 0.18;
             const inVertSector = Math.abs(dy) > dead && Math.abs(dx) < Math.abs(dy) * 0.4;
             (G.keys as Record<string, boolean>)['ArrowUp']    = _isKeyAllowed('ArrowUp')    && dy < -dead;
@@ -1231,7 +1228,7 @@ const _setupRightJoystick = () => {
         if (
             active &&
             !isTutorialRunning() &&
-            getControlMode() === 'heading' &&
+            getControlMode() === CTRL_MODE.HEADING &&
             zstate.gameStarted &&
             Math.hypot(_stickDx, _stickDy) > jr * 0.18
         ) {
@@ -1260,7 +1257,7 @@ const _setupRightJoystick = () => {
 const setupTouchControls = () => {
     if (!_isTouchDevice()) return;
     TouchControls.mount();
-    TouchControls.setRightStickProfi(getControlMode() === 'screen');
+    TouchControls.setRightStickProfi(getControlMode() === CTRL_MODE.SCREEN);
     if (!_IS_APP) {
         document.getElementById('debug-toggle')?.addEventListener('click', () => {
             showCollisionBoxes = !showCollisionBoxes;
@@ -1322,81 +1319,32 @@ const mountGameOverlays = () => {
 };
 
 const mountGameScreens = () => {
-    [
-        'campaign-select',
-        'mission-select',
-        'heli-select',
-        'crash-screen',
-        'mission-success-screen',
-        'win-screen',
-        'campaign-complete-screen',
-        'campaign-failed-screen',
-    ].forEach(id => {
+    ['campaign-select', 'mission-select', 'heli-select'].forEach(id => {
         _ensureEl(id).classList.add('ui-screen');
     });
     MissionSelect.mount();
     CampaignSelect.mount();
     HeliSelect.mount();
-
-    document.getElementById('crash-screen')!.innerHTML = `
-        <div class="title" style="color: #fff">${I18N.TERMINATED}</div>
-        <p id="crash-reason" style="color: #f00; font-size: 24px; font-weight: bold"></p>
-        <p class="start-hint">${I18N.RETRY}</p>`;
-
-    document.getElementById('mission-success-screen')!.innerHTML = `
-        <div class="title" style="color: #fff">${I18N.MISSION_COMPLETE}</div>
-        <p style="color: rgb(50, 74, 50); font-size: 24px">${I18N.OBJECTIVES_CLEARED}</p>
-        <p class="start-hint">${I18N.RETURN_TO_BASE}</p>`;
-
-    document.getElementById('win-screen')!.innerHTML = `
-        <div class="title" style="color: #fff">${I18N.CAMPAIGN_COMPLETE}</div>
-        <p style="color: #5f5; font-size: 24px">${I18N.ALL_MISSIONS_CLEARED}</p>
-        <p class="start-hint">${I18N.RETURN_TO_BASE}</p>`;
-
-    document.getElementById('campaign-complete-screen')!.innerHTML = `
-        <div class="title" style="color: #ff6600">${I18N.CAMPAIGN_COMPLETE}</div>
-        <div id="campaign-complete-name" style="color: #5f5; font-size: 24px; margin: 10px 0"></div>
-        <p style="color: #aaa; font-size: 16px; letter-spacing: 2px">${I18N.ALL_MISSIONS_CLEARED}</p>
-        <p class="start-hint">${I18N.RETURN_TO_BASE}</p>`;
-    document.getElementById('campaign-complete-screen')!.addEventListener('click', returnToCampaignSelect);
-
-    document.getElementById('campaign-failed-screen')!.innerHTML = `
-        <div class="title" style="color: #fff">${I18N.CAMPAIGN_FAILED}</div>
-        <p id="campaign-failed-reason" style="color: #f00; font-size: 24px; font-weight: bold"></p>
-        <p style="color: #aaa; font-size: 16px; letter-spacing: 2px">${I18N.MISSION_ABORTED}</p>
-        <p class="start-hint">${I18N.RETURN_TO_BASE}</p>`;
-    document.getElementById('campaign-failed-screen')!.addEventListener('click', returnToBase);
-
-    // Campaign-switch warning overlay
-    const warningEl = _ensureEl('campaign-switch-warning');
-    warningEl.innerHTML = `
-        <div class="title" style="font-size: 26px; color: #f90">${I18N.CAMPAIGN_SWITCH_WARNING}</div>
-        <p style="color:#aaa; font-size:15px; letter-spacing:1px; margin: 10px 0 24px">
-            ${I18N.CAMPAIGN_SWITCH_PROGRESS_WARN}
-        </p>
-        <div style="display:flex; gap: 20px">
-            <div class="back-btn" style="color:#f90; border-color:#f90" id="campaign-switch-confirm">
-                ${I18N.CAMPAIGN_SWITCH_CONFIRM}
-            </div>
-        </div>`;
-    (warningEl.lastElementChild as HTMLElement).prepend(
-        createBackButton(() => {
-            warningEl.style.display = 'none';
+    MissionFailedScreen.mount(returnToBase);
+    MissionSuccessScreen.mount();
+    CampaignCompleteScreen.mount(returnToCampaignSelect);
+    CampaignSwitchWarning.mount(
+        () => {
+            CampaignSwitchWarning.hide();
+            const switchTo = _pendingSwitchIndex;
             _pendingSwitchIndex = -1;
-        })
+            if (switchTo >= 0) {
+                const oldKey = String(_session.activeCampaignIndex);
+                delete _session.campaignProgress[oldKey];
+                saveSession(_session);
+                _doSelectCampaign(switchTo);
+            }
+        },
+        () => {
+            CampaignSwitchWarning.hide();
+            _pendingSwitchIndex = -1;
+        },
     );
-    document.getElementById('campaign-switch-confirm')!.addEventListener('click', () => {
-        warningEl.style.display = 'none';
-        const switchTo = _pendingSwitchIndex;
-        _pendingSwitchIndex = -1;
-        if (switchTo >= 0) {
-            // Clear progress of old active campaign
-            const oldKey = String(_session.activeCampaignIndex);
-            delete _session.campaignProgress[oldKey];
-            saveSession(_session);
-            _doSelectCampaign(switchTo);
-        }
-    });
 };
 
 // ─── Preview mode (Kampagnen-Editor Live-Preview) — DEV only ──────────────────
@@ -1433,8 +1381,8 @@ const _previewLaunch = !import.meta.env.DEV
 
           // Setup from mission objects
           const objs = missionData.objects || [];
-          const padObj = objs.find((o: any) => o.type === 'pad') ||
-              objs.find((o: any) => o.type === 'carrier') || { x: 10, y: 10 };
+          const padObj = objs.find((o: any) => o.type === VESSEL.PAD) ||
+              objs.find((o: any) => o.type === VESSEL.CARRIER) || { x: 10, y: 10 };
           G.PAD = { xMin: padObj.x, xMax: padObj.x + 7, yMin: padObj.y, yMax: padObj.y + 7, z: 0.5 };
           G.START_POS = { x: padObj.x + 4, y: padObj.y + 4 };
           initGrid(missionData.gridSize, G.points);
@@ -1530,47 +1478,7 @@ window.onload = () => {
 
 const _onloadMain = () => {
     if (!_IS_APP && new URLSearchParams(window.location.search).has('imprint')) {
-        document.head.insertAdjacentHTML(
-            'beforeend',
-            `<style>
-                body{background:#050505;color:#5f5;font-family:monospace;margin:0;padding:24px max(24px,env(safe-area-inset-left,0px));overflow-x:hidden;position:static;height:auto;width:auto;}
-                h1{color:#ff6600;font-size:clamp(24px,5vw,42px);letter-spacing:6px;margin-bottom:4px;font-weight:bold;}
-                h2{color:#ff6600;font-size:11px;letter-spacing:4px;font-weight:bold;margin:28px 0 10px;border-bottom:1px solid #1a1a1a;padding-bottom:6px;}
-                p{color:#666;font-size:12px;line-height:1.8;margin:4px 0;letter-spacing:0.5px;}
-                .sub{color:#5f5;letter-spacing:4px;font-size:12px;margin-bottom:36px;}
-                .lang-row{margin-bottom:28px;}
-                .lang-btn{background:none;border:1px solid #333;color:#444;font-family:monospace;font-size:11px;letter-spacing:3px;padding:4px 14px;cursor:pointer;margin-right:8px;}
-                .lang-btn.active{border-color:#5f5;color:#5f5;}
-                .block{padding-left:10px;border-left:1px solid #1a1a1a;}
-                .wrap{max-width:640px;margin:0 auto;padding-bottom:48px;}
-                .wrap[data-lang="en"] .sec-de{display:none;}
-                .wrap[data-lang="de"] .sec-en{display:none;}
-            </style>`
-        );
-        const _rows = (lines: readonly string[]) => lines.map(l => (l ? `<p>${l}</p>` : '<br>')).join('');
-        const _initLang = navigator.language?.toLowerCase().startsWith('de') ? 'de' : 'en';
-        document.body.innerHTML = `<div class="wrap" id="imp" data-lang="${_initLang}">
-                <h1>SAR: CALLSIGN WOLF</h1>
-                <div class="sub">${I18N_EN.LEGAL_TITLE} · ${I18N_DE.LEGAL_TITLE}</div>
-                <div class="lang-row">
-                    <button class="lang-btn en" onclick="document.getElementById('imp').dataset.lang='en';document.querySelector('.lang-btn.en').classList.add('active');document.querySelector('.lang-btn.de').classList.remove('active')">ENGLISH</button>
-                    <button class="lang-btn de" onclick="document.getElementById('imp').dataset.lang='de';document.querySelector('.lang-btn.de').classList.add('active');document.querySelector('.lang-btn.en').classList.remove('active')">DEUTSCH</button>
-                </div>
-
-                <h2 class="sec-en">${I18N_EN.LEGAL_IMPRESSUM_HEADING}</h2>
-                <div class="block sec-en">${_rows(I18N_EN.LEGAL_IMPRESSUM)}</div>
-                <h2 class="sec-de">${I18N_DE.LEGAL_IMPRESSUM_HEADING}</h2>
-                <div class="block sec-de">${_rows(I18N_DE.LEGAL_IMPRESSUM)}</div>
-
-                <h2 class="sec-en">${I18N_EN.LEGAL_DATENSCHUTZ_HEADING}</h2>
-                <div class="block sec-en">${_rows(LEGAL_DATENSCHUTZ_IMPRINT.en)}</div>
-                <h2 class="sec-de">${I18N_DE.LEGAL_DATENSCHUTZ_HEADING}</h2>
-                <div class="block sec-de">${_rows(LEGAL_DATENSCHUTZ_IMPRINT.de)}</div>
-            </div>`;
-        document.documentElement.style.overflowY = 'auto';
-        document.body.style.overflowY = 'auto';
-        const initBtn = document.querySelector<HTMLElement>(`.lang-btn.${_initLang}`);
-        if (initBtn) initBtn.classList.add('active');
+        ImprintPage.render();
         return;
     }
     assertDom();
@@ -1587,7 +1495,6 @@ const _onloadMain = () => {
                 _selectedCampaignIndex = i;
             },
             launchMission,
-            showMsg,
         });
     }
     const _mountScreens = () => {

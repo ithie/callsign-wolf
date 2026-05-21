@@ -10,6 +10,6 @@ export interface PhysicsCtx {
     partyPalette?: readonly string[];
     showMsg: (txt: string) => void;
     missionComplete: () => void;
-    triggerCrash: (reason: string) => void;
+    triggerCrash: () => void;
     orniWreckDelivered: () => void;
 }

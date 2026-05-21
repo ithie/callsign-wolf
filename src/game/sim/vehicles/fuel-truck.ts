@@ -1,6 +1,7 @@
 import { G } from '../../state';
 import { PhysicsCtx } from '../ctx';
 import { FuelVehicle, runFuelVehicle } from './fuel-vehicle-base';
+import { VEHICLE_STATE } from '../../../shared/types';
 
 export const fuelTruck: FuelVehicle = {
     init() {
@@ -13,7 +14,7 @@ export const fuelTruck: FuelVehicle = {
         ft.y = ft.localParkY;
         ft.angle = ft.localParkAngle;
         ft.arm = 0;
-        ft.state = 'PARKED'; ft.t = 0; ft.wps = null;
+        ft.state = VEHICLE_STATE.PARKED; ft.t = 0; ft.wps = null;
     },
 
     update(dt: number, ctx: PhysicsCtx) {

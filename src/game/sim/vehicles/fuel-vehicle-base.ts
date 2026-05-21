@@ -1,5 +1,6 @@
 import { G } from '../../state';
 import { PhysicsCtx } from '../ctx';
+import { VEHICLE_STATE } from '../../../shared/types';
 
 export interface FuelVehicle {
     init(): void;
@@ -123,45 +124,45 @@ export const runFuelVehicle = (v: FuelVehicleState, dt: number, _ctx: PhysicsCtx
         v.angle = Math.atan2(pFwd.y - pBwd.y, pFwd.x - pBwd.x);
     };
 
-    if (v.state === 'PARKED') { cfg.parkSnapFn?.(); return; }
+    if (v.state === VEHICLE_STATE.PARKED) { cfg.parkSnapFn?.(); return; }
 
     // Heli started engine — abort to RETURNING from current position
-    if (heli.engineOn && v.state !== 'RETURNING') {
+    if (heli.engineOn && v.state !== VEHICLE_STATE.RETURNING) {
         v.arm = 0;
         if (!v.wps) { v.wps = buildPath(); }
-        if (v.state !== 'DRIVING') v.t = 1.0;
-        v.state = 'RETURNING';
+        if (v.state !== VEHICLE_STATE.DRIVING) v.t = 1.0;
+        v.state = VEHICLE_STATE.RETURNING;
     }
 
-    if (v.state === 'DRIVING') {
+    if (v.state === VEHICLE_STATE.DRIVING) {
         if (!v.wps) { v.wps = buildPath(); v.t = 0; }
         v.t = Math.min(1, v.t + cfg.SPEED * localSpeedFactor(v.t) * dt / pathLength());
         const pos = sampleWorld(v.t);
         v.x = pos.x; v.y = pos.y;
         setAngleFromTangent(v.t);
         if (v.t >= 1) {
-            v.state = cfg.hasArm ? 'ARM_OUT' : 'FUELING';
+            v.state = cfg.hasArm ? VEHICLE_STATE.ARM_OUT : VEHICLE_STATE.FUELING;
             v.t = cfg.hasArm ? 0 : 1.0;
         }
-    } else if (v.state === 'ARM_OUT') {
+    } else if (v.state === VEHICLE_STATE.ARM_OUT) {
         v.t = Math.min(1, v.t + 0.016 * dt);
         v.arm = v.t;
-        if (v.t >= 1) { v.state = 'FUELING'; v.t = 0; }
-    } else if (v.state === 'FUELING') {
+        if (v.t >= 1) { v.state = VEHICLE_STATE.FUELING; v.t = 0; }
+    } else if (v.state === VEHICLE_STATE.FUELING) {
         const pos = sampleWorld(1.0);
         v.x = pos.x; v.y = pos.y;
         setAngleFromTangent(1.0);
         if (heli.fuel < 100) {
             heli.fuel = Math.min(100, heli.fuel + cfg.FUEL_RATE * dt);
         } else {
-            v.state = cfg.hasArm ? 'ARM_IN' : 'RETURNING';
+            v.state = cfg.hasArm ? VEHICLE_STATE.ARM_IN : VEHICLE_STATE.RETURNING;
             v.t = cfg.hasArm ? 0 : 1.0;
         }
-    } else if (v.state === 'ARM_IN') {
+    } else if (v.state === VEHICLE_STATE.ARM_IN) {
         v.t = Math.min(1, v.t + 0.016 * dt);
         v.arm = 1 - v.t;
-        if (v.t >= 1) { v.state = 'RETURNING'; v.t = 1.0; }
-    } else if (v.state === 'RETURNING') {
+        if (v.t >= 1) { v.state = VEHICLE_STATE.RETURNING; v.t = 1.0; }
+    } else if (v.state === VEHICLE_STATE.RETURNING) {
         v.t = Math.max(0, v.t - cfg.SPEED_REV * localSpeedFactor(v.t) * dt / pathLength());
         const pos = sampleWorld(v.t);
         v.x = pos.x; v.y = pos.y;
@@ -172,7 +173,7 @@ export const runFuelVehicle = (v: FuelVehicleState, dt: number, _ctx: PhysicsCtx
             v.localParkY = lp.ly;
             v.localParkAngle = cfg.getParentAngle ? v.angle - cfg.getParentAngle() : v.angle;
             v.wps = null;
-            v.state = 'PARKED';
+            v.state = VEHICLE_STATE.PARKED;
         }
     }
 };

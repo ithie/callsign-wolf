@@ -1,6 +1,7 @@
 import { G, type NpcHeli } from '../state';
 import { campaignHandler } from '../main';
 import { getGround } from './terrain';
+import { NPC_HELI_STATE } from '../../shared/types';
 
 const PATROL_ALT = 9;
 const PATROL_R   = 11;
@@ -48,7 +49,7 @@ const makeNpc = (slot: typeof CARRIER_SLOTS[0], autoTakeoff: boolean, cruiseZ: n
         x: 0, y: 0, z: 0,
         angle: slot.angle,
         tilt: 0, roll: 0, rotorRPM: 0, rotationPos: 0,
-        state: 'PARKED',
+        state: NPC_HELI_STATE.PARKED,
         autoTakeoff,
         parkXRel: slot.xRel, parkYRel: slot.yRel, parkAngle: slot.angle,
         waypoints,
@@ -74,28 +75,28 @@ export const initNpcHelisFromMission = () => {
     for (const slot of CARRIER_SLOTS) {
         const isCoordSlot = slot === COORDINATOR_SLOT && hasCoordinator;
         const npc = makeNpc(slot, isCoordSlot, cruiseZ, isCoordSlot ? wps : []);
-        if (isCoordSlot) npc.state = 'TAKEOFF'; // already departed before player arrives
+        if (isCoordSlot) npc.state = NPC_HELI_STATE.TAKEOFF; // already departed before player arrives
         G.npcHelis.push(npc);
     }
 };
 
 export const updateNpcHelis = (dt: number) => {
     for (const npc of G.npcHelis) {
-        if (npc.state === 'PARKED') {
+        if (npc.state === NPC_HELI_STATE.PARKED) {
             snapToCarrier(npc);
             npc.tilt = 0; npc.roll = 0; npc.rotorRPM = 0;
-            if (npc.autoTakeoff) npc.state = 'TAKEOFF';
+            if (npc.autoTakeoff) npc.state = NPC_HELI_STATE.TAKEOFF;
             continue;
         }
 
-        if (npc.state === 'TAKEOFF') {
+        if (npc.state === NPC_HELI_STATE.TAKEOFF) {
             npc.tilt = 0; npc.roll = 0;
             npc.rotorRPM = Math.min(1, npc.rotorRPM + 0.008 * dt);
             npc.rotationPos += npc.rotorRPM * 0.75 * dt;
             npc.z += 0.05 * dt;
             if (npc.z >= npc.cruiseZ) {
                 npc.z = npc.cruiseZ;
-                npc.state = 'PATROL';
+                npc.state = NPC_HELI_STATE.PATROL;
             }
             continue;
         }

@@ -1,13 +1,85 @@
 /** Text field that can be a plain string (legacy) or a { de, en } object. */
 export type LocalizedString = string | { de: string; en?: string };
 
+export const VESSEL = {
+    CARRIER:            'carrier',
+    BOAT:               'boat',
+    SUBMARINE:          'submarine',
+    PAD:                'pad',
+    LIGHTHOUSE:         'lighthouse',
+    PILOT_BOAT:         'pilot_boat',
+    SALVAGE_TUG:        'salvage_tug',
+    RESEARCH_PLATFORM:  'research_platform',
+    WIND_TURBINE:       'wind_turbine',
+    PLANE_WRECK:        'plane_wreck',
+    ORNITHOPTER_WRECK:  'ornithopter_wreck',
+    SAILBOAT_BROKEN:    'sailboat_broken',
+} as const;
+
+export const PAYLOAD = {
+    PERSON:     'person',
+    CRATE:      'crate',
+    RESCUER:    'rescuer',
+    ORNI_WRECK: 'orni_wreck',
+} as const;
+
+export const VEHICLE_STATE = {
+    PARKED:    'PARKED',
+    DRIVING:   'DRIVING',
+    RETURNING: 'RETURNING',
+    ARM_OUT:   'ARM_OUT',
+    ARM_IN:    'ARM_IN',
+    FUELING:   'FUELING',
+} as const;
+export type VehicleState = typeof VEHICLE_STATE[keyof typeof VEHICLE_STATE];
+
+export const NPC_HELI_STATE = {
+    PARKED:  'PARKED',
+    TAKEOFF: 'TAKEOFF',
+    PATROL:  'PATROL',
+} as const;
+export type NpcHeliState = typeof NPC_HELI_STATE[keyof typeof NPC_HELI_STATE];
+
+export const VESSEL_PATH = {
+    STATIC:   'static',
+    STRAIGHT: 'straight',
+    CIRCLE:   'circle',
+} as const;
+export type VesselPath = typeof VESSEL_PATH[keyof typeof VESSEL_PATH];
+
+export const CAMPAIGN_TYPE = {
+    TUTORIAL:    'tutorial',
+    FREE_FLIGHT: 'free-flight',
+    MULTIPLAYER: 'multiplayer',
+} as const;
+export type CampaignType = typeof CAMPAIGN_TYPE[keyof typeof CAMPAIGN_TYPE];
+
+export const RESCUE_ZONE_ROLE = {
+    PICKUP:  'pickup',
+    DROPOFF: 'dropoff',
+    BOTH:    'both',
+} as const;
+export type RescueZoneRole = typeof RESCUE_ZONE_ROLE[keyof typeof RESCUE_ZONE_ROLE];
+
+export const OBJECTIVE_TYPE = {
+    RESCUE_ALL: 'rescue_all',
+    LAND_AT:    'land_at',
+} as const;
+export type ObjectiveType = typeof OBJECTIVE_TYPE[keyof typeof OBJECTIVE_TYPE];
+
+export const CTRL_MODE = {
+    SCREEN:  'screen',
+    HEADING: 'heading',
+} as const;
+export type CtrlMode = typeof CTRL_MODE[keyof typeof CTRL_MODE];
+
 type PadObject = { type: 'pad'; x: number; y: number };
 type CarrierObject = {
     type: 'carrier';
     x: number;
     y: number;
     angle: number;
-    path: 'circle' | 'straight' | 'static';
+    path: VesselPath;
     speed: number;
     radius: number;
     coordinatorHeli?: boolean;
@@ -17,7 +89,7 @@ type BoatObject = {
     x: number;
     y: number;
     angle: number;
-    path: 'circle' | 'straight' | 'static';
+    path: VesselPath;
     speed: number;
     radius: number;
 };
@@ -26,7 +98,7 @@ type SubmarineObject = {
     x: number;
     y: number;
     angle: number;
-    path: 'circle' | 'straight' | 'static';
+    path: VesselPath;
     speed: number;
     radius: number;
 };
@@ -36,7 +108,7 @@ type PilotBoatObject = {
     x: number;
     y: number;
     angle: number;
-    path: 'circle' | 'straight' | 'static';
+    path: VesselPath;
     speed: number;
     radius: number;
 };
@@ -45,12 +117,12 @@ type SalvageTugObject = {
     x: number;
     y: number;
     angle: number;
-    path: 'circle' | 'straight' | 'static';
+    path: VesselPath;
     speed: number;
     radius: number;
 };
 type ResearchPlatformObject = { type: 'research_platform'; x: number; y: number };
-type WindTurbineObject = { type: 'wind_turbine'; x: number; y: number; spinning?: boolean; rescueZones?: Array<{ x: number; y: number; w: number; h: number; role: 'pickup' | 'dropoff' | 'both' }> };
+type WindTurbineObject = { type: 'wind_turbine'; x: number; y: number; spinning?: boolean; rescueZones?: Array<{ x: number; y: number; w: number; h: number; role: RescueZoneRole }> };
 type PlaneWreckObject = { type: 'plane_wreck'; x: number; y: number; angle?: number };
 type SailboatBrokenObject = { type: 'sailboat_broken'; x: number; y: number; angle?: number };
 type OrnithopterWreckObject = { type: 'ornithopter_wreck'; x: number; y: number; angle?: number };

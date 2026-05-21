@@ -4,6 +4,7 @@ export const STORAGE_KEY_LEGACY = 'zeewolf_session';
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
 import { storageGet, storageSet } from './storage';
+import { CAMPAIGN_TYPE } from '../shared/types';
 
 export const CONSENT_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 2 weeks
 
@@ -112,19 +113,19 @@ export const isCampaignUnlocked = (
     const type = campaigns[index]?.type;
     if (!type) return false;
     if (s.allUnlocked) return true;
-    if (type === 'tutorial') return true;
+    if (type === CAMPAIGN_TYPE.TUTORIAL) return true;
     // Cross-device import: highest reached campaign unlocks all up to that index
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return true;
 
-    if (type === 'free-flight') return true;
+    if (type === CAMPAIGN_TYPE.FREE_FLIGHT) return true;
 
-    const tutorialIndex = campaigns.findIndex(c => c.type === 'tutorial');
+    const tutorialIndex = campaigns.findIndex(c => c.type === CAMPAIGN_TYPE.TUTORIAL);
     const tutorialDone = tutorialIndex === -1 || !!(s.campaignProgress[String(tutorialIndex)]?.completed);
     if (!tutorialDone) return false;
 
     const regular = campaigns
         .map((c, i) => ({ type: c.type, i }))
-        .filter(c => (!_IS_APP ? c.type !== 'multiplayer' : true) && c.type !== 'tutorial' && c.type !== 'free-flight');
+        .filter(c => (!_IS_APP ? c.type !== CAMPAIGN_TYPE.MULTIPLAYER : true) && c.type !== CAMPAIGN_TYPE.TUTORIAL && c.type !== CAMPAIGN_TYPE.FREE_FLIGHT);
     const pos = regular.findIndex(c => c.i === index);
     if (pos <= 0) return true;
     const prev = regular[pos - 1];
@@ -138,9 +139,9 @@ export const isCampaignLockedByTutorial = (
 ): boolean => {
     if (s.allUnlocked) return false;
     const type = campaigns[index]?.type;
-    if (!type || type === 'tutorial' || type === 'free-flight') return false;
+    if (!type || type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT) return false;
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return false;
-    const tutorialIndex = campaigns.findIndex(c => c.type === 'tutorial');
+    const tutorialIndex = campaigns.findIndex(c => c.type === CAMPAIGN_TYPE.TUTORIAL);
     if (tutorialIndex === -1) return false;
     return !(s.campaignProgress[String(tutorialIndex)]?.completed);
 };
@@ -151,7 +152,7 @@ export const isMissionUnlocked = (
     missionIndex: number,
     campaignType: string
 ): boolean => {
-    if (s.allUnlocked || campaignType === 'free-flight') return true;
+    if (s.allUnlocked || campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return true;
     if (missionIndex === 0) return true;
     return !!(s.campaignProgress[campaignKey]?.missions[missionIndex - 1]?.completed);
 };

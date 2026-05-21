@@ -1,4 +1,5 @@
 import { HELI_TYPES } from './heli-types';
+import { VEHICLE_STATE, VehicleState, NpcHeliState } from '../shared/types';
 
 // ─── NPC heli ─────────────────────────────────────────────────────────────────
 export interface NpcHeli {
@@ -8,7 +9,7 @@ export interface NpcHeli {
     tilt: number; roll: number;
     rotorRPM: number;
     rotationPos: number;
-    state: 'PARKED' | 'TAKEOFF' | 'PATROL';
+    state: NpcHeliState;
     autoTakeoff: boolean;
     parkXRel: number; parkYRel: number; parkAngle: number;
     waypoints: { x: number; y: number }[];
@@ -106,7 +107,7 @@ export const G = {
     PAD: null as any,
     START_POS: null as any,
     fuelTruck: {
-        state: 'PARKED',
+        state: VEHICLE_STATE.PARKED as VehicleState,
         x: 0,
         y: 0,
         angle: 0,
@@ -118,7 +119,7 @@ export const G = {
         wps: null as { lx: number; ly: number }[] | null,
     },
     carrierFuelCar: {
-        state: 'PARKED' as 'PARKED' | 'DRIVING' | 'FUELING' | 'RETURNING',
+        state: VEHICLE_STATE.PARKED as VehicleState,
         x: 0,
         y: 0,
         angle: Math.PI / 2 + 0.25 + Math.PI,

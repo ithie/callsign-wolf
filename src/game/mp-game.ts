@@ -4,6 +4,8 @@ import { applyHeliSnap, applyWorldSnap, packHeli, packWorld } from './multiplaye
 import { MP_CAMPAIGN_INDEX, MP_COUNTDOWN_SEC, MP_PAD } from './multiplayer/mp-mission';
 import type { MpChannels } from './multiplayer/rtc';
 import * as MpLobby from './ui/mp-lobby/mp-lobby';
+import * as MissionSuccessScreen from './ui/mission-success-screen/mission-success-screen';
+import * as MissionFailedScreen from './ui/mission-failed-screen/mission-failed-screen';
 import { soundHandler, campaignHandler, musicConfig } from './main';
 import { stopMenuParticles } from './ui/menu-particles/menu-particles';
 import { initGrid } from './sim/terrain';
@@ -20,26 +22,24 @@ type MpGameDeps = {
     setTouchVisible: (v: boolean) => void;
     setSelectedCampaignIndex: (i: number) => void;
     launchMission: () => Promise<void>;
-    showMsg: (txt: string) => void;
 };
 
 export let toMpLobby: (() => void) | undefined;
 export let mpReturnToLobby: (() => void) | undefined;
 export let mpMissionComplete: (() => void) | undefined;
-export let mpTriggerCrash: ((reason: string) => void) | undefined;
+export let mpTriggerCrash: (() => void) | undefined;
 export let mpTimeOut: (() => void) | undefined;
 
 export const initMpGame = (deps: MpGameDeps): void => {
-    const { cancelRaf, ctx, getPlayerName, setTouchVisible, setSelectedCampaignIndex, launchMission, showMsg } = deps;
+    const { cancelRaf, ctx, getPlayerName, setTouchVisible, setSelectedCampaignIndex, launchMission } = deps;
 
     const _mpMissionComplete = () => {
         mpState.channels?.sendEvent({ t: 'done' });
-        document.getElementById('mission-success-screen')!.style.display = 'flex';
+        MissionSuccessScreen.show(() => { MissionSuccessScreen.hide(); });
     };
 
     const _mpTimeOut = () => {
-        document.getElementById('campaign-failed-reason')!.innerHTML = 'ZEIT ABGELAUFEN';
-        document.getElementById('campaign-failed-screen')!.style.display = 'flex';
+        MissionFailedScreen.show();
     };
 
     const _setupMpChannels = (channels: MpChannels, isHost: boolean) => {
@@ -157,19 +157,16 @@ export const initMpGame = (deps: MpGameDeps): void => {
         G.particles = [];
         G.debris = [];
         setTouchVisible(false);
-        ['mission-success-screen', 'campaign-failed-screen', 'campaign-complete-screen', 'crash-screen'].forEach(id => {
-            const e = document.getElementById(id);
-            if (e) e.style.display = 'none';
-        });
+        MissionSuccessScreen.hide();
+        MissionFailedScreen.hide();
         _toMpLobby();
     };
 
-    const _mpTriggerCrash = (reason: string) => {
+    const _mpTriggerCrash = () => {
         if (mpState.respawnTimer > 0) return;
         mpState.respawnTimer = 1;
         mpState.channels?.sendEvent({ t: 'crash', role: mpState.isHost ? 'host' : 'guest' });
         spawnExplosion(G.heli, G.particles, G.debris, G.points, G.CARRIER);
-        showMsg(reason);
         G.heli.vx = 0; G.heli.vy = 0; G.heli.vz = 0;
         G.heli.engineOn = false;
         G.heli.rotorRPM = 0;
@@ -296,5 +293,5 @@ export const mpTickAndHUD = (
 export const mpGetMissionComplete = (fallback: () => void): (() => void) =>
     mpState.active ? mpMissionComplete ?? fallback : fallback;
 
-export const mpGetTriggerCrash = (fallback: (reason: string) => void): ((reason: string) => void) =>
+export const mpGetTriggerCrash = (fallback: () => void): (() => void) =>
     mpState.active ? mpTriggerCrash ?? fallback : fallback;
