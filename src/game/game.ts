@@ -75,7 +75,6 @@ import * as Briefing from './ui/briefing/briefing';
 import * as Settings from './ui/settings/settings';
 import * as Rankup from './ui/rankup/rankup';
 import * as PauseOverlay from './ui/pause-overlay/pause-overlay';
-import * as WhatsNew from './ui/whats-new/whats-new';
 import * as MainMenu from './ui/main-menu/main-menu';
 import * as MissionSelect from './ui/mission-select/mission-select';
 import * as CampaignSelect from './ui/campaign-select/campaign-select';
@@ -1581,7 +1580,6 @@ const _onloadMain = () => {
         },
         onBack: HeliSelect.animMainMenuBg,
     });
-    if (!_IS_APP) WhatsNew.mount();
     onLanguageChange(_mountScreens);
     setupTouchControls();
     startMenuParticles();
@@ -1590,23 +1588,15 @@ const _onloadMain = () => {
         showScreen('splash');
     };
 
-    const _afterConsent = () => {
-        if (!_IS_APP) {
-            if (!WhatsNew.show(_showSplash)) _showSplash();
-        } else {
-            _showSplash();
-        }
-    };
-
     // Show cookie banner if consent not yet given, expired, or privacy notice was updated
     if (!_IS_APP && (_session.cookieConsent === null || isConsentExpired(_session) || isConsentOutdated(_session))) {
         _session.cookieConsent = null;
         _session.consentTimestamp = null;
         _session.consentVersion = '';
-        CookieBanner.mount(_afterConsent);
+        CookieBanner.mount(_showSplash);
         (document.getElementById('cookie-banner') as HTMLElement).style.display = 'flex';
     } else {
-        _afterConsent();
+        _showSplash();
     }
 };
 

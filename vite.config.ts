@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'fs';
 import { gzipSync } from 'zlib';
 import type { Plugin } from 'vite';
 import { zsongPlugin } from './plugins/zsong';
@@ -14,7 +14,7 @@ const GZIP_WARN_THRESHOLD = 500 * 1024; // 500 kB
 const bundleSizeGuard = (): Plugin => ({
     name: 'bundle-size-guard',
     closeBundle() {
-        const outFile = resolve(__dirname, 'dist/index.html');
+        const outFile = resolve(__dirname, 'dist/game.html');
         let raw: Buffer;
         try {
             raw = readFileSync(outFile);
@@ -25,11 +25,31 @@ const bundleSizeGuard = (): Plugin => ({
         const kb = (gzipped / 1024).toFixed(1);
         if (gzipped > GZIP_WARN_THRESHOLD) {
             console.warn(
-                `\n⚠  Bundle size warning: dist/index.html is ${kb} kB gzipped (threshold: ${GZIP_WARN_THRESHOLD / 1024} kB)\n`
+                `\n⚠  Bundle size warning: dist/game.html is ${kb} kB gzipped (threshold: ${GZIP_WARN_THRESHOLD / 1024} kB)\n`
             );
         } else {
-            console.info(`✓  Bundle size: dist/index.html ${kb} kB gzipped`);
+            console.info(`✓  Bundle size: dist/game.html ${kb} kB gzipped`);
         }
+    },
+});
+
+const copyPromoPage = (): Plugin => ({
+    name: 'copy-promo-page',
+    closeBundle() {
+        const splashPath = resolve(__dirname, 'resources/splash.png');
+        const promoSrc = resolve(__dirname, 'index.html');
+        const promoDst = resolve(__dirname, 'dist/index.html');
+        let html = readFileSync(promoSrc, 'utf-8');
+        try {
+            const img = readFileSync(splashPath);
+            const dataUri = `data:image/png;base64,${img.toString('base64')}`;
+            html = html.replace('./resources/splash.png', dataUri);
+        } catch {
+            // splash.png missing — serve as-is (dev/preview)
+        }
+        mkdirSync(resolve(__dirname, 'dist'), { recursive: true });
+        writeFileSync(promoDst, html, 'utf-8');
+        console.info('✓  Promo page: dist/index.html');
     },
 });
 
@@ -41,7 +61,6 @@ const isApp = process.env.VITE_TARGET === 'app';
 
 const mpStub = resolve(__dirname, 'src/game/multiplayer/mp-stub.ts');
 const mpGameStub = resolve(__dirname, 'src/game/mp-game-stub.ts');
-const whatsNewStub = resolve(__dirname, 'src/game/ui/whats-new/whats-new-stub.ts');
 const storageWebStub = resolve(__dirname, 'src/game/storage-web.ts');
 
 const injectAppCsp = (): Plugin => ({
@@ -66,7 +85,6 @@ export default defineConfig(({ command }) => {
                           [resolve(__dirname, 'src/game/multiplayer/mp-mission')]: mpStub,
                           [resolve(__dirname, 'src/game/ui/mp-lobby/mp-lobby.ui')]: mpStub,
                           [resolve(__dirname, 'src/game/mp-game')]: mpGameStub,
-                          [resolve(__dirname, 'src/game/ui/whats-new/whats-new.ui')]: whatsNewStub,
                       }
                     : {
                           [resolve(__dirname, 'src/game/storage')]: storageWebStub,
@@ -74,14 +92,14 @@ export default defineConfig(({ command }) => {
             },
         },
         base: isApp ? './' : command === 'build' ? '/callsign-wolf/' : '/',
-        plugins: [zsongPlugin(), zdefPlugin(), zcampaignPlugin(), makeSingleFile(), bundleSizeGuard(), ...(isApp ? [injectAppCsp()] : [])],
+        plugins: [zsongPlugin(), zdefPlugin(), zcampaignPlugin(), makeSingleFile(), bundleSizeGuard(), copyPromoPage(), ...(isApp ? [injectAppCsp()] : [])],
         build: {
             outDir: 'dist/',
 
             emptyOutDir: false,
 
             rollupOptions: {
-                input: resolve(__dirname, 'index.html'),
+                input: resolve(__dirname, 'game.html'),
                 output: {
                     inlineDynamicImports: true,
                 },

@@ -21,7 +21,6 @@ vi.mock('../../game/render', () => ({
 
 // ─── Imports (after mocks) ────────────────────────────────────────────────────
 
-import * as WhatsNew from '../../game/ui/whats-new/whats-new';
 import * as MainMenu from '../../game/ui/main-menu/main-menu';
 import * as Briefing from '../../game/ui/briefing/briefing';
 import * as CookieBanner from '../../game/ui/cookie-banner/cookie-banner';
@@ -77,11 +76,6 @@ const noopCallbacks = {
 beforeEach(() => { document.body.innerHTML = ''; });
 
 describe('UI screen snapshots', () => {
-    it('whats-new', () => {
-        WhatsNew.mount();
-        snap('whats-new-overlay');
-    });
-
     it('main-menu', () => {
         MainMenu.mount(noopCallbacks);
         snap('main-menu');
