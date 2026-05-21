@@ -14,6 +14,7 @@ import {
     isConsentOutdated,
     CONSENT_VERSION,
     STORAGE_KEY,
+    STORAGE_KEY_LEGACY,
     type PlayerSession,
     type Rank,
 } from './session';
@@ -66,6 +67,7 @@ import {
     I18N_DE,
     I18N_EN,
     LANG_PREF_KEY,
+    LANG_PREF_KEY_LEGACY,
     LEGAL_DATENSCHUTZ_IMPRINT,
     localize,
     onLanguageChange,
@@ -91,7 +93,7 @@ const _PARTY_PALETTE = ['#ff0044', '#ff6600', '#ffcc00', '#00ff88', '#00ccff', '
 
 const assertDom = () => {
     if (!document.getElementById('gameCanvas')) {
-        throw new Error('[zeewolf] Missing DOM element: gameCanvas');
+        throw new Error('[z] Missing DOM element: gameCanvas');
     }
 };
 
@@ -314,6 +316,7 @@ function missionComplete() {
         zstate.crashed = false;
         G.heli.fuel = 100;
         G.heli.onboard = 0;
+        G.heli.onboardDeliverQueue = [];
         G.heli.engineOn = false;
         G.heli.rotorRPM = 0;
         G.heli.vx = 0;
@@ -331,6 +334,7 @@ const _resetHeliState = () => {
     zstate.crashed = false;
     G.heli.fuel = 100;
     G.heli.onboard = 0;
+    G.heli.onboardDeliverQueue = [];
     G.heli.engineOn = false;
     G.heli.rotorRPM = 0;
     G.heli.vx = 0;
@@ -860,6 +864,10 @@ function drawScene() {
             isTouch: _isTouchDevice(),
             pad: hasPad() ? G.PAD : null,
             carrier: hasCarrier() ? G.CARRIER : null,
+            vessels: [
+                ...G.SUBMARINES.map((s: any) => ({ x: s.x, y: s.y, type: 'submarine' })),
+                ...G.BOATS.map((b: any) => ({ x: b.x, y: b.y, type: 'boat' })),
+            ],
             heli: G.heli,
             payloads: G.payloads,
         },
@@ -1104,7 +1112,8 @@ const setTouchVisible = (v: boolean) => {
     }
 };
 
-const CTRL_MODE_KEY = 'zeewolf-ctrl-mode';
+const CTRL_MODE_KEY = 'z_ctrl_mode';
+const CTRL_MODE_KEY_LEGACY = 'zeewolf-ctrl-mode';
 const getControlMode = (): 'heading' | 'screen' => (storageGet(CTRL_MODE_KEY) === 'screen' ? 'screen' : 'heading');
 const setControlMode = (m: 'heading' | 'screen') => {
     storageSet(CTRL_MODE_KEY, m);
@@ -1410,6 +1419,7 @@ const _previewLaunch = !import.meta.env.DEV
           zstate.gameStarted = false;
           G.heli.fuel = 100;
           G.heli.onboard = 0;
+          G.heli.onboardDeliverQueue = [];
           G.heli.engineOn = false;
           G.heli.rotorRPM = 0;
           G.heli.vx = 0;
@@ -1450,6 +1460,10 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('preview') &
         if (e.data?.type === 'preview-reset')
             _previewLaunch((campaignHandler as any).getPreviewMissionData?.(), e.data.heliType);
     });
+    const _previewBc = new BroadcastChannel('editor-preview');
+    _previewBc.onmessage = e => {
+        if (e.data?.type === 'mission-update' && e.data.mission) _previewLaunch(e.data.mission);
+    };
 }
 
 // ── Minimal startup for workbench preview (DEV only) ──────────────────────────
@@ -1465,7 +1479,33 @@ const _onloadPreview = !import.meta.env.DEV
           soundHandler.mute();
           setSfxEnabled(false);
           setupTouchControls();
+
+          // Auto-launch from URL params — no cross-origin messaging needed
+          const params = new URLSearchParams(location.search);
+          const campaignType = params.get('preview') ?? '';
+          const missionIdx = parseInt(params.get('mission') ?? '0', 10);
+          const allCampaigns = campaignHandler.getCampaigns();
+          const campaign = allCampaigns.find(c => c.type === campaignType) ?? allCampaigns[0];
+          if (campaign && _previewLaunch) {
+              const mission = campaign.levels[missionIdx] ?? campaign.levels[0];
+              if (mission) _previewLaunch(mission);
+          }
       };
+
+const _migrateStorageKeys = () => {
+    const pairs: [string, string][] = [
+        [STORAGE_KEY_LEGACY, STORAGE_KEY],
+        [LANG_PREF_KEY_LEGACY, LANG_PREF_KEY],
+        [CTRL_MODE_KEY_LEGACY, CTRL_MODE_KEY],
+    ];
+    for (const [oldKey, newKey] of pairs) {
+        const val = storageGet(oldKey);
+        if (val !== null && storageGet(newKey) === null) {
+            storageSet(newKey, val);
+        }
+        if (val !== null) storageRemove(oldKey);
+    }
+};
 
 window.onload = () => {
     requestAnimationFrame(() => {
@@ -1475,10 +1515,13 @@ window.onload = () => {
                 return;
             }
             if (_IS_APP) {
-                await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, CTRL_MODE_KEY, 'zw_music', 'zw_sfx']);
+                await initAppStorage([STORAGE_KEY, STORAGE_KEY_LEGACY, LANG_PREF_KEY, LANG_PREF_KEY_LEGACY, CTRL_MODE_KEY, CTRL_MODE_KEY_LEGACY, 'zw_music', 'zw_sfx']);
+                _migrateStorageKeys();
                 _session = loadSession();
                 const _sl = storageGet(LANG_PREF_KEY);
                 if (_sl === 'de' || _sl === 'en') setLanguage(_sl);
+            } else {
+                _migrateStorageKeys();
             }
             _onloadMain();
         })();

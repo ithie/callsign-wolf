@@ -68,28 +68,28 @@ export const activate = (ctx: vscode.ExtensionContext): void => {
 
     ctx.subscriptions.push(
         vscode.window.registerCustomEditorProvider(
-            'zeewolf.campaignEditor',
+            'zw.campaignEditor',
             campaignProvider,
             { webviewOptions: { retainContextWhenHidden: true } },
         ),
-        vscode.commands.registerCommand('zeewolf.openCampaignPreview', () => {
+        vscode.commands.registerCommand('zw.openCampaignPreview', () => {
             campaignProvider.openPreviewForActive();
         }),
-        vscode.commands.registerCommand('zeewolf.openUIPreview', () => {
+        vscode.commands.registerCommand('zw.openUIPreview', () => {
             uiPreviewProvider.openForActive();
         }),
         vscode.window.registerCustomEditorProvider(
-            'zeewolf.zsongEditor',
+            'zw.zsongEditor',
             new ZsongEditorProvider(ctx),
             { webviewOptions: { retainContextWhenHidden: true } },
         ),
         vscode.window.registerCustomEditorProvider(
-            'zeewolf.zdefEditor',
+            'zw.zdefEditor',
             new ZdefEditorProvider(ctx),
             { webviewOptions: { retainContextWhenHidden: true } },
         ),
         vscode.window.registerCustomEditorProvider(
-            'zeewolf.zsoundEditor',
+            'zw.zsoundEditor',
             new ZsoundEditorProvider(ctx),
             { webviewOptions: { retainContextWhenHidden: true } },
         ),

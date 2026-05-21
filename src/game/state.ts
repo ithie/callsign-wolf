@@ -89,6 +89,7 @@ export const G = {
         rotorRPM: 0,
         rotationPos: 0,
         onboard: 0,
+        onboardDeliverQueue: [] as (string | undefined)[],
         maxLoad: 5,
         accel: 0.0025,
         friction: 0.99,

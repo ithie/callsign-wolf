@@ -3,7 +3,8 @@
 // Kampagnentexte (Headlines, Briefings) stehen in den jeweiligen JSON-Dateien.
 // Sprache wird beim Start via storage (Nutzerpräferenz) oder navigator.language ermittelt.
 
-export const LANG_PREF_KEY = 'zeewolf_lang';
+export const LANG_PREF_KEY = 'z_lang';
+export const LANG_PREF_KEY_LEGACY = 'zeewolf_lang';
 
 const _DATENSCHUTZ_DE = [
     'SAR: Callsign WOLF speichert folgende Daten lokal auf deinem Gerät:',

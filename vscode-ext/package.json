@@ -1,8 +1,9 @@
 {
-    "name": "zeewolf-sar-tools",
-    "displayName": "Zeewolf SAR Tools",
+    "name": "sar-tools",
+    "displayName": "SAR Tools",
     "license": "UNLICENSED",
-    "description": "Campaign, ZSong, ZDEF and Sound Lab editors for Zeewolf SAR",
+    "description": "Campaign, ZSong, ZDEF and Sound Lab editors",
+    "icon": "icon.png",
     "version": "0.1.0",
     "publisher": "ithie-softworks",
     "private": true,
@@ -19,7 +20,7 @@
     "contributes": {
         "customEditors": [
             {
-                "viewType": "zeewolf.campaignEditor",
+                "viewType": "zw.campaignEditor",
                 "displayName": "Campaign Editor",
                 "selector": [
                     {
@@ -29,7 +30,7 @@
                 "priority": "default"
             },
             {
-                "viewType": "zeewolf.zsongEditor",
+                "viewType": "zw.zsongEditor",
                 "displayName": "ZSong Editor",
                 "selector": [
                     {
@@ -39,7 +40,7 @@
                 "priority": "default"
             },
             {
-                "viewType": "zeewolf.zdefEditor",
+                "viewType": "zw.zdefEditor",
                 "displayName": "ZDEF Editor",
                 "selector": [
                     {
@@ -49,7 +50,7 @@
                 "priority": "default"
             },
             {
-                "viewType": "zeewolf.zsoundEditor",
+                "viewType": "zw.zsoundEditor",
                 "displayName": "Sound Lab",
                 "selector": [
                     {
@@ -61,12 +62,12 @@
         ],
         "commands": [
             {
-                "command": "zeewolf.openCampaignPreview",
+                "command": "zw.openCampaignPreview",
                 "title": "Open Campaign Preview",
                 "icon": "$(open-preview)"
             },
             {
-                "command": "zeewolf.openUIPreview",
+                "command": "zw.openUIPreview",
                 "title": "Zeewolf: Open UI Preview",
                 "icon": "$(symbol-color)"
             }
@@ -74,12 +75,12 @@
         "menus": {
             "editor/title": [
                 {
-                    "command": "zeewolf.openCampaignPreview",
+                    "command": "zw.openCampaignPreview",
                     "when": "resourceExtname == .zcampaign",
                     "group": "navigation"
                 },
                 {
-                    "command": "zeewolf.openUIPreview",
+                    "command": "zw.openUIPreview",
                     "when": "resourcePath =~ /\\.ui\\.ts$/",
                     "group": "navigation"
                 }
@@ -88,7 +89,7 @@
         "configuration": {
             "title": "Zeewolf SAR Tools",
             "properties": {
-                "zeewolf.devServerPort": {
+                "zw.devServerPort": {
                     "type": "number",
                     "default": 5173,
                     "description": "Port of the Vite dev server for campaign preview"
@@ -100,7 +101,7 @@
         "build": "node esbuild.mjs",
         "watch": "node esbuild.mjs --watch",
         "package": "npm run build && vsce package",
-        "deploy": "npm run package && \"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code\" --install-extension zeewolf-sar-tools-0.1.0.vsix --force"
+        "deploy": "npm run package && \"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code\" --install-extension sar-tools-0.1.0.vsix --force"
     },
     "dependencies": {
         "esbuild": "^0.25.0"

@@ -55,6 +55,16 @@ export const state = {
     isPrevDragging: false,
     lastMX: 0,
     lastMY: 0,
+
+    isDraggingItem: false,
+    dragItemType: null as 'payload' | 'object' | null,
+    dragItemIdx: null as number | null,
+    dragHasMoved: false,
+    dragWasSelected: false,
+    dragStartMX: 0,
+    dragStartMY: 0,
+    dragOrigX: 0,
+    dragOrigY: 0,
 };
 
 export const getCurrentMission = (): Mission | undefined => state.campaign[state.curIdx];

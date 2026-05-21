@@ -117,7 +117,7 @@ const openPreview = (doc: CampaignDoc, missionIndex: number): void => {
         if (parsed.type) campaignType = parsed.type;
     } catch (_) { /* ignore parse errors */ }
 
-    const port = vscode.workspace.getConfiguration('zeewolf').get<number>('devServerPort', 5173);
+    const port = vscode.workspace.getConfiguration('zw').get<number>('devServerPort', 5173);
     const url = `http://localhost:${port}?preview=${encodeURIComponent(campaignType)}&mission=${missionIndex}`;
     vscode.commands.executeCommand('simpleBrowser.show', url);
 };

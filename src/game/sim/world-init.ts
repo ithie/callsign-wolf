@@ -235,10 +235,10 @@ export function initPayloadsFromMission() {
             if (resolved) { px = resolved.x; py = resolved.y; pz = resolved.z; }
         }
         return {
+            ...p,
             x: px, y: py,
             z: pz ?? getGround(px, py, G.points, G.CARRIER),
             vx: 0, vy: 0,
-            type: p.type,
             rescued: false, hanging: false,
             attachTo: p.attachTo || null,
             npcTarget: p.npcTarget ?? false,

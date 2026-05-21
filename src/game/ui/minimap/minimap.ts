@@ -82,6 +82,7 @@ export type MinimapData = {
     isTouch: boolean;
     pad: { xMin: number; yMin: number; xMax: number; yMax: number } | null;
     carrier: { x: number; y: number } | null;
+    vessels: Array<{ x: number; y: number; type: string }>;
     heli: { x: number; y: number };
     payloads: Array<{ x: number; y: number; type: string; rescued: boolean; npcTarget: boolean; hanging: boolean }>;
 };
@@ -117,15 +118,30 @@ export const updateMinimap = (data: MinimapData): void => {
     _heli.style.top     = `${data.heli.y * sc}px`;
     _heli.style.display = 'block';
 
+    let dotIdx = 0;
+
+    data.vessels.forEach(v => {
+        const dot = _getDot(dotIdx++);
+        dot.style.left       = `${v.x * sc}px`;
+        dot.style.top        = `${v.y * sc}px`;
+        dot.style.background = v.type === 'submarine' ? '#48f' : '#08f';
+        dot.style.width      = '6px';
+        dot.style.height     = '6px';
+        dot.style.display    = 'block';
+    });
+
     const activePays = data.payloads.filter(p => !p.rescued && !p.npcTarget && !p.hanging && p.type !== 'orni_wreck');
-    activePays.forEach((p, i) => {
-        const dot = _getDot(i);
+    activePays.forEach(p => {
+        const dot = _getDot(dotIdx++);
         dot.style.left       = `${p.x * sc}px`;
         dot.style.top        = `${p.y * sc}px`;
         dot.style.background = p.type === 'crate' ? '#d84' : '#f00';
+        dot.style.width      = '4px';
+        dot.style.height     = '4px';
         dot.style.display    = 'block';
     });
-    for (let i = activePays.length; i < _pool.length; i++) {
+
+    for (let i = dotIdx; i < _pool.length; i++) {
         _pool[i].style.display = 'none';
     }
 };

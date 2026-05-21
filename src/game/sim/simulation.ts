@@ -58,12 +58,26 @@ const _computeLandingState = (ctx: PhysicsCtx, groundH: number) => {
     return { onCarrierDeck, onPadSurface, onPad, effectiveGroundH };
 };
 
+// Returns the single delivery-target type if exactly one type has dropoff zones; else undefined.
+const _singleDropzoneType = (): string | undefined => {
+    const types = new Set<string>();
+    for (const { vessel, type } of _dropzoneVessels()) {
+        if (type && vessel?.rescueZones?.some((z: any) => z.role !== 'pickup'))
+            types.add(type);
+    }
+    return types.size === 1 ? [...types][0] : undefined;
+};
+
 // ─── deposit/winch-in handlers ────────────────────────────────────────────────
 
 interface _DepositState { ctx: PhysicsCtx; onCarrierDeck: boolean; onPadSurface: boolean; }
 
-const _deliveryDeposit = (p: any, { ctx }: _DepositState) => {
-    const inZone = _inDropzone(p.x, p.y);
+const _deliveryDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface }: _DepositState) => {
+    const deliverTo = (p as any).deliverTo as string | undefined;
+    const effectiveDeliverTo = deliverTo ?? _singleDropzoneType();
+    const onCarrierOk = (!deliverTo || deliverTo === 'carrier') && onCarrierDeck && G.heli.z < 3.0;
+    const onPadOk     = (!deliverTo || deliverTo === 'pad')     && onPadSurface  && G.heli.z < 3.0;
+    const inZone = onCarrierOk || onPadOk || _inDropzone(p.x, p.y, effectiveDeliverTo);
     G.payloads.splice(G.payloads.indexOf(p), 1);
     p.hanging = false; p.rescued = true; G.activePayload = null;
     if (inZone) {
@@ -81,6 +95,7 @@ const _deliveryDeposit = (p: any, { ctx }: _DepositState) => {
 const _personDeposit = (p: any, { ctx }: _DepositState) => {
     if (G.heli.onboard < G.heli.maxLoad) {
         p.hanging = false; p.rescued = true; G.activePayload = null;
+        G.heli.onboardDeliverQueue.push((p as any).deliverTo as string | undefined);
         G.heli.onboard++;
         hapticNotification(NotificationType.Success);
         ctx.showMsg(I18N.ONBOARD(G.heli.onboard, G.heli.maxLoad));
@@ -200,7 +215,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
         G.fuelTruck.state = 'DRIVING'; G.fuelTruck.t = 0;
     }
     if (ctx.hasCarrier && onCarrierDeck && !G.heli.engineOn && !G.heli.inAir && G.heli.rotorRPM < 0.05
-        && G.carrierFuelCar.state === 'PARKED' && (G.heli.fuel < 99 || G.heli.onboard > 0)) {
+        && G.carrierFuelCar.state === 'PARKED' && G.heli.fuel < 99) {
         G.carrierFuelCar.state = 'DRIVING'; G.carrierFuelCar.wps = null;
     }
     G.heli.rotorRPM =
@@ -254,17 +269,17 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
             G.rescuerSwing.x = G.heli.x; G.rescuerSwing.y = G.heli.y;
             G.rescuerSwing.vx = 0; G.rescuerSwing.vy = 0;
         }
-
-        G.payloads.forEach((p: any) => {
-            if (p.rescued || p.hanging) return;
-            if (p.attachTo) {
-                const pos = resolveAttachTo(p.attachTo);
-                if (pos) { p.x = pos.x; p.y = pos.y; p.z = pos.z; }
-            } else if (getGround(p.x, p.y, G.points, G.CARRIER) < G.waterLevel) {
-                p.z = -0.3 + Math.sin(Date.now() * 0.002) * 0.1;
-            }
-        });
     }
+
+    G.payloads.forEach((p: any) => {
+        if (p.rescued || p.hanging) return;
+        if (p.attachTo) {
+            const pos = resolveAttachTo(p.attachTo);
+            if (pos) { p.x = pos.x; p.y = pos.y; p.z = pos.z; }
+        } else if (getGround(p.x, p.y, G.points, G.CARRIER) < G.waterLevel) {
+            p.z = -0.3 + Math.sin(Date.now() * 0.002) * 0.1;
+        }
+    });
 
     // flight
     const lift = G.heli.rotorRPM > 0.9 ? 1.0 : 0.0;
@@ -351,6 +366,9 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
     // winch
     if (G.keys['KeyQ']) G.heli.winch = Math.max(0, G.heli.winch - 0.02 * dt);
     if (G.keys['KeyE']) G.heli.winch = Math.min(5.0, G.heli.winch + 0.02 * dt);
+    // clamp: rope can't have slack when payload rests on a surface
+    if (G.activePayload?.hanging)
+        G.heli.winch = Math.min(G.heli.winch, Math.max(0, G.heli.z - G.activePayload.z) + 0.05);
 
     // deliver-mode toggle (R key — rising edge only)
     const keyR = !!G.keys['KeyR'];
@@ -379,6 +397,7 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
             x: G.rescuerSwing.x, y: G.rescuerSwing.y, z: G.heli.z - G.heli.winch,
             vx: 0, vy: 0, type: 'person', rescued: false, hanging: true, isDelivery: true,
             attachTo: null, npcTarget: false, outfitColors: { shirt: '#4488cc', pants: '#223355' },
+            deliverTo: G.heli.onboardDeliverQueue.shift(),
         };
         G.activePayload = dp; G.payloads.push(dp); G.heli.onboard--;
     }
@@ -430,6 +449,28 @@ export function updatePhysics(dt: number, ctx: PhysicsCtx) {
                 ctx.showMsg(I18N.DELIVERED);
                 if (G.totalRescued >= G.goalCount) ctx.missionComplete();
             }
+        }
+    }
+
+    // landing deposit: persons onboard are offloaded when heli touches down in a valid delivery zone
+    if (!G.heli.inAir && G.heli.onboard > 0) {
+        const undelivered: (string | undefined)[] = [];
+        let countedNow = 0;
+        for (const dt of G.heli.onboardDeliverQueue) {
+            const eff = dt ?? _singleDropzoneType();
+            const valid =
+                ((!dt || dt === 'carrier') && onCarrierDeck) ||
+                ((!dt || dt === 'pad')     && onPadSurface)  ||
+                _inDropzone(G.heli.x, G.heli.y, eff);
+            if (valid) countedNow++;
+            else undelivered.push(dt);
+        }
+        if (countedNow > 0) {
+            G.heli.onboardDeliverQueue = undelivered;
+            G.heli.onboard -= countedNow;
+            G.totalRescued += countedNow;
+            if (G.totalRescued >= G.goalCount) ctx.missionComplete();
+            else ctx.showMsg(I18N.SECURED(G.totalRescued, G.goalCount));
         }
     }
 

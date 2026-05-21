@@ -125,7 +125,7 @@ const mkGameState = (heliOverrides: Partial<GameState['heli']> = {}): GameState 
 
 const mkMinimapData = (): MinimapData => ({
     gridSize: 10, isTouch: false,
-    pad: null, carrier: null,
+    pad: null, carrier: null, vessels: [],
     heli: { x: 5, y: 5 },
     payloads: [],
 });

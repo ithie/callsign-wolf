@@ -54,7 +54,16 @@
     isEditorDragging: false,
     isPrevDragging: false,
     lastMX: 0,
-    lastMY: 0
+    lastMY: 0,
+    isDraggingItem: false,
+    dragItemType: null,
+    dragItemIdx: null,
+    dragHasMoved: false,
+    dragWasSelected: false,
+    dragStartMX: 0,
+    dragStartMY: 0,
+    dragOrigX: 0,
+    dragOrigY: 0
   };
   var getCurrentMission = () => state.campaign[state.curIdx];
 
@@ -701,7 +710,7 @@
     if (window.parent !== window) window.parent.postMessage({ type: "editor-state-changed" }, "*");
     _onStateChanged?.();
   };
-  var previewChannel = new BroadcastChannel("zeewolf-editor");
+  var previewChannel = new BroadcastChannel("editor-preview");
   var broadcastPreview = () => {
     const m = getCurrentMission();
     if (!m) return;
@@ -1274,6 +1283,80 @@
     drawMap();
   };
   var initUI = () => {
+    const popup = document.createElement("div");
+    popup.style.cssText = "position:fixed;display:none;background:rgba(10,10,10,0.96);border:1px solid #5f5;padding:10px 12px;font-family:monospace;font-size:12px;color:#fff;border-radius:4px;z-index:9999;box-shadow:0 5px 20px rgba(0,0,0,0.8);min-width:170px";
+    document.body.appendChild(popup);
+    const hidePopup = () => {
+      popup.style.display = "none";
+    };
+    const showPayloadPopup = (idx, cx, cy) => {
+      const m = getCurrentMission();
+      const pa = m.payloads[idx];
+      const icon = pa.type === "person" ? "\u{1F7E1}" : pa.type === "rescuer" ? "\u{1F535}" : "\u{1F7E0}";
+      const typeName = pa.type === "person" ? "Person" : pa.type === "rescuer" ? "Retter" : "Crate";
+      popup.innerHTML = "";
+      const header = document.createElement("div");
+      header.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px";
+      const title = document.createElement("span");
+      title.style.fontWeight = "bold";
+      title.textContent = `${icon} ${typeName} #${idx + 1}`;
+      const closeBtn = document.createElement("span");
+      closeBtn.textContent = "\xD7";
+      closeBtn.style.cssText = "cursor:pointer;color:#f55;font-weight:bold;font-size:16px;margin-left:12px";
+      closeBtn.onclick = hidePopup;
+      header.append(title, closeBtn);
+      popup.appendChild(header);
+      const deliverRow = document.createElement("div");
+      deliverRow.style.cssText = "margin:4px 0;display:flex;align-items:center;gap:6px";
+      const deliverLabel = document.createElement("span");
+      deliverLabel.style.color = "#aaa";
+      deliverLabel.textContent = "Ziel:";
+      const deliverSel = document.createElement("select");
+      deliverSel.style.cssText = "flex:1;background:#111;color:#5f5;border:1px solid #444;font-family:monospace;font-size:11px";
+      const opts = [["", "\u2013"]];
+      if (m.objects.some((o) => o.type === "pad")) opts.push(["pad", "Pad"]);
+      if (m.objects.some((o) => o.type === "carrier")) opts.push(["carrier", "Carrier"]);
+      if (m.objects.some((o) => o.type === "submarine")) opts.push(["submarine", "U-Boot"]);
+      if (m.objects.some((o) => ["boat", "pilot_boat", "salvage_tug"].includes(o.type))) opts.push(["boat", "Boot"]);
+      opts.forEach(([val, lbl]) => {
+        const opt = document.createElement("option");
+        opt.value = val;
+        opt.text = lbl;
+        if ((pa.deliverTo ?? "") === val) opt.selected = true;
+        deliverSel.appendChild(opt);
+      });
+      deliverSel.onchange = () => {
+        pa.deliverTo = deliverSel.value || void 0;
+        renderPayloadList();
+        notifyWorkbench();
+        broadcastPreview();
+      };
+      deliverRow.append(deliverLabel, deliverSel);
+      popup.appendChild(deliverRow);
+      const npcRow = document.createElement("div");
+      npcRow.style.cssText = "margin:6px 0 2px";
+      const npcLabel = document.createElement("label");
+      npcLabel.style.cssText = "display:flex;align-items:center;gap:6px;cursor:pointer;color:#8af";
+      const npcCb = document.createElement("input");
+      npcCb.type = "checkbox";
+      npcCb.checked = !!pa.npcTarget;
+      npcCb.onchange = () => {
+        pa.npcTarget = npcCb.checked || void 0;
+        renderPayloadList();
+        notifyWorkbench();
+        broadcastPreview();
+      };
+      npcLabel.append(npcCb, "NPC-Ziel");
+      npcRow.appendChild(npcLabel);
+      popup.appendChild(npcRow);
+      const vw = window.innerWidth, vh = window.innerHeight;
+      popup.style.left = Math.min(cx + 6, vw - 190) + "px";
+      popup.style.top = Math.min(cy + 6, vh - 120) + "px";
+      popup.style.display = "block";
+    };
+    document.addEventListener("mousedown", (e) => {
+      if (!popup.contains(e.target)) hidePopup();
+    });
     getEl("btn-add-mission").onclick = () => {
       state.campaign.push(createEmptyMission());
       loadMission(state.campaign.length - 1);
@@ -1524,6 +1607,18 @@
         }
       }
       if (e.key === "Escape") {
+        if (state.isDraggingItem) {
+          const m = getCurrentMission();
+          if (state.dragItemType === "payload")
+            Object.assign(m.payloads[state.dragItemIdx], { x: state.dragOrigX, y: state.dragOrigY });
+          else if (state.dragItemType === "object")
+            Object.assign(m.objects[state.dragItemIdx], { x: state.dragOrigX, y: state.dragOrigY });
+          state.isDraggingItem = false;
+          state.dragItemType = null;
+          state.dragItemIdx = null;
+          state.dragHasMoved = false;
+        }
+        hidePopup();
         state.moveMode = false;
         state.selectedObjectIdx = null;
         state.selectedPayloadIdx = null;
@@ -1531,6 +1626,7 @@
         drawMap();
       }
     });
+    canvas2.addEventListener("contextmenu", (e) => e.preventDefault());
     canvas2.onmousedown = (e) => {
       const rect = canvas2.getBoundingClientRect();
       const m = getCurrentMission();
@@ -1551,10 +1647,12 @@
           renderObjectList();
         } else if (state.selectedPayloadIdx !== null) {
           const p = m.payloads[state.selectedPayloadIdx];
-          p.x = Math.floor(gx);
-          p.y = Math.floor(gy);
-          const snapped = makePayload(p.type, p.x, p.y, m);
-          m.payloads[state.selectedPayloadIdx] = { ...snapped };
+          const snapped = makePayload(p.type, Math.floor(gx), Math.floor(gy), m);
+          m.payloads[state.selectedPayloadIdx] = {
+            ...snapped,
+            ...p.deliverTo ? { deliverTo: p.deliverTo } : {},
+            ...p.npcTarget ? { npcTarget: p.npcTarget } : {}
+          };
           renderPayloadList();
         }
         state.moveMode = false;
@@ -1563,30 +1661,44 @@
         return;
       }
       if (!e.shiftKey) {
-        if (state.currentTool === "person" || state.currentTool === "rescuer" || state.currentTool === "crate" || state.currentTool === "move") {
-          const payloads = m.payloads || [];
-          for (let i = 0; i < payloads.length; i++) {
-            if (Math.hypot(gx - payloads[i].x, gy - payloads[i].y) < 2) {
-              state.selectedPayloadIdx = state.selectedPayloadIdx === i ? null : i;
-              state.selectedObjectIdx = null;
-              state.selectedUI = null;
-              drawMap();
-              return;
-            }
+        const startDrag = (type, idx, ox, oy) => {
+          hidePopup();
+          state.isDraggingItem = true;
+          state.dragItemType = type;
+          state.dragItemIdx = idx;
+          state.dragHasMoved = false;
+          state.dragWasSelected = type === "payload" ? state.selectedPayloadIdx === idx : state.selectedObjectIdx === idx;
+          state.dragStartMX = e.clientX;
+          state.dragStartMY = e.clientY;
+          state.dragOrigX = ox;
+          state.dragOrigY = oy;
+          if (type === "payload") {
+            state.selectedPayloadIdx = idx;
+            state.selectedObjectIdx = null;
+          } else {
+            state.selectedObjectIdx = idx;
+            state.selectedPayloadIdx = null;
+          }
+          state.selectedUI = null;
+          drawMap();
+        };
+        const payloads = m.payloads || [];
+        for (let i = 0; i < payloads.length; i++) {
+          const p = payloads[i];
+          if (Math.hypot(gx - p.x, gy - p.y) < 2) {
+            startDrag("payload", i, p.x, p.y);
+            return;
           }
         }
         for (let i = 0; i < m.objects.length; i++) {
           const obj = m.objects[i];
           let hit = false;
           if (obj.type === "pad") hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
-          else if (obj.type === "carrier" || obj.type === "boat" || obj.type === "pilot_boat" || obj.type === "salvage_tug" || obj.type === "submarine") hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
-          else if (obj.type === "lighthouse" || obj.type === "research_platform" || obj.type === "wind_turbine") hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
-          else if (obj.type === "plane_wreck" || obj.type === "sailboat_broken" || obj.type === "ornithopter_wreck") hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
+          else if (["carrier", "boat", "pilot_boat", "salvage_tug", "submarine"].includes(obj.type)) hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
+          else if (["lighthouse", "research_platform", "wind_turbine"].includes(obj.type)) hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
+          else if (["plane_wreck", "sailboat_broken", "ornithopter_wreck"].includes(obj.type)) hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
           if (hit) {
-            state.selectedObjectIdx = state.selectedObjectIdx === i ? null : i;
-            state.selectedPayloadIdx = null;
-            state.selectedUI = null;
-            drawMap();
+            startDrag("object", i, obj.x, obj.y);
             return;
           }
         }
@@ -1606,6 +1718,24 @@
       }
     };
     window.addEventListener("mousemove", (e) => {
+      if (state.isDraggingItem) {
+        if (Math.hypot(e.clientX - state.dragStartMX, e.clientY - state.dragStartMY) > 3)
+          state.dragHasMoved = true;
+        if (state.dragHasMoved) {
+          const m = getCurrentMission();
+          const tSize = 600 / m.gridSize * state.zoom;
+          const rect = canvas2.getBoundingClientRect();
+          const gx = (e.clientX - rect.left) / tSize + state.panX;
+          const gy = (e.clientY - rect.top) / tSize + state.panY;
+          if (state.dragItemType === "payload")
+            Object.assign(m.payloads[state.dragItemIdx], { x: Math.round(gx), y: Math.round(gy) });
+          else if (state.dragItemType === "object")
+            Object.assign(m.objects[state.dragItemIdx], { x: Math.round(gx), y: Math.round(gy) });
+          canvas2.style.cursor = "grabbing";
+          drawMap();
+        }
+        return;
+      }
       if (state.isEditorDragging) {
         const tSize = 600 / getCurrentMission().gridSize * state.zoom;
         state.panX -= (e.clientX - state.lastMX) / tSize;
@@ -1621,6 +1751,38 @@
       }
     });
     window.addEventListener("mouseup", () => {
+      if (state.isDraggingItem) {
+        if (state.dragHasMoved) {
+          const m = getCurrentMission();
+          if (state.dragItemType === "payload") {
+            const p = m.payloads[state.dragItemIdx];
+            const snapped = makePayload(p.type, p.x, p.y, m);
+            m.payloads[state.dragItemIdx] = {
+              ...snapped,
+              ...p.deliverTo ? { deliverTo: p.deliverTo } : {},
+              ...p.npcTarget ? { npcTarget: p.npcTarget } : {}
+            };
+            renderPayloadList();
+          } else {
+            renderObjectList();
+          }
+          notifyWorkbench();
+          broadcastPreview();
+        } else if (state.dragWasSelected) {
+          state.selectedPayloadIdx = null;
+          state.selectedObjectIdx = null;
+          hidePopup();
+        } else if (!state.dragHasMoved && state.dragItemType === "payload" && state.dragItemIdx !== null) {
+          showPayloadPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
+        }
+        state.isDraggingItem = false;
+        state.dragItemType = null;
+        state.dragItemIdx = null;
+        state.dragHasMoved = false;
+        updateCursor();
+        drawMap();
+        return;
+      }
       if (state.isDrawing) {
         state.isDrawing = false;
         broadcastPreview();

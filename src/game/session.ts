@@ -1,4 +1,5 @@
-export const STORAGE_KEY = 'zeewolf_session';
+export const STORAGE_KEY = 'z_session';
+export const STORAGE_KEY_LEGACY = 'zeewolf_session';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 

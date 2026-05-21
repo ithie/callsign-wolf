@@ -87,7 +87,7 @@ export class UiPreviewProvider {
 
     private _openPanel(component: string, uiTsPath: string): void {
         const panel = vscode.window.createWebviewPanel(
-            `zeewolf.uiPreview.${component}`,
+            `zw.uiPreview.${component}`,
             `Preview: ${component}`,
             vscode.ViewColumn.Beside,
             { enableScripts: true, retainContextWhenHidden: true },
@@ -172,7 +172,7 @@ export class UiPreviewProvider {
 
     private _showUnavailable(component: string): void {
         const panel = vscode.window.createWebviewPanel(
-            `zeewolf.uiPreview.${component}`,
+            `zw.uiPreview.${component}`,
             `Preview: ${component}`,
             vscode.ViewColumn.Beside,
             { enableScripts: false },
