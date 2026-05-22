@@ -13,11 +13,9 @@
       "color": "#888888"
     }
   ],
-  "rotateNodes": [
+  "parts": [
     {
-      "pivot": [-3.25, 3.35, 6.88],
-      "axis": [0, 0, 1],
-      "param": "radarAngle",
+      "id": "radar_arm_node",
       "faces": [
         {
           "id": "radar_arm",
@@ -29,7 +27,12 @@
           ],
           "color": "#cccccc"
         }
-      ]
+      ],
+      "rotate": {
+        "pivot": [-3.25, 3.35, 6.88],
+        "axis": [0, 0, 1],
+        "param": "radarAngle"
+      }
     }
   ]
 }

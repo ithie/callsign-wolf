@@ -123,7 +123,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         ctx.globalAlpha = 1.0;
     };
 
-    const _drawBoatModel = (b: any, cx: number, cy: number) => {
+    const _drawBoatModel = (b: any) => {
         if (b.objectType === VESSEL.PILOT_BOAT) {
             const radarAngle = (Date.now() * 0.002) % (Math.PI * 2);
             SceneRenderer.add(applyParts(PILOT_BOAT_DEF as any, { radarAngle }), { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
@@ -131,12 +131,10 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             const def = b.objectType === VESSEL.SALVAGE_TUG ? SALVAGE_TUG_DEF : SAILBOAT_DEF;
             SceneRenderer.add(def, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
         }
-        SceneRenderer.flush(cx, cy);
     };
 
-    const _drawSubmarine = (sX: number, sY: number, angle: number, cx: number, cy: number) => {
+    const _drawSubmarine = (sX: number, sY: number, angle: number) => {
         SceneRenderer.add(SUBMARINE_DEF, { x: sX, y: sY, z: G.waterLevel, angle });
-        SceneRenderer.flush(cx, cy);
     };
 
     const _drawResearchPlatform = (rX: number, rY: number) => {
@@ -310,9 +308,6 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
     // ─── public ────────────────────────────────────────────────────────────────
 
     const drawWorldObjects = (camX: number, camY: number, visMargin: number, heliAt?: { x: number; y: number; fn: (camX: number, camY: number) => void }) => {
-        const lh = getLighthouse();
-        if (lh && isVisible(lh.x, lh.y, visMargin)) _drawLighthouse(camX, camY);
-
         if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, visMargin) && G.CARRIER.path !== 'static')
             _drawBowWave(G.CARRIER.x, G.CARRIER.y, G.CARRIER.angle, G.CARRIER.speedKnots, camX, camY, 9, 3);
         G.BOATS.forEach((b: any) => {
@@ -326,11 +321,6 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
 
         if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, visMargin)) _drawVectorCarrier(camX, camY);
         _drawNpcHelis(camX, camY, visMargin);
-        G.BOATS.forEach((b: any) => { if (isVisible(b.x, b.y, visMargin)) _drawBoatModel(b, camX, camY); });
-        G.SUBMARINES.forEach((s: any) => { if (isVisible(s.x, s.y, visMargin)) _drawSubmarine(s.x, s.y, s.angle, camX, camY); });
-        G.RESEARCH_PLATFORMS.forEach((rp: any) => { if (isVisible(rp.x, rp.y, visMargin)) _drawResearchPlatform(rp.x, rp.y); });
-        G.WIND_TURBINES.forEach((wt: any) => { if (isVisible(wt.x, wt.y, visMargin)) _drawWindTurbine(wt.x, wt.y, wt.spinning); });
-        G.PLANE_WRECKS.forEach((pw: any) => { if (isVisible(pw.x, pw.y, visMargin)) _drawPlaneWreck(pw.x, pw.y, pw.angle); });
         G.payloads.forEach((p: any) => {
             if (p.type !== PAYLOAD.ORNI_WRECK || !isVisible(p.x, p.y, visMargin)) return;
             const gz = getGround(p.x, p.y);
@@ -339,7 +329,16 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, { x: p.x, y: p.y, z: gz, angle: p.angle ?? 0 });
             SceneRenderer.flush(camX, camY);
         });
+
+        // all remaining objects go into the shared final batch (depth-sorted with heli)
+        G.BOATS.forEach((b: any) => { if (isVisible(b.x, b.y, visMargin)) _drawBoatModel(b); });
+        G.SUBMARINES.forEach((s: any) => { if (isVisible(s.x, s.y, visMargin)) _drawSubmarine(s.x, s.y, s.angle); });
+        G.RESEARCH_PLATFORMS.forEach((rp: any) => { if (isVisible(rp.x, rp.y, visMargin)) _drawResearchPlatform(rp.x, rp.y); });
+        G.WIND_TURBINES.forEach((wt: any) => { if (isVisible(wt.x, wt.y, visMargin)) _drawWindTurbine(wt.x, wt.y, wt.spinning); });
+        G.PLANE_WRECKS.forEach((pw: any) => { if (isVisible(pw.x, pw.y, visMargin)) _drawPlaneWreck(pw.x, pw.y, pw.angle); });
         G.BROKEN_SAILBOATS.forEach((bs: any) => { if (isVisible(bs.x, bs.y, visMargin)) _drawBrokenSailboat(bs.x, bs.y, bs.angle); });
+        const lh = getLighthouse();
+        if (lh && isVisible(lh.x, lh.y, visMargin)) _drawLighthouse(camX, camY);
 
         if (hasPad() && isVisible(G.PAD.xMin + 3, G.PAD.yMin + 3)) _drawHangar();
         if (hasPad() && G.fuelTruck && isVisible(G.fuelTruck.x, G.fuelTruck.y))

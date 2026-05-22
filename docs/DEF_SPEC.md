@@ -87,6 +87,57 @@ interface DEFCollisionBox {
 
 ---
 
+## Gameplay Zones
+
+### `rescueZones`
+
+Defines regions in **vessel-local coordinates** where payloads can be picked up or delivered. Supported on: Carrier, Boat, Submarine, Research Platform.
+
+```typescript
+interface DEFRescueZone {
+    x: number;                         // local center X
+    y: number;                         // local center Y
+    w: number;                         // half-extent in X (full width = 2w)
+    h: number;                         // half-extent in Y (full depth = 2h)
+    z: number;                         // local Z offset (used for debug visualisation)
+    role: 'pickup' | 'dropoff' | 'both';
+}
+```
+
+Containment test (vessel-angle-aware):
+
+```text
+local_x = (wx − vessel.x) · cos(angle) − (wy − vessel.y) · sin(angle)
+local_y = (wx − vessel.x) · sin(angle) + (wy − vessel.y) · cos(angle)
+inside  = |local_x − zone.x| ≤ zone.w  &&  |local_y − zone.y| ≤ zone.h
+```
+
+If `rescueZones` is absent or empty, the entire vessel surface allows both pickup and dropoff. If zones are defined but none has `role: 'pickup'` or `role: 'both'`, pickup is still allowed everywhere.
+
+### `landingZone`
+
+Defines the landing pad rectangle where the helicopter can touch down (fuel replenishment, deposit). Currently used only on `research_platform.zdef`.
+
+```typescript
+interface DEFLandingZone {
+    x: number;   // local center X
+    y: number;   // local center Y
+    w: number;   // half-extent in X
+    h: number;   // half-extent in Y
+    z: number;   // height above waterLevel (world z = waterLevel + z)
+}
+```
+
+At runtime `game.ts` converts this into a world-space axis-aligned box pushed into `G.LANDING_ZONES`:
+
+```text
+xMin = obj.x + lz.x − lz.w,  xMax = obj.x + lz.x + lz.w
+yMin = obj.y + lz.y − lz.h,  yMax = obj.y + lz.y + lz.h
+z    = waterLevel + lz.z
+```
+
+---
+
 ## DEF Schema
 
 ```typescript
@@ -95,6 +146,8 @@ interface DEF {
     pivot: [number, number, number]; // local origin offset (usually [0,0,0])
     faces: DEFFace[];
     collisionBoxes?: DEFCollisionBox[];
+    rescueZones?: DEFRescueZone[];   // gameplay pickup/dropoff regions
+    landingZone?: DEFLandingZone;    // helicopter landing pad
 }
 ```
 
