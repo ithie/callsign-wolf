@@ -211,25 +211,26 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         ctx.fill();
     };
 
-    const _drawLighthouse = (cx: number, cy: number) => {
+    const _drawLighthouse = (_cx: number, _cy: number) => {
         const lh = getLighthouse();
         if (!lh) return;
         const lhZ = getGround(lh.x, lh.y);
         SceneRenderer.add(LIGHTHOUSE_DEF, { x: lh.x, y: lh.y, z: lhZ });
-        SceneRenderer.flush(cx, cy);
-        const p = isoFn(lh.x, lh.y, lhZ + 8.1, cx, cy);
-        ctx.fillStyle = '#333';
-        ctx.fillRect(p.x - 2, p.y - 10, 4, 10);
-        if (Math.floor(Date.now() / 300) % 2 === 0) {
-            ctx.fillStyle = 'rgba(255,255,200,0.8)';
-            ctx.beginPath();
-            ctx.ellipse(p.x, p.y, 25, 12, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = '#fff';
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-            ctx.fill();
-        }
+        SceneRenderer.add(null, { x: 0, y: 0, depth: lh.x + lh.y + 0.001, drawFn: (camX, camY) => {
+            const p = isoFn(lh.x, lh.y, lhZ + 8.1, camX, camY);
+            ctx.fillStyle = '#333';
+            ctx.fillRect(p.x - 2, p.y - 10, 4, 10);
+            if (Math.floor(Date.now() / 300) % 2 === 0) {
+                ctx.fillStyle = 'rgba(255,255,200,0.8)';
+                ctx.beginPath();
+                ctx.ellipse(p.x, p.y, 25, 12, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }});
     };
 
     const _drawVectorCarrier = (cx: number, cy: number) => {
