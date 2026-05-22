@@ -1,24 +1,32 @@
-body {
+#imprint-page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
     background: #050505;
     color: #5f5;
     font-family: monospace;
-    margin: 0;
-    padding: 24px max(24px, env(safe-area-inset-left, 0px));
     overflow-x: hidden;
-    position: static;
-    height: auto;
-    width: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: none;
 }
-h1 { color: #ff6600; font-size: clamp(24px, 5vw, 42px); letter-spacing: 6px; margin-bottom: 4px; font-weight: bold; }
-h2 { color: #ff6600; font-size: 11px; letter-spacing: 4px; font-weight: bold; margin: 28px 0 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 6px; }
-p { color: #666; font-size: 12px; line-height: 1.8; margin: 4px 0; letter-spacing: 0.5px; }
+
+.imp-wrap { max-width: 640px; margin: 0 auto; padding: 24px max(24px, env(safe-area-inset-left, 0px)) 48px; }
+
+#imprint-page h1 { color: #ff6600; font-size: clamp(24px, 5vw, 42px); letter-spacing: 6px; margin-bottom: 4px; font-weight: bold; }
+#imprint-page h2 { color: #ff6600; font-size: 11px; letter-spacing: 4px; font-weight: bold; margin: 28px 0 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 6px; }
+#imprint-page p { color: #666; font-size: 12px; line-height: 1.8; margin: 4px 0; letter-spacing: 0.5px; }
+
 .sub { color: #5f5; letter-spacing: 4px; font-size: 12px; margin-bottom: 36px; }
 .lang-row { margin-bottom: 28px; }
 .lang-btn { background: none; border: 1px solid #333; color: #444; font-family: monospace; font-size: 11px; letter-spacing: 3px; padding: 4px 14px; cursor: pointer; margin-right: 8px; }
 .lang-btn.active { border-color: #5f5; color: #5f5; }
 .block { padding-left: 10px; border-left: 1px solid #1a1a1a; }
-.wrap { max-width: 640px; margin: 0 auto; padding-bottom: 48px; }
-.wrap[data-lang="en"] .sec-de { display: none; }
-.wrap[data-lang="de"] .sec-en { display: none; }
+
+#imprint-page[data-lang="en"] .sec-de { display: none; }
+#imprint-page[data-lang="de"] .sec-en { display: none; }
+
 .back-link { display: inline-block; margin-top: 36px; font-size: 11px; letter-spacing: 3px; color: #444; text-decoration: none; border: 1px solid #333; padding: 6px 18px; transition: color 0.2s, border-color 0.2s; }
 .back-link:hover { color: #888; border-color: #555; }

@@ -17,7 +17,7 @@ const swapEntry = (): Plugin => ({
     transformIndexHtml: {
         order: 'pre',
         handler: html =>
-            isApp ? html : html.replace('/src/game/game.ts', '/src/game/ui/promo/promo.ts'),
+            isApp ? html : html.replace('/src/game/game.ts', '/src/game/ui/promo/promo-entry.ts'),
     },
 });
 

@@ -1459,7 +1459,8 @@ window.onload = () => {
 
 const _onloadMain = () => {
     if (!_IS_APP && new URLSearchParams(window.location.search).has('imprint')) {
-        ImprintPage.render();
+        ImprintPage.mount();
+        ImprintPage.show();
         return;
     }
     assertDom();
