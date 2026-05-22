@@ -375,8 +375,9 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     if (G.keys['KeyQ']) G.heli.winch = Math.max(0, G.heli.winch - 0.02 * dt);
     if (G.keys['KeyE']) G.heli.winch = Math.min(5.0, G.heli.winch + 0.02 * dt);
     // clamp: rope can't have slack when payload rests on a surface
+    // floor at 0.6 so physics clamping never crosses the deposit threshold involuntarily
     if (G.activePayload?.hanging)
-        G.heli.winch = Math.min(G.heli.winch, Math.max(0, G.heli.z - G.activePayload.z) + 0.05);
+        G.heli.winch = Math.min(G.heli.winch, Math.max(0.6, G.heli.z - G.activePayload.z) + 0.05);
 
     // deliver-mode toggle (R key — rising edge only)
     const keyR = !!G.keys['KeyR'];
@@ -429,7 +430,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
                 G.rescuerSwing.x = p.x; G.rescuerSwing.y = p.y;
                 G.rescuerSwing.vx = 0; G.rescuerSwing.vy = 0;
                 ctx.showMsg(p.type === PAYLOAD.ORNI_WRECK || p.type === PAYLOAD.CRATE ? I18N.CARGO_SECURED : I18N.PATIENT_SECURED);
-                G.heli.winch = Math.max(0, G.heli.winch - 0.5);
+                G.heli.winch = Math.max(0.6, G.heli.winch - 0.5);
                 break;
             }
         }

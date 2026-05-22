@@ -206,6 +206,7 @@ const showMsg = (txt: string) => {
 const _stopMission = () => {
     cancelAnimationFrame(_rafId);
     _rafId = 0;
+    zstate.gameStarted = false;
     destroyTutorial();
     PauseOverlay.hide();
     stopHeliSound();
