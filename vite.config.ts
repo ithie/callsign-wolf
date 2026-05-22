@@ -13,8 +13,12 @@ const GZIP_WARN_THRESHOLD = 500 * 1024; // 500 kB
 
 const swapEntry = (): Plugin => ({
     name: 'swap-entry',
-    transformIndexHtml: html =>
-        isApp ? html : html.replace('/src/game/game.ts', '/src/game/ui/promo/promo.ts'),
+    apply: 'build',
+    transformIndexHtml: {
+        order: 'pre',
+        handler: html =>
+            isApp ? html : html.replace('/src/game/game.ts', '/src/game/ui/promo/promo.ts'),
+    },
 });
 
 const bundleSizeGuard = (): Plugin => ({
