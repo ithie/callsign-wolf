@@ -93,7 +93,7 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
                     ? `rgb(${c - 10},${c + 30},${c - 10})`
                     : rain
                     ? '#002244'
-                    : '#003d7a';
+                    : '#1a5f9e';
             }
         }
     };

@@ -592,7 +592,7 @@ export const createDrawObjects = (
         if (type === 'dolphin') {
             if (isShadow) {
                 const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : hZ;
-                actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.08)})`;
+                actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.04)})`;
                 const sN = p(1.2, 0, 0),
                     sT = p(-1.8, 0, 0),
                     sL = p(0, 0.4, 0),
@@ -698,7 +698,7 @@ export const createDrawObjects = (
         } else if (type === 'coasthawk') {
             if (isShadow) {
                 const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : hZ;
-                actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.08)})`;
+                actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.04)})`;
                 const sN = p(1.3, 0, 0),
                     sT = p(-2.8, 0, 0),
                     sL = p(0, 0.5, 0),
@@ -812,7 +812,7 @@ export const createDrawObjects = (
         } else if (type === 'atlas') {
             if (isShadow) {
                 const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : hZ;
-                actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.08)})`;
+                actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.04)})`;
                 const sN = p(2.5, 0, 0),
                     sT = p(-2.8, 0, 0),
                     sL = p(0, 0.8, 0),
@@ -913,7 +913,7 @@ export const createDrawObjects = (
             const wingTipAngle = Math.sin(flapPhase + 1.0) * 0.14;
             if (isShadow) {
                 const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : hZ;
-                actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.08)})`;
+                actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.04)})`;
                 // Boxy fuselage silhouette
                 actualCtx.beginPath();
                 actualCtx.moveTo(p(0.9, 0.35, 0).x, p(0.9, 0.35, 0).y);
