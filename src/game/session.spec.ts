@@ -10,68 +10,15 @@ import {
     encodeSession, decodeSession,
     getRank, getMissionsDone, getCampaignsDone,
     isCampaignUnlocked, isMissionUnlocked,
-    isConsentExpired, isConsentOutdated,
-    CONSENT_VERSION,
     type PlayerSession,
 } from './session';
 
 const mkSession = (overrides: Partial<PlayerSession> = {}): PlayerSession => ({
-    cookieConsent: null,
-    consentTimestamp: null,
-    consentVersion: '',
     playerName: '',
-    activeCampaignIndex: 0,
     highestUnlockedCampaignIndex: 0,
     campaignProgress: {},
     rankOverride: 0,
-    allUnlocked: false,
-    lastSeenVersion: '',
     ...overrides,
-});
-
-// ─── isConsentExpired ─────────────────────────────────────────────────────────
-
-describe('isConsentExpired', () => {
-    it('returns false when no consent was given', () => {
-        expect(isConsentExpired(mkSession({ cookieConsent: null }))).toBe(false);
-    });
-
-    it('returns false for fresh consent', () => {
-        expect(isConsentExpired(mkSession({
-            cookieConsent: true,
-            consentTimestamp: Date.now(),
-        }))).toBe(false);
-    });
-
-    it('returns true for consent older than 14 days', () => {
-        expect(isConsentExpired(mkSession({
-            cookieConsent: true,
-            consentTimestamp: Date.now() - 15 * 24 * 60 * 60 * 1000,
-        }))).toBe(true);
-    });
-
-    it('returns true when consent exists but timestamp is null', () => {
-        expect(isConsentExpired(mkSession({
-            cookieConsent: true,
-            consentTimestamp: null,
-        }))).toBe(true);
-    });
-});
-
-// ─── isConsentOutdated ────────────────────────────────────────────────────────
-
-describe('isConsentOutdated', () => {
-    it('returns false when no consent was given', () => {
-        expect(isConsentOutdated(mkSession({ cookieConsent: null }))).toBe(false);
-    });
-
-    it('returns true when stored version differs from current', () => {
-        expect(isConsentOutdated(mkSession({ cookieConsent: true, consentVersion: 'v1.0' }))).toBe(true);
-    });
-
-    it('returns false when stored version matches current', () => {
-        expect(isConsentOutdated(mkSession({ cookieConsent: true, consentVersion: CONSENT_VERSION }))).toBe(false);
-    });
 });
 
 // ─── getMissionsDone / getCampaignsDone ───────────────────────────────────────
@@ -171,10 +118,6 @@ describe('isMissionUnlocked', () => {
         expect(isMissionUnlocked(s, '0', 1, 'regular')).toBe(true);
     });
 
-    it('allUnlocked bypasses lock', () => {
-        expect(isMissionUnlocked(mkSession({ allUnlocked: true }), '0', 5, 'regular')).toBe(true);
-    });
-
     it('free-flight is always fully unlocked', () => {
         expect(isMissionUnlocked(mkSession(), '0', 5, 'free-flight')).toBe(true);
     });
@@ -229,10 +172,6 @@ describe('isCampaignUnlocked', () => {
         expect(isCampaignUnlocked(s, campaigns, 3)).toBe(true);
     });
 
-    it('allUnlocked bypasses all locks', () => {
-        expect(isCampaignUnlocked(mkSession({ allUnlocked: true }), campaigns, 3)).toBe(true);
-    });
-
     it('highestUnlockedCampaignIndex unlocks up to that index', () => {
         expect(isCampaignUnlocked(mkSession({ highestUnlockedCampaignIndex: 3 }), campaigns, 3)).toBe(true);
     });
@@ -264,14 +203,8 @@ describe('encodeSession / decodeSession', () => {
         expect(decodeSession(encodeSession(s, 0))?.highestUnlockedCampaignIndex).toBe(5);
     });
 
-    it('roundtrips activeCampaignIndex', () => {
-        const s = mkSession({ activeCampaignIndex: 3 });
-        expect(decodeSession(encodeSession(s, 0))?.activeCampaignIndex).toBe(3);
-    });
-
     it('reconstructs campaign progress from nextMission count', () => {
         const s = mkSession({
-            activeCampaignIndex: 1,
             campaignProgress: {
                 '1': { completed: false, missions: [
                     { completed: true, bestTimeMs: null },
@@ -292,7 +225,7 @@ describe('encodeSession / decodeSession', () => {
 
     it('strips hyphens and spaces before decoding', () => {
         const s = mkSession({ playerName: 'ACE' });
-        const code = encodeSession(s, 0); // e.g. "ABCDE-FGHI"
+        const code = encodeSession(s, 0);
         const noDash = code.replace('-', '');
         expect(decodeSession(noDash)?.playerName).toBe('ACE');
     });

@@ -1,15 +1,7 @@
 export const STORAGE_KEY = 'z_session';
-export const STORAGE_KEY_LEGACY = 'zeewolf_session';
-
-const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
 import { storageGet, storageSet } from './storage';
 import { CAMPAIGN_TYPE } from '../shared/types';
-
-export const CONSENT_TTL_MS = 14 * 24 * 60 * 60 * 1000; // 2 weeks
-
-/** Bump this whenever the privacy notice changes — forces the banner to re-appear. */
-export const CONSENT_VERSION = 'v25.0';
 
 export interface MissionProgress {
     completed: boolean;
@@ -22,16 +14,10 @@ export interface CampaignProgress {
 }
 
 export interface PlayerSession {
-    cookieConsent: boolean | null;
-    consentTimestamp: number | null;  // Date.now() at time of consent
-    consentVersion: string;           // version of the notice the user last accepted
     playerName: string;               // callsign, max 5 chars A-Z
-    activeCampaignIndex: number;
     highestUnlockedCampaignIndex: number; // highest regular campaign index reachable (for cross-device import)
     campaignProgress: Record<string, CampaignProgress>;
     rankOverride: number;             // rank index preserved across device imports
-    allUnlocked: boolean;
-    lastSeenVersion: string;
 }
 
 export interface Rank {
@@ -47,43 +33,32 @@ export const RANKS: Rank[] = [
     { name: 'Major',        pips: '◆',     minMissions: 60 },
 ];
 
-export const isConsentExpired = (s: PlayerSession): boolean =>
-    s.cookieConsent !== null &&
-    (s.consentTimestamp === null || Date.now() - s.consentTimestamp > CONSENT_TTL_MS);
-
-/** True when the stored consent was for an older privacy notice version. */
-export const isConsentOutdated = (s: PlayerSession): boolean =>
-    s.cookieConsent !== null && s.consentVersion !== CONSENT_VERSION;
-
 const _default = (): PlayerSession => ({
-    cookieConsent: null,
-    consentTimestamp: null,
-    consentVersion: '',
     playerName: '',
-    activeCampaignIndex: 0,
     highestUnlockedCampaignIndex: 0,
     campaignProgress: {},
     rankOverride: 0,
-    allUnlocked: false,
-    lastSeenVersion: '',
 });
 
 export const loadSession = (): PlayerSession => {
     try {
         const raw = storageGet(STORAGE_KEY);
         if (!raw) return _default();
-        return { ..._default(), ...JSON.parse(raw) };
+        const parsed = JSON.parse(raw);
+        // Strip legacy fields from old saves
+        delete parsed.activeCampaignIndex;
+        delete parsed.allUnlocked;
+        delete parsed.lastSeenVersion;
+        delete parsed.cookieConsent;
+        delete parsed.consentTimestamp;
+        delete parsed.consentVersion;
+        return { ..._default(), ...parsed };
     } catch {
         return _default();
     }
 };
 
 export const saveSession = (s: PlayerSession): void => {
-    if (_IS_APP) {
-        try { storageSet(STORAGE_KEY, JSON.stringify(s)); } catch {}
-        return;
-    }
-    if (!s.cookieConsent) return;
     try { storageSet(STORAGE_KEY, JSON.stringify(s)); } catch {}
 };
 
@@ -112,7 +87,6 @@ export const isCampaignUnlocked = (
 ): boolean => {
     const type = campaigns[index]?.type;
     if (!type) return false;
-    if (s.allUnlocked) return true;
     if (type === CAMPAIGN_TYPE.TUTORIAL) return true;
     // Cross-device import: highest reached campaign unlocks all up to that index
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return true;
@@ -125,7 +99,7 @@ export const isCampaignUnlocked = (
 
     const regular = campaigns
         .map((c, i) => ({ type: c.type, i }))
-        .filter(c => (!_IS_APP ? c.type !== CAMPAIGN_TYPE.MULTIPLAYER : true) && c.type !== CAMPAIGN_TYPE.TUTORIAL && c.type !== CAMPAIGN_TYPE.FREE_FLIGHT);
+        .filter(c => c.type !== CAMPAIGN_TYPE.TUTORIAL && c.type !== CAMPAIGN_TYPE.FREE_FLIGHT);
     const pos = regular.findIndex(c => c.i === index);
     if (pos <= 0) return true;
     const prev = regular[pos - 1];
@@ -137,7 +111,6 @@ export const isCampaignLockedByTutorial = (
     campaigns: ReadonlyArray<{ type: string }>,
     index: number
 ): boolean => {
-    if (s.allUnlocked) return false;
     const type = campaigns[index]?.type;
     if (!type || type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT) return false;
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return false;
@@ -152,7 +125,7 @@ export const isMissionUnlocked = (
     missionIndex: number,
     campaignType: string
 ): boolean => {
-    if (s.allUnlocked || campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return true;
+    if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return true;
     if (missionIndex === 0) return true;
     return !!(s.campaignProgress[campaignKey]?.missions[missionIndex - 1]?.completed);
 };
@@ -183,8 +156,11 @@ const _checksumBits = (bits: number[]): number => {
 export const encodeSession = (s: PlayerSession, nonTutorialMissions: number): string => {
     const rankIdx    = RANKS.indexOf(getRank(s, nonTutorialMissions));
     const highest    = Math.min(s.highestUnlockedCampaignIndex ?? 0, 7);
-    const active     = Math.min(s.activeCampaignIndex, 7);
-    const activeCp   = s.campaignProgress[String(s.activeCampaignIndex)];
+    const activeEntry = Object.entries(s.campaignProgress)
+        .filter(([, cp]) => cp.missions.some(m => m.completed))
+        .sort((a, b) => Number(b[0]) - Number(a[0]))[0];
+    const active      = activeEntry ? Math.min(Number(activeEntry[0]), 7) : 0;
+    const activeCp    = activeEntry?.[1];
     const nextMission = Math.min(activeCp ? activeCp.missions.filter(m => m.completed).length : 0, 15);
     const callsign   = (s.playerName || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5);
 
@@ -248,7 +224,6 @@ export const decodeSession = (input: string): Partial<PlayerSession> | null => {
 
     return {
         playerName,
-        activeCampaignIndex,
         highestUnlockedCampaignIndex,
         rankOverride: rankIdx,
         campaignProgress,

@@ -5,16 +5,10 @@ import type { CampaignExport } from '../../../shared/types';
 const _noop = () => {};
 
 const _baseSession = (): PlayerSession => ({
-    cookieConsent: true,
-    consentTimestamp: Date.now(),
-    consentVersion: 'v25.0',
     playerName: 'WOLF',
-    activeCampaignIndex: 0,
     highestUnlockedCampaignIndex: 0,
     campaignProgress: {},
     rankOverride: 0,
-    allUnlocked: false,
-    lastSeenVersion: '',
 });
 
 const _campaigns: CampaignExport[] = [
@@ -60,7 +54,6 @@ export const TutorialDone = () => {
                 '0': { completed: true, missions: [{ completed: true, bestTimeMs: 180000 }] },
             },
             highestUnlockedCampaignIndex: 1,
-            activeCampaignIndex: 1,
         },
         campaigns: _campaigns,
         onSelect: _noop,
@@ -86,7 +79,6 @@ export const InProgress = () => {
                 },
             },
             highestUnlockedCampaignIndex: 1,
-            activeCampaignIndex: 1,
         },
         campaigns: _campaigns,
         onSelect: _noop,
@@ -94,8 +86,19 @@ export const InProgress = () => {
     });
 };
 
-/** Alles freigeschaltet (allUnlocked). */
+/** Alles freigeschaltet (alle Kampagnen completed). */
 export const AllUnlocked = () => {
     mount();
-    show({ session: { ..._baseSession(), allUnlocked: true }, campaigns: _campaigns, onSelect: _noop, onBack: _noop });
+    show({
+        session: {
+            ..._baseSession(),
+            highestUnlockedCampaignIndex: 3,
+            campaignProgress: Object.fromEntries(
+                _campaigns.map((c, i) => [String(i), { completed: true, missions: c.levels.map(() => ({ completed: true, bestTimeMs: null })) }])
+            ),
+        },
+        campaigns: _campaigns,
+        onSelect: _noop,
+        onBack: _noop,
+    });
 };

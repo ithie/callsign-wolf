@@ -1,0 +1,161 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`UI screen snapshots > briefing 1`] = `""`;
+
+exports[`UI screen snapshots > credits-screen 1`] = `
+"
+        <div class="title">CREDITS</div>
+        
+        <div class="screen-body"><canvas id="credits-canvas"></canvas><div id="credits-inner"></div></div><div class="back-btn">◀ BACK</div>"
+`;
+
+exports[`UI screen snapshots > main-menu 1`] = `
+"<canvas id="main-menu-bg-canvas"></canvas>
+        <div class="title">SAR: CALLSIGN WOLF</div>
+        <div class="subtitle">MAIN SYSTEM</div>
+        <div class="screen-body">
+        <nav class="menu-nav">
+            <div class="menu-item" id="menu-item-start"></div>
+            <div class="menu-item" id="menu-item-multiplayer"></div>
+            <div class="menu-item" id="menu-item-settings"></div>
+            <div class="menu-item" id="menu-item-credits"></div>
+        </nav>
+        <div id="menu-item-legal" class="menu-legal-link">LEGAL</div></div>"
+`;
+
+exports[`UI screen snapshots > mp-lobby-screen 1`] = `
+"
+        <div class="title">MULTIPLAYER</div>
+        <div class="subtitle" style="margin-bottom:8px">CO-OP MISSION</div>
+
+        <div id="mp-lobby-initial">
+            <button class="mp-btn" id="mp-create-btn">CREATE GAME</button>
+            <button class="mp-btn" id="mp-join-btn">JOIN</button>
+        <div class="back-btn">◀ BACK</div></div>
+
+        <!-- Host flow -->
+        <div id="mp-host-flow" class="mp-flow" style="display:none">
+            <div class="mp-status" id="mp-host-status">GENERATING...</div>
+            <div class="mp-label">Step 1: Send this code to your co-pilot:</div>
+            <textarea id="mp-offer-txt" class="mp-textarea" readonly=""></textarea>
+            <div class="mp-row">
+                <button class="mp-btn mp-btn-small" id="mp-copy-offer-btn">COPY</button>
+            </div>
+            <div class="mp-label">Step 2: Paste your co-pilot's answer:</div>
+            <textarea id="mp-answer-input" class="mp-textarea" placeholder="Paste code here…"></textarea>
+            <button class="mp-btn" id="mp-connect-btn" disabled="">CONNECT</button>
+        <div class="back-btn">◀ BACK</div></div>
+
+        <!-- Guest flow -->
+        <div id="mp-guest-flow" class="mp-flow" style="display:none">
+            <div class="mp-label">Paste the host's code:</div>
+            <textarea id="mp-offer-input" class="mp-textarea" placeholder="Paste code here…"></textarea>
+            <button class="mp-btn" id="mp-gen-answer-btn">GENERATE ANSWER</button>
+            <div class="mp-status" id="mp-guest-status"></div>
+            <div class="mp-label" id="mp-guest-step2-label" style="display:none">Send this code to the host:</div>
+            <textarea id="mp-answer-txt" class="mp-textarea" readonly="" style="display:none"></textarea>
+            <div class="mp-row" id="mp-guest-copy-row" style="display:none">
+                <button class="mp-btn mp-btn-small" id="mp-copy-answer-btn">COPY</button>
+            </div>
+        <div class="back-btn">◀ BACK</div></div>
+
+        <!-- Heli select + ready phase (shared by host and guest) -->
+        <div id="mp-heli-flow" class="mp-flow" style="display:none">
+            <div class="mp-status ok" id="mp-ready-peer-label"></div>
+            <div class="mp-label">SELECT AIRCRAFT</div>
+            <div class="mp-heli-cards" id="mp-heli-cards">
+            <div class="mp-heli-card" data-id="dolphin">
+                <div class="mp-heli-card-label">DOLPHIN</div>
+                <div class="mp-heli-card-sub">Wendig / Schnell</div>
+            </div>
+            <div class="mp-heli-card" data-id="coasthawk">
+                <div class="mp-heli-card-label">Coast-Hawk</div>
+                <div class="mp-heli-card-sub">Schwer / Stabil</div>
+            </div>
+            <div class="mp-heli-card" data-id="atlas">
+                <div class="mp-heli-card-label">Atlas</div>
+                <div class="mp-heli-card-sub">Tandem / Extraschwer</div>
+            </div>
+            <div class="mp-heli-card" data-id="ornithopter">
+                <div class="mp-heli-card-label">ORNITHOPTER</div>
+                <div class="mp-heli-card-sub">Schläger / Wendig</div>
+            </div></div>
+            <div class="mp-status" id="mp-ready-status">READY FOR DEPLOYMENT?</div>
+            <button class="mp-btn" id="mp-ready-btn" disabled="">READY</button>
+            <div id="mp-countdown-display" class="mp-countdown" style="display:none"></div>
+        </div>"
+`;
+
+exports[`UI screen snapshots > rankup-overlay 1`] = `
+"
+        <div id="rankup-main">
+            <div id="rankup-badge"></div>
+            <div id="rankup-heli" style="display:none">
+                <canvas id="rankup-heli-canvas"></canvas>
+            </div>
+        </div>
+        <p class="start-hint" style="color: #cc9900; margin-top: 10px">Continue</p>"
+`;
+
+exports[`UI screen snapshots > settings-screen 1`] = `
+"
+        <div class="title">SETTINGS</div>
+        <div class="subtitle">PROFILE</div>
+        <div class="screen-body">
+        <div id="settings-badge"></div>
+        <div class="settings-field">
+            <label>CALLSIGN (MAX. 8 CHARS, A–Z)</label>
+            <input id="player-name-input" type="text" maxlength="5" placeholder="—">
+        </div>
+        <div id="settings-stats"></div>
+        <div class="settings-field" style="margin-top: 8px">
+            <label>SAVE CODE</label>
+            <div id="settings-code-display">—</div>
+        </div>
+        <div class="settings-field">
+            <label>IMPORT CODE (OVERWRITES SAVE)</label>
+            <div style="display:flex; gap: 10px; align-items: center">
+                <input id="import-code-input" class="settings-field input" type="text" maxlength="10" placeholder="XXXXX-XXXX">
+                <button class="settings-btn" id="apply-save-code-btn">LOAD</button>
+            </div>
+            <div id="import-code-msg" style="font-size: 12px; letter-spacing: 2px; min-height: 18px; margin-top: 4px"></div>
+        </div>
+        <div id="settings-ctrl-row" style="display:none; flex-direction:column; align-items:center; margin-top:16px; width:100%">
+            <div class="settings-field" style="width:100%">
+                <label>CONTROLS</label>
+                <div style="display:flex; gap:10px; margin-top:6px">
+                    <button class="settings-btn" id="ctrl-btn-profi">SIMPLIFIED</button>
+                    <button class="settings-btn" id="ctrl-btn-vereinfacht">PROFESSIONAL</button>
+                </div>
+                <div id="ctrl-mode-hint" style="font-size:11px; letter-spacing:1px; color:#8af; margin-top:4px; min-height:16px"></div>
+            </div>
+        </div>
+        <div style="margin-top: 20px; border-top: 1px solid #1a1a2e; padding-top: 16px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px">
+            <div class="settings-field" style="width:100%">
+                <label>MUSIC</label>
+                <div style="display:flex; gap:10px; margin-top:6px">
+                    <button class="settings-btn" id="music-on-btn">ON</button>
+                    <button class="settings-btn" id="music-off-btn">OFF</button>
+                </div>
+            </div>
+            <div class="settings-field" style="width:100%">
+                <label>SOUND EFFECTS</label>
+                <div style="display:flex; gap:10px; margin-top:6px">
+                    <button class="settings-btn" id="sfx-on-btn">ON</button>
+                    <button class="settings-btn" id="sfx-off-btn">OFF</button>
+                </div>
+            </div>
+            <div class="settings-field" style="width:100%">
+                <label>LANGUAGE</label>
+                <div style="display:flex; gap:10px; margin-top:6px">
+                    <button class="settings-btn" id="lang-de-btn">DEUTSCH</button>
+                    <button class="settings-btn" id="lang-en-btn">ENGLISH</button>
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 20px; border-top: 1px solid #1a1a2e; padding-top: 16px; width: 100%; display: flex; flex-direction: column; align-items: center">
+            <button id="delete-session-btn" class="settings-btn" style="background: #1a0000; border-color: #500; color: #c44">DELETE SAVE</button>
+            <div id="delete-session-msg" style="font-size: 12px; letter-spacing: 2px; color: #c44; min-height: 18px; margin-top: 6px"></div>
+        </div>
+        </div><div class="back-btn">◀ BACK</div>"
+`;

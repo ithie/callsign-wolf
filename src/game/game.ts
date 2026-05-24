@@ -10,15 +10,11 @@ import {
     saveSession,
     getRank,
     RANKS,
-    isConsentExpired,
-    isConsentOutdated,
-    CONSENT_VERSION,
     STORAGE_KEY,
-    STORAGE_KEY_LEGACY,
     type PlayerSession,
     type Rank,
 } from './session';
-import { initAppStorage, storageGet, storageSet, storageRemove } from './storage';
+import { initAppStorage, storageGet, storageSet } from './storage';
 import { zstate } from './state';
 import { initHeliSound, updateHeliSound, stopHeliSound, setSfxEnabled, isSfxEnabled } from './heli-sound';
 
@@ -50,7 +46,6 @@ const tileH = Math.round(_tileH * gameRenderScale);
 const stepH = _stepH * gameRenderScale;
 import * as CreditsScreen from './ui/credits-screen/credits-screen';
 import * as LegalScreen from './ui/legal-screen/legal-screen';
-import * as ImprintPage from './ui/imprint-page/imprint-page';
 import { startMenuParticles, stopMenuParticles } from './ui/menu-particles/menu-particles';
 import {
     toMpLobby,
@@ -65,12 +60,10 @@ import * as HeliSelect from './ui/heli-select/heli-select';
 import {
     I18N,
     LANG_PREF_KEY,
-    LANG_PREF_KEY_LEGACY,
     localize,
     onLanguageChange,
     setLanguage,
 } from './i18n';
-import * as CookieBanner from './ui/cookie-banner/cookie-banner';
 import * as Briefing from './ui/briefing/briefing';
 import * as Settings from './ui/settings/settings';
 import * as Rankup from './ui/rankup/rankup';
@@ -81,7 +74,6 @@ import * as CampaignSelect from './ui/campaign-select/campaign-select';
 import * as MissionFailedScreen from './ui/mission-failed-screen/mission-failed-screen';
 import * as MissionSuccessScreen from './ui/mission-success-screen/mission-success-screen';
 import * as CampaignCompleteScreen from './ui/campaign-complete-screen/campaign-complete-screen';
-import * as CampaignSwitchWarning from './ui/campaign-switch-warning/campaign-switch-warning';
 import { showScreen } from './ui/nav';
 import { mountMinimap, initMinimapTerrain } from './ui/minimap/minimap';
 import { createHud } from './ui/hud/hud';
@@ -383,26 +375,7 @@ const toCampaignSelect = () => {
 }
 
 const selectCampaign = (index: string) => {
-    const idx = Number(index);
-    const campaigns = campaignHandler.getCampaigns();
-    const type = campaigns[idx]?.type;
-    const isAlwaysAvailable = type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT;
-
-    if (!isAlwaysAvailable && _session.activeCampaignIndex !== idx) {
-        const activeKey = String(_session.activeCampaignIndex);
-        const activeCp = _session.campaignProgress[activeKey];
-        const activeType = campaigns[_session.activeCampaignIndex]?.type;
-        const activeIsRegular = activeType !== CAMPAIGN_TYPE.TUTORIAL && activeType !== CAMPAIGN_TYPE.FREE_FLIGHT;
-        const hasProgress = activeCp && activeCp.missions.some(m => m?.completed) && !activeCp.completed;
-
-        if (activeIsRegular && hasProgress) {
-            _pendingSwitchIndex = idx;
-            CampaignSwitchWarning.show();
-            return;
-        }
-    }
-
-    _doSelectCampaign(idx);
+    _doSelectCampaign(Number(index));
 }
 
 const _doSelectCampaign = (idx: number) => {
@@ -411,7 +384,6 @@ const _doSelectCampaign = (idx: number) => {
     const isAlwaysAvailable = type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT;
 
     if (!isAlwaysAvailable) {
-        _session.activeCampaignIndex = idx;
         saveSession(_session);
     }
 
@@ -986,24 +958,8 @@ let _selectedCampaignIndex = 0;
 let _selectedMissionIndex = 0;
 let _missionStartTime = 0;
 let _briefingActive = false;
-let _pendingSwitchIndex = -1;
 let _unlockSeq = '';
 
-const approveCookies = () => {
-    _session.cookieConsent = true;
-    _session.consentTimestamp = Date.now();
-    _session.consentVersion = CONSENT_VERSION;
-    saveSession(_session);
-    (document.getElementById('cookie-banner') as HTMLElement).style.display = 'none';
-    CookieBanner.notifyConsent();
-};
-
-const declineCookies = () => {
-    _session.cookieConsent = false;
-    storageRemove(STORAGE_KEY);
-    (document.getElementById('cookie-banner') as HTMLElement).style.display = 'none';
-    CookieBanner.notifyConsent();
-};
 
 const _isKeyAllowed = (code: string): boolean => {
     const allowed = getAllowedKeys();
@@ -1017,7 +973,6 @@ window.onkeydown = e => {
         _unlockSeq = (_unlockSeq + e.key.toUpperCase()).slice(-6);
         if (_unlockSeq === 'UNLOCK') {
             const _campaigns = campaignHandler.getCampaigns();
-            _session.allUnlocked = true;
             _session.rankOverride = RANKS.length - 1;
             _session.highestUnlockedCampaignIndex = _campaigns.length - 1;
             _campaigns.forEach((c, i) => {
@@ -1092,7 +1047,6 @@ const setTouchVisible = (v: boolean) => {
 };
 
 const CTRL_MODE_KEY = 'z_ctrl_mode';
-const CTRL_MODE_KEY_LEGACY = 'zeewolf-ctrl-mode';
 const getControlMode = (): 'heading' | 'screen' => (storageGet(CTRL_MODE_KEY) === CTRL_MODE.SCREEN ? 'screen' : 'heading');
 const setControlMode = (m: 'heading' | 'screen') => {
     storageSet(CTRL_MODE_KEY, m);
@@ -1310,23 +1264,6 @@ const mountGameScreens = () => {
     MissionFailedScreen.mount(returnToBase);
     MissionSuccessScreen.mount();
     CampaignCompleteScreen.mount(returnToCampaignSelect);
-    CampaignSwitchWarning.mount(
-        () => {
-            CampaignSwitchWarning.hide();
-            const switchTo = _pendingSwitchIndex;
-            _pendingSwitchIndex = -1;
-            if (switchTo >= 0) {
-                const oldKey = String(_session.activeCampaignIndex);
-                delete _session.campaignProgress[oldKey];
-                saveSession(_session);
-                _doSelectCampaign(switchTo);
-            }
-        },
-        () => {
-            CampaignSwitchWarning.hide();
-            _pendingSwitchIndex = -1;
-        },
-    );
 };
 
 // ─── Preview mode (Kampagnen-Editor Live-Preview) — DEV only ──────────────────
@@ -1422,20 +1359,6 @@ const _onloadPreview = !import.meta.env.DEV
           }
       };
 
-const _migrateStorageKeys = () => {
-    const pairs: [string, string][] = [
-        [STORAGE_KEY_LEGACY, STORAGE_KEY],
-        [LANG_PREF_KEY_LEGACY, LANG_PREF_KEY],
-        [CTRL_MODE_KEY_LEGACY, CTRL_MODE_KEY],
-    ];
-    for (const [oldKey, newKey] of pairs) {
-        const val = storageGet(oldKey);
-        if (val !== null && storageGet(newKey) === null) {
-            storageSet(newKey, val);
-        }
-        if (val !== null) storageRemove(oldKey);
-    }
-};
 
 window.onload = () => {
     requestAnimationFrame(() => {
@@ -1445,13 +1368,10 @@ window.onload = () => {
                 return;
             }
             if (_IS_APP) {
-                await initAppStorage([STORAGE_KEY, STORAGE_KEY_LEGACY, LANG_PREF_KEY, LANG_PREF_KEY_LEGACY, CTRL_MODE_KEY, CTRL_MODE_KEY_LEGACY, 'zw_music', 'zw_sfx']);
-                _migrateStorageKeys();
+                await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, CTRL_MODE_KEY, 'zw_music', 'zw_sfx']);
                 _session = loadSession();
                 const _sl = storageGet(LANG_PREF_KEY);
                 if (_sl === 'de' || _sl === 'en') setLanguage(_sl);
-            } else {
-                _migrateStorageKeys();
             }
             _onloadMain();
         })();
@@ -1459,11 +1379,6 @@ window.onload = () => {
 };
 
 const _onloadMain = () => {
-    if (!_IS_APP && new URLSearchParams(window.location.search).has('imprint')) {
-        ImprintPage.mount();
-        ImprintPage.show();
-        return;
-    }
     assertDom();
     if (!_IS_APP) {
         initMpGame({
@@ -1568,20 +1483,7 @@ const _onloadMain = () => {
     setupTouchControls();
     startMenuParticles();
 
-    const _showSplash = () => {
-        showScreen('splash');
-    };
-
-    // Show cookie banner if consent not yet given, expired, or privacy notice was updated
-    if (!_IS_APP && (_session.cookieConsent === null || isConsentExpired(_session) || isConsentOutdated(_session))) {
-        _session.cookieConsent = null;
-        _session.consentTimestamp = null;
-        _session.consentVersion = '';
-        CookieBanner.mount(_showSplash);
-        (document.getElementById('cookie-banner') as HTMLElement).style.display = 'flex';
-    } else {
-        _showSplash();
-    }
+    showScreen('splash');
 };
 
 window.toCampaignSelect = toCampaignSelect;
@@ -1593,11 +1495,3 @@ window.selectCampaign = selectCampaign;
 window.selectMission = selectMission;
 window.startGame = startGame;
 window.toSettings = Settings.show;
-if (!_IS_APP) {
-    window.approveCookies = approveCookies;
-    window.declineCookies = declineCookies;
-    window.confirmDeleteSession = () => {
-        storageRemove(STORAGE_KEY);
-        setTimeout(() => window.location.reload(), 1200);
-    };
-}

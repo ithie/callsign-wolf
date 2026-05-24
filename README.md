@@ -114,7 +114,7 @@ npm run deploy
 
 ## VS Code Extension
 
-Install the **Zeewolf SAR Tools** extension for custom editors and live UI preview:
+Install the extension for custom editors and live UI preview:
 
 ```sh
 cd vscode-ext && npm run deploy

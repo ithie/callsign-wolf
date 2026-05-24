@@ -149,8 +149,7 @@ const _refreshSettingsScreen = () => {
     (document.getElementById('settings-badge') as HTMLElement).innerHTML = rankBadgeHtml(rank);
     (document.getElementById('settings-code-display') as HTMLElement).textContent = encodeSession(session, _deps.getRankMissions());
     const statsEl = document.getElementById('settings-stats') as HTMLElement;
-    const noSave = !session.cookieConsent ? I18N.NO_SAVE_STATE : '';
-    statsEl.textContent = I18N.STATS(getCampaignsDone(session), getMissionsDone(session)) + noSave;
+    statsEl.textContent = I18N.STATS(getCampaignsDone(session), getMissionsDone(session));
 };
 
 export const show = () => {

@@ -4,23 +4,20 @@
 // Sprache wird beim Start via storage (Nutzerpräferenz) oder navigator.language ermittelt.
 
 export const LANG_PREF_KEY = 'z_lang';
-export const LANG_PREF_KEY_LEGACY = 'zeewolf_lang';
 
 const _DATENSCHUTZ_DE = [
     'SAR: Callsign WOLF speichert folgende Daten lokal auf deinem Gerät:',
-    '▸ Rufzeichen  ▸ Dienstgrad  ▸ Kampagnenfortschritt  ▸ Spracheinstellung',
+    '▸ Rufzeichen  ▸ Dienstgrad  ▸ Kampagnenfortschritt  ▸ Spracheinstellung  ▸ Steuerungseinstellung',
     'Die Daten werden ausschließlich zur Spielfunktion genutzt und nicht an Dritte weitergegeben. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.',
     'Gespeicherte Daten können jederzeit über Hauptmenü → Einstellungen → Spielstand löschen gelöscht werden.',
-    'Die Steuerungseinstellung wird ebenfalls lokal gespeichert (rein technische Geräteeinstellung, kein Personenbezug).',
     'Kontakt für Datenschutzanfragen: yarrick@web.de',
 ] as const;
 
 const _DATENSCHUTZ_EN = [
     'SAR: Callsign WOLF stores the following data locally on your device:',
-    '▸ Callsign  ▸ Rank  ▸ Campaign progress  ▸ Language setting',
+    '▸ Callsign  ▸ Rank  ▸ Campaign progress  ▸ Language setting  ▸ Control setting',
     'Data is used exclusively for game functionality and is not shared with third parties. Legal basis: Art. 6 para. 1 lit. b GDPR.',
     'Stored data can be deleted at any time via Main Menu → Settings → Delete Save.',
-    'The control setting is also stored locally (purely technical device setting, no personal data).',
     'Privacy contact: yarrick@web.de',
 ] as const;
 
@@ -109,9 +106,6 @@ const _DE = {
         return `BESTZEIT: ${min}:${sec.padStart(4, '0')}`;
     },
 
-    CAMPAIGN_SWITCH_WARNING: 'Fortschritt wird zurückgesetzt.',
-    CAMPAIGN_SWITCH_CONFIRM: 'TROTZDEM WECHSELN',
-
     HELI_SELECT_TITLE: 'HANGAR',
     HELI_SELECT_SUB: 'LUFTFAHRZEUG WÄHLEN',
     HELI_SELECT_CONFIRM: 'AUSWÄHLEN',
@@ -130,7 +124,6 @@ const _DE = {
 
     SAVE_CODE_INVALID: 'UNGÜLTIGER CODE',
     SAVE_CODE_LOADED: 'SPIELSTAND GELADEN',
-    NO_SAVE_STATE: '  |  KEIN SPEICHERSTAND',
     STATS: (c: number, m: number) => `KAMPAGNEN: ${c}  |  MISSIONEN: ${m}`,
     CAMPAIGN_LOCKED: '[ GESPERRT ]',
 
@@ -191,8 +184,6 @@ const _DE = {
     TUT_DONE: 'TUTORIAL ABGESCHLOSSEN — VIEL ERFOLG!',
     TRAINING_REQUIRED: 'TRAINING ERFORDERLICH',
     NOT_UNLOCKED: 'NICHT FREIGESCHALTET',
-    CAMPAIGN_SWITCH_PROGRESS_WARN: 'Der Fortschritt der aktiven Kampagne wird gelöscht.',
-
     MENU_LEGAL: 'RECHTLICHES',
     LEGAL_TITLE: 'RECHTLICHES',
     LEGAL_IMPRESSUM_HEADING: 'IMPRESSUM',
@@ -211,22 +202,7 @@ const _DE = {
         'Inhaltlich Verantwortlicher gemäß § 18 Abs. 2 MStV:',
         'Michael Draws-Beer – Anschrift wie oben',
     ],
-    ...(_IS_APP
-        ? {
-              LEGAL_DATENSCHUTZ: _DATENSCHUTZ_DE,
-          }
-        : {
-              LEGAL_DATENSCHUTZ: [
-                  'SAR: Callsign WOLF speichert folgende Daten ausschließlich lokal auf deinem Gerät – und nur mit deiner Einwilligung:',
-                  '▸ Rufzeichen  ▸ Dienstgrad  ▸ Kampagnenfortschritt  ▸ Einwilligungsstatus  ▸ Spracheinstellung',
-                  'Rechtsgrundlage: Art. 6 Abs. 1 lit. a DSGVO (Einwilligung). Gespeicherte Daten können jederzeit über Hauptmenü → Einstellungen → Spielstand löschen gelöscht werden.',
-                  'Die Steuerungseinstellung wird unabhängig von der Einwilligung immer lokal gespeichert (rein technische Geräteeinstellung, kein Personenbezug).',
-                  'Es findet keine Weitergabe von Daten an Dritte statt.',
-                  'Kontakt für Datenschutzanfragen: yarrick@web.de',
-              ],
-              LEGAL_DATENSCHUTZ_WEB:
-                  'Beim Aufbau einer Multiplayer-Verbindung werden zur Vermittlung der Peer-to-Peer-Verbindung Google STUN-Server (stun.l.google.com) kontaktiert. Dabei wird deine IP-Adresse übermittelt – ausschließlich auf deine Veranlassung und nur für die Dauer des Verbindungsaufbaus. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.',
-          }),
+    LEGAL_DATENSCHUTZ: _DATENSCHUTZ_DE,
 
     MADE_WITH: 'MADE WITH ♥ IN JAVASCRIPT',
     COPYRIGHT: '© 2026 i.thie softworks — Alle Rechte vorbehalten.',
@@ -310,9 +286,6 @@ const _EN = {
         return `BEST TIME: ${min}:${sec.padStart(4, '0')}`;
     },
 
-    CAMPAIGN_SWITCH_WARNING: 'Progress will be reset.',
-    CAMPAIGN_SWITCH_CONFIRM: 'SWITCH ANYWAY',
-
     HELI_SELECT_TITLE: 'HANGAR',
     HELI_SELECT_SUB: 'SELECT AIRCRAFT',
     HELI_SELECT_CONFIRM: 'SELECT',
@@ -331,7 +304,6 @@ const _EN = {
 
     SAVE_CODE_INVALID: 'INVALID CODE',
     SAVE_CODE_LOADED: 'SAVE LOADED',
-    NO_SAVE_STATE: '  |  NO SAVE STATE',
     STATS: (c: number, m: number) => `CAMPAIGNS: ${c}  |  MISSIONS: ${m}`,
     CAMPAIGN_LOCKED: '[ LOCKED ]',
 
@@ -392,8 +364,6 @@ const _EN = {
     TRAINING_REQUIRED: 'TRAINING REQUIRED',
     NOT_UNLOCKED: 'NOT UNLOCKED',
     LANGUAGE_HEADING: 'LANGUAGE',
-    CAMPAIGN_SWITCH_PROGRESS_WARN: 'Progress of the active campaign will be deleted.',
-
     MENU_LEGAL: 'LEGAL',
     LEGAL_TITLE: 'LEGAL NOTICE',
     LEGAL_IMPRESSUM_HEADING: 'IMPRINT',
@@ -412,22 +382,7 @@ const _EN = {
         'Responsible for content (§ 18 para. 2 MStV):',
         'Michael Draws-Beer – address as above',
     ],
-    ...(_IS_APP
-        ? {
-              LEGAL_DATENSCHUTZ: _DATENSCHUTZ_EN,
-          }
-        : {
-              LEGAL_DATENSCHUTZ: [
-                  'SAR: Callsign WOLF stores the following data exclusively locally on your device – and only with your consent:',
-                  '▸ Callsign  ▸ Rank  ▸ Campaign progress  ▸ Consent status  ▸ Language setting',
-                  'Legal basis: Art. 6 para. 1 lit. a GDPR (consent). Stored data can be deleted at any time via Main Menu → Settings → Delete Save.',
-                  'The control setting is always stored locally regardless of consent (purely technical device setting, no personal data).',
-                  'No data is shared with third parties.',
-                  'Privacy contact: yarrick@web.de',
-              ],
-              LEGAL_DATENSCHUTZ_WEB:
-                  'When establishing a multiplayer connection, Google STUN servers (stun.l.google.com) are contacted to broker the peer-to-peer connection. Your IP address is transmitted – solely at your initiative and only for the duration of the connection setup. Legal basis: Art. 6 para. 1 lit. b GDPR.',
-          }),
+    LEGAL_DATENSCHUTZ: _DATENSCHUTZ_EN,
 
     MADE_WITH: 'MADE WITH ♥ IN JAVASCRIPT',
     COPYRIGHT: '© 2026 i.thie softworks — All rights reserved.',

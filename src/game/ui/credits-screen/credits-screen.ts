@@ -37,7 +37,7 @@ const _buildCredits = () => {
         { role: I18N.CREDITS_ROLE_LEADERTEST, names: ['Steven J. McG.'] },
         {
             role: I18N.CREDITS_ROLE_TEST,
-            names: ['Da Harp, Jay "G" Man', 'DBuhn, Gaunt', 'Bigwilli, Bri B.', 'Schollfried, Sarahm'],
+            names: ['Da Harp', 'Jay "G" Man', 'DBuhn', 'Gaunt', 'Bigwilli', 'Bri B.', 'Schollfried', 'SarahM'],
         },
         { role: I18N.CREDITS_ROLE_INSPIREDBY, names: ['Zeewolf (Binary Asylum, 1994)'] },
     ];

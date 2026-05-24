@@ -82,9 +82,8 @@ beforeAll(() => {
 const snap = (id: string) => expect(document.getElementById(id)!.innerHTML).toMatchSnapshot();
 
 const mkSession = (o: Partial<PlayerSession> = {}): PlayerSession => ({
-    cookieConsent: true, consentTimestamp: Date.now(), consentVersion: 'v25.0',
-    playerName: 'WOLF', activeCampaignIndex: 0, highestUnlockedCampaignIndex: 0,
-    campaignProgress: {}, rankOverride: 0, allUnlocked: false, lastSeenVersion: '',
+    playerName: 'WOLF', highestUnlockedCampaignIndex: 0,
+    campaignProgress: {}, rankOverride: 0,
     ...o,
 });
 

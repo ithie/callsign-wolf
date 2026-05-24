@@ -44,7 +44,7 @@ export const show = (deps: CampaignSelectDeps) => {
         },
         renderCard: (c, locked) => {
             const isTutorial = c.type === 'tutorial';
-            const isActive = !isTutorial && c.type !== 'free-flight' && session.activeCampaignIndex === c.index;
+            const showProgress = !isTutorial && c.type !== 'free-flight';
             const cp = session.campaignProgress[String(c.index)];
             const completedCount = cp?.missions.filter(m => m?.completed).length ?? 0;
 
@@ -58,7 +58,7 @@ export const show = (deps: CampaignSelectDeps) => {
             } else {
                 content += c.campaignSublines.map(s => `<div class="box-sub">${localize(s)}</div>`).join('');
                 content += `<div class="box-sub">${I18N.CAMPAIGN_SELECT_MISSIONS}: ${c.levels.length}</div>`;
-                if (isActive && completedCount > 0) {
+                if (showProgress && completedCount > 0) {
                     content += `<div class="box-sub" style="color:#8af">${completedCount}/${c.levels.length} ${I18N.DONE}</div>`;
                 }
             }

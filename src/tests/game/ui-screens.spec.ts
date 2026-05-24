@@ -23,7 +23,6 @@ vi.mock('../../game/render', () => ({
 
 import * as MainMenu from '../../game/ui/main-menu/main-menu';
 import * as Briefing from '../../game/ui/briefing/briefing';
-import * as CookieBanner from '../../game/ui/cookie-banner/cookie-banner';
 import * as Settings from '../../game/ui/settings/settings';
 import * as Rankup from '../../game/ui/rankup/rankup';
 import * as CreditsScreen from '../../game/ui/credits-screen/credits-screen';
@@ -35,17 +34,10 @@ import type { PlayerSession } from '../../game/session';
 const snap = (id: string) => expect(document.getElementById(id)!.innerHTML).toMatchSnapshot();
 
 const mockSession = (): PlayerSession => ({
-    cookieConsent: true,
-    consentTimestamp: Date.now(),
-    consentVersion: 'v25.0',
     playerName: 'WOLF',
-    activeCampaignIndex: 0,
     highestUnlockedCampaignIndex: 0,
-
     campaignProgress: {},
     rankOverride: 0,
-    allUnlocked: false,
-    lastSeenVersion: '25.0',
 });
 
 const mockSettingsDeps = () => ({
@@ -85,12 +77,6 @@ describe('UI screen snapshots', () => {
         Briefing.mount();
         snap('mission-briefing');
     });
-
-    it('cookie-banner', () => {
-        CookieBanner.mount();
-        snap('cookie-banner');
-    });
-
 
     it('settings-screen', () => {
         Settings.init(mockSettingsDeps());

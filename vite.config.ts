@@ -52,7 +52,7 @@ const isApp = process.env.VITE_TARGET === 'app';
 
 const mpStub = resolve(__dirname, 'src/game/multiplayer/mp-stub.ts');
 const mpGameStub = resolve(__dirname, 'src/game/mp-game-stub.ts');
-const storageWebStub = resolve(__dirname, 'src/game/storage-web.ts');
+const storageWebStub = resolve(__dirname, 'src/game/storage-stub.ts');
 
 const injectAppCsp = (): Plugin => ({
     name: 'inject-app-csp',

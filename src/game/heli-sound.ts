@@ -148,7 +148,7 @@ export const initHeliSound = (heliType: string): void => {
     filt.type = 'bandpass'; filt.frequency.value = filterCut; filt.Q.value = filterQ;
 
     const rotorGain = actx.createGain();
-    rotorGain.gain.value = 0.85;
+    rotorGain.gain.value = 1.15;
 
     osc.connect(shaper); shaper.connect(filt); filt.connect(rotorGain); rotorGain.connect(master);
     osc.start();

@@ -3,16 +3,10 @@ import type { PlayerSession } from '../../session';
 import type { CampaignExport } from '../../../shared/types';
 
 const _session = (overrides: Partial<PlayerSession> = {}): PlayerSession => ({
-    cookieConsent: true,
-    consentTimestamp: Date.now(),
-    consentVersion: 'v25.0',
     playerName: 'WOLF',
-    activeCampaignIndex: 1,
     highestUnlockedCampaignIndex: 1,
     campaignProgress: {},
     rankOverride: 0,
-    allUnlocked: false,
-    lastSeenVersion: '',
     ...overrides,
 });
 

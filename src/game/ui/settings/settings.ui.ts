@@ -2,11 +2,7 @@ import { init, mount, show } from './settings';
 import type { PlayerSession } from '../../session';
 
 const _session = (overrides: Partial<PlayerSession> = {}): PlayerSession => ({
-    cookieConsent: true,
-    consentTimestamp: Date.now(),
-    consentVersion: 'v25.0',
     playerName: 'WOLF',
-    activeCampaignIndex: 1,
     highestUnlockedCampaignIndex: 2,
     campaignProgress: {
         '0': { completed: true, missions: [{ completed: true, bestTimeMs: 180000 }] },
@@ -16,8 +12,6 @@ const _session = (overrides: Partial<PlayerSession> = {}): PlayerSession => ({
         },
     },
     rankOverride: 0,
-    allUnlocked: false,
-    lastSeenVersion: '',
     ...overrides,
 });
 
@@ -59,7 +53,7 @@ export const TouchHeading = () => {
 
 export const NeuerSpieler = () => {
     init({
-        getSession:      () => _session({ playerName: '', campaignProgress: {}, cookieConsent: null }),
+        getSession:      () => _session({ playerName: '', campaignProgress: {} }),
         saveSession:     (_s: PlayerSession) => {},
         getRankMissions: () => 0,
         getControlMode:  () => 'screen' as const,
