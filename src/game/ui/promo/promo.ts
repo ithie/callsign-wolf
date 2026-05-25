@@ -21,7 +21,7 @@ export const mount = (): void => {
     const isoFn = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
         iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
 
-    const stub = { add: () => {}, flush: () => {}, debugAltitude: false } as unknown as Parameters<
+    const stub = { add: () => {}, flush: () => {} } as unknown as Parameters<
         typeof createDrawObjects
     >[4];
     const { drawHeli } = createDrawObjects(cx, isoFn, tileW, tileH, stub);

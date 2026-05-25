@@ -1,20 +1,13 @@
 "use strict";
 (() => {
   // ../src/game/scene-renderer.ts
+  var _POOL_SIZE = 512;
+  var _makeInst = () => ({ def: null, x: 0, y: 0, z: 0, angle: 0, colors: void 0, depth: 0, drawFn: null });
+  var _scratchPts = Array.from({ length: 64 }, () => ({ x: 0, y: 0 }));
   var createSceneRenderer = (ctx2, iso2) => {
     const _instances = [];
-    const _transform = (lx, ly, lz, pivot, angle, wx, wy, wz) => {
-      const cosA = Math.cos(angle), sinA = Math.sin(angle);
-      return [
-        (lx - pivot[0]) * cosA - (ly - pivot[1]) * sinA + wx,
-        (lx - pivot[0]) * sinA + (ly - pivot[1]) * cosA + wy,
-        lz - pivot[2] + wz
-      ];
-    };
-    const _visible = (nx, ny, angle) => {
-      const cosA = Math.cos(angle), sinA = Math.sin(angle);
-      return nx * cosA - ny * sinA + (nx * sinA + ny * cosA) > 0;
-    };
+    const _pool = Array.from({ length: _POOL_SIZE }, _makeInst);
+    let _poolNext = 0;
     const _drawCollisionBox = (camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color) => {
       const cosA = Math.cos(angle), sinA = Math.sin(angle);
       const wp = (lx, ly, lz) => ({
@@ -63,81 +56,64 @@
       ctx2.restore();
     };
     const renderer = {
-      debugCollision: false,
-      debugAltitude: false,
       drawCollisionBox(camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color) {
         _drawCollisionBox(camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color);
       },
       add(def, { x, y, z = 0, angle = 0, colors, drawFn, depth: depthOverride } = {}) {
-        const faces = [];
-        if (def) {
-          const pivot = def.pivot ?? [0, 0, 0];
-          for (const face of def.faces) {
-            if (face.normal) {
-              const [nx, ny] = face.normal;
-              if (!_visible(nx, ny, angle)) continue;
-            }
-            faces.push({
-              worldVerts: face.verts.map(
-                ([lx, ly, lz]) => _transform(lx, ly, lz, pivot, angle, x, y, z)
-              ),
-              color: (colors && colors[face.id]) ?? face.color,
-              stroke: face.stroke ?? null,
-              strokeWidth: face.strokeWidth ?? 1
-            });
-          }
-        }
-        _instances.push({
-          def,
-          x,
-          y,
-          z,
-          angle,
-          faces,
-          depth: depthOverride ?? x + y,
-          drawFn: drawFn ?? null
-        });
+        const inst = _poolNext < _POOL_SIZE ? _pool[_poolNext++] : _makeInst();
+        inst.def = def;
+        inst.x = x;
+        inst.y = y;
+        inst.z = z;
+        inst.angle = angle;
+        inst.colors = colors;
+        inst.depth = depthOverride ?? x + y;
+        inst.drawFn = drawFn ?? null;
+        _instances.push(inst);
       },
       flush(camX, camY) {
         _instances.sort((a, b) => a.depth - b.depth);
         for (const inst of _instances) {
-          for (const face of inst.faces) {
-            const pts = face.worldVerts.map(([wx, wy, wz]) => iso2(wx, wy, wz, camX, camY));
-            ctx2.beginPath();
-            ctx2.moveTo(pts[0].x, pts[0].y);
-            for (let i = 1; i < pts.length; i++) ctx2.lineTo(pts[i].x, pts[i].y);
-            ctx2.closePath();
-            ctx2.fillStyle = face.color;
-            ctx2.fill();
-            if (face.stroke) {
-              ctx2.strokeStyle = face.stroke;
-              ctx2.lineWidth = face.strokeWidth;
-              ctx2.stroke();
+          if (inst.def) {
+            const def = inst.def;
+            const pivot = def.pivot ?? [0, 0, 0];
+            const cosA = Math.cos(inst.angle), sinA = Math.sin(inst.angle);
+            const p0 = pivot[0], p1 = pivot[1], p2 = pivot[2];
+            for (const face of def.faces) {
+              if (face.normal) {
+                const [nx, ny] = face.normal;
+                if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;
+              }
+              const verts = face.verts;
+              for (let i = 0; i < verts.length; i++) {
+                const lx = verts[i][0], ly = verts[i][1], lz = verts[i][2];
+                const dx = lx - p0, dy = ly - p1;
+                iso2(
+                  dx * cosA - dy * sinA + inst.x,
+                  dx * sinA + dy * cosA + inst.y,
+                  lz - p2 + inst.z,
+                  camX,
+                  camY,
+                  _scratchPts[i]
+                );
+              }
+              ctx2.beginPath();
+              ctx2.moveTo(_scratchPts[0].x, _scratchPts[0].y);
+              for (let i = 1; i < verts.length; i++) ctx2.lineTo(_scratchPts[i].x, _scratchPts[i].y);
+              ctx2.closePath();
+              ctx2.fillStyle = (inst.colors && inst.colors[face.id]) ?? face.color;
+              ctx2.fill();
+              if (face.stroke) {
+                ctx2.strokeStyle = face.stroke;
+                ctx2.lineWidth = face.strokeWidth ?? 1;
+                ctx2.stroke();
+              }
             }
           }
           if (inst.drawFn) inst.drawFn(camX, camY);
         }
-        if (renderer.debugCollision) {
-          for (const inst of _instances) {
-            if (!inst.def?.collisionBoxes) continue;
-            for (const cb of inst.def.collisionBoxes) {
-              _drawCollisionBox(
-                camX,
-                camY,
-                inst.x,
-                inst.y,
-                inst.angle,
-                cb.xMin,
-                cb.xMax,
-                cb.yMin,
-                cb.yMax,
-                inst.z + cb.zMin,
-                inst.z + cb.zMax
-              );
-            }
-          }
-        }
         _instances.length = 0;
+        _poolNext = 0;
       }
     };
     return renderer;

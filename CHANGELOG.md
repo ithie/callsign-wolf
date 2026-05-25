@@ -1,5 +1,35 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.0.0 — Render Performance Overhaul & Dead Code Removal
+
+### Performance
+
+- **Zero-allocation SceneRenderer** — `SceneRenderer.flush()` no longer allocates any objects on the hot path. Face arrays, world vertex arrays and projected-point objects are all eliminated: faces are computed inline at flush time, and `iso()` writes into a pre-allocated scratch buffer (`_scratchPts[16]`) via an `out?` parameter. `Math.cos`/`Math.sin` are computed once per instance instead of once per vertex. For a typical scene with ~50 objects and 200+ faces this removes hundreds of short-lived allocations per frame, reducing GC pressure on iOS.
+- **Pooled `_Instance` objects** — SceneRenderer maintains a fixed pool of 512 `_Instance` slots that are reused every frame. `add()` takes the next free slot from the pool; `flush()` resets `_poolNext = 0`. No instance objects are allocated during gameplay.
+- **Pre-allocated tree entry cache** — `rebuildEntryCache()` is called once after terrain initialisation and builds a stable `{ x, y, depth, drawFn }` entry object per tree, stored on the tree as `t._entry`. `drawTrees` calls `sceneAdd(null, t._entry)` with zero per-frame allocation — no closure, no object literal.
+- **`iso()` scratch output parameter** — `render.ts iso()` accepts an optional `out?: { x: number; y: number }` parameter. When provided, it writes into the existing object instead of returning a new one. Used by SceneRenderer's flush loop.
+
+### Changed
+
+- **Trees depth-sorted with scene objects** — trees are now added to SceneRenderer inside `drawWorldObjects` via a `queueFoliage` callback, called just before the final flush. Previously `drawTrees` ran *after* `flush()`, meaning trees always painted on top of the helicopter regardless of depth. Trees are now correctly occluded when the heli flies below them.
+- **Minimap: Ziel-Objekte blau, Rettungsziele rot** — PAD, Carrier and Submarine dots are now blue; persons are red (`#ff3333`), crates orange-red (`#ff7755`); other NPC vessels (boats) are gray (`#888`).
+- **Minimap: Sichtkegel** — a semi-transparent triangle is drawn on a dedicated overlay canvas each frame, originating from the heli dot and pointing in the heli's current flight direction. Helps testers orient themselves on the map at a glance.
+
+### Removed
+
+- **Party mode** — web-app-only feature; the iOS build never used it. All `partyMode`/`partyPalette`/`getPartyMode`/`isApp` parameters removed from `drawTree`, `createFoliage`, `drawTerrain`, `PhysicsCtx`. Confetti particle blocks and `SoundPartytime` removed. ~200 lines of dead code gone.
+- **`debugCollision` / `debugAltitude`** — both debug visualisation paths removed from `SceneRenderer` interface and implementation. Every frame previously branched on these flags even in production builds.
+- **Glider Easter Egg** — the `launchEasterEgg` hook and SOARING i18n keys removed. `glider.def` is kept.
+
+### Technical
+
+- `IsoFn` type updated: `(wx, wy, wz, camX, camY, out?) => { x: number; y: number }`.
+- `SceneRenderer.debugCollision` and `SceneRenderer.debugAltitude` removed from public interface; update call sites accordingly.
+- `MinimapData.heli` now requires `angle: number` for the vision cone.
+- `foliage.ts` exports `rebuildEntryCache`; call after `initFoliageFromMission`.
+
+---
+
 ## v27.0.0 — UI Architecture Overhaul & VS Code Tooling
 
 ### New
@@ -306,7 +336,7 @@
 - Rescuer wears a white suit (John Travolta / Night Fever)
 - Trees and bushes flash in random greens, colour waves upward per height layer
 - Helipad stays grey
-- Custom music: _Stayin' Alive_-inspired ZSynth track
+- Custom music: *Stayin' Alive*-inspired ZSynth track
 - Resets on mission end (success or failure)
 
 #### Bo-105 Model

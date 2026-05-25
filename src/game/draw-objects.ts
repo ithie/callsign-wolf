@@ -109,16 +109,8 @@ export const createDrawObjects = (
         scale = 1.0,
         gz = 0,
         type = 'pine',
-        wind: WindState = { x: 0, y: 0, phase: 0 },
-        partyMode = false
+        wind: WindState = { x: 0, y: 0, phase: 0 }
     ) => {
-        const _PARTY_GREENS = ['#00ff44', '#44ff00', '#88ff00', '#33ff33', '#00ff88', '#66ff22', '#00cc44', '#aaff00'];
-        const _treeSpeed = 0.0008 + (Math.abs(Math.round(tX * 7 + tY * 13)) % 7) * 0.00022;
-        const _treeOff = Math.abs(tX * 31 + tY * 17) % 80;
-        const _pg = (z: number) =>
-            _PARTY_GREENS[Math.floor(Date.now() * _treeSpeed + z * 5 + _treeOff) % _PARTY_GREENS.length];
-        const _pgDark = (z: number) =>
-            _PARTY_GREENS[Math.floor(Date.now() * _treeSpeed + z * 5 + _treeOff + 3) % _PARTY_GREENS.length];
         if (gz < 0.05) gz = 0.05;
         const z0 = gz;
         const trunkH = 0.5 * scale;
@@ -175,11 +167,11 @@ export const createDrawObjects = (
                     const p = iso(tX, tY, cz, cx, cy);
                     const ox = swayX * l.sway * (1 - t * 0.5);
                     const oy = swayY * l.sway * (1 - t * 0.5);
-                    ctx.fillStyle = partyMode ? _pgDark(cz) : l.shadow;
+                    ctx.fillStyle = l.shadow;
                     ctx.beginPath();
                     ctx.ellipse(p.x + ox + 2, p.y + oy + 1, (r * tileW) / 2, (r * tileH) / 2, 0, 0, Math.PI * 2);
                     ctx.fill();
-                    ctx.fillStyle = partyMode ? _pg(cz) : l.color;
+                    ctx.fillStyle = l.color;
                     ctx.beginPath();
                     ctx.ellipse(p.x + ox, p.y + oy, (r * tileW) / 2, (r * tileH) / 2, 0, 0, Math.PI * 2);
                     ctx.fill();
@@ -200,12 +192,11 @@ export const createDrawObjects = (
                 const p = iso(tX + blob.dx * 0.3, tY, crownZ + blob.dz, cx, cy);
                 const ox = sw + blob.dx * 10,
                     oy = sh;
-                const _bz = crownZ + blob.dz;
-                ctx.fillStyle = partyMode ? _pgDark(_bz) : blob.scol;
+                ctx.fillStyle = blob.scol;
                 ctx.beginPath();
                 ctx.ellipse(p.x + ox + 3, p.y + oy + 2, (blob.r * tileW) / 2, (blob.r * tileH) / 2, 0, 0, Math.PI * 2);
                 ctx.fill();
-                ctx.fillStyle = partyMode ? _pg(_bz) : blob.col;
+                ctx.fillStyle = blob.col;
                 ctx.beginPath();
                 ctx.ellipse(p.x + ox, p.y + oy, (blob.r * tileW) / 2, (blob.r * tileH) / 2, 0, 0, Math.PI * 2);
                 ctx.fill();
@@ -221,7 +212,7 @@ export const createDrawObjects = (
                 const p = iso(tX + blob.dx * 0.4, tY, bz + blob.dz * scale, cx, cy);
                 const ox = swayX * 0.4,
                     oy = swayY * 0.4;
-                ctx.fillStyle = partyMode ? _pg(bz + blob.dz * scale) : blob.col;
+                ctx.fillStyle = blob.col;
                 ctx.beginPath();
                 ctx.ellipse(p.x + ox, p.y + oy, ((blob.r * tileW) / 2) * 1.3, (blob.r * tileH) / 2, 0, 0, Math.PI * 2);
                 ctx.fill();
@@ -964,23 +955,7 @@ export const createDrawObjects = (
             }
         }
 
-        if (!isShadow && SceneRenderer.debugAltitude) {
-            const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : 0;
-            const top = actualIso(hX, hY, hZ, camX, camY);
-            const bottom = actualIso(hX, hY, groundZ, camX, camY);
-            actualCtx.save();
-            actualCtx.strokeStyle = 'rgba(255, 220, 0, 0.9)';
-            actualCtx.lineWidth = 1.5 * lineScale;
-            actualCtx.setLineDash([5, 4]);
-            actualCtx.shadowColor = '#ffdd00';
-            actualCtx.shadowBlur = 4;
-            actualCtx.beginPath();
-            actualCtx.moveTo(top.x, top.y);
-            actualCtx.lineTo(bottom.x, bottom.y);
-            actualCtx.stroke();
-            actualCtx.setLineDash([]);
-            actualCtx.restore();
-        }
+
     }
 
     return { drawFace, drawTree, drawPerson, drawTractor, drawFuelTruck, drawHeli };

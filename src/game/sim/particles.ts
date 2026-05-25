@@ -4,7 +4,6 @@ import { getHeliType } from '../heli-types';
 import { getGround } from './terrain';
 import { PhysicsCtx } from './ctx';
 
-const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
 export const spawnExplosion = (heli: any, particles: any[], debris: any[], points: number[][], CARRIER: any) => {
     const impactSpeed = Math.hypot(heli.vx, heli.vy, heli.vz || 0);
@@ -227,29 +226,11 @@ const _getRotorPositions = () => {
     }));
 };
 
-export const handleParticles = (dt: number, ctx: PhysicsCtx) => {
+export const handleParticles = (dt: number, _ctx: PhysicsCtx) => {
     const gH = getGround(G.heli.x, G.heli.y, G.points, G.CARRIER);
     const rotors = _getRotorPositions();
     if (G.heli.rotorRPM > 0.8) {
-        if (!_IS_APP && ctx.partyMode) {
-            rotors.forEach((rotor: any) => {
-                for (let i = 0; i < 3; i++) {
-                    const a = Math.random() * Math.PI * 2;
-                    const col = ctx.partyPalette![Math.floor(Math.random() * ctx.partyPalette!.length)];
-                    const r = parseInt(col.slice(1, 3), 16),
-                        g2 = parseInt(col.slice(3, 5), 16),
-                        b = parseInt(col.slice(5, 7), 16);
-                    G.particles.push({
-                        x: rotor.x + Math.cos(a) * 0.5, y: rotor.y + Math.sin(a) * 0.5,
-                        z: G.heli.z - 0.3 + Math.random() * 0.6,
-                        vx: Math.cos(a) * 0.12, vy: Math.sin(a) * 0.12,
-                        vz: 0.02 + Math.random() * 0.06,
-                        gravity: -0.003, size: 2, life: 0.8 + Math.random() * 0.4,
-                        color: `${r}, ${g2}, ${b}`, isConfetti: true,
-                    });
-                }
-            });
-        } else if (G.heli.z < G.waterLevel + 2.5 && gH > G.waterLevel + 0.1) {
+        if (G.heli.z < G.waterLevel + 2.5 && gH > G.waterLevel + 0.1) {
             rotors.forEach((rotor: any) => {
                 const a = Math.random() * Math.PI * 2;
                 G.particles.push({
@@ -270,28 +251,6 @@ export const handleParticles = (dt: number, ctx: PhysicsCtx) => {
                         life: 0.4, color: '200, 230, 255',
                     });
                 }
-            });
-        }
-    }
-    if (!_IS_APP && ctx.partyMode && G.TREES_MAP && G.TREES_MAP.length > 0) {
-        const emit = Math.min(4, Math.ceil(G.TREES_MAP.length / 8));
-        for (let i = 0; i < emit; i++) {
-            const t = G.TREES_MAP[Math.floor(Math.random() * G.TREES_MAP.length)];
-            const topZ = (t.gz ?? 0) + (t.s ?? 1) * 2.2;
-            const col = ctx.partyPalette![Math.floor(Math.random() * ctx.partyPalette!.length)];
-            const [pr, pg, pb] = [
-                parseInt(col.slice(1, 3), 16),
-                parseInt(col.slice(3, 5), 16),
-                parseInt(col.slice(5, 7), 16),
-            ];
-            G.particles.push({
-                x: t.x + (Math.random() - 0.5) * 0.4, y: t.y + (Math.random() - 0.5) * 0.4,
-                z: topZ,
-                vx: G.wind.x * 0.4 + (Math.random() - 0.5) * 0.03,
-                vy: G.wind.y * 0.4 + (Math.random() - 0.5) * 0.03,
-                vz: 0.04 + Math.random() * 0.05,
-                gravity: -0.004, size: 2, life: 1.0 + Math.random() * 0.5,
-                color: `${pr}, ${pg}, ${pb}`, isConfetti: true,
             });
         }
     }

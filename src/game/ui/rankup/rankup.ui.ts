@@ -10,7 +10,7 @@ const _setup = () => {
     const cx = c.getContext('2d')!;
     const isoFn = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
         iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
-    const sr = { add: () => {}, flush: () => {}, debugAltitude: false };
+    const sr = { add: () => {}, flush: () => {} };
     const { drawHeli } = createDrawObjects(cx, isoFn, tileW, tileH, sr as any);
     init(drawHeli);
     mount();

@@ -6,8 +6,6 @@ export interface PhysicsCtx {
     hasCarrier: boolean;
     isTutorialMode?: boolean;
     isTutorialFuelLocked?: boolean;
-    partyMode?: boolean;
-    partyPalette?: readonly string[];
     showMsg: (txt: string) => void;
     missionComplete: () => void;
     triggerCrash: () => void;

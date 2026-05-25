@@ -82,7 +82,6 @@ import { requestReview } from './reviewRequest';
 import { VESSEL, PAYLOAD, CAMPAIGN_TYPE, CTRL_MODE } from '../shared/types';
 
 const _IS_APP = import.meta.env.VITE_TARGET === 'app';
-const _PARTY_PALETTE = ['#ff0044', '#ff6600', '#ffcc00', '#00ff88', '#00ccff', '#cc44ff', '#ff44cc', '#44ffcc'];
 
 const assertDom = () => {
     if (!document.getElementById('gameCanvas')) {
@@ -94,8 +93,8 @@ const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 ctx.imageSmoothingEnabled = false;
 
-const isoFn = (wx: number, wy: number, wz: number, cx: number, cy: number) =>
-    iso(wx, wy, wz, cx, cy, { canvas, tileW, tileH, stepH });
+const isoFn = (wx: number, wy: number, wz: number, cx: number, cy: number, out?: { x: number; y: number }) =>
+    iso(wx, wy, wz, cx, cy, { canvas, tileW, tileH, stepH }, out);
 const _hud = createHud({ isoFn, canvas });
 const SceneRenderer = createSceneRenderer(ctx, isoFn);
 const { drawTree, drawPerson, drawTractor, drawFuelTruck, drawHeli } = createDrawObjects(
@@ -144,19 +143,17 @@ const {
     drawBirds,
     drawDebris,
     drawPayloadObjects,
-    drawDiscoBall,
     renderRain,
     drawDebugOverlay,
     handleCollisionBoxes,
 } = _drawWorldFns;
 
-const { drawTrees } = createFoliage({
+const { drawTrees, rebuildEntryCache } = createFoliage({
     canvas,
     tileW,
     tileH,
     drawTree,
-    isApp: _IS_APP,
-    getPartyMode: () => _partyMode,
+    sceneAdd: (def, opts) => SceneRenderer.add(def, opts),
 });
 
 HeliSelect.init(G, drawHeli);
@@ -177,9 +174,6 @@ const { drawTerrain, precomputeDayColors } = createDrawTerrain({
     getTerrain: () => campaignHandler.getTerrain(),
     isPadTile: _isPadTile,
     isServiceTile: _isServiceTile,
-    isApp: _IS_APP,
-    getPartyMode: () => _partyMode,
-    partyPalette: _PARTY_PALETTE,
 });
 
 import { buildStartZone } from './start-zone';
@@ -294,8 +288,6 @@ const missionComplete = () => {
 
     MissionSuccessScreen.show(() => {
         MissionSuccessScreen.hide();
-        if (!_IS_APP && _partyMode) soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
-        if (!_IS_APP) _partyMode = false;
         zstate.gameStarted = false;
         setTouchVisible(false);
         _hud.showAll(false);
@@ -333,8 +325,6 @@ const _resetHeliState = () => {
 
 const returnToBase = () => {
     _stopMission();
-    if (!_IS_APP && _partyMode) soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
-    if (!_IS_APP) _partyMode = false;
     zstate.gameStarted = false;
     if (!_IS_APP && mpHandleReturnToBase()) return;
     _resetHeliState();
@@ -349,8 +339,6 @@ const returnToBase = () => {
 
 const returnToCampaignSelect = () => {
     _stopMission();
-    if (!_IS_APP && _partyMode) soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
-    if (!_IS_APP) _partyMode = false;
     zstate.gameStarted = false;
     _resetHeliState();
     CampaignCompleteScreen.hide();
@@ -528,6 +516,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
 
     // Step 3 — environment
     initFoliageFromMission();
+    rebuildEntryCache();
     initBirds();
     G.deliverMode = false;
     initPayloadsFromMission();
@@ -726,11 +715,10 @@ const drawScene = () => {
                 drawPerson(
                     rs.x, rs.y, winchTipZ, 0, false, cx, cy,
                     PAYLOAD.RESCUER,
-                    !_IS_APP && _partyMode ? { shirt: '#ffffff', pants: '#ffffff' } : undefined
+                    undefined
                 );
             }
 
-            if (!_IS_APP && _partyMode && Math.floor(Date.now() / 80) % 2 === 0) _refreshPartyColors();
             drawHeli(
                 G.heli.type, G.heli.x, G.heli.y, G.heli.z,
                 G.heli.angle, G.heli.tilt, G.heli.roll, G.heli.rotationPos,
@@ -739,15 +727,12 @@ const drawScene = () => {
                     shadowGetGround: (x, y) => getGround(x, y),
                     flapRate: _flapRate,
                     tailRotorRate: 1.0 + Math.abs(G.heli.roll) * 4,
-                    ...(!_IS_APP && _partyMode ? { fillColor: _partyColors[0], strokeColor: _partyColors[1] } : {}),
                 }
             );
 
             if (!_IS_APP) mpRenderRemoteHeli(ctx, cx, cy, drawHeli, isoFn);
         },
-    } : undefined);
-
-    drawTrees(camX, camY, rx, ry);
+    } : undefined, (cx, cy) => drawTrees(cx, cy, rx, ry));
 
     updateNpcHelis(dt);
 
@@ -826,8 +811,6 @@ const drawScene = () => {
 
     if (!_IS_APP) mpTickAndHUD(ctx, canvas, dt);
 
-    if (!_IS_APP && _partyMode) drawDiscoBall();
-
     updateHeliSound(G.heli.rotorRPM, G.heli.engineOn, G.heli.type, Math.hypot(G.wind.x, G.wind.y), _flapRate);
     if (isTutorialRunning()) tutorialTick(G);
     _rafId = requestAnimationFrame(drawScene);
@@ -837,10 +820,7 @@ const drawScene = () => {
 let showCollisionBoxes = false;
 if (!_IS_APP) {
     window.addEventListener('keydown', e => {
-        if (e.key === 'c' || e.key === 'C') {
-            showCollisionBoxes = !showCollisionBoxes;
-            SceneRenderer.debugAltitude = showCollisionBoxes;
-        }
+        if (e.key === 'c' || e.key === 'C') showCollisionBoxes = !showCollisionBoxes;
     });
 }
 
@@ -851,7 +831,6 @@ const toMainMenu = () => {
     _rafId = 0;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     zstate.gameStarted = false;
-    if (!_IS_APP) _partyMode = false;
     showScreen('main-menu');
     soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
     HeliSelect.animMainMenuBg();
@@ -876,14 +855,6 @@ let _missionWindVar = false;
 let _lighthouseX = -1;
 let _lighthouseY = -1;
 let _missionGridSize = 28;
-
-let _partyMode = false;
-let _partySeq = '';
-let _partyColors: string[] = [];
-const _randomPartyColor = () => _PARTY_PALETTE[Math.floor(Math.random() * _PARTY_PALETTE.length)];
-const _refreshPartyColors = () => {
-    _partyColors = Array.from({ length: 8 }, _randomPartyColor);
-};
 
 const _physicsCtx = {
     get windStr() {
@@ -934,11 +905,6 @@ const _physicsCtx = {
     },
 } as import('./sim/simulation').PhysicsCtx;
 
-if (!_IS_APP) {
-    Object.defineProperty(_physicsCtx, 'partyMode', { get: () => _partyMode, enumerable: true, configurable: true });
-    (_physicsCtx as any).partyPalette = _PARTY_PALETTE;
-}
-
 // ─── session ──────────────────────────────────────────────────────────────────
 let _session: PlayerSession = loadSession();
 
@@ -984,20 +950,6 @@ window.onkeydown = e => {
             saveSession(_session);
             _unlockSeq = '';
             showMsg(I18N.UNLOCK_ALL!);
-        }
-        if (zstate.gameStarted) {
-            _partySeq = (_partySeq + e.key.toUpperCase()).slice(-5);
-            if (_partySeq === 'PARTY') {
-                _partyMode = !_partyMode;
-                _partySeq = '';
-                if (_partyMode) {
-                    _refreshPartyColors();
-                    showMsg(I18N.PARTY_ON!);
-                    soundHandler.play('partytime', true);
-                } else {
-                    soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
-                }
-            }
         }
     }
 };
@@ -1197,7 +1149,6 @@ const setupTouchControls = () => {
     if (!_IS_APP) {
         document.getElementById('debug-toggle')?.addEventListener('click', () => {
             showCollisionBoxes = !showCollisionBoxes;
-            SceneRenderer.debugAltitude = showCollisionBoxes;
         });
     }
     // pitch wheel (winch)
@@ -1248,10 +1199,7 @@ const mountGameOverlays = () => {
     if (!_IS_APP) {
         _ensureEl('debug-toggle');
     }
-    if (!_IS_APP) {
-        const egg = _ensureEl('easter-egg');
-        egg.onclick = () => (window as any).launchEasterEgg?.();
-    }
+
 };
 
 const mountGameScreens = () => {

@@ -21,8 +21,6 @@ import HANGAR_DEF from './models/hangar.zdef';
 import TOWER_DEF from './models/tower.zdef';
 import LIGHTHOUSE_DEF from './models/lighthouse.zdef';
 
-const PARTY_PALETTE = ['#ff0044', '#ff6600', '#ffcc00', '#00ff88', '#00ccff', '#cc44ff', '#ff44cc', '#44ffcc'];
-
 export interface DrawWorldCtx {
     ctx: CanvasRenderingContext2D;
     canvas: HTMLCanvasElement;
@@ -307,7 +305,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
 
     // ─── public ────────────────────────────────────────────────────────────────
 
-    const drawWorldObjects = (camX: number, camY: number, visMargin: number, heliAt?: { x: number; y: number; fn: (camX: number, camY: number) => void }) => {
+    const drawWorldObjects = (camX: number, camY: number, visMargin: number, heliAt?: { x: number; y: number; fn: (camX: number, camY: number) => void }, queueFoliage?: (camX: number, camY: number) => void) => {
         if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, visMargin) && G.CARRIER.path !== 'static')
             _drawBowWave(G.CARRIER.x, G.CARRIER.y, G.CARRIER.angle, G.CARRIER.speedKnots, camX, camY, 9, 3);
         G.BOATS.forEach((b: any) => {
@@ -349,6 +347,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 getFuelingState: () => G.fuelTruck.state === VEHICLE_STATE.FUELING,
             });
         if (hasPad()) _drawPadLights(G.PAD.z, false);
+        if (queueFoliage) queueFoliage(camX, camY);
         if (heliAt) SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt.x + heliAt.y, drawFn: (cx, cy) => heliAt.fn(cx, cy) });
         SceneRenderer.flush(camX, camY);
         if (hasPad() && isVisible(G.PAD.xMin, G.PAD.yMin)) _drawWindsock(camX, camY);
@@ -467,73 +466,6 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             }
         });
     };
-
-    const drawDiscoBall = (() => {
-        type Tile = { row: number; basePhi: number; phi: number; ringR: number; tileW: number; tileH: number };
-        const _tiles: Tile[] = [];
-        const ROWS = 9, BASE_COLS = 14, R = 38;
-        for (let row = 0; row < ROWS; row++) {
-            const phi = ((row + 0.5) / ROWS) * Math.PI;
-            const ringR = Math.sin(phi);
-            const cols = Math.max(4, Math.round(BASE_COLS * ringR));
-            for (let col = 0; col < cols; col++) {
-                _tiles.push({ row, phi, basePhi: (col / cols) * Math.PI * 2, ringR, tileW: R * 0.22 * ringR, tileH: R * 0.16 });
-            }
-        }
-        return () => {
-            const w = dwCtx.canvas.width, h = dwCtx.canvas.height;
-            const cx = w / 2, cy = R + 12;
-            const t = Date.now() / 1000;
-            ctx.save();
-            ctx.strokeStyle = '#aaa';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(cx, 0);
-            ctx.lineTo(cx, cy - R);
-            ctx.stroke();
-            for (let i = 0; i < 18; i++) {
-                const angle = (i / 18) * Math.PI * 2 + t * 0.6;
-                const dist = 80 + i * 28;
-                const sx = cx + Math.cos(angle + Math.sin(t * 0.4 + i)) * dist * (w / 800);
-                const sy = cy + Math.sin(angle * 1.3 + t * 0.3) * dist * 0.9;
-                if (sx < 0 || sx > w || sy < 0 || sy > h) continue;
-                const col = PARTY_PALETTE[(i + Math.floor(t * 3)) % PARTY_PALETTE.length];
-                ctx.globalAlpha = 0.18 + 0.12 * Math.sin(t * 4 + i);
-                ctx.fillStyle = col;
-                ctx.beginPath();
-                ctx.arc(sx, sy, 6, 0, Math.PI * 2);
-                ctx.fill();
-            }
-            ctx.globalAlpha = 1;
-            ctx.fillStyle = '#111';
-            ctx.beginPath();
-            ctx.arc(cx, cy, R, 0, Math.PI * 2);
-            ctx.fill();
-            _tiles.forEach(({ row, basePhi, phi, ringR, tileW: tw, tileH: th }) => {
-                const theta = basePhi + t * 1.1;
-                const z3d = ringR * Math.sin(theta);
-                if (z3d < 0) return;
-                const x3d = ringR * Math.cos(theta);
-                const sx = cx + x3d * R;
-                const sy = cy - Math.cos(phi) * R;
-                const brightness = 0.3 + z3d * 0.7;
-                const colorIdx = Math.abs(row * 5 + Math.floor(basePhi * 3) + Math.floor(t * 5)) % PARTY_PALETTE.length;
-                ctx.globalAlpha = brightness;
-                ctx.fillStyle = PARTY_PALETTE[colorIdx];
-                ctx.fillRect(sx - tw / 2, sy - th / 2, tw, th);
-            });
-            ctx.globalAlpha = 1;
-            const hl = ctx.createRadialGradient(cx - R * 0.35, cy - R * 0.35, 0, cx, cy, R);
-            hl.addColorStop(0, 'rgba(255,255,255,0.55)');
-            hl.addColorStop(0.4, 'rgba(255,255,255,0.05)');
-            hl.addColorStop(1, 'rgba(0,0,0,0)');
-            ctx.fillStyle = hl;
-            ctx.beginPath();
-            ctx.arc(cx, cy, R, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.restore();
-        };
-    })();
 
     const renderRain = () => {
         if (!isMissionRain()) return;
@@ -839,5 +771,5 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         }
     };
 
-    return { drawWorldObjects, drawBirds, drawDebris, drawPayloadObjects, drawDiscoBall, renderRain, drawDebugOverlay, handleCollisionBoxes };
+    return { drawWorldObjects, drawBirds, drawDebris, drawPayloadObjects, renderRain, drawDebugOverlay, handleCollisionBoxes };
 };

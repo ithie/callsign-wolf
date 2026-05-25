@@ -11,9 +11,12 @@ type DrawTreeFn = (
     scale: number,
     gz: number,
     type: string,
-    wind: WindState,
-    partyMode: boolean
+    wind: WindState
 ) => void;
+
+type EntryOpts = { x: number; y: number; depth: number; drawFn: (camX: number, camY: number) => void };
+
+type SceneAddFn = (def: null, opts: EntryOpts) => void;
 
 const FOLIAGE_DECODE: Record<string, string> = { p: 'pine', o: 'oak', b: 'bush', d: 'dead' };
 
@@ -48,12 +51,21 @@ export const createFoliage = (opts: {
     tileW: number;
     tileH: number;
     drawTree: DrawTreeFn;
-    isApp: boolean;
-    getPartyMode: () => boolean;
+    sceneAdd: SceneAddFn;
 }) => {
-    const { canvas, tileW, tileH, drawTree, isApp, getPartyMode } = opts;
+    const { canvas, tileW, tileH, drawTree, sceneAdd } = opts;
 
-    const drawTrees = (camX: number, camY: number, rx: number, ry: number) => {
+    const rebuildEntryCache = () => {
+        G.TREES_MAP.forEach((t: any) => {
+            const treeType = t.type || 'pine';
+            t._entry = {
+                x: t.x, y: t.y, depth: t.x + t.y,
+                drawFn: (cx: number, cy: number) => drawTree(t.x, t.y, cx, cy, t.s, t.gz, treeType, G.wind),
+            } as EntryOpts;
+        });
+    };
+
+    const drawTrees = (_camX: number, _camY: number, rx: number, ry: number) => {
         const _tr = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH)) + 2;
         const xFrom = Math.floor(rx - _tr), xTo = Math.ceil(rx + _tr);
         const yFrom = Math.floor(ry - _tr), yTo = Math.ceil(ry + _tr);
@@ -62,15 +74,11 @@ export const createFoliage = (opts: {
                 const bucket = _treeIndex.get(`${tx}_${ty}`);
                 if (!bucket) continue;
                 for (const t of bucket) {
-                    drawTree(
-                        t.x, t.y, camX, camY, t.s, t.gz, t.type || 'pine',
-                        G.wind,
-                        !isApp && getPartyMode() && t.type !== 'dead'
-                    );
+                    sceneAdd(null, t._entry);
                 }
             }
         }
     };
 
-    return { drawTrees };
+    return { drawTrees, rebuildEntryCache };
 };

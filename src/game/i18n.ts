@@ -50,9 +50,7 @@ const _DE = {
     DROP_AT_PAD: 'AM LANDEPLATZ ABLEGEN!',
     SECURED: (rescued: number, total: number) => `GESICHERT: ${rescued}/${total}`,
 
-    SOARING: 'HOCH HINAUS – ↑↓ PITCH  ←→ BANK',
-
-    ...(!_IS_APP ? { PARTY_ON: '🎉 PARTY MODE 🎉', UNLOCK_ALL: '🔓 ALL CAMPAIGNS UNLOCKED' } : {}),
+    ...(!_IS_APP ? { UNLOCK_ALL: '🔓 ALL CAMPAIGNS UNLOCKED' } : {}),
 
     SPLASH_TITLE: 'SAR: CALLSIGN WOLF',
     SPLASH_HINT: 'KLICKEN ZUM STARTEN',
@@ -230,9 +228,7 @@ const _EN = {
     DROP_AT_PAD: 'DROP AT LANDING PAD!',
     SECURED: (rescued: number, total: number) => `SECURED: ${rescued}/${total}`,
 
-    SOARING: 'SOARING HIGH – ↑↓ PITCH  ←→ BANK',
-
-    ...(!_IS_APP ? { PARTY_ON: '🎉 PARTY MODE 🎉', UNLOCK_ALL: '🔓 ALL CAMPAIGNS UNLOCKED' } : {}),
+    ...(!_IS_APP ? { UNLOCK_ALL: '🔓 ALL CAMPAIGNS UNLOCKED' } : {}),
 
     SPLASH_TITLE: 'SAR: CALLSIGN WOLF',
     SPLASH_HINT: 'CLICK TO START',

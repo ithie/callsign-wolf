@@ -2,9 +2,13 @@ import './minimap.css';
 
 const MM_SIZE = 130;
 const MM_PAD_PX = 20;
+const CONE_LEN = 28;
+const CONE_HALF_ANGLE = Math.PI / 5.5; // ~33°
 
 let _el: HTMLElement | null = null;
 let _canvas: HTMLCanvasElement | null = null;
+let _overlayCanvas: HTMLCanvasElement | null = null;
+let _overlayCtx: CanvasRenderingContext2D | null = null;
 let _pad: HTMLElement;
 let _carrier: HTMLElement;
 let _heli: HTMLElement;
@@ -30,6 +34,13 @@ export const mountMinimap = (): void => {
     _canvas.height = MM_SIZE;
     _canvas.style.cssText = 'position:absolute;top:0;left:0;';
     _el.appendChild(_canvas);
+
+    _overlayCanvas = document.createElement('canvas');
+    _overlayCanvas.width = MM_SIZE;
+    _overlayCanvas.height = MM_SIZE;
+    _overlayCanvas.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
+    _overlayCtx = _overlayCanvas.getContext('2d')!;
+    _el.appendChild(_overlayCanvas);
 
     _pad = document.createElement('div');
     _pad.id = 'minimap-pad';
@@ -83,7 +94,7 @@ export type MinimapData = {
     pad: { xMin: number; yMin: number; xMax: number; yMax: number } | null;
     carrier: { x: number; y: number } | null;
     vessels: Array<{ x: number; y: number; type: string }>;
-    heli: { x: number; y: number };
+    heli: { x: number; y: number; angle: number };
     payloads: Array<{ x: number; y: number; type: string; rescued: boolean; npcTarget: boolean; hanging: boolean }>;
 };
 
@@ -114,28 +125,49 @@ export const updateMinimap = (data: MinimapData): void => {
         _carrier.style.display = 'none';
     }
 
+    // vision cone
+    if (_overlayCtx) {
+        const octx = _overlayCtx;
+        octx.clearRect(0, 0, MM_SIZE, MM_SIZE);
+        const hx = data.heli.x * sc;
+        const hy = data.heli.y * sc;
+        const a = data.heli.angle;
+        octx.beginPath();
+        octx.moveTo(hx, hy);
+        octx.lineTo(hx + CONE_LEN * Math.cos(a - CONE_HALF_ANGLE), hy + CONE_LEN * Math.sin(a - CONE_HALF_ANGLE));
+        octx.lineTo(hx + CONE_LEN * Math.cos(a + CONE_HALF_ANGLE), hy + CONE_LEN * Math.sin(a + CONE_HALF_ANGLE));
+        octx.closePath();
+        octx.fillStyle = 'rgba(255, 255, 255, 0.13)';
+        octx.fill();
+        octx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+        octx.lineWidth = 0.5;
+        octx.stroke();
+    }
+
     _heli.style.left    = `${data.heli.x * sc}px`;
     _heli.style.top     = `${data.heli.y * sc}px`;
     _heli.style.display = 'block';
 
     let dotIdx = 0;
 
+    // Ziel-Objekte: Submarines blau; andere Vessels (Boote) grau
     data.vessels.forEach(v => {
         const dot = _getDot(dotIdx++);
         dot.style.left       = `${v.x * sc}px`;
         dot.style.top        = `${v.y * sc}px`;
-        dot.style.background = v.type === 'submarine' ? '#48f' : '#08f';
+        dot.style.background = v.type === 'submarine' ? '#44aaff' : '#888';
         dot.style.width      = '6px';
         dot.style.height     = '6px';
         dot.style.display    = 'block';
     });
 
+    // Rettungsziele: Personen und Crates in Rot
     const activePays = data.payloads.filter(p => !p.rescued && !p.npcTarget && !p.hanging && p.type !== 'orni_wreck');
     activePays.forEach(p => {
         const dot = _getDot(dotIdx++);
         dot.style.left       = `${p.x * sc}px`;
         dot.style.top        = `${p.y * sc}px`;
-        dot.style.background = p.type === 'crate' ? '#d84' : '#f00';
+        dot.style.background = p.type === 'crate' ? '#ff7755' : '#ff3333';
         dot.style.width      = '4px';
         dot.style.height     = '4px';
         dot.style.display    = 'block';

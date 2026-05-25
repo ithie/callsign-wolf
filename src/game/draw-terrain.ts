@@ -10,16 +10,12 @@ export interface DrawTerrainCtx {
     getTerrain: () => { gridSize: number };
     isPadTile: (x: number, y: number) => boolean;
     isServiceTile: (x: number, y: number) => boolean;
-    isApp: boolean;
-    getPartyMode: () => boolean;
-    partyPalette: string[];
 }
 
 export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
     const {
         ctx, canvas, tileW, tileH, stepH,
         getTerrain, isPadTile, isServiceTile,
-        isApp, getPartyMode, partyPalette,
     } = dtCtx;
 
     let _tileColors: string[][] = [];
@@ -126,17 +122,6 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
                 return h0 > G.waterLevel
                     ? `rgb(${intensity - 20},${intensity + 10},${intensity - 20})`
                     : `rgb(0,${Math.floor(intensity * 0.3)},${Math.floor(intensity * 0.6)})`;
-            });
-            return;
-        }
-
-        if (!isApp && getPartyMode()) {
-            _renderTerrainBatched(canvas.width, canvas.height, camX, camY, xFrom, xTo, yFrom, yTo, (x, y, _h0) => {
-                if (isPadTile(x, y)) return '#444';
-                if (isServiceTile(x, y)) return '#aaaaaa';
-                const tileOffset = Math.abs(x * 173 + y * 251) % 800;
-                const phase = Math.floor((Date.now() + tileOffset * 320) / 280);
-                return partyPalette[phase % partyPalette.length];
             });
             return;
         }
