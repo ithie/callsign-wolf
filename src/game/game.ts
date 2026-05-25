@@ -5,15 +5,7 @@ import { ensureEl } from './ui/dom-helpers';
 import * as TouchControls from './ui/touch-controls/touch-controls';
 import { iso } from './render';
 import { campaignHandler, soundHandler, zinit, musicConfig } from './main';
-import {
-    loadSession,
-    saveSession,
-    getRank,
-    RANKS,
-    STORAGE_KEY,
-    type PlayerSession,
-    type Rank,
-} from './session';
+import { loadSession, saveSession, getRank, RANKS, STORAGE_KEY, type PlayerSession, type Rank } from './session';
 import { initAppStorage, storageGet, storageSet } from './storage';
 import { zstate } from './state';
 import { initHeliSound, updateHeliSound, stopHeliSound, setSfxEnabled, isSfxEnabled } from './heli-sound';
@@ -57,13 +49,7 @@ import {
     mpGetTriggerCrash,
 } from './mp-game';
 import * as HeliSelect from './ui/heli-select/heli-select';
-import {
-    I18N,
-    LANG_PREF_KEY,
-    localize,
-    onLanguageChange,
-    setLanguage,
-} from './i18n';
+import { I18N, LANG_PREF_KEY, localize, onLanguageChange, setLanguage } from './i18n';
 import * as Briefing from './ui/briefing/briefing';
 import * as Settings from './ui/settings/settings';
 import * as Rankup from './ui/rankup/rankup';
@@ -77,7 +63,14 @@ import * as CampaignCompleteScreen from './ui/campaign-complete-screen/campaign-
 import { showScreen } from './ui/nav';
 import { mountMinimap, initMinimapTerrain } from './ui/minimap/minimap';
 import { createHud } from './ui/hud/hud';
-import { initTutorial, tutorialTick, destroyTutorial, isTutorialRunning, getAllowedKeys, isTutorialFuelLocked } from './ui/tutorial/tutorial';
+import {
+    initTutorial,
+    tutorialTick,
+    destroyTutorial,
+    isTutorialRunning,
+    getAllowedKeys,
+    isTutorialFuelLocked,
+} from './ui/tutorial/tutorial';
 import { requestReview } from './reviewRequest';
 import { VESSEL, PAYLOAD, CAMPAIGN_TYPE, CTRL_MODE } from '../shared/types';
 
@@ -186,7 +179,7 @@ const showMsg = (txt: string) => {
     setTimeout(() => {
         m.style.opacity = '0';
     }, 2000);
-}
+};
 
 // ─── screens ────────────────────────────────────────────────────────────────
 const _stopMission = () => {
@@ -214,7 +207,7 @@ const triggerCrash = () => {
         _stopMission();
         MissionFailedScreen.show();
     }, 1800);
-}
+};
 
 const missionComplete = () => {
     destroyTutorial();
@@ -306,7 +299,7 @@ const missionComplete = () => {
         if (rankUpRank)
             Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
     });
-}
+};
 
 const _resetHeliState = () => {
     zstate.crashed = false;
@@ -335,7 +328,7 @@ const returnToBase = () => {
     Briefing.hide();
     _openMissionSelect(); // calls showScreen('mission-select')
     soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
-}
+};
 
 const returnToCampaignSelect = () => {
     _stopMission();
@@ -360,11 +353,11 @@ const _openCampaignSelect = () => {
 const toCampaignSelect = () => {
     soundHandler.play(musicConfig.mainMenu || 'maintheme', false);
     _openCampaignSelect();
-}
+};
 
 const selectCampaign = (index: string) => {
     _doSelectCampaign(Number(index));
-}
+};
 
 const _doSelectCampaign = (idx: number) => {
     const campaigns = campaignHandler.getCampaigns();
@@ -455,9 +448,13 @@ const _maybeSpawnOrniWreck = () => {
         if (gz <= G.waterLevel + 0.3) continue;
         G.payloads.push({
             type: PAYLOAD.ORNI_WRECK,
-            x: c.x, y: c.y, z: gz,
+            x: c.x,
+            y: c.y,
+            z: gz,
             angle: Math.random() * Math.PI * 2,
-            hanging: false, rescued: false, deliverTo: VESSEL.PAD,
+            hanging: false,
+            rescued: false,
+            deliverTo: VESSEL.PAD,
         });
         return;
     }
@@ -572,16 +569,29 @@ const launchMission = async (showLoader = true): Promise<void> => {
         soundHandler.play(campaignHandler.getActiveCampaignMusic().ingame || 'clike', false, 0.4);
         setTouchVisible(true);
         if (_lmd.campaignType === CAMPAIGN_TYPE.TUTORIAL) {
-            initTutorial(_isTouchDevice(), G, getGround(G.heli.x, G.heli.y, G.points, G.CARRIER), missionComplete, () => {
-                const personDef = campaignHandler.getCurrentMissionData()
-                    .payloads?.find((p: any) => p.type === PAYLOAD.PERSON);
-                if (!personDef) return;
-                const gz = getGround(personDef.x, personDef.y, G.points, G.CARRIER);
-                G.payloads.push({
-                    type: PAYLOAD.PERSON, x: personDef.x, y: personDef.y, z: gz,
-                    angle: 0, hanging: false, rescued: false, deliverTo: VESSEL.PAD,
-                } as any);
-            });
+            initTutorial(
+                _isTouchDevice(),
+                G,
+                getGround(G.heli.x, G.heli.y, G.points, G.CARRIER),
+                missionComplete,
+                () => {
+                    const personDef = campaignHandler
+                        .getCurrentMissionData()
+                        .payloads?.find((p: any) => p.type === PAYLOAD.PERSON);
+                    if (!personDef) return;
+                    const gz = getGround(personDef.x, personDef.y, G.points, G.CARRIER);
+                    G.payloads.push({
+                        type: PAYLOAD.PERSON,
+                        x: personDef.x,
+                        y: personDef.y,
+                        z: gz,
+                        angle: 0,
+                        hanging: false,
+                        rescued: false,
+                        deliverTo: VESSEL.PAD,
+                    } as any);
+                }
+            );
         }
     });
 };
@@ -666,16 +676,30 @@ const drawScene = () => {
     // shadow pass — before world objects so shadow appears on terrain, not over objects
     if (!zstate.crashed) {
         drawHeli(
-            G.heli.type, G.heli.x, G.heli.y, G.heli.z,
-            G.heli.angle, G.heli.tilt, G.heli.roll, G.heli.rotationPos,
-            camX, camY,
+            G.heli.type,
+            G.heli.x,
+            G.heli.y,
+            G.heli.z,
+            G.heli.angle,
+            G.heli.tilt,
+            G.heli.roll,
+            G.heli.rotationPos,
+            camX,
+            camY,
             { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER), flapRate: _flapRate }
         );
         if (G.remoteHeli) {
             drawHeli(
-                G.remoteHeli.type, G.remoteHeli.x, G.remoteHeli.y, G.remoteHeli.z,
-                G.remoteHeli.angle, G.remoteHeli.tilt, G.remoteHeli.roll, G.remoteHeli.rotationPos,
-                camX, camY,
+                G.remoteHeli.type,
+                G.remoteHeli.x,
+                G.remoteHeli.y,
+                G.remoteHeli.z,
+                G.remoteHeli.angle,
+                G.remoteHeli.tilt,
+                G.remoteHeli.roll,
+                G.remoteHeli.rotationPos,
+                camX,
+                camY,
                 { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER) }
             );
         }
@@ -684,55 +708,68 @@ const drawScene = () => {
     // ground persons drawn before world objects for correct depth order
     if (!zstate.crashed) drawPayloadObjects(false);
 
-    drawWorldObjects(camX, camY, _visMargin, !zstate.crashed ? {
-        x: G.heli.x,
-        y: G.heli.y,
-        fn: (cx, cy) => {
-            // ropes, payload figures + rescuer all BEFORE heli — heli always on top
-            drawPayloadObjects(true, true);
-            drawPayloadObjects(true, false);
+    drawWorldObjects(
+        camX,
+        camY,
+        _visMargin,
+        !zstate.crashed
+            ? {
+                  x: G.heli.x,
+                  y: G.heli.y,
+                  fn: (cx, cy) => {
+                      // ropes, payload figures + rescuer all BEFORE heli — heli always on top
+                      drawPayloadObjects(true, true);
+                      drawPayloadObjects(true, false);
 
-            // winch line (only when extended and nothing hanging)
-            if (!G.activePayload && G.heli.winch > 0.05) {
-                const rs = G.rescuerSwing;
-                const winchTipZ = Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
-                const hP = iso(G.heli.x, G.heli.y, G.heli.z, cx, cy, { stepH, tileW, tileH, canvas });
-                const wP = iso(rs.x, rs.y, winchTipZ, cx, cy, { stepH, tileW, tileH, canvas });
-                ctx.strokeStyle = '#bbb';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                ctx.moveTo(hP.x, hP.y);
-                ctx.lineTo(wP.x, wP.y);
-                ctx.stroke();
-            }
-            // rescuer at winch tip drawn BEFORE heli (appears behind heli body)
-            if (G.heli.winch > 0.3) {
-                const rs = G.rescuerSwing;
-                const winchTipZ = G.activePayload
-                    ? G.activePayload.z +
-                      (G.activePayload.type === PAYLOAD.PERSON || G.activePayload.type === PAYLOAD.RESCUER ? 0.35 : 0)
-                    : Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
-                drawPerson(
-                    rs.x, rs.y, winchTipZ, 0, false, cx, cy,
-                    PAYLOAD.RESCUER,
-                    undefined
-                );
-            }
+                      // winch line (only when extended and nothing hanging)
+                      if (!G.activePayload && G.heli.winch > 0.05) {
+                          const rs = G.rescuerSwing;
+                          const winchTipZ = Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
+                          const hP = iso(G.heli.x, G.heli.y, G.heli.z, cx, cy, { stepH, tileW, tileH, canvas });
+                          const wP = iso(rs.x, rs.y, winchTipZ, cx, cy, { stepH, tileW, tileH, canvas });
+                          ctx.strokeStyle = '#bbb';
+                          ctx.lineWidth = 1;
+                          ctx.beginPath();
+                          ctx.moveTo(hP.x, hP.y);
+                          ctx.lineTo(wP.x, wP.y);
+                          ctx.stroke();
+                      }
+                      // rescuer at winch tip drawn BEFORE heli (appears behind heli body)
+                      if (G.heli.winch > 0.3) {
+                          const rs = G.rescuerSwing;
+                          const winchTipZ = G.activePayload
+                              ? G.activePayload.z +
+                                (G.activePayload.type === PAYLOAD.PERSON || G.activePayload.type === PAYLOAD.RESCUER
+                                    ? 0.35
+                                    : 0)
+                              : Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
+                          drawPerson(rs.x, rs.y, winchTipZ, 0, false, cx, cy, PAYLOAD.RESCUER, undefined);
+                      }
 
-            drawHeli(
-                G.heli.type, G.heli.x, G.heli.y, G.heli.z,
-                G.heli.angle, G.heli.tilt, G.heli.roll, G.heli.rotationPos,
-                cx, cy,
-                {
-                    shadowGetGround: (x, y) => getGround(x, y),
-                    flapRate: _flapRate,
-                    tailRotorRate: 1.0 + Math.abs(G.heli.roll) * 4,
-                }
-            );
+                      drawHeli(
+                          G.heli.type,
+                          G.heli.x,
+                          G.heli.y,
+                          G.heli.z,
+                          G.heli.angle,
+                          G.heli.tilt,
+                          G.heli.roll,
+                          G.heli.rotationPos,
+                          cx,
+                          cy,
+                          {
+                              shadowGetGround: (x, y) => getGround(x, y),
+                              flapRate: _flapRate,
+                              tailRotorRate: 1.0 + Math.abs(G.heli.roll) * 4,
+                          }
+                      );
 
-            if (!_IS_APP) mpRenderRemoteHeli(ctx, cx, cy, drawHeli, isoFn);
-        },
-    } : undefined, (cx, cy) => drawTrees(cx, cy, rx, ry));
+                      if (!_IS_APP) mpRenderRemoteHeli(ctx, cx, cy, drawHeli, isoFn);
+                  },
+              }
+            : undefined,
+        (cx, cy) => drawTrees(cx, cy, rx, ry)
+    );
 
     updateNpcHelis(dt);
 
@@ -814,7 +851,7 @@ const drawScene = () => {
     updateHeliSound(G.heli.rotorRPM, G.heli.engineOn, G.heli.type, Math.hypot(G.wind.x, G.wind.y), _flapRate);
     if (isTutorialRunning()) tutorialTick(G);
     _rafId = requestAnimationFrame(drawScene);
-}
+};
 
 // ─── collision boxes ─────────────────────────────────────────────────────────
 let showCollisionBoxes = false;
@@ -835,11 +872,11 @@ const toMainMenu = () => {
     soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
     HeliSelect.animMainMenuBg();
     startMenuParticles();
-}
+};
 
 const backFromHeliSelect = () => {
     _openMissionSelect();
-}
+};
 
 let _rafId = 0;
 
@@ -926,7 +963,6 @@ let _missionStartTime = 0;
 let _briefingActive = false;
 let _unlockSeq = '';
 
-
 const _isKeyAllowed = (code: string): boolean => {
     const allowed = getAllowedKeys();
     return allowed === null || allowed.has(code);
@@ -959,29 +995,11 @@ document.addEventListener('dragstart', e => e.preventDefault());
 document.addEventListener('contextmenu', e => e.preventDefault());
 document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
 const _resizeCanvas = () => {
-    if (_IS_APP) {
-        // App bundle only: phone 2.0×, tablet (≥768px short-side) 2.5× upscale — landscape-safe
-        //const scale = Math.min(screen.width, screen.height) >= 768 ? 2.5 : 2.8;
-        const scale = 2;
-        canvas.width = Math.round(window.innerWidth / scale);
-        canvas.height = Math.round(window.innerHeight / scale);
-        canvas.style.width = window.innerWidth + 'px';
-        canvas.style.height = window.innerHeight + 'px';
-    } else {
-        // Webapp only: mobile 1.6× upscale for performance, desktop 1×
-        const isMobile = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-        if (isMobile) {
-            canvas.width = Math.round(window.innerWidth / 0.8 / 2);
-            canvas.height = Math.round(window.innerHeight / 0.8 / 2);
-            canvas.style.width = window.innerWidth + 'px';
-            canvas.style.height = window.innerHeight + 'px';
-        } else {
-            canvas.width = Math.round(window.innerWidth * gameRenderScale);
-            canvas.height = Math.round(window.innerHeight * gameRenderScale);
-            canvas.style.width = window.innerWidth + 'px';
-            canvas.style.height = window.innerHeight + 'px';
-        }
-    }
+    const scale = 2;
+    canvas.width = Math.round(window.innerWidth / scale);
+    canvas.height = Math.round(window.innerHeight / scale);
+    canvas.style.width = window.innerWidth + 'px';
+    canvas.style.height = window.innerHeight + 'px';
 };
 window.addEventListener('resize', _resizeCanvas);
 _resizeCanvas();
@@ -992,14 +1010,11 @@ const setTouchVisible = (v: boolean) => {
     if (!_isTouchDevice()) return;
     const touchEl = document.getElementById('touch-controls');
     if (touchEl) touchEl.style.display = v ? 'flex' : 'none';
-    if (!_IS_APP) {
-        const debugEl = document.getElementById('debug-toggle');
-        if (debugEl) debugEl.style.display = v ? 'block' : 'none';
-    }
 };
 
 const CTRL_MODE_KEY = 'z_ctrl_mode';
-const getControlMode = (): 'heading' | 'screen' => (storageGet(CTRL_MODE_KEY) === CTRL_MODE.SCREEN ? 'screen' : 'heading');
+const getControlMode = (): 'heading' | 'screen' =>
+    storageGet(CTRL_MODE_KEY) === CTRL_MODE.SCREEN ? 'screen' : 'heading';
 const setControlMode = (m: 'heading' | 'screen') => {
     storageSet(CTRL_MODE_KEY, m);
     TouchControls.setRightStickProfi(m === CTRL_MODE.SCREEN);
@@ -1017,9 +1032,9 @@ const _setupJoystick = (id: string, up: string, down: string, left: string, righ
     const setKeys = (dx: number, dy: number) => {
         const dead = jr * 0.18;
         const inVertSector = safeVertical && Math.abs(dy) > dead && Math.abs(dx) < Math.abs(dy) * 0.4;
-        (G.keys as Record<string, boolean>)[up]    = _isKeyAllowed(up)    && dy < -dead;
-        (G.keys as Record<string, boolean>)[down]  = _isKeyAllowed(down)  && dy > dead;
-        (G.keys as Record<string, boolean>)[left]  = _isKeyAllowed(left)  && !inVertSector && dx < -dead;
+        (G.keys as Record<string, boolean>)[up] = _isKeyAllowed(up) && dy < -dead;
+        (G.keys as Record<string, boolean>)[down] = _isKeyAllowed(down) && dy > dead;
+        (G.keys as Record<string, boolean>)[left] = _isKeyAllowed(left) && !inVertSector && dx < -dead;
         (G.keys as Record<string, boolean>)[right] = _isKeyAllowed(right) && !inVertSector && dx > dead;
     };
     el.addEventListener('pointerdown', e => {
@@ -1052,6 +1067,7 @@ const _setupJoystick = (id: string, up: string, down: string, left: string, righ
     };
     el.addEventListener('pointerup', release);
     el.addEventListener('pointercancel', release);
+    el.addEventListener('lostpointercapture', release);
 };
 
 const _setupRightJoystick = () => {
@@ -1089,10 +1105,12 @@ const _setupRightJoystick = () => {
         if (isTutorialRunning() || getControlMode() === CTRL_MODE.SCREEN) {
             const dead = jr * 0.18;
             const inVertSector = Math.abs(dy) > dead && Math.abs(dx) < Math.abs(dy) * 0.4;
-            (G.keys as Record<string, boolean>)['ArrowUp']    = _isKeyAllowed('ArrowUp')    && dy < -dead;
-            (G.keys as Record<string, boolean>)['ArrowDown']  = _isKeyAllowed('ArrowDown')  && dy > dead;
-            (G.keys as Record<string, boolean>)['ArrowLeft']  = _isKeyAllowed('ArrowLeft')  && !inVertSector && dx < -dead;
-            (G.keys as Record<string, boolean>)['ArrowRight'] = _isKeyAllowed('ArrowRight') && !inVertSector && dx > dead;
+            (G.keys as Record<string, boolean>)['ArrowUp'] = _isKeyAllowed('ArrowUp') && dy < -dead;
+            (G.keys as Record<string, boolean>)['ArrowDown'] = _isKeyAllowed('ArrowDown') && dy > dead;
+            (G.keys as Record<string, boolean>)['ArrowLeft'] =
+                _isKeyAllowed('ArrowLeft') && !inVertSector && dx < -dead;
+            (G.keys as Record<string, boolean>)['ArrowRight'] =
+                _isKeyAllowed('ArrowRight') && !inVertSector && dx > dead;
         }
     });
     const release = () => {
@@ -1109,6 +1127,7 @@ const _setupRightJoystick = () => {
     };
     el.addEventListener('pointerup', release);
     el.addEventListener('pointercancel', release);
+    el.addEventListener('lostpointercapture', release);
 
     // Heading mode: run each frame, maps stick direction relative to heli heading
     // Disabled during tutorial (tutorial always forces screen/PROFI mode)
@@ -1144,6 +1163,14 @@ const _setupRightJoystick = () => {
 
 const setupTouchControls = () => {
     if (!_isTouchDevice()) return;
+
+    // Prevent native WebKit pinch-to-zoom / loupe in WKWebView.
+    // gesturestart/change are Safari-only events that fire before the web
+    // pointer events — preventDefault() here suppresses the native recognizer.
+    document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
+    document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
+    document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+
     TouchControls.mount();
     TouchControls.setRightStickProfi(getControlMode() === CTRL_MODE.SCREEN);
     if (!_IS_APP) {
@@ -1171,6 +1198,7 @@ const setupTouchControls = () => {
         };
         btn.addEventListener('pointerup', release);
         btn.addEventListener('pointercancel', release);
+        btn.addEventListener('lostpointercapture', release);
     });
     // joysticks
     _setupJoystick('joystick-left', 'KeyW', 'KeyS', 'KeyA', 'KeyD');
@@ -1199,7 +1227,6 @@ const mountGameOverlays = () => {
     if (!_IS_APP) {
         _ensureEl('debug-toggle');
     }
-
 };
 
 const mountGameScreens = () => {
@@ -1306,7 +1333,6 @@ const _onloadPreview = !import.meta.env.DEV
               if (mission) _previewLaunch(mission);
           }
       };
-
 
 window.onload = () => {
     requestAnimationFrame(() => {

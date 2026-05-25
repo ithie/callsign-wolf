@@ -82,6 +82,7 @@ export const initPitchWheel = (setKey: (key: string, val: boolean) => void): voi
         wheel.classList.toggle('active-up', dy < -DEAD);
         wheel.classList.toggle('active-dn', dy >  DEAD);
     });
-    wheel.addEventListener('pointerup',     () => { active = false; release(); });
-    wheel.addEventListener('pointercancel', () => { active = false; release(); });
+    wheel.addEventListener('pointerup',           () => { active = false; release(); });
+    wheel.addEventListener('pointercancel',       () => { active = false; release(); });
+    wheel.addEventListener('lostpointercapture',  () => { active = false; release(); });
 };

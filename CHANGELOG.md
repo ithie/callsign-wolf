@@ -21,6 +21,12 @@
 - **`debugCollision` / `debugAltitude`** — both debug visualisation paths removed from `SceneRenderer` interface and implementation. Every frame previously branched on these flags even in production builds.
 - **Glider Easter Egg** — the `launchEasterEgg` hook and SOARING i18n keys removed. `glider.def` is kept.
 
+### Fixes
+
+- **SceneRenderer crash on iOS (lighthouse)** — scratch point buffer was sized to 16; the lighthouse base cap is a 32-gon. `_scratchPts[16+]` was `undefined`, causing a hard crash on first scene render. Buffer increased to 64.
+- **Right stick stays stuck** — `pointerup`/`pointercancel` are occasionally swallowed by iOS when a touch is interrupted by a system gesture or notification. Added `lostpointercapture` listener to all input elements (left stick, right stick, pitch wheel, touch buttons); this event fires unconditionally whenever pointer capture is released for any reason.
+- **Pinch-to-zoom / loupe in WKWebView** — the native WebKit gesture recognizer can fire before web pointer events, bypassing `touch-action: none`. Fixed by intercepting `gesturestart` and `gesturechange` (Safari-specific events) with `preventDefault()`, and blocking multi-touch `touchmove` at the document level.
+
 ### Technical
 
 - `IsoFn` type updated: `(wx, wy, wz, camX, camY, out?) => { x: number; y: number }`.
