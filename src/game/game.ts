@@ -638,6 +638,7 @@ const drawScene = () => {
 
     if (!zstate.gameStarted) return;
     if (!zstate.crashed && !_briefingActive) updatePhysics(dt, _physicsCtx);
+    if (!zstate.gameStarted) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const tx = (G.heli.x - G.heli.y) * (tileW / 2);
@@ -722,7 +723,8 @@ const drawScene = () => {
                       drawPayloadObjects(true, false);
 
                       // winch line (only when extended and nothing hanging)
-                      if (!G.activePayload && G.heli.winch > 0.05) {
+                      if (!G.activePayload && G.heli.winch > 0.05 &&
+                          Math.hypot(G.rescuerSwing.x - G.heli.x, G.rescuerSwing.y - G.heli.y) <= G.heli.winch + 3) {
                           const rs = G.rescuerSwing;
                           const winchTipZ = Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
                           const hP = iso(G.heli.x, G.heli.y, G.heli.z, cx, cy, { stepH, tileW, tileH, canvas });
@@ -1020,7 +1022,7 @@ const setControlMode = (m: 'heading' | 'screen') => {
     TouchControls.setRightStickProfi(m === CTRL_MODE.SCREEN);
 };
 
-const _setupJoystick = (id: string, up: string, down: string, left: string, right: string, safeVertical = false) => {
+const _setupJoystick = (id: string, up: string, down: string, left: string, right: string) => {
     const el = document.getElementById(id);
     if (!el) return;
     const knob = el.querySelector('.joystick-knob') as HTMLElement;
@@ -1031,11 +1033,12 @@ const _setupJoystick = (id: string, up: string, down: string, left: string, righ
         jr = 0;
     const setKeys = (dx: number, dy: number) => {
         const dead = jr * 0.18;
-        const inVertSector = safeVertical && Math.abs(dy) > dead && Math.abs(dx) < Math.abs(dy) * 0.4;
-        (G.keys as Record<string, boolean>)[up] = _isKeyAllowed(up) && dy < -dead;
-        (G.keys as Record<string, boolean>)[down] = _isKeyAllowed(down) && dy > dead;
-        (G.keys as Record<string, boolean>)[left] = _isKeyAllowed(left) && !inVertSector && dx < -dead;
-        (G.keys as Record<string, boolean>)[right] = _isKeyAllowed(right) && !inVertSector && dx > dead;
+        // Hard 4-sector: |dx| >= |dy| → strafe, else forward/back. No diagonal.
+        const isH = Math.abs(dx) >= Math.abs(dy);
+        (G.keys as Record<string, boolean>)[up]    = _isKeyAllowed(up)    && !isH && dy < -dead;
+        (G.keys as Record<string, boolean>)[down]  = _isKeyAllowed(down)  && !isH && dy > dead;
+        (G.keys as Record<string, boolean>)[left]  = _isKeyAllowed(left)  &&  isH && dx < -dead;
+        (G.keys as Record<string, boolean>)[right] = _isKeyAllowed(right) &&  isH && dx > dead;
     };
     el.addEventListener('pointerdown', e => {
         e.preventDefault();
@@ -1103,14 +1106,11 @@ const _setupRightJoystick = () => {
         _stickDx = dx;
         _stickDy = dy;
         if (isTutorialRunning() || getControlMode() === CTRL_MODE.SCREEN) {
-            const dead = jr * 0.18;
-            const inVertSector = Math.abs(dy) > dead && Math.abs(dx) < Math.abs(dy) * 0.4;
-            (G.keys as Record<string, boolean>)['ArrowUp'] = _isKeyAllowed('ArrowUp') && dy < -dead;
-            (G.keys as Record<string, boolean>)['ArrowDown'] = _isKeyAllowed('ArrowDown') && dy > dead;
-            (G.keys as Record<string, boolean>)['ArrowLeft'] =
-                _isKeyAllowed('ArrowLeft') && !inVertSector && dx < -dead;
-            (G.keys as Record<string, boolean>)['ArrowRight'] =
-                _isKeyAllowed('ArrowRight') && !inVertSector && dx > dead;
+            const axisThreshold = jr * 0.35;
+            (G.keys as Record<string, boolean>)['ArrowUp']    = _isKeyAllowed('ArrowUp')    && dy < -axisThreshold;
+            (G.keys as Record<string, boolean>)['ArrowDown']  = _isKeyAllowed('ArrowDown')  && dy >  axisThreshold;
+            (G.keys as Record<string, boolean>)['ArrowLeft']  = _isKeyAllowed('ArrowLeft')  && dx < -axisThreshold;
+            (G.keys as Record<string, boolean>)['ArrowRight'] = _isKeyAllowed('ArrowRight') && dx >  axisThreshold;
         }
     });
     const release = () => {

@@ -1,5 +1,21 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.1.0 — Controls, UI & Winch Fixes
+
+### Changed
+
+- **Right stick (PROFI mode): combined steering + acceleration** — replaced hard sector lock with independent per-axis thresholds (35 % of radius). Full diagonal input fires both simultaneously; small deflections along one axis do not activate the other. Matches keyboard feel where Forward + Left can be held at the same time.
+- **Mission briefing panel narrower and vertically centered** — `max-width` reduced from 700 px to 520 px; `align-items: center` replaces `flex-end` so the text box expands symmetrically from its vertical midpoint as content grows.
+- **Hangar overlay: new column proportions** — ratio changed to 38 % | 30 % | 32 % (was 33/33/33); heli canvas scale reduced from 2.2× to 1.7× to prevent clipping; stats column gets `box-sizing: border-box` and `padding-right: env(safe-area-inset-right)` for Dynamic Island in landscape.
+
+### Fixes
+
+- **Game canvas visible after mission end** — `drawScene` continued rendering after `updatePhysics()` even when a physics callback (`missionComplete` / `triggerCrash`) had set `gameStarted = false` mid-frame. Added a guard immediately after `updatePhysics` to abort the render pass in that case. Also fixes the same artifact on crash.
+- **Winch rope freezes in place (free winch)** — `rescuerSwing` was not updated when `winch` was between 0.1 and 0.3 (physics dead zone), causing the rope to stay at a fixed world position while the helicopter moved. Dead zone closed: snap-to-heli now applies for `winch ≤ 0.3` instead of only `winch ≤ 0.1`.
+- **Winch rope too long with person attached** — rope draw guard only checked 2D distance (x/y). Transient z discrepancies (e.g. immediately after pickup) could still produce an oversized rope. Guard extended to full 3D distance (`Math.hypot(dx, dy, dz)`).
+
+---
+
 ## v28.0.0 — Render Performance Overhaul & Dead Code Removal
 
 ### Performance

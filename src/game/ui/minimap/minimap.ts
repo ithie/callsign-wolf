@@ -125,6 +125,8 @@ export const updateMinimap = (data: MinimapData): void => {
         _carrier.style.display = 'none';
     }
 
+
+
     // vision cone
     if (_overlayCtx) {
         const octx = _overlayCtx;
@@ -150,14 +152,15 @@ export const updateMinimap = (data: MinimapData): void => {
 
     let dotIdx = 0;
 
-    // Ziel-Objekte: Submarines blau; andere Vessels (Boote) grau
+    // Ziel-Objekte: Submarines + Carrier weiß (8px); andere Vessels (Boote) grau (6px)
     data.vessels.forEach(v => {
         const dot = _getDot(dotIdx++);
         dot.style.left       = `${v.x * sc}px`;
         dot.style.top        = `${v.y * sc}px`;
-        dot.style.background = v.type === 'submarine' ? '#44aaff' : '#888';
-        dot.style.width      = '6px';
-        dot.style.height     = '6px';
+        const isTarget = v.type === 'submarine' || v.type === 'carrier';
+        dot.style.background = isTarget ? '#fff' : '#888';
+        dot.style.width      = isTarget ? '8px' : '6px';
+        dot.style.height     = isTarget ? '8px' : '6px';
         dot.style.display    = 'block';
     });
 

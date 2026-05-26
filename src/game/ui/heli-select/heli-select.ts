@@ -57,7 +57,7 @@ let _activeHeliId: string | null = null;
 let _rotorPos = 0;
 let _overlayAngle = 0;
 
-const OVERLAY_SCALE_RATIO = 2.2;
+const OVERLAY_SCALE_RATIO = 1.7;
 
 const _heliPreviewLoop = () => {
     if (document.getElementById('heli-select')!.style.display === 'none') {

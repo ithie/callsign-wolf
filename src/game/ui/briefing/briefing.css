@@ -14,10 +14,10 @@
 #briefing-panel {
     display: flex;
     flex-direction: row;
-    align-items: flex-end;
+    align-items: center;
     gap: 20px;
     padding: 0 24px;
-    max-width: 700px;
+    max-width: 520px;
     width: 100%;
     box-sizing: border-box;
 }
@@ -33,11 +33,11 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 7px;
     background: rgba(2, 8, 2, 0.94);
     border: 1px solid #1a1a1a;
     border-left: 2px solid #ff6600;
-    padding: 18px 22px;
+    padding: 13px 18px;
     box-shadow: -6px 6px 30px rgba(0, 0, 0, 0.8);
     min-width: 0;
 }
@@ -50,7 +50,7 @@
 }
 
 #briefing-headline {
-    font-size: 22px;
+    font-size: 19px;
     color: #ff6600;
     text-shadow: 0 0 10px #ff6600;
     font-weight: bold;

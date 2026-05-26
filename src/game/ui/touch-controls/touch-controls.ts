@@ -26,8 +26,9 @@ export const mount = (): void => {
                 </div>
             </div>
             <div class="joystick" id="joystick-left">
-                <span class="js-n">W</span><span class="js-s">S</span>
-                <span class="js-w">A</span><span class="js-e">D</span>
+                <div class="js-safe-zone"></div>
+                <span class="js-n">▲</span><span class="js-s">▼</span>
+                <span class="js-w">◀</span><span class="js-e">▶</span>
                 <div class="joystick-knob"></div>
             </div>
         </div>

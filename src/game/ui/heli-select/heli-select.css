@@ -45,11 +45,11 @@
 
 /* Column 1: animated heli canvas — overflows into text column, sits below text */
 .heli-overlay-canvas-wrap {
-    flex: 1;
+    flex: 0 0 38%;
     min-width: 0;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-end;
     cursor: pointer;
     overflow: visible;
     position: relative;
@@ -57,7 +57,7 @@
 }
 
 .heli-overlay-canvas {
-    width: 140%;
+    width: 110%;
     max-width: 360px;
     aspect-ratio: 360 / 280;
     display: block;
@@ -66,13 +66,14 @@
 
 /* Column 2: description text — sits above overflowing canvas */
 .heli-overlay-text {
-    flex: 1;
+    flex: 0 0 30%;
     min-width: 0;
+    box-sizing: border-box;
     display: flex;
     align-items: center;
     padding: 20px 24px;
     font-size: 13px;
-    color: #777;
+    color: #aaa;
     line-height: 1.8;
     cursor: pointer;
     border-left: 1px solid #1a1a1a;
@@ -82,7 +83,7 @@
 
 /* Column 3: stat bars + button */
 .heli-overlay-stats {
-    flex: 1;
+    flex: 0 0 32%;
     min-width: 0;
     background: rgba(0, 20, 8, 0.97);
     border-left: 1px solid #ff6600;
@@ -91,7 +92,8 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 16px 14px;
+    padding: 14px;
+    padding-right: max(14px, env(safe-area-inset-right, 0px));
     box-sizing: border-box;
     position: relative;
     z-index: 1;
@@ -108,7 +110,7 @@
 
 .heli-stat-label {
     letter-spacing: 1px;
-    color: #888;
+    color: #aaa;
     width: 72px;
     flex-shrink: 0;
     text-align: left;

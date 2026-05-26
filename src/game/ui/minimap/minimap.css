@@ -14,16 +14,19 @@
 
 #minimap-pad {
     position: absolute;
-    background: rgba(50, 120, 255, 0.45);
+    background: rgba(255, 255, 255, 0.18);
+    border: 1.5px solid rgba(255, 255, 255, 0.75);
+    min-width: 7px;
+    min-height: 7px;
     display: none;
 }
 
 #minimap-carrier {
     position: absolute;
-    width: 6px;
-    height: 6px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    background: #6af;
+    background: #fff;
     transform: translate(-50%, -50%);
     display: none;
 }

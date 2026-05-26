@@ -273,7 +273,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
             rs.vx += ax * dt; rs.vy += ay * dt;
             rs.x += rs.vx * dt; rs.y += rs.vy * dt;
             rs.vx *= Math.pow(damping, dt); rs.vy *= Math.pow(damping, dt);
-        } else if (G.heli.winch <= 0.1) {
+        } else {
             G.rescuerSwing.x = G.heli.x; G.rescuerSwing.y = G.heli.y;
             G.rescuerSwing.vx = 0; G.rescuerSwing.vy = 0;
         }

@@ -418,6 +418,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
 
             if (ropeOnly) {
                 if (!payload.hanging || G.heli.winch < 0.4) return;
+                if (Math.hypot(payload.x - G.heli.x, payload.y - G.heli.y, payload.z - G.heli.z) > G.heli.winch + 3) return;
                 const hPos = isoFn(G.heli.x, G.heli.y, G.heli.z, cam.x, cam.y);
                 const pp = isoFn(payload.x, payload.y, payload.z, cam.x, cam.y);
                 ctx.strokeStyle = '#aaa';

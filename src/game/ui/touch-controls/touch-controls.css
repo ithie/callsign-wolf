@@ -264,9 +264,10 @@
         inset 0 0 12px rgba(255, 102, 0, 0.08);
 }
 
-/* ─── PROFI safe-zone overlay (right stick, screen-relative mode) ─────────── */
-/* safe zone = |dx| < |dy|*0.4 → ±21.8° from top and bottom */
-.js-safe-zone {
+/* ─── safe-zone overlays ──────────────────────────────────────────────────── */
+
+/* Right stick (PROFI / screen-relative): highlights the ±21.8° vertical safe zone */
+#joystick-right .js-safe-zone {
     position: absolute;
     inset: 0;
     border-radius: 50%;
@@ -287,8 +288,29 @@
         rgba(255, 102, 0, 0.13) 360deg
     );
 }
-.joystick.profi .js-safe-zone {
+.joystick.profi #joystick-right .js-safe-zone,
+#joystick-right.profi .js-safe-zone {
     opacity: 1;
+}
+
+/* Left stick: always shows equal 4-sector dividers (45° boundaries) */
+#joystick-left .js-safe-zone {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    pointer-events: none;
+    opacity: 1;
+    background: conic-gradient(
+        from 45deg at center,
+        rgba(255, 102, 0, 0.10)   0deg,
+        rgba(255, 102, 0, 0.10)  90deg,
+        rgba(255, 102, 0, 0.04)  90deg,
+        rgba(255, 102, 0, 0.04) 180deg,
+        rgba(255, 102, 0, 0.10) 180deg,
+        rgba(255, 102, 0, 0.10) 270deg,
+        rgba(255, 102, 0, 0.04) 270deg,
+        rgba(255, 102, 0, 0.04) 360deg
+    );
 }
 
 /* ── Tutorial highlight (touch devices only) ─────────────────────────────── */
