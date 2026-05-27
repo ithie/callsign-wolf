@@ -500,20 +500,4 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
         else if (G.heli.vz < -0.15) ctx.triggerCrash();
     }
 
-    // ── Heli-Heli collision (Multiplayer) ────────────────────────────────────
-    if (G.remoteHeli) {
-        const dx = G.heli.x - G.remoteHeli.x;
-        const dy = G.heli.y - G.remoteHeli.y;
-        const dist = Math.sqrt(dx * dx + dy * dy + Math.pow((G.heli.z - G.remoteHeli.z) * 0.5, 2));
-        const COLLISION_RADIUS = 1.4;
-        if (dist < COLLISION_RADIUS && dist > 0.001) {
-            const closingSpeed = Math.hypot(G.heli.vx - G.remoteHeli.vx, G.heli.vy - G.remoteHeli.vy);
-            if (closingSpeed > 0.08) {
-                ctx.triggerCrash();
-            } else {
-                G.heli.vx += (dx / dist) * 0.04 * dt;
-                G.heli.vy += (dy / dist) * 0.04 * dt;
-            }
-        }
-    }
 }

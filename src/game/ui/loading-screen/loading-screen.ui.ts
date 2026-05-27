@@ -7,6 +7,3 @@ export const LadeKampagne = () => {
     setTimeout(() => h.step('Fertig', 1.0), 1200);
 };
 
-export const LadeMultiplayer = () => {
-    show('Verbindung zum Multiplayer-Server wird hergestellt…');
-};

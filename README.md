@@ -81,18 +81,7 @@ Produces a self-contained `dist/index.html` with all JS and CSS inlined.
 VITE_TARGET=app npm run build
 ```
 
-Produces a single-file bundle without WebRTC/multiplayer and the What's New overlay — suitable for wrapping in a WKWebView (Capacitor). Network-sensitive modules are replaced by no-op stubs at build time via Vite aliases; no runtime `if`-guards exist in the source.
-
-| Stubbed module                    | Replaced by         |
-| --------------------------------- | ------------------- |
-| `src/game/multiplayer/mp-state`   | `mp-stub.ts`        |
-| `src/game/multiplayer/sync`       | `mp-stub.ts`        |
-| `src/game/multiplayer/mp-mission` | `mp-stub.ts`        |
-| `src/game/ui/mp-lobby/mp-lobby`   | `mp-stub.ts`        |
-| `src/game/mp-game`                | `mp-game-stub.ts`   |
-| `src/game/ui/whats-new/whats-new` | `whats-new-stub.ts` |
-
-A `Content-Security-Policy` header (`default-src 'self' 'unsafe-inline' data:; media-src *;`) is injected into `index.html` automatically for the app build.
+Produces a single-file bundle suitable for wrapping in a WKWebView (Capacitor). A `Content-Security-Policy` header (`default-src 'self' 'unsafe-inline' data:; media-src *;`) is injected into `index.html` automatically for the app build.
 
 ### Tests
 

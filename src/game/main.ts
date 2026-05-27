@@ -2,9 +2,6 @@ import { CampaignExport, MissionData } from '@/shared/types';
 import Tutorial from './campaigns/tutorial.zcampaign';
 import FreeFlight from './campaigns/freeFlight.zcampaign';
 import CallsignWolf from './campaigns/callsignwolf.zcampaign';
-import { MP_DEMO_CAMPAIGN } from './multiplayer/mp-mission';
-
-const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
 import SoundAnothermenu from './music/anothermenu.zsong';
@@ -70,7 +67,6 @@ const createCampaignHandler = () => {
     const campaigns: CampaignExport[] = [
         Tutorial as unknown as CampaignExport,
         FreeFlight as unknown as CampaignExport,
-        ...(!_IS_APP ? [MP_DEMO_CAMPAIGN] : []), // index 4 (web) / 4 (app) – matches MP_CAMPAIGN_INDEX in mp-mission.ts
         CallsignWolf as unknown as CampaignExport,
     ];
 

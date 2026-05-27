@@ -5,12 +5,9 @@ import { showScreen } from '../nav';
 import { mountScreenShell } from '../screen-shell/screen-shell';
 import { playSfx } from '../../heli-sound';
 
-const _IS_APP = import.meta.env.VITE_TARGET === 'app';
-
 type MainMenuCallbacks = {
     onSplashClick: () => void;
     onStart: () => void;
-    onMultiplayer?: () => void;
     onSettings: () => void;
     onCredits: () => void;
     onLegal: () => void;
@@ -112,7 +109,6 @@ export const mount = (cb: MainMenuCallbacks) => {
     menuBody.innerHTML = `
         <nav class="menu-nav">
             <div class="menu-item" id="menu-item-start">${I18N.MENU_START}</div>
-            ${!_IS_APP && cb.onMultiplayer ? `<div class="menu-item" id="menu-item-multiplayer">${I18N.MENU_MULTIPLAYER}</div>` : ''}
             <div class="menu-item" id="menu-item-settings">${I18N.MENU_SETTINGS}</div>
             <div class="menu-item" id="menu-item-credits">${I18N.MENU_CREDITS}</div>
         </nav>
@@ -139,7 +135,6 @@ export const mount = (cb: MainMenuCallbacks) => {
     }
 
     document.getElementById('menu-item-start')!.addEventListener('click', cb.onStart);
-    if (!_IS_APP) document.getElementById('menu-item-multiplayer')?.addEventListener('click', cb.onMultiplayer!);
     document.getElementById('menu-item-settings')!.addEventListener('click', cb.onSettings);
     document.getElementById('menu-item-credits')!.addEventListener('click', cb.onCredits);
     document.getElementById('menu-item-legal')!.addEventListener('click', cb.onLegal);

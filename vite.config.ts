@@ -50,8 +50,6 @@ const { version } = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 
 
 const isApp = process.env.VITE_TARGET === 'app';
 
-const mpStub = resolve(__dirname, 'src/game/multiplayer/mp-stub.ts');
-const mpGameStub = resolve(__dirname, 'src/game/mp-game-stub.ts');
 const storageWebStub = resolve(__dirname, 'src/game/storage-stub.ts');
 
 const injectAppCsp = (): Plugin => ({
@@ -69,17 +67,9 @@ export default defineConfig(({ command }) => {
         resolve: {
             alias: {
                 '@': resolve(__dirname, 'src'),
-                ...(isApp
-                    ? {
-                          [resolve(__dirname, 'src/game/multiplayer/mp-state')]: mpStub,
-                          [resolve(__dirname, 'src/game/multiplayer/sync')]: mpStub,
-                          [resolve(__dirname, 'src/game/multiplayer/mp-mission')]: mpStub,
-                          [resolve(__dirname, 'src/game/ui/mp-lobby/mp-lobby.ui')]: mpStub,
-                          [resolve(__dirname, 'src/game/mp-game')]: mpGameStub,
-                      }
-                    : {
-                          [resolve(__dirname, 'src/game/storage')]: storageWebStub,
-                      }),
+                ...(!isApp
+                    ? { [resolve(__dirname, 'src/game/storage')]: storageWebStub }
+                    : {}),
             },
         },
         base: isApp ? './' : command === 'build' ? '/callsign-wolf/' : '/',

@@ -24,7 +24,6 @@ const _DATENSCHUTZ_EN = [
 /** App-version privacy text — used by the ?imprint page (App Store link) for both DE and EN. */
 export const LEGAL_DATENSCHUTZ_IMPRINT = { de: _DATENSCHUTZ_DE, en: _DATENSCHUTZ_EN };
 
-const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
 import { storageGet, storageSet } from './storage';
 
@@ -50,39 +49,12 @@ const _DE = {
     DROP_AT_PAD: 'AM LANDEPLATZ ABLEGEN!',
     SECURED: (rescued: number, total: number) => `GESICHERT: ${rescued}/${total}`,
 
-    ...(!_IS_APP ? { UNLOCK_ALL: '🔓 ALL CAMPAIGNS UNLOCKED' } : {}),
-
     SPLASH_TITLE: 'SAR: CALLSIGN WOLF',
     SPLASH_HINT: 'KLICKEN ZUM STARTEN',
 
     MENU_TITLE: 'SAR: CALLSIGN WOLF',
     MENU_SUBTITLE: 'MAIN SYSTEM',
     MENU_START: 'SPIEL STARTEN',
-    ...(!_IS_APP
-        ? {
-              MENU_MULTIPLAYER: 'MULTIPLAYER',
-              MP_SUBTITLE: 'KOOP-EINSATZ',
-              MP_CREATE: 'SPIEL ERSTELLEN',
-              MP_JOIN: 'BEITRETEN',
-              MP_GENERATING: 'GENERIERE...',
-              MP_WAIT_ANSWER: 'WARTE AUF ANTWORT...',
-              MP_WAIT_CONNECT: 'WARTE AUF VERBINDUNG...',
-              MP_CONNECTING: 'VERBINDE...',
-              MP_CONNECTED: 'VERBUNDEN',
-              MP_ERROR: 'FEHLER – BITTE ERNEUT VERSUCHEN',
-              MP_READY_PROMPT: 'BEREIT ZUM EINSATZ?',
-              MP_READY_BTN: 'BEREIT',
-              MP_WAIT_READY: 'WARTE AUF MITSPIELER...',
-              MP_COPY: 'KOPIEREN',
-              MP_CONNECT: 'VERBINDEN',
-              MP_GEN_ANSWER: 'ANTWORT GENERIEREN',
-              MP_STEP1_HOST: 'Schritt 1: Diesen Code an deinen Mitspieler senden:',
-              MP_STEP2_HOST: 'Schritt 2: Antwort des Mitspielers einfügen:',
-              MP_STEP1_GUEST: 'Code des Gastgebers einfügen:',
-              MP_STEP2_GUEST: 'Diesen Code an den Gastgeber senden:',
-              MP_PASTE_HINT: 'Code hier einfügen…',
-          }
-        : {}),
     MENU_HELI: 'HELIKOPTER',
     MENU_SETTINGS: 'EINSTELLUNGEN',
     MENU_CREDITS: 'CREDITS',
@@ -228,39 +200,12 @@ const _EN = {
     DROP_AT_PAD: 'DROP AT LANDING PAD!',
     SECURED: (rescued: number, total: number) => `SECURED: ${rescued}/${total}`,
 
-    ...(!_IS_APP ? { UNLOCK_ALL: '🔓 ALL CAMPAIGNS UNLOCKED' } : {}),
-
     SPLASH_TITLE: 'SAR: CALLSIGN WOLF',
     SPLASH_HINT: 'CLICK TO START',
 
     MENU_TITLE: 'SAR: CALLSIGN WOLF',
     MENU_SUBTITLE: 'MAIN SYSTEM',
     MENU_START: 'START GAME',
-    ...(!_IS_APP
-        ? {
-              MENU_MULTIPLAYER: 'MULTIPLAYER',
-              MP_SUBTITLE: 'CO-OP MISSION',
-              MP_CREATE: 'CREATE GAME',
-              MP_JOIN: 'JOIN',
-              MP_GENERATING: 'GENERATING...',
-              MP_WAIT_ANSWER: 'WAITING FOR ANSWER...',
-              MP_WAIT_CONNECT: 'WAITING FOR CONNECTION...',
-              MP_CONNECTING: 'CONNECTING...',
-              MP_CONNECTED: 'CONNECTED',
-              MP_ERROR: 'ERROR – PLEASE TRY AGAIN',
-              MP_READY_PROMPT: 'READY FOR DEPLOYMENT?',
-              MP_READY_BTN: 'READY',
-              MP_WAIT_READY: 'WAITING FOR OTHER PLAYER...',
-              MP_COPY: 'COPY',
-              MP_CONNECT: 'CONNECT',
-              MP_GEN_ANSWER: 'GENERATE ANSWER',
-              MP_STEP1_HOST: 'Step 1: Send this code to your co-pilot:',
-              MP_STEP2_HOST: "Step 2: Paste your co-pilot's answer:",
-              MP_STEP1_GUEST: "Paste the host's code:",
-              MP_STEP2_GUEST: 'Send this code to the host:',
-              MP_PASTE_HINT: 'Paste code here…',
-          }
-        : {}),
     MENU_HELI: 'HELICOPTER',
     MENU_SETTINGS: 'SETTINGS',
     MENU_CREDITS: 'CREDITS',

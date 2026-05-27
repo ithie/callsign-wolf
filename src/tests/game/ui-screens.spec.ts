@@ -11,10 +11,6 @@ vi.mock('../../game/main', () => ({
     zinit: vi.fn(),
 }));
 
-vi.mock('../../game/multiplayer/rtc', () => ({
-    createRTCPeer: vi.fn(() => ({ destroy: vi.fn() })),
-}));
-
 vi.mock('../../game/render', () => ({
     iso: vi.fn(() => ({ x: 0, y: 0 })),
 }));
@@ -26,7 +22,6 @@ import * as Briefing from '../../game/ui/briefing/briefing';
 import * as Settings from '../../game/ui/settings/settings';
 import * as Rankup from '../../game/ui/rankup/rankup';
 import * as CreditsScreen from '../../game/ui/credits-screen/credits-screen';
-import * as MpLobby from '../../game/ui/mp-lobby/mp-lobby';
 import type { PlayerSession } from '../../game/session';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -56,7 +51,6 @@ const mockSettingsDeps = () => ({
 
 const noopCallbacks = {
     onStart: vi.fn(),
-    onMultiplayer: vi.fn(),
     onSettings: vi.fn(),
     onCredits: vi.fn(),
     onLegal: vi.fn(),
@@ -95,8 +89,4 @@ describe('UI screen snapshots', () => {
         snap('credits-screen');
     });
 
-    it('mp-lobby-screen', () => {
-        MpLobby.mount();
-        snap('mp-lobby-screen');
-    });
 });

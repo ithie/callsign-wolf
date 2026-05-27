@@ -50,7 +50,6 @@ export type VesselPath = typeof VESSEL_PATH[keyof typeof VESSEL_PATH];
 export const CAMPAIGN_TYPE = {
     TUTORIAL:    'tutorial',
     FREE_FLIGHT: 'free-flight',
-    MULTIPLAYER: 'multiplayer',
 } as const;
 export type CampaignType = typeof CAMPAIGN_TYPE[keyof typeof CAMPAIGN_TYPE];
 

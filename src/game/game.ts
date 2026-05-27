@@ -39,15 +39,6 @@ const stepH = _stepH * gameRenderScale;
 import * as CreditsScreen from './ui/credits-screen/credits-screen';
 import * as LegalScreen from './ui/legal-screen/legal-screen';
 import { startMenuParticles, stopMenuParticles } from './ui/menu-particles/menu-particles';
-import {
-    toMpLobby,
-    initMpGame,
-    mpHandleReturnToBase,
-    mpRenderRemoteHeli,
-    mpTickAndHUD,
-    mpGetMissionComplete,
-    mpGetTriggerCrash,
-} from './mp-game';
 import * as HeliSelect from './ui/heli-select/heli-select';
 import { I18N, LANG_PREF_KEY, localize, onLanguageChange, setLanguage } from './i18n';
 import * as Briefing from './ui/briefing/briefing';
@@ -244,7 +235,6 @@ const missionComplete = () => {
                 .map((c, i) => ({ type: c.type, i }))
                 .filter(
                     c =>
-                        (!_IS_APP ? c.type !== CAMPAIGN_TYPE.MULTIPLAYER : true) &&
                         c.type !== CAMPAIGN_TYPE.TUTORIAL &&
                         c.type !== CAMPAIGN_TYPE.FREE_FLIGHT
                 );
@@ -319,7 +309,6 @@ const _resetHeliState = () => {
 const returnToBase = () => {
     _stopMission();
     zstate.gameStarted = false;
-    if (!_IS_APP && mpHandleReturnToBase()) return;
     _resetHeliState();
 
     CampaignCompleteScreen.hide();
@@ -689,21 +678,6 @@ const drawScene = () => {
             camY,
             { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER), flapRate: _flapRate }
         );
-        if (G.remoteHeli) {
-            drawHeli(
-                G.remoteHeli.type,
-                G.remoteHeli.x,
-                G.remoteHeli.y,
-                G.remoteHeli.z,
-                G.remoteHeli.angle,
-                G.remoteHeli.tilt,
-                G.remoteHeli.roll,
-                G.remoteHeli.rotationPos,
-                camX,
-                camY,
-                { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER) }
-            );
-        }
     }
 
     // ground persons drawn before world objects for correct depth order
@@ -766,7 +740,6 @@ const drawScene = () => {
                           }
                       );
 
-                      if (!_IS_APP) mpRenderRemoteHeli(ctx, cx, cy, drawHeli, isoFn);
                   },
               }
             : undefined,
@@ -848,7 +821,6 @@ const drawScene = () => {
         },
     });
 
-    if (!_IS_APP) mpTickAndHUD(ctx, canvas, dt);
 
     updateHeliSound(G.heli.rotorRPM, G.heli.engineOn, G.heli.type, Math.hypot(G.wind.x, G.wind.y), _flapRate);
     if (isTutorialRunning()) tutorialTick(G);
@@ -920,7 +892,7 @@ const _physicsCtx = {
     showMsg,
     get missionComplete() {
         if (isTutorialRunning()) return () => {};
-        return !_IS_APP ? mpGetMissionComplete(missionComplete) : missionComplete;
+        return missionComplete;
     },
     get triggerCrash() {
         if (import.meta.env.DEV && new URLSearchParams(location.search).has('preview') && _previewLaunch) {
@@ -934,7 +906,7 @@ const _physicsCtx = {
                 }, 1800);
             };
         }
-        return !_IS_APP ? mpGetTriggerCrash(triggerCrash) : triggerCrash;
+        return triggerCrash;
     },
     orniWreckDelivered() {
         _session.rankOverride = RANKS.length - 1;
@@ -963,7 +935,6 @@ let _selectedCampaignIndex = 0;
 let _selectedMissionIndex = 0;
 let _missionStartTime = 0;
 let _briefingActive = false;
-let _unlockSeq = '';
 
 const _isKeyAllowed = (code: string): boolean => {
     const allowed = getAllowedKeys();
@@ -973,23 +944,6 @@ const _isKeyAllowed = (code: string): boolean => {
 window.onkeydown = e => {
     if (_isKeyAllowed(e.code)) G.keys[e.code] = true;
     if ((document.activeElement as HTMLElement)?.tagName === 'INPUT') return;
-    if (!_IS_APP) {
-        _unlockSeq = (_unlockSeq + e.key.toUpperCase()).slice(-6);
-        if (_unlockSeq === 'UNLOCK') {
-            const _campaigns = campaignHandler.getCampaigns();
-            _session.rankOverride = RANKS.length - 1;
-            _session.highestUnlockedCampaignIndex = _campaigns.length - 1;
-            _campaigns.forEach((c, i) => {
-                _session.campaignProgress[String(i)] = {
-                    completed: true,
-                    missions: c.levels.map(() => ({ completed: true, bestTimeMs: null })),
-                };
-            });
-            saveSession(_session);
-            _unlockSeq = '';
-            showMsg(I18N.UNLOCK_ALL!);
-        }
-    }
 };
 window.onkeyup = e => (G.keys[e.code] = false);
 document.addEventListener('selectstart', e => e.preventDefault());
@@ -1354,28 +1308,12 @@ window.onload = () => {
 
 const _onloadMain = () => {
     assertDom();
-    if (!_IS_APP) {
-        initMpGame({
-            cancelRaf: () => {
-                cancelAnimationFrame(_rafId);
-                _rafId = 0;
-            },
-            ctx,
-            getPlayerName: () => _session.playerName || 'WOLF',
-            setTouchVisible,
-            setSelectedCampaignIndex: (i: number) => {
-                _selectedCampaignIndex = i;
-            },
-            launchMission,
-        });
-    }
     const _mountScreens = () => {
         CreditsScreen.mount(toMainMenu);
         LegalScreen.mount(toMainMenu);
         MainMenu.mount({
             onSplashClick: toMainMenu,
             onStart: toCampaignSelect,
-            ...(!_IS_APP ? { onMultiplayer: toMpLobby } : {}),
             onSettings: Settings.show,
             onCredits: CreditsScreen.show,
             onLegal: LegalScreen.show,

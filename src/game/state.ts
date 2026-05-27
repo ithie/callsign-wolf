@@ -17,22 +17,6 @@ export interface NpcHeli {
     cruiseZ: number;
 }
 
-// ─── Remote heli (Multiplayer) ────────────────────────────────────────────────
-export interface RemoteHeli {
-    type: string;
-    x: number;
-    y: number;
-    z: number;
-    vx: number;
-    vy: number;
-    vz: number;
-    angle: number;
-    tilt: number;
-    roll: number;
-    rotorRPM: number;
-    rotationPos: number;
-    inAir: boolean;
-}
 
 const createZstate = () => {
     const state = {
@@ -132,8 +116,7 @@ export const G = {
         t: 0,
         wps: null as { lx: number; ly: number }[] | null,
     },
-    /** Remote player's heli – set when multiplayer is active, null otherwise */
-    remoteHeli: null as RemoteHeli | null,
+
 };
 
 export type GameState = typeof G;

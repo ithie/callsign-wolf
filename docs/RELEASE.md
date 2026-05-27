@@ -58,4 +58,4 @@ Nützlich für Hotfixes die sofort live sein sollen ohne einen neuen Tag anzuleg
 npm run build:app
 ```
 
-Erzeugt `dist/index.html` ohne WebRTC/Multiplayer und What's New — geeignet für iOS Bild. Siehe [README.md](../README.md#app-build-ios-app-store) für Details zu den substituierten Modulen.
+Erzeugt `dist/index.html` — geeignet für iOS Bild. Siehe [README.md](../README.md#app-build-ios-app-store) für Details.

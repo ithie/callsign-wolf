@@ -94,7 +94,6 @@ Each screen has a string ID that matches its container `<div id="...">` in `inde
 | `loading-screen.ui.ts` | `loading-screen` | Startup loader |
 | `main-menu.ui.ts` | `main-menu-screen` | Main menu |
 | `mission-select.ui.ts` | `mission-select-screen` | Mission picker |
-| `mp-lobby.ui.ts` | `mp-lobby-screen` | Multiplayer lobby (web only) |
 | `pause-overlay.ui.ts` | `pause-overlay` | In-game pause |
 | `rankup.ui.ts` | `rankup-overlay` | Rank-up overlay with animated heli model |
 | `settings.ui.ts` | `settings-screen` | Settings (controls, audio, language) |

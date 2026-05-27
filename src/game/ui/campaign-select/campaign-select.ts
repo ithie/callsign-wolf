@@ -7,7 +7,6 @@ import { mountScreenShell } from '../screen-shell/screen-shell';
 import { createSwipeCarousel } from '../swipe-carousel/swipe-carousel';
 import { addStamp } from '../box-stamp';
 
-const _IS_APP = import.meta.env.VITE_TARGET === 'app';
 
 type CampaignSelectDeps = {
     session: PlayerSession;
@@ -30,7 +29,6 @@ export const show = (deps: CampaignSelectDeps) => {
     const typePriority = (t: string) => (t === 'tutorial' ? 0 : t === 'free-flight' ? 1 : 2);
     const displayOrder: CampaignItem[] = campaigns
         .map((c, i) => ({ ...c, index: i }))
-        .filter(c => (!_IS_APP ? c.type !== 'multiplayer' : true))
         .sort((a, b) => typePriority(a.type) - typePriority(b.type));
 
     const carousel = createSwipeCarousel<CampaignItem>({
