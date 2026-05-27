@@ -65,8 +65,6 @@ import {
 import { requestReview } from './reviewRequest';
 import { VESSEL, PAYLOAD, CAMPAIGN_TYPE, CTRL_MODE } from '../shared/types';
 
-const _IS_APP = import.meta.env.VITE_TARGET === 'app';
-
 const assertDom = () => {
     if (!document.getElementById('gameCanvas')) {
         throw new Error('[z] Missing DOM element: gameCanvas');
@@ -117,7 +115,6 @@ const _drawWorldFns = createDrawWorld({
     getLighthouse: () => (_missionHasLighthouse ? { x: _lighthouseX, y: _lighthouseY } : null),
     getWindStr: () => _missionWindStr,
     isNight: () => _missionNight,
-    isApp: _IS_APP,
     isMissionRain: () => _missionRain,
     getShowCollisionBoxes: () => showCollisionBoxes,
     triggerCrash: () => _physicsCtx.triggerCrash(),
@@ -233,11 +230,7 @@ const missionComplete = () => {
         if (campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT) {
             const regular = campaigns
                 .map((c, i) => ({ type: c.type, i }))
-                .filter(
-                    c =>
-                        c.type !== CAMPAIGN_TYPE.TUTORIAL &&
-                        c.type !== CAMPAIGN_TYPE.FREE_FLIGHT
-                );
+                .filter(c => c.type !== CAMPAIGN_TYPE.TUTORIAL && c.type !== CAMPAIGN_TYPE.FREE_FLIGHT);
             const pos = regular.findIndex(c => c.i === _selectedCampaignIndex);
             if (pos >= 0 && pos + 1 < regular.length) {
                 _session.highestUnlockedCampaignIndex = Math.max(
@@ -420,7 +413,6 @@ const startGame = (type: string): void => {
 const _tick = (): Promise<void> => new Promise(r => setTimeout(r, 0));
 
 const _maybeSpawnOrniWreck = () => {
-    if (!_IS_APP) return;
     if (getRank(_session, _getRankMissions()).name === RANKS[RANKS.length - 1].name) return;
     if (Math.random() >= 1 / 12) return;
     const gridSize = campaignHandler.getTerrain().gridSize;
@@ -556,7 +548,9 @@ const launchMission = async (showLoader = true): Promise<void> => {
         _briefingActive = false;
         _missionStartTime = Date.now();
         soundHandler.play(campaignHandler.getActiveCampaignMusic().ingame || 'clike', false, 0.4);
+
         setTouchVisible(true);
+
         if (_lmd.campaignType === CAMPAIGN_TYPE.TUTORIAL) {
             initTutorial(
                 _isTouchDevice(),
@@ -697,8 +691,11 @@ const drawScene = () => {
                       drawPayloadObjects(true, false);
 
                       // winch line (only when extended and nothing hanging)
-                      if (!G.activePayload && G.heli.winch > 0.05 &&
-                          Math.hypot(G.rescuerSwing.x - G.heli.x, G.rescuerSwing.y - G.heli.y) <= G.heli.winch + 3) {
+                      if (
+                          !G.activePayload &&
+                          G.heli.winch > 0.05 &&
+                          Math.hypot(G.rescuerSwing.x - G.heli.x, G.rescuerSwing.y - G.heli.y) <= G.heli.winch + 3
+                      ) {
                           const rs = G.rescuerSwing;
                           const winchTipZ = Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
                           const hP = iso(G.heli.x, G.heli.y, G.heli.z, cx, cy, { stepH, tileW, tileH, canvas });
@@ -739,7 +736,6 @@ const drawScene = () => {
                               tailRotorRate: 1.0 + Math.abs(G.heli.roll) * 4,
                           }
                       );
-
                   },
               }
             : undefined,
@@ -794,7 +790,7 @@ const drawScene = () => {
     if (!zstate.crashed) {
         renderRain();
         handleCollisionBoxes();
-        if (!_IS_APP && showCollisionBoxes) drawDebugOverlay(camX, camY);
+        if (import.meta.env.DEV && showCollisionBoxes) drawDebugOverlay(camX, camY);
     }
 
     _hud.update({
@@ -821,7 +817,6 @@ const drawScene = () => {
         },
     });
 
-
     updateHeliSound(G.heli.rotorRPM, G.heli.engineOn, G.heli.type, Math.hypot(G.wind.x, G.wind.y), _flapRate);
     if (isTutorialRunning()) tutorialTick(G);
     _rafId = requestAnimationFrame(drawScene);
@@ -829,7 +824,7 @@ const drawScene = () => {
 
 // ─── collision boxes ─────────────────────────────────────────────────────────
 let showCollisionBoxes = false;
-if (!_IS_APP) {
+if (import.meta.env.DEV) {
     window.addEventListener('keydown', e => {
         if (e.key === 'c' || e.key === 'C') showCollisionBoxes = !showCollisionBoxes;
     });
@@ -989,10 +984,10 @@ const _setupJoystick = (id: string, up: string, down: string, left: string, righ
         const dead = jr * 0.18;
         // Hard 4-sector: |dx| >= |dy| → strafe, else forward/back. No diagonal.
         const isH = Math.abs(dx) >= Math.abs(dy);
-        (G.keys as Record<string, boolean>)[up]    = _isKeyAllowed(up)    && !isH && dy < -dead;
-        (G.keys as Record<string, boolean>)[down]  = _isKeyAllowed(down)  && !isH && dy > dead;
-        (G.keys as Record<string, boolean>)[left]  = _isKeyAllowed(left)  &&  isH && dx < -dead;
-        (G.keys as Record<string, boolean>)[right] = _isKeyAllowed(right) &&  isH && dx > dead;
+        (G.keys as Record<string, boolean>)[up] = _isKeyAllowed(up) && !isH && dy < -dead;
+        (G.keys as Record<string, boolean>)[down] = _isKeyAllowed(down) && !isH && dy > dead;
+        (G.keys as Record<string, boolean>)[left] = _isKeyAllowed(left) && isH && dx < -dead;
+        (G.keys as Record<string, boolean>)[right] = _isKeyAllowed(right) && isH && dx > dead;
     };
     el.addEventListener('pointerdown', e => {
         e.preventDefault();
@@ -1061,10 +1056,10 @@ const _setupRightJoystick = () => {
         _stickDy = dy;
         if (isTutorialRunning() || getControlMode() === CTRL_MODE.SCREEN) {
             const axisThreshold = jr * 0.35;
-            (G.keys as Record<string, boolean>)['ArrowUp']    = _isKeyAllowed('ArrowUp')    && dy < -axisThreshold;
-            (G.keys as Record<string, boolean>)['ArrowDown']  = _isKeyAllowed('ArrowDown')  && dy >  axisThreshold;
-            (G.keys as Record<string, boolean>)['ArrowLeft']  = _isKeyAllowed('ArrowLeft')  && dx < -axisThreshold;
-            (G.keys as Record<string, boolean>)['ArrowRight'] = _isKeyAllowed('ArrowRight') && dx >  axisThreshold;
+            (G.keys as Record<string, boolean>)['ArrowUp'] = _isKeyAllowed('ArrowUp') && dy < -axisThreshold;
+            (G.keys as Record<string, boolean>)['ArrowDown'] = _isKeyAllowed('ArrowDown') && dy > axisThreshold;
+            (G.keys as Record<string, boolean>)['ArrowLeft'] = _isKeyAllowed('ArrowLeft') && dx < -axisThreshold;
+            (G.keys as Record<string, boolean>)['ArrowRight'] = _isKeyAllowed('ArrowRight') && dx > axisThreshold;
         }
     });
     const release = () => {
@@ -1121,17 +1116,19 @@ const setupTouchControls = () => {
     // Prevent native WebKit pinch-to-zoom / loupe in WKWebView.
     // gesturestart/change are Safari-only events that fire before the web
     // pointer events — preventDefault() here suppresses the native recognizer.
-    document.addEventListener('gesturestart',  e => e.preventDefault(), { passive: false });
+    document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
     document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
-    document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    document.addEventListener(
+        'touchmove',
+        e => {
+            if (e.touches.length > 1) e.preventDefault();
+        },
+        { passive: false }
+    );
 
     TouchControls.mount();
     TouchControls.setRightStickProfi(getControlMode() === CTRL_MODE.SCREEN);
-    if (!_IS_APP) {
-        document.getElementById('debug-toggle')?.addEventListener('click', () => {
-            showCollisionBoxes = !showCollisionBoxes;
-        });
-    }
+
     // pitch wheel (winch)
     TouchControls.initPitchWheel((key, val) => {
         (G.keys as Record<string, boolean>)[key] = val;
@@ -1178,9 +1175,6 @@ const mountGameOverlays = () => {
     _ensureEl('rain-overlay');
     _ensureEl('flash-overlay');
     _ensureEl('msg');
-    if (!_IS_APP) {
-        _ensureEl('debug-toggle');
-    }
 };
 
 const mountGameScreens = () => {
@@ -1295,12 +1289,10 @@ window.onload = () => {
                 _onloadPreview();
                 return;
             }
-            if (_IS_APP) {
-                await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, CTRL_MODE_KEY, 'zw_music', 'zw_sfx']);
-                _session = loadSession();
-                const _sl = storageGet(LANG_PREF_KEY);
-                if (_sl === 'de' || _sl === 'en') setLanguage(_sl);
-            }
+            await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, CTRL_MODE_KEY, 'zw_music', 'zw_sfx']);
+            _session = loadSession();
+            const _sl = storageGet(LANG_PREF_KEY);
+            if (_sl === 'de' || _sl === 'en') setLanguage(_sl);
             _onloadMain();
         })();
     });

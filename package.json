@@ -7,8 +7,7 @@
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "build:app": "VITE_TARGET=app vite build",
-        "build:ios": "npm run build:app && npx cap sync ios",
+        "build:ios": "VITE_TARGET=app vite build && npx cap sync ios",
         "cap:open": "npx cap open ios",
         "preview": "vite preview",
         "deploy": "gh-pages -d dist/",

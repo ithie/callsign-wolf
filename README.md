@@ -67,21 +67,21 @@ npm run dev
 
 Starts the Vite dev server at `http://localhost:5173`.
 
-### Build (single-file HTML for deployment)
+### Build (Promo page)
 
 ```sh
 npm run build
 ```
 
-Produces a self-contained `dist/index.html` with all JS and CSS inlined.
+Produces a self-contained `dist/index.html` of the promo page with all JS and CSS inlined. Deployed to GitHub Pages on every push to `main`.
 
 ### App Build (iOS App Store)
 
 ```sh
-VITE_TARGET=app npm run build
+npm run build:ios
 ```
 
-Produces a single-file bundle suitable for wrapping in a WKWebView (Capacitor). A `Content-Security-Policy` header (`default-src 'self' 'unsafe-inline' data:; media-src *;`) is injected into `index.html` automatically for the app build.
+Builds the game with `VITE_TARGET=app` and syncs the result into the Xcode project via `cap sync ios`. A `Content-Security-Policy` header (`default-src 'self' 'unsafe-inline' data:; media-src *;`) is injected into `index.html` automatically. See [INSTALL.md](./INSTALL.md) for the full Xcode workflow.
 
 ### Tests
 

@@ -46,16 +46,16 @@ git tag v25.4
 git push --tags
 ```
 
-## Manueller Deploy (ohne Tag)
+## Manueller Deploy der Promo-Seite (ohne Tag)
 
 Über die GitHub-UI: **Actions → Deploy to GitHub Pages → Run workflow**.
 
-Nützlich für Hotfixes die sofort live sein sollen ohne einen neuen Tag anzulegen.
+Nützlich wenn die Promo-Seite aktualisiert werden soll ohne einen neuen Tag anzulegen.
 
 ## App-Build (iOS)
 
 ```sh
-npm run build:app
+npm run build:ios
 ```
 
-Erzeugt `dist/index.html` — geeignet für iOS Bild. Siehe [README.md](../README.md#app-build-ios-app-store) für Details.
+Baut `dist/index.html` mit `VITE_TARGET=app` und synchronisiert das Ergebnis ins Xcode-Projekt (`npx cap sync ios`). Danach in Xcode archivieren oder auf Gerät deployen. Siehe [INSTALL.md](../INSTALL.md) für den vollständigen Workflow.

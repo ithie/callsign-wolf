@@ -36,7 +36,6 @@ export interface DrawWorldCtx {
     getLighthouse: () => { x: number; y: number } | null;
     getWindStr: () => number;
     isNight: () => boolean;
-    isApp: boolean;
     isMissionRain: () => boolean;
     getShowCollisionBoxes: () => boolean;
     triggerCrash: () => void;

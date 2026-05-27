@@ -76,43 +76,6 @@ body {
     from { transform: translateY(0); }
     to   { transform: translateY(150px); }
 }
-#audio-mute {
-    position: absolute;
-    top: 0;
-    left: 0;
-    font-size: 16px;
-    display: block;
-    border: none;
-    background-color: none;
-    padding: 2px;
-    margin: 5px;
-    margin-top: max(5px, env(safe-area-inset-top));
-    margin-left: max(5px, env(safe-area-inset-left));
-    z-index: 1000;
-}
-#audio-mute-inactive {
-    display: none;
-}
-#audio-mute-active {
-    display: none;
-}
-#easter-egg {
-    position: absolute;
-    top: max(7px, calc(env(safe-area-inset-top) + 7px));
-    left: max(46px, calc(env(safe-area-inset-left) + 46px));
-    width: 18px;
-    height: 18px;
-    background: #000;
-    border: 1px solid #222;
-    opacity: 0.18;
-    cursor: default;
-    z-index: 1000;
-    transition: opacity 0.4s;
-}
-#easter-egg:hover {
-    opacity: 0.75;
-    cursor: pointer;
-}
 .title {
     font-size: 64px;
     color: #ff6600;

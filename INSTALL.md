@@ -21,7 +21,7 @@ Bereits erledigt — liegt im Repo:
 
 ```bash
 npm install                  # Abhängigkeiten installieren
-npm run build:cap-ios        # App bauen + in Xcode-Projekt synchronisieren
+npm run build:ios            # App bauen + in Xcode-Projekt synchronisieren
 npm run cap:open             # Xcode öffnen
 ```
 
