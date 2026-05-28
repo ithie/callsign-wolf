@@ -205,8 +205,8 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     const { onCarrierDeck, onPadSurface, onPad, effectiveGroundH } = _computeLandingState(ctx, groundH);
 
     // engine
-    const onFlatTerrain = !G.heli.inAir && groundH > G.waterLevel + 0.1 && isFlatTerrain(G.heli.x, G.heli.y);
-    if (G.keys['KeyW'] && !G.heli.engineOn && G.heli.fuel > 0 && (onPad || onFlatTerrain)) G.heli.engineOn = true;
+    const onFlatTerrain = groundH > G.waterLevel + 0.1 && isFlatTerrain(G.heli.x, G.heli.y);
+    if (G.keys['KeyW'] && !G.heli.engineOn && G.heli.fuel > 0 && (onPad || (!G.heli.inAir && onFlatTerrain))) G.heli.engineOn = true;
     if (G.keys['KeyS'] && !G.heli.inAir && G.heli.engineOn) {
         G.heli.engineOn = false;
         const landObj = G.objectives.find((o: any) => o.type === OBJECTIVE_TYPE.LAND_AT);
@@ -334,7 +334,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
 
             if (G.keys['KeyW']) G.heli.vz += G.heli.liftPower * mod * dt;
             else if (G.keys['KeyS']) G.heli.vz -= 0.002 * dt;
-            else G.heli.vz *= Math.pow(0.9, dt);
+            else G.heli.vz *= Math.pow(G.heli.vz < 0 ? G.heli.friction : Math.sqrt(G.heli.friction), dt);
 
             if (!ctx.isTutorialFuelLocked) G.heli.fuel -= G.heli.fuelRate * mod * dt;
         } else {

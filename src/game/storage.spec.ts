@@ -1,34 +1,15 @@
-import { vi } from 'vitest';
-
-vi.mock('@capacitor/preferences', () => ({
-    Preferences: { get: vi.fn(), set: vi.fn(), remove: vi.fn() },
-}));
-
-import { describe, it, expect, beforeEach } from 'vitest';
-import { Preferences } from '@capacitor/preferences';
+// @vitest-environment jsdom
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { storageGet, storageSet, storageRemove, initAppStorage } from './storage';
 
-// ─── Cache-Verhalten (in-memory, kein echtes Capacitor) ───────────────────────
-
 describe('storageGet / storageSet / storageRemove', () => {
-    beforeEach(() => {
-        vi.mocked(Preferences.get).mockResolvedValue({ value: null });
-        vi.mocked(Preferences.set).mockResolvedValue();
-        vi.mocked(Preferences.remove).mockResolvedValue();
-    });
-
     it('returns null for unknown key', () => {
-        expect(storageGet('unknown-key-xyz')).toBeNull();
+        expect(storageGet('unknown-xyz')).toBeNull();
     });
 
     it('storageSet stores value in cache, get returns it immediately', () => {
         storageSet('my-key', 'hello');
         expect(storageGet('my-key')).toBe('hello');
-    });
-
-    it('storageSet also calls Preferences.set', () => {
-        storageSet('my-key', 'hello');
-        expect(Preferences.set).toHaveBeenCalledWith({ key: 'my-key', value: 'hello' });
     });
 
     it('storageSet overwrites previous value', () => {
@@ -43,11 +24,6 @@ describe('storageGet / storageSet / storageRemove', () => {
         expect(storageGet('rem-key')).toBeNull();
     });
 
-    it('storageRemove calls Preferences.remove', () => {
-        storageRemove('rem-key');
-        expect(Preferences.remove).toHaveBeenCalledWith({ key: 'rem-key' });
-    });
-
     it('multiple keys are independent', () => {
         storageSet('a', '1');
         storageSet('b', '2');
@@ -57,35 +33,43 @@ describe('storageGet / storageSet / storageRemove', () => {
         expect(storageGet('a')).toBeNull();
         expect(storageGet('b')).toBe('2');
     });
-});
 
-// ─── initAppStorage ───────────────────────────────────────────────────────────
-
-describe('initAppStorage', () => {
-    beforeEach(() => {
-        vi.mocked(Preferences.get).mockReset();
-        vi.mocked(Preferences.set).mockResolvedValue();
-        vi.mocked(Preferences.remove).mockResolvedValue();
+    it('storageSet posts to webkit storage handler', () => {
+        const postMessage = vi.fn();
+        (window as any).webkit = { messageHandlers: { storage: { postMessage } } };
+        storageSet('x', '42');
+        expect(postMessage).toHaveBeenCalledWith({ action: 'set', key: 'x', value: '42' });
+        delete (window as any).webkit;
     });
 
-    it('populates cache from Preferences.get for each key', async () => {
-        vi.mocked(Preferences.get).mockImplementation(async ({ key }) => ({
-            value: key === 'session' ? '{"name":"WOLF"}' : null,
-        }));
+    it('storageRemove posts to webkit storage handler', () => {
+        const postMessage = vi.fn();
+        (window as any).webkit = { messageHandlers: { storage: { postMessage } } };
+        storageRemove('x');
+        expect(postMessage).toHaveBeenCalledWith({ action: 'remove', key: 'x' });
+        delete (window as any).webkit;
+    });
+});
+
+describe('initAppStorage', () => {
+    beforeEach(() => { delete (window as any).__nativeStorage; });
+
+    it('populates cache from __nativeStorage', async () => {
+        (window as any).__nativeStorage = { session: '{"name":"WOLF"}' };
         await initAppStorage(['session', 'settings']);
         expect(storageGet('session')).toBe('{"name":"WOLF"}');
         expect(storageGet('settings')).toBeNull();
     });
 
-    it('calls Preferences.get for every requested key', async () => {
-        vi.mocked(Preferences.get).mockResolvedValue({ value: null });
-        await initAppStorage(['a', 'b', 'c']);
-        expect(Preferences.get).toHaveBeenCalledTimes(3);
+    it('empty key list does nothing', async () => {
+        (window as any).__nativeStorage = {};
+        await initAppStorage([]);
+        expect(storageGet('nonexistent')).toBeNull();
     });
 
-    it('empty key list does nothing', async () => {
-        vi.mocked(Preferences.get).mockResolvedValue({ value: null });
-        await initAppStorage([]);
-        expect(Preferences.get).not.toHaveBeenCalled();
+    it('missing __nativeStorage falls back to null for all keys', async () => {
+        await initAppStorage(['a', 'b']);
+        expect(storageGet('a')).toBeNull();
+        expect(storageGet('b')).toBeNull();
     });
 });

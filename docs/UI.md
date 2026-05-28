@@ -44,7 +44,7 @@ el.classList.add('ui-screen');
 
 Global state that multiple UI components or game modules read is extracted into a `*.state.ts` file:
 
-```
+```text
 src/game/ui/pause-overlay/
   pause-overlay.ui.ts
   pause-overlay.state.ts   ← exported reactive state
@@ -97,7 +97,6 @@ Each screen has a string ID that matches its container `<div id="...">` in `inde
 | `pause-overlay.ui.ts` | `pause-overlay` | In-game pause |
 | `rankup.ui.ts` | `rankup-overlay` | Rank-up overlay with animated heli model |
 | `settings.ui.ts` | `settings-screen` | Settings (controls, audio, language) |
-| `touch-controls.ui.ts` | `touch-controls` | On-screen joysticks (app only) |
 | `whats-new.ui.ts` | `whats-new-overlay` | What's New screen (web only) |
 
 ---

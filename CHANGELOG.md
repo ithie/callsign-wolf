@@ -1,5 +1,78 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.3.1 — Swift Controls Bugfixes & Physics Tweaks
+
+### Fixes
+
+- **Joystick safe-zone sectors corrected** — left stick showed 4 uniform sectors (full-circle fill, no contrast); now correctly renders 2 bright E/W strafe zones matching the original CSS conic-gradient. Right stick (PROFI) now shows N/S arcs only, not all 4 cardinal directions.
+- **Deliver toggle rotation fixed** — was rotating in the Z-axis (2D plane rotation); now correctly simulates CSS `rotateX` via Y-scale so the rocker tilts top/bottom instead of spinning sideways.
+- **Controls visibility regressions fixed** — `setTouchVisible` now sends the webkit message to the native overlay; all previously broken hide/show calls (`_stopMission`, mission screens, pause) work correctly again. Controls are shown exclusively via `setTouchVisible(true)` after briefing dismissal — no premature show during splash, menus, or pause.
+- **Tutorial highlight/dim restored** — `_setHighlight` and `_setDim` now send `tutorialHighlight` / `tutorialDim` webkit messages; `GameControlOverlay` renders a pulsing white ring (1.4 s period matching original CSS) on the active control and dims inactive controls to 15 % opacity with touch-blocking.
+- **Black bar on right side of screen** — `WKWebView.scrollView.contentInsetAdjustmentBehavior` set to `.never`; the home-indicator safe-area inset was offsetting the scroll view content, leaving a gap behind the canvas.
+- **Carrier windsock position** — was placed at the tower centre (bow/stern axis was inverted); now correctly positioned at the stern on the port side. Also queued into `SceneRenderer` before flush so it depth-sorts properly with the ship.
+- **Flat terrain landing crash** — `onFlatTerrain` was gated on `!inAir`, causing a crash in the z-window between `groundH+0.15` (inAir boundary) and `groundH+0.25` (crash-check boundary). Gate removed; engine-start on flat terrain still requires `!inAir`.
+- **Capacitor artefacts removed** — `@capacitor/assets` removed from `package.json`; `capacitor.config.json`, `config.xml`, `capacitor-cordova-ios-plugins/` deleted from `ios/`; stale `config.xml` entry removed from `project.pbxproj`; dead `vi.mock('@capacitor/preferences')` removed from `session.spec.ts`; `SESSION_SYSTEM.md` and `INSTALL.md` updated.
+
+### Changed
+
+- **Vertical inertia** — `vz` decay now uses `sqrt(friction)` when rising (matches horizontal feel) and `friction` when sinking (half the lingering, prevents over-floating on descent).
+- **Flat terrain landing enabled** — helicopter can now land and stand on any tile whose four corners are within 0.15 height of each other, without crashing. No refuelling, no drop-zone interactions.
+
+---
+
+## v28.3.0 — Native Touch Controls (Swift)
+
+### Changed
+
+- **Touch controls moved to Swift** — joysticks, pitch wheel, and deliver toggle are now rendered and tracked natively in `GameControlOverlay.swift` (Core Graphics + UIKit) on top of the WKWebView. The HTML/CSS touch-controls overlay is removed entirely.
+- **No more WKWebView JS pause on touch-hold** — since Swift owns all game-control touches, the WKWebView gesture-recognition pipeline no longer pauses the JS thread. Fixes rotor-freeze and any similar input stutter on iPad.
+- Controls overlay is hidden during menus and shown only during active gameplay via `window.webkit.messageHandlers.controls`.
+
+### Technical
+
+- `GameControlOverlay.swift`: full Core Graphics joystick rendering, multi-touch tracking, heading-mode RAF tick remains in JS reading Swift-supplied stick values via `window.__nativeControls(...)`.
+- `touch-controls.ts` reduced to two thin functions (`setDeliverToggle`, `setRightStickProfi`) that forward state to Swift via message handler.
+- `touch-controls.css` deleted.
+- `storage.spec.ts` rewritten for the new native-bridge storage API.
+
+---
+
+## v28.2.0 — Remove Capacitor
+
+### Technical
+
+- **Capacitor removed** — replaced with a bare `WKWebView` in `ViewController.swift`. No Capacitor framework, no internal HTTP server, no SPM dependencies on `ionic-team/capacitor-swift-pm`.
+- **Native storage bridge** — `UserDefaults` read/write via `window.webkit.messageHandlers.storage`. Values are injected into `window.__nativeStorage` at document start so reads are synchronous, writes are fire-and-forget.
+- **Native haptics bridge** — `UIImpactFeedbackGenerator` / `UINotificationFeedbackGenerator` via `window.webkit.messageHandlers.haptics`.
+- **Native AppReview bridge** — `SKStoreReviewController.requestReview` via `window.webkit.messageHandlers.appReview`.
+- **Capacitor Preferences migration** — on first launch, existing save data stored under `CapacitorStorage.*` keys is automatically migrated to direct `UserDefaults` keys.
+- `@capacitor/core`, `@capacitor/ios`, `@capacitor/haptics`, `@capacitor/preferences`, `@capacitor/cli` removed from `package.json`. `@capacitor/assets` kept for icon/splash generation.
+- `build:ios` no longer runs `cap sync` — copies `dist/index.html` directly. `cap:open` replaced with `open:ios`.
+- `capacitor.config.ts` deleted.
+
+---
+
+## v28.1.1 — Carrier Windsock, Shadow Fixes & Cleanup
+
+### New
+
+- **Carrier windsock** — windsock added at the carrier tower. Displays apparent wind (real wind minus carrier velocity vector), which is the correct reference for helicopter approach.
+
+### Fixes
+
+- **Player heli shadow missing on carrier deck** — shadow was rendered in the pre-pass before the carrier deck, which then covered it. Shadow is now drawn after the deck in the same pass as NPC heli shadows.
+- **Player heli shadow missing on research platform** — same rendering-order fix applied for the research platform deck (`waterLevel + 6.5`).
+- **Object pop-in on touch devices (especially iPad)** — `isVisible` used a broken coordinate formula for touch (`cam.x / tileW + cam.y / tileH`) that mixed world units with tile pixel sizes, causing objects to be culled too early. Now compares directly in world coordinates. More pronounced on iPad due to larger `tileW` (28 vs 20).
+
+### Technical
+
+- Removed legacy `_IS_APP` guards — `haptics.ts`, `reviewRequest.ts`, `game.ts`, and `render-config.ts` no longer branch on `VITE_TARGET`. Desktop render scale and fallback tile sizes removed; app values are now the only values.
+- Removed dead CSS — `#audio-mute`, `#easter-egg`, `.grid-container`, `.grid-box`, `.mini-canvas` and related rules removed from `base.css` and `screens.css`.
+- `build:app` script removed — logic inlined into `build:ios` (`VITE_TARGET=app vite build && npx cap sync ios`).
+- Documentation updated — `INSTALL.md`, `RELEASE.md`, and `README.md` reflect current build commands and clarify that `npm run build` produces the promo page, not the game.
+
+---
+
 ## v28.1.0 — Controls, UI & Winch Fixes
 
 ### Changed

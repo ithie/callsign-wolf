@@ -2,15 +2,6 @@
 
 import { vi, beforeAll, afterAll, beforeEach, describe, it, expect } from 'vitest';
 
-// ─── Native-Plugin-Stubs (laufen nicht in jsdom) ──────────────────────────────
-vi.mock('@capacitor/preferences', () => ({
-    Preferences: { get: vi.fn(), set: vi.fn(), remove: vi.fn() },
-}));
-vi.mock('@capacitor/haptics', () => ({
-    Haptics: { impact: vi.fn(), notification: vi.fn() },
-    ImpactStyle: { Light: 'LIGHT', Medium: 'MEDIUM', Heavy: 'HEAVY' },
-    NotificationType: { Success: 'SUCCESS', Warning: 'WARNING', Error: 'ERROR' },
-}));
 vi.mock('../../game/render', () => ({
     iso: vi.fn((x: number, y: number) => ({ x: x * 10, y: y * 10 })),
 }));
@@ -219,44 +210,24 @@ describe('pause-overlay', () => {
 
 // ─── touch-controls ───────────────────────────────────────────────────────────
 describe('touch-controls', () => {
-    beforeEach(() => { document.body.innerHTML = ''; });
-
-    it('mounts the controls', () => {
-        TouchControls.mount();
-        expect(document.getElementById('touch-controls')).not.toBeNull();
-    });
-
-    it('does not mount twice', () => {
-        TouchControls.mount();
-        TouchControls.mount();
-        expect(document.querySelectorAll('#touch-controls').length).toBe(1);
-    });
-
-    it('snapshot', () => {
-        TouchControls.mount();
-        snap('touch-controls');
-    });
-
-    it('setDeliverToggle adds "on" class', () => {
-        TouchControls.mount();
+    it('setDeliverToggle posts to webkit controls handler', () => {
+        const postMessage = vi.fn();
+        (window as any).webkit = { messageHandlers: { controls: { postMessage } } };
         TouchControls.setDeliverToggle(true);
-        expect(document.getElementById('touch-deliver-toggle')!.classList.contains('on')).toBe(true);
-    });
-
-    it('setDeliverToggle removes "on" class', () => {
-        TouchControls.mount();
-        TouchControls.setDeliverToggle(true);
+        expect(postMessage).toHaveBeenCalledWith({ type: 'deliverToggle', on: true });
         TouchControls.setDeliverToggle(false);
-        expect(document.getElementById('touch-deliver-toggle')!.classList.contains('on')).toBe(false);
+        expect(postMessage).toHaveBeenCalledWith({ type: 'deliverToggle', on: false });
+        delete (window as any).webkit;
     });
 
-    it('setRightStickProfi toggles profi class on joystick-right', () => {
-        TouchControls.mount();
-        const rs = document.getElementById('joystick-right')!;
+    it('setRightStickProfi posts controlMode to webkit controls handler', () => {
+        const postMessage = vi.fn();
+        (window as any).webkit = { messageHandlers: { controls: { postMessage } } };
         TouchControls.setRightStickProfi(true);
-        expect(rs.classList.contains('profi')).toBe(true);
+        expect(postMessage).toHaveBeenCalledWith({ type: 'controlMode', mode: 'screen' });
         TouchControls.setRightStickProfi(false);
-        expect(rs.classList.contains('profi')).toBe(false);
+        expect(postMessage).toHaveBeenCalledWith({ type: 'controlMode', mode: 'heading' });
+        delete (window as any).webkit;
     });
 });
 
@@ -415,7 +386,6 @@ describe('hud', () => {
     beforeAll(() => {
         document.body.innerHTML = '';
         mountMinimap();
-        TouchControls.mount();
         showMinimap(true);
         const canvas = document.createElement('canvas');
         hud = createHud({ isoFn: vi.fn(() => ({ x: 50, y: 50 })), canvas });

@@ -2,7 +2,7 @@ import './ui/base.css';
 import './ui/screens.css';
 import * as LoadingScreen from './ui/loading-screen/loading-screen';
 import { ensureEl } from './ui/dom-helpers';
-import * as TouchControls from './ui/touch-controls/touch-controls';
+import { setDeliverToggle as _touchSetDeliverToggle } from './ui/touch-controls/touch-controls';
 import { iso } from './render';
 import { campaignHandler, soundHandler, zinit, musicConfig } from './main';
 import { loadSession, saveSession, getRank, RANKS, STORAGE_KEY, type PlayerSession, type Rank } from './session';
@@ -95,9 +95,7 @@ const isVisible = (objX: number, objY: number, margin = 16) => {
         const viewCY = zstate.cam.y / tileH - zstate.cam.x / tileW;
         return Math.abs(objX - viewCX) < margin && Math.abs(objY - viewCY) < margin;
     }
-    const rx = G.heli.x;
-    const ry = G.heli.y;
-    return Math.abs(objX - rx) < margin && Math.abs(objY - ry) < margin;
+    return Math.abs(objX - G.heli.x) < margin && Math.abs(objY - G.heli.y) < margin;
 };
 
 const _drawWorldFns = createDrawWorld({
@@ -652,7 +650,7 @@ const drawScene = () => {
 
     drawTerrain(camX, camY, rx, ry, isNight, rain);
 
-    const _visMargin = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH)) + 4;
+    const _visMargin = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH) * 2) + 8;
 
     // flapRate: vertical climb + horizontal speed (braking from speed → faster flapping)
     const _flapRate = Math.max(0.5, Math.min(3.0, 1.0 + G.heli.vz * 20 + Math.hypot(G.heli.vx, G.heli.vy) * 8));
@@ -959,6 +957,7 @@ const _isTouchDevice = () =>
     ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.matchMedia('(pointer: coarse)').matches;
 const setTouchVisible = (v: boolean) => {
     if (!_isTouchDevice()) return;
+    window.webkit?.messageHandlers?.controls?.postMessage({ type: 'showControls', visible: v });
     const touchEl = document.getElementById('touch-controls');
     if (touchEl) touchEl.style.display = v ? 'flex' : 'none';
 };
@@ -968,141 +967,34 @@ const getControlMode = (): 'heading' | 'screen' =>
     storageGet(CTRL_MODE_KEY) === CTRL_MODE.SCREEN ? 'screen' : 'heading';
 const setControlMode = (m: 'heading' | 'screen') => {
     storageSet(CTRL_MODE_KEY, m);
-    TouchControls.setRightStickProfi(m === CTRL_MODE.SCREEN);
+    window.webkit?.messageHandlers?.controls?.postMessage({ type: 'controlMode', mode: m });
 };
 
-const _setupJoystick = (id: string, up: string, down: string, left: string, right: string) => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const knob = el.querySelector('.joystick-knob') as HTMLElement;
-    const keys = [up, down, left, right];
-    let active = false,
-        cx = 0,
-        cy = 0,
-        jr = 0;
-    const setKeys = (dx: number, dy: number) => {
-        const dead = jr * 0.18;
-        // Hard 4-sector: |dx| >= |dy| → strafe, else forward/back. No diagonal.
-        const isH = Math.abs(dx) >= Math.abs(dy);
-        (G.keys as Record<string, boolean>)[up] = _isKeyAllowed(up) && !isH && dy < -dead;
-        (G.keys as Record<string, boolean>)[down] = _isKeyAllowed(down) && !isH && dy > dead;
-        (G.keys as Record<string, boolean>)[left] = _isKeyAllowed(left) && isH && dx < -dead;
-        (G.keys as Record<string, boolean>)[right] = _isKeyAllowed(right) && isH && dx > dead;
-    };
-    el.addEventListener('pointerdown', e => {
-        e.preventDefault();
-        el.setPointerCapture(e.pointerId);
-        const r = el.getBoundingClientRect();
-        cx = r.left + r.width / 2;
-        cy = r.top + r.height / 2;
-        jr = r.width / 2;
-        active = true;
-        knob.style.transition = 'none';
-    });
-    el.addEventListener('pointermove', e => {
-        if (!active) return;
-        const dx = e.clientX - cx,
-            dy = e.clientY - cy;
-        const dist = Math.hypot(dx, dy) || 1;
-        const clamped = Math.min(dist, jr * 0.55) / dist;
-        knob.style.transform = `translate(calc(-50% + ${dx * clamped}px), calc(-50% + ${dy * clamped}px))`;
-        setKeys(dx, dy);
-    });
-    const release = () => {
-        if (!active) return;
-        active = false;
-        knob.style.transition = 'transform 0.12s ease-out';
-        knob.style.transform = 'translate(-50%, -50%)';
-        keys.forEach(k => {
-            (G.keys as Record<string, boolean>)[k] = false;
-        });
-    };
-    el.addEventListener('pointerup', release);
-    el.addEventListener('pointercancel', release);
-    el.addEventListener('lostpointercapture', release);
-};
+// ─── Native touch control state (set by Swift via window.__nativeControls) ───
+let _stickDx = 0, _stickDy = 0, _stickJr = 80, _stickActive = false;
 
-const _setupRightJoystick = () => {
-    const el = document.getElementById('joystick-right');
-    if (!el) return;
-    const knob = el.querySelector('.joystick-knob') as HTMLElement;
-    let active = false,
-        cx = 0,
-        cy = 0,
-        jr = 0;
-    let _stickDx = 0,
-        _stickDy = 0;
-
-    el.addEventListener('pointerdown', e => {
-        e.preventDefault();
-        el.setPointerCapture(e.pointerId);
-        const r = el.getBoundingClientRect();
-        cx = r.left + r.width / 2;
-        cy = r.top + r.height / 2;
-        jr = r.width / 2;
-        active = true;
-        _stickDx = 0;
-        _stickDy = 0;
-        knob.style.transition = 'none';
-    });
-    el.addEventListener('pointermove', e => {
-        if (!active) return;
-        const dx = e.clientX - cx,
-            dy = e.clientY - cy;
-        const dist = Math.hypot(dx, dy) || 1;
-        const clamped = Math.min(dist, jr * 0.55) / dist;
-        knob.style.transform = `translate(calc(-50% + ${dx * clamped}px), calc(-50% + ${dy * clamped}px))`;
-        _stickDx = dx;
-        _stickDy = dy;
-        if (isTutorialRunning() || getControlMode() === CTRL_MODE.SCREEN) {
-            const axisThreshold = jr * 0.35;
-            (G.keys as Record<string, boolean>)['ArrowUp'] = _isKeyAllowed('ArrowUp') && dy < -axisThreshold;
-            (G.keys as Record<string, boolean>)['ArrowDown'] = _isKeyAllowed('ArrowDown') && dy > axisThreshold;
-            (G.keys as Record<string, boolean>)['ArrowLeft'] = _isKeyAllowed('ArrowLeft') && dx < -axisThreshold;
-            (G.keys as Record<string, boolean>)['ArrowRight'] = _isKeyAllowed('ArrowRight') && dx > axisThreshold;
-        }
-    });
-    const release = () => {
-        if (!active) return;
-        active = false;
-        _stickDx = 0;
-        _stickDy = 0;
-        knob.style.transition = 'transform 0.12s ease-out';
-        knob.style.transform = 'translate(-50%, -50%)';
-        (G.keys as Record<string, boolean>)['ArrowUp'] = false;
-        (G.keys as Record<string, boolean>)['ArrowDown'] = false;
-        (G.keys as Record<string, boolean>)['ArrowLeft'] = false;
-        (G.keys as Record<string, boolean>)['ArrowRight'] = false;
-    };
-    el.addEventListener('pointerup', release);
-    el.addEventListener('pointercancel', release);
-    el.addEventListener('lostpointercapture', release);
-
-    // Heading mode: run each frame, maps stick direction relative to heli heading
-    // Disabled during tutorial (tutorial always forces screen/PROFI mode)
+const _startHeadingTick = () => {
     const tick = () => {
         if (
-            active &&
+            _stickActive &&
             !isTutorialRunning() &&
             getControlMode() === CTRL_MODE.HEADING &&
             zstate.gameStarted &&
-            Math.hypot(_stickDx, _stickDy) > jr * 0.18
+            Math.hypot(_stickDx, _stickDy) > _stickJr * 0.18
         ) {
             const targetAngle = Math.atan2(_stickDy, _stickDx);
             let diff = targetAngle - G.heli.angle;
-            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff > Math.PI)  diff -= Math.PI * 2;
             while (diff < -Math.PI) diff += Math.PI * 2;
             const turnDead = 0.15;
-            (G.keys as Record<string, boolean>)['ArrowLeft'] = diff < -turnDead;
-            (G.keys as Record<string, boolean>)['ArrowRight'] = diff > turnDead;
+            (G.keys as Record<string, boolean>)['ArrowLeft']  = diff < -turnDead;
+            (G.keys as Record<string, boolean>)['ArrowRight'] = diff >  turnDead;
             const stickLen = Math.hypot(_stickDx, _stickDy);
-            const normSx = _stickDx / stickLen,
-                normSy = _stickDy / stickLen;
-            const fwdX = Math.cos(G.heli.angle),
-                fwdY = Math.sin(G.heli.angle);
+            const normSx = _stickDx / stickLen, normSy = _stickDy / stickLen;
+            const fwdX = Math.cos(G.heli.angle), fwdY = Math.sin(G.heli.angle);
             const dot = normSx * fwdX + normSy * fwdY;
             const accelDead = 0.3;
-            (G.keys as Record<string, boolean>)['ArrowUp'] = dot > accelDead;
+            (G.keys as Record<string, boolean>)['ArrowUp']   = dot >  accelDead;
             (G.keys as Record<string, boolean>)['ArrowDown'] = dot < -accelDead;
         }
         requestAnimationFrame(tick);
@@ -1110,50 +1002,61 @@ const _setupRightJoystick = () => {
     requestAnimationFrame(tick);
 };
 
+(window as any).__nativeControls = (input: {
+    leftJoy:    { dx: number; dy: number; jr: number; active: boolean };
+    rightJoy:   { dx: number; dy: number; jr: number; active: boolean };
+    pitchWheel: { dy: number; active: boolean };
+    deliverBtn: boolean;
+}) => {
+    // Left joystick → W/S/A/D (4-sector)
+    if (input.leftJoy.active) {
+        const { dx, dy, jr } = input.leftJoy;
+        const dead = jr * 0.18;
+        const isH = Math.abs(dx) >= Math.abs(dy);
+        (G.keys as Record<string, boolean>)['KeyW'] = _isKeyAllowed('KeyW') && !isH && dy < -dead;
+        (G.keys as Record<string, boolean>)['KeyS'] = _isKeyAllowed('KeyS') && !isH && dy >  dead;
+        (G.keys as Record<string, boolean>)['KeyA'] = _isKeyAllowed('KeyA') &&  isH && dx < -dead;
+        (G.keys as Record<string, boolean>)['KeyD'] = _isKeyAllowed('KeyD') &&  isH && dx >  dead;
+    } else {
+        (G.keys as Record<string, boolean>)['KeyW'] = false;
+        (G.keys as Record<string, boolean>)['KeyS'] = false;
+        (G.keys as Record<string, boolean>)['KeyA'] = false;
+        (G.keys as Record<string, boolean>)['KeyD'] = false;
+    }
+
+    // Right joystick state (HEADING mode tick reads these each frame)
+    _stickActive = input.rightJoy.active;
+    _stickDx     = input.rightJoy.active ? input.rightJoy.dx : 0;
+    _stickDy     = input.rightJoy.active ? input.rightJoy.dy : 0;
+    _stickJr     = input.rightJoy.jr;
+
+    // Right joystick PROFI / tutorial: set keys directly
+    if (input.rightJoy.active && (isTutorialRunning() || getControlMode() === CTRL_MODE.SCREEN)) {
+        const { dx, dy, jr } = input.rightJoy;
+        const t = jr * 0.35;
+        (G.keys as Record<string, boolean>)['ArrowUp']    = _isKeyAllowed('ArrowUp')    && dy < -t;
+        (G.keys as Record<string, boolean>)['ArrowDown']  = _isKeyAllowed('ArrowDown')  && dy >  t;
+        (G.keys as Record<string, boolean>)['ArrowLeft']  = _isKeyAllowed('ArrowLeft')  && dx < -t;
+        (G.keys as Record<string, boolean>)['ArrowRight'] = _isKeyAllowed('ArrowRight') && dx >  t;
+    } else if (!input.rightJoy.active) {
+        (G.keys as Record<string, boolean>)['ArrowUp']    = false;
+        (G.keys as Record<string, boolean>)['ArrowDown']  = false;
+        (G.keys as Record<string, boolean>)['ArrowLeft']  = false;
+        (G.keys as Record<string, boolean>)['ArrowRight'] = false;
+    }
+
+    // Pitch wheel → KeyQ/KeyE
+    (G.keys as Record<string, boolean>)['KeyQ'] = input.pitchWheel.active && input.pitchWheel.dy < -6;
+    (G.keys as Record<string, boolean>)['KeyE'] = input.pitchWheel.active && input.pitchWheel.dy >  6;
+
+    // Deliver button → KeyR
+    (G.keys as Record<string, boolean>)['KeyR'] = input.deliverBtn;
+};
+
 const setupTouchControls = () => {
     if (!_isTouchDevice()) return;
-
-    // Prevent native WebKit pinch-to-zoom / loupe in WKWebView.
-    // gesturestart/change are Safari-only events that fire before the web
-    // pointer events — preventDefault() here suppresses the native recognizer.
-    document.addEventListener('gesturestart', e => e.preventDefault(), { passive: false });
-    document.addEventListener('gesturechange', e => e.preventDefault(), { passive: false });
-    document.addEventListener(
-        'touchmove',
-        e => {
-            if (e.touches.length > 1) e.preventDefault();
-        },
-        { passive: false }
-    );
-
-    TouchControls.mount();
-    TouchControls.setRightStickProfi(getControlMode() === CTRL_MODE.SCREEN);
-
-    // pitch wheel (winch)
-    TouchControls.initPitchWheel((key, val) => {
-        (G.keys as Record<string, boolean>)[key] = val;
-    });
-    // touch buttons (R / any future data-key buttons)
-    document.querySelectorAll<HTMLElement>('.touch-btn').forEach(btn => {
-        const key = btn.dataset.key;
-        if (!key) return;
-        btn.addEventListener('pointerdown', e => {
-            e.preventDefault();
-            btn.setPointerCapture(e.pointerId);
-            (G.keys as Record<string, boolean>)[key] = true;
-            btn.classList.add('active');
-        });
-        const release = () => {
-            (G.keys as Record<string, boolean>)[key] = false;
-            btn.classList.remove('active');
-        };
-        btn.addEventListener('pointerup', release);
-        btn.addEventListener('pointercancel', release);
-        btn.addEventListener('lostpointercapture', release);
-    });
-    // joysticks
-    _setupJoystick('joystick-left', 'KeyW', 'KeyS', 'KeyA', 'KeyD');
-    _setupRightJoystick();
+    _startHeadingTick();
+    window.webkit?.messageHandlers?.controls?.postMessage({ type: 'controlMode', mode: getControlMode() });
 };
 
 const _ensureEl = ensureEl;
@@ -1355,11 +1258,13 @@ const _onloadMain = () => {
             _rafId = 0;
             stopHeliSound();
             soundHandler.stop();
+            setTouchVisible(false);
         },
         onResume: () => {
             if (!soundHandler.state.isMuted) soundHandler.play(soundHandler.state.activeTheme, false, 0.4);
             initHeliSound(G.heli.type);
             _rafId = requestAnimationFrame(drawScene);
+            setTouchVisible(true);
         },
         onAbort: () => returnToBase(),
     });

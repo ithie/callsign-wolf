@@ -1,51 +1,54 @@
-# iOS Build — Capacitor
+# iOS Build
 
-## Voraussetzungen
+## Prerequisites
 
--   Node.js ≥ 18
--   Xcode (App Store) mit Command Line Tools (`xcode-select --install`)
--   Apple Developer Account (für Signing + Device-Tests)
+- Node.js ≥ 18
+- Xcode (App Store) with Command Line Tools (`xcode-select --install`)
+- Apple Developer Account (for signing + device tests)
 
-## Einmaliges Setup
+## One-time setup
 
-Bereits erledigt — liegt im Repo:
+Already done — lives in the repo:
 
-| Was              | Wo                                                       |
+| What             | Where                                                    |
 | ---------------- | -------------------------------------------------------- |
-| Capacitor-Config | `capacitor.config.ts`                                    |
-| Xcode-Projekt    | `ios/App/App.xcworkspace`                                |
+| Xcode project    | `ios/App/App.xcworkspace`                                |
 | Icons & Splash   | `ios/App/App/Assets.xcassets/`                           |
-| Quell-Assets     | `resources/icon.png` (1024×1024), `resources/splash.png` |
+| Source assets    | `resources/icon.png` (1024×1024), `resources/splash.png` |
 
-## Normaler Build-Workflow
-
-```bash
-npm install                  # Abhängigkeiten installieren
-npm run build:ios            # App bauen + in Xcode-Projekt synchronisieren
-npm run cap:open             # Xcode öffnen
-```
-
-In Xcode: Signing-Team auswählen → Run (⌘R) oder Archivieren.
-
-## Assets neu generieren
-
-Nur nötig wenn `resources/icon.png` oder `resources/splash.png` geändert wurden:
+## Normal build workflow
 
 ```bash
-npx @capacitor/assets generate --ios
+npm install              # install dependencies
+npm run build:ios        # build game + copy to Xcode project
+npm run open:ios         # open Xcode
 ```
 
-## Konfigurierte iOS-Einstellungen
+In Xcode: select signing team → Run (⌘R) or Archive.
 
-| Einstellung       | Wert                          |
+## Regenerate icons / splash
+
+Only needed when icons or splash images change. Update directly in Xcode via `ios/App/App/Assets.xcassets/`.
+
+## iOS settings
+
+| Setting           | Value                         |
 | ----------------- | ----------------------------- |
-| App-ID            | `io.github.ithie`             |
-| Orientierung      | Landscape only                |
-| Vollbild          | `UIRequiresFullScreen = true` |
-| Status Bar        | versteckt                     |
-| Scheme / Hostname | `app` / `localhost`           |
-| Scroll            | deaktiviert                   |
+| App ID            | `io.github.ithie`             |
+| Orientation       | Landscape only                |
+| Full screen       | `UIRequiresFullScreen = true` |
+| Status bar        | hidden                        |
 
-```bash
-npm run build:ios
-```
+## Architecture
+
+The app is a bare `WKWebView` loading `ios/App/App/public/index.html` (the Vite build artefact) directly from the bundle. No Capacitor, no HTTP server.
+
+Native bridges (all in `ViewController.swift`):
+
+| JS handler                        | Swift side                         |
+| --------------------------------- | ---------------------------------- |
+| `webkit.messageHandlers.storage`  | Reads/writes `UserDefaults`        |
+| `webkit.messageHandlers.haptics`  | `UIImpactFeedbackGenerator`        |
+| `webkit.messageHandlers.appReview`| `SKStoreReviewController`          |
+
+Storage values are injected into `window.__nativeStorage` before the page loads. Existing saves from previous builds (stored under `CapacitorStorage.*` keys) are migrated automatically on first launch.

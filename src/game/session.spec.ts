@@ -1,10 +1,3 @@
-import { vi } from 'vitest';
-
-// @capacitor/preferences is a native plugin — stub it so the import chain works in Node
-vi.mock('@capacitor/preferences', () => ({
-    Preferences: { get: vi.fn(), set: vi.fn(), remove: vi.fn() },
-}));
-
 import { describe, it, expect } from 'vitest';
 import {
     encodeSession, decodeSession,

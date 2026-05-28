@@ -196,29 +196,15 @@ const _STEPS: readonly TutorialStep[] = [
 
 // ── DOM helpers ────────────────────────────────────────────────────────────────
 
-const _CONTROL_IDS: Record<NonNullable<ControlHint>, string> = {
-    'joystick-left':  'joystick-left',
-    'joystick-right': 'joystick-right',
-    'pitch-wheel':    'touch-pitch-wheel',
-    'deliver-toggle': 'touch-deliver-toggle',
-};
-const _ALL_HINTS: NonNullable<ControlHint>[] =
-    ['joystick-left', 'joystick-right', 'pitch-wheel', 'deliver-toggle'];
-
 const _setHighlight = (control: ControlHint): void => {
-    _ALL_HINTS.forEach(id =>
-        document.getElementById(_CONTROL_IDS[id])?.classList.remove('tutorial-highlight')
-    );
-    if (control) document.getElementById(_CONTROL_IDS[control])?.classList.add('tutorial-highlight');
+    window.webkit?.messageHandlers?.controls?.postMessage({
+        type: 'tutorialHighlight', control: control ?? null,
+    });
 };
 
 const _setDim = (dimList: NonNullable<ControlHint>[]): void => {
-    _ALL_HINTS.forEach(hint => {
-        const el = document.getElementById(_CONTROL_IDS[hint]);
-        if (!el) return;
-        const dim = dimList.includes(hint);
-        el.style.opacity      = dim ? '0.1' : '';
-        el.style.pointerEvents = dim ? 'none' : '';
+    window.webkit?.messageHandlers?.controls?.postMessage({
+        type: 'tutorialDim', controls: dimList,
     });
 };
 

@@ -11,7 +11,7 @@ export const NAV_SCREENS = [
 
 export type NavScreen = typeof NAV_SCREENS[number];
 
-/** Show one nav screen and hide all others. Pass null to hide all. */
+/** Show one nav screen and hide all others. Pass null to hide all (game active). */
 export const showScreen = (id: NavScreen | null): void => {
     NAV_SCREENS.forEach(s => {
         const el = document.getElementById(s);
@@ -23,6 +23,9 @@ export const showScreen = (id: NavScreen | null): void => {
             el.style.display = 'none';
         }
     });
+    if (id !== null) {
+        window.webkit?.messageHandlers?.controls?.postMessage({ type: 'showControls', visible: false });
+    }
 };
 
 /** showScreen + CRT turn-on animation for forward navigation. */

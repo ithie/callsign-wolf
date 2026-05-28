@@ -58,4 +58,4 @@ Nützlich wenn die Promo-Seite aktualisiert werden soll ohne einen neuen Tag anz
 npm run build:ios
 ```
 
-Baut `dist/index.html` mit `VITE_TARGET=app` und synchronisiert das Ergebnis ins Xcode-Projekt (`npx cap sync ios`). Danach in Xcode archivieren oder auf Gerät deployen. Siehe [INSTALL.md](../INSTALL.md) für den vollständigen Workflow.
+Baut `dist/index.html` mit `VITE_TARGET=app` und kopiert das Ergebnis ins Xcode-Projekt. Danach in Xcode archivieren oder auf Gerät deployen. Siehe [INSTALL.md](../INSTALL.md) für den vollständigen Workflow.

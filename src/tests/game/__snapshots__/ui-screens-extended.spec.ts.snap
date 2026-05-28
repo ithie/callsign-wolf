@@ -54,33 +54,3 @@ exports[`pause-overlay > snapshot of pause button 1`] = `
             </g>
         </svg>"
 `;
-
-exports[`touch-controls > snapshot 1`] = `
-"
-        <div id="touch-pad-left">
-            <div id="touch-top-row">
-                <div id="touch-pitch-wheel" title="Winschen">
-                    <div id="touch-pitch-drum"></div>
-                    <div id="touch-pitch-indicator"></div>
-                    <span class="pitch-label pitch-up">↑</span>
-                    <span class="pitch-label pitch-dn">↓</span>
-                </div>
-                <div id="touch-deliver-toggle" class="touch-btn" data-key="KeyR" title="Absetz-Modus">
-                    <div class="toggle-housing">
-                        <div class="toggle-rocker"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="joystick" id="joystick-left">
-                <span class="js-n">W</span><span class="js-s">S</span>
-                <span class="js-w">A</span><span class="js-e">D</span>
-                <div class="joystick-knob"></div>
-            </div>
-        </div>
-        <div class="joystick" id="joystick-right">
-            <div class="js-safe-zone"></div>
-            <span class="js-n">▲</span><span class="js-s">▼</span>
-            <span class="js-w">◀</span><span class="js-e">▶</span>
-            <div class="joystick-knob"></div>
-        </div>"
-`;

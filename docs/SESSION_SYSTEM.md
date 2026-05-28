@@ -1,6 +1,6 @@
 # Session System
 
-SAR: Callsign WOLF saves player progress locally on the device via `@capacitor/preferences` (iOS: `UserDefaults`). This document describes the data model, save code format, and privacy aspects.
+SAR: Callsign WOLF saves player progress locally on the device via `UserDefaults` (iOS) / `localStorage` (web). This document describes the data model, save code format, and privacy aspects.
 
 ---
 
@@ -35,7 +35,7 @@ interface MissionProgress {
 }
 ```
 
-Stored under the key `z_session` via Capacitor Preferences. Always written on change — no consent gate.
+Stored under the key `z_session` via `UserDefaults` (iOS) or `localStorage` (web). Always written on change — no consent gate.
 
 ### Stored data (as declared in the privacy notice)
 

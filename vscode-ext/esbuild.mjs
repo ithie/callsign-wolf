@@ -28,7 +28,7 @@ document.head.appendChild(__el);
 
 // ── Preview stubs plugin ───────────────────────────────────────────────────
 // Redirects src/game/main and src/game/storage to lightweight stubs so that
-// the UI preview bundle doesn't pull in ZsynthPlayer or Capacitor natives.
+// the UI preview bundle doesn't pull in ZsynthPlayer or native iOS bridges.
 const ROOT = path.resolve('..');
 const previewStubsPlugin = {
     name: 'preview-stubs',

@@ -159,23 +159,21 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         SceneRenderer.add(TOWER_DEF, { x: G.PAD.xMax - 0.5, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 });
     };
 
-    const _drawWindsock = (cx: number, cy: number) => {
-        const wx = G.PAD.xMin, wy = G.PAD.yMin + 8.8;
-        const base = isoFn(wx, wy, getGround(wx, wy), cx, cy);
-        const top = isoFn(wx, wy, getGround(wx, wy) + 1.2, cx, cy);
+    const _renderWindsock = (cx: number, cy: number, wx: number, wy: number, gz: number, windAngle: number, windStr: number) => {
+        const base = isoFn(wx, wy, gz, cx, cy);
+        const top = isoFn(wx, wy, gz + 1.2, cx, cy);
         ctx.strokeStyle = '#aaa';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(base.x, base.y);
         ctx.lineTo(top.x, top.y);
         ctx.stroke();
-        const windStrNorm = Math.min(1, getWindStr() / 10);
+        const windStrNorm = Math.min(1, windStr / 10);
         let wIsoX: number, wIsoY: number;
         if (windStrNorm < 0.01) {
             wIsoX = 0;
             wIsoY = 4;
         } else {
-            const windAngle = G.wind.angle ?? Math.PI * 0.75;
             const rawX = (Math.cos(windAngle) - Math.sin(windAngle)) * (tileW / 2);
             const rawY = (Math.cos(windAngle) + Math.sin(windAngle)) * (tileH / 2);
             const len = Math.hypot(rawX, rawY);
@@ -204,6 +202,11 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         }
         ctx.closePath();
         ctx.fill();
+    };
+
+    const _drawWindsock = (cx: number, cy: number) => {
+        const wx = G.PAD.xMin, wy = G.PAD.yMin + 8.8;
+        _renderWindsock(cx, cy, wx, wy, getGround(wx, wy), G.wind.angle ?? Math.PI * 0.75, getWindStr());
     };
 
     const _drawLighthouse = (_cx: number, _cy: number) => {
@@ -318,6 +321,24 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
 
         if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, visMargin)) _drawVectorCarrier(camX, camY);
         _drawNpcHelis(camX, camY, visMargin);
+        if (hasCarrier() && heliAt && !zstate.crashed && isVisible(G.CARRIER.x, G.CARRIER.y, visMargin)) {
+            const c = G.CARRIER;
+            const cosA = Math.cos(c.angle), sinA = Math.sin(c.angle);
+            const dx = G.heli.x - c.x, dy = G.heli.y - c.y;
+            const lx = dx * cosA + dy * sinA;
+            const ly = -dx * sinA + dy * cosA;
+            if (Math.abs(lx) <= c.w + 1 && Math.abs(ly) <= c.l + 1)
+                drawHeli(G.heli.type, G.heli.x, G.heli.y, G.heli.z, G.heli.angle, G.heli.tilt, G.heli.roll, G.heli.rotationPos, camX, camY,
+                    { isShadow: true, shadowGetGround: () => c.zDeck });
+        }
+        if (heliAt && !zstate.crashed) {
+            G.RESEARCH_PLATFORMS.forEach((rp: any) => {
+                if (!isVisible(rp.x, rp.y, visMargin)) return;
+                if (Math.abs(G.heli.x - rp.x) > 3 || Math.abs(G.heli.y - rp.y) > 3) return;
+                drawHeli(G.heli.type, G.heli.x, G.heli.y, G.heli.z, G.heli.angle, G.heli.tilt, G.heli.roll, G.heli.rotationPos, camX, camY,
+                    { isShadow: true, shadowGetGround: () => G.waterLevel + 6.5 });
+            });
+        }
         G.payloads.forEach((p: any) => {
             if (p.type !== PAYLOAD.ORNI_WRECK || !isVisible(p.x, p.y, visMargin)) return;
             const gz = getGround(p.x, p.y);
@@ -348,6 +369,22 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         if (hasPad()) _drawPadLights(G.PAD.z, false);
         if (queueFoliage) queueFoliage(camX, camY);
         if (heliAt) SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt.x + heliAt.y, drawFn: (cx, cy) => heliAt.fn(cx, cy) });
+        // Carrier windsock: queued before flush so it depth-sorts with the ship.
+        // Position: local (6.0, 0.0) = centre stern, well clear of the island/tower.
+        if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, visMargin)) {
+            const c = G.CARRIER;
+            const cosA = Math.cos(c.angle), sinA = Math.sin(c.angle);
+            const wsWX = c.x + (-7.5) * cosA - (-2.0) * sinA;
+            const wsWY = c.y + (-7.5) * sinA + (-2.0) * cosA;
+            const realWX = Math.cos(G.wind.angle ?? 0) * getWindStr();
+            const realWY = Math.sin(G.wind.angle ?? 0) * getWindStr();
+            const cVx = c.speed * cosA * 200;
+            const cVy = c.speed * sinA * 200;
+            const wsAngle = Math.atan2(realWY - cVy, realWX - cVx);
+            const wsStr   = Math.hypot(realWX - cVx, realWY - cVy);
+            SceneRenderer.add(null, { x: 0, y: 0, depth: wsWX + wsWY,
+                drawFn: (cx, cy) => _renderWindsock(cx, cy, wsWX, wsWY, c.zDeck, wsAngle, wsStr) });
+        }
         SceneRenderer.flush(camX, camY);
         if (hasPad() && isVisible(G.PAD.xMin, G.PAD.yMin)) _drawWindsock(camX, camY);
     };

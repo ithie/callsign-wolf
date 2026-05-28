@@ -2,13 +2,13 @@
     "name": "callsign-wolf",
     "private": true,
     "license": "UNLICENSED",
-    "version": "28.1.0",
+    "version": "28.3.1",
     "type": "module",
     "scripts": {
         "dev": "vite",
         "build": "vite build",
-        "build:ios": "VITE_TARGET=app vite build && npx cap sync ios",
-        "cap:open": "npx cap open ios",
+        "build:ios": "VITE_TARGET=app vite build && cp dist/index.html ios/App/App/public/index.html",
+        "open:ios": "open ios/App/App.xcworkspace",
         "preview": "vite preview",
         "deploy": "gh-pages -d dist/",
         "test": "vitest run",
@@ -16,20 +16,12 @@
         "test:coverage": "vitest run --coverage"
     },
     "devDependencies": {
-        "@capacitor/assets": "^3.0.5",
-        "@capacitor/cli": "^8.3.1",
-        "@capacitor/core": "^8.3.1",
-        "@capacitor/ios": "^8.3.1",
-        "@types/node": "^25.3.0",
+"@types/node": "^25.3.0",
         "@vitest/coverage-v8": "^4.1.0",
         "gh-pages": "^6.3.0",
         "jsdom": "^29.0.2",
         "typescript": "^6.0.3",
         "vite": "^7.3.1",
         "vitest": "^4.1.0"
-    },
-    "dependencies": {
-        "@capacitor/haptics": "^8.0.2",
-        "@capacitor/preferences": "^8.0.1"
     }
 }

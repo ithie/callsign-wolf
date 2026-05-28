@@ -8,3 +8,15 @@ interface ImportMetaEnv {
 interface ImportMeta {
     readonly env: ImportMetaEnv;
 }
+
+interface Window {
+    __nativeStorage?: Record<string, string>;
+    webkit?: {
+        messageHandlers?: {
+            storage?: { postMessage(data: unknown): void };
+            haptics?: { postMessage(data: unknown): void };
+            appReview?: { postMessage(data: unknown): void };
+            controls?: { postMessage(data: unknown): void };
+        };
+    };
+}
