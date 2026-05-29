@@ -67,6 +67,7 @@ export const G = {
         vy: 0,
         vz: 0,
         angle: 0,
+        vAngle: 0,
         tilt: 0,
         roll: 0,
         winch: 0,

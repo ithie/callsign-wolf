@@ -168,7 +168,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         ctx.moveTo(base.x, base.y);
         ctx.lineTo(top.x, top.y);
         ctx.stroke();
-        const windStrNorm = Math.min(1, windStr / 10);
+        const windStrNorm = Math.min(1, windStr / 5);
         let wIsoX: number, wIsoY: number;
         if (windStrNorm < 0.01) {
             wIsoX = 0;
@@ -374,8 +374,8 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         if (hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, visMargin)) {
             const c = G.CARRIER;
             const cosA = Math.cos(c.angle), sinA = Math.sin(c.angle);
-            const wsWX = c.x + (-7.5) * cosA - (-2.0) * sinA;
-            const wsWY = c.y + (-7.5) * sinA + (-2.0) * cosA;
+            const wsWX = c.x + (-8.3) * cosA - (-3.7) * sinA;
+            const wsWY = c.y + (-8.3) * sinA + (-3.7) * cosA;
             const realWX = Math.cos(G.wind.angle ?? 0) * getWindStr();
             const realWY = Math.sin(G.wind.angle ?? 0) * getWindStr();
             const cVx = c.speed * cosA * 200;

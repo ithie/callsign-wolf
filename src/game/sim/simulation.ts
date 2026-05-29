@@ -323,18 +323,22 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
                 G.heli.roll = Math.max(G.heli.roll - 0.02 * dt, -0.4); turning = true;
             }
             if (G.keys['ArrowLeft']) {
-                G.heli.angle -= 0.045 * mod * aero * dt;
+                G.heli.vAngle = -0.045 * mod * aero;
                 G.heli.roll = Math.min(G.heli.roll + 0.012 * dt, 0.4); turning = true;
             }
             if (G.keys['ArrowRight']) {
-                G.heli.angle += 0.045 * mod * aero * dt;
+                G.heli.vAngle = 0.045 * mod * aero;
                 G.heli.roll = Math.max(G.heli.roll - 0.012 * dt, -0.4); turning = true;
             }
-            if (!turning) G.heli.roll *= Math.pow(0.96, dt);
+            if (!turning) {
+                G.heli.vAngle *= Math.pow(0.95, dt);
+                G.heli.roll *= Math.pow(0.96, dt);
+            }
+            G.heli.angle += G.heli.vAngle * dt;
 
             if (G.keys['KeyW']) G.heli.vz += G.heli.liftPower * mod * dt;
             else if (G.keys['KeyS']) G.heli.vz -= 0.002 * dt;
-            else G.heli.vz *= Math.pow(G.heli.vz < 0 ? G.heli.friction : Math.sqrt(G.heli.friction), dt);
+            else G.heli.vz *= Math.pow(G.heli.vz < 0 ? G.heli.friction * G.heli.friction : Math.sqrt(G.heli.friction), dt);
 
             if (!ctx.isTutorialFuelLocked) G.heli.fuel -= G.heli.fuelRate * mod * dt;
         } else {
@@ -352,7 +356,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     if (!inAir) {
         G.heli.vx = 0; G.heli.vy = 0;
     } else {
-        G.heli.vx += G.wind.x * 5 * dt; G.heli.vy += G.wind.y * 5 * dt;
+        G.heli.vx += G.wind.x * 3 * dt; G.heli.vy += G.wind.y * 3 * dt;
     }
     // Guard against NaN propagating into position (pre-existing physics bug: vx/vy can go NaN under certain cargo/wind conditions)
     if (!isFinite(G.heli.vx)) G.heli.vx = 0;
