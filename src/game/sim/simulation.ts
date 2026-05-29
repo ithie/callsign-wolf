@@ -378,6 +378,11 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     // winch
     if (G.keys['KeyQ']) G.heli.winch = Math.max(0, G.heli.winch - 0.02 * dt);
     if (G.keys['KeyE']) G.heli.winch = Math.min(5.0, G.heli.winch + 0.02 * dt);
+    if (!G.heli.inAir && !G.activePayload) {
+        G.heli.winch = 0;
+        G.rescuerSwing.x = G.heli.x; G.rescuerSwing.y = G.heli.y;
+        G.rescuerSwing.vx = 0;       G.rescuerSwing.vy = 0;
+    }
     // clamp: rope can't have slack when payload rests on a surface
     // floor at 0.6 so physics clamping never crosses the deposit threshold involuntarily
     if (G.activePayload?.hanging)
