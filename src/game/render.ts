@@ -14,4 +14,10 @@ const iso = (
     return { x: px, y: py };
 };
 
-export { iso };
+type IsoConfig = { canvas: HTMLCanvasElement; tileW: number; tileH: number; stepH: number };
+
+const createIsoFn = (config: IsoConfig) =>
+    (wx: number, wy: number, wz: number, cx: number, cy: number, out?: { x: number; y: number }) =>
+        iso(wx, wy, wz, cx, cy, config, out);
+
+export { iso, createIsoFn };

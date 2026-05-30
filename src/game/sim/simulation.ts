@@ -383,10 +383,13 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
         G.rescuerSwing.x = G.heli.x; G.rescuerSwing.y = G.heli.y;
         G.rescuerSwing.vx = 0;       G.rescuerSwing.vy = 0;
     }
-    // clamp: rope can't have slack when payload rests on a surface
+    // clamp: rope can't have slack when payload rests on a surface — only when payload is near ground
     // floor at 0.6 so physics clamping never crosses the deposit threshold involuntarily
-    if (G.activePayload?.hanging)
-        G.heli.winch = Math.min(G.heli.winch, Math.max(0.6, G.heli.z - G.activePayload.z) + 0.05);
+    if (G.activePayload?.hanging) {
+        const _groundZp = getGround(G.activePayload.x, G.activePayload.y);
+        if (G.activePayload.z <= _groundZp + 0.5)
+            G.heli.winch = Math.min(G.heli.winch, Math.max(0.6, G.heli.z - G.activePayload.z) + 0.05);
+    }
 
     // deliver-mode toggle (R key — rising edge only)
     const keyR = !!G.keys['KeyR'];

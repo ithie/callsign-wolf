@@ -3,14 +3,14 @@ import './ui/screens.css';
 import * as LoadingScreen from './ui/loading-screen/loading-screen';
 import { ensureEl } from './ui/dom-helpers';
 import { setDeliverToggle as _touchSetDeliverToggle } from './ui/touch-controls/touch-controls';
-import { iso } from './render';
+import { createIsoFn } from './render';
 import { campaignHandler, soundHandler, zinit, musicConfig } from './main';
 import { loadSession, saveSession, getRank, RANKS, STORAGE_KEY, type PlayerSession, type Rank } from './session';
 import { initAppStorage, storageGet, storageSet } from './storage';
 import { zstate } from './state';
 import { initHeliSound, updateHeliSound, stopHeliSound, setSfxEnabled, isSfxEnabled } from './heli-sound';
 
-import { createDrawWorld } from './draw-world';
+import { createDrawWorld } from './draws-world/draw-world';
 import CARRIER_DEF from './models/carrier.zdef';
 import RESEARCH_PLATFORM_DEF from './models/research_platform.zdef';
 import { createSceneRenderer } from './scene-renderer';
@@ -75,8 +75,7 @@ const canvas = document.getElementById('gameCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 ctx.imageSmoothingEnabled = false;
 
-const isoFn = (wx: number, wy: number, wz: number, cx: number, cy: number, out?: { x: number; y: number }) =>
-    iso(wx, wy, wz, cx, cy, { canvas, tileW, tileH, stepH }, out);
+const isoFn = createIsoFn({ canvas, tileW, tileH, stepH });
 const _hud = createHud({ isoFn, canvas });
 const SceneRenderer = createSceneRenderer(ctx, isoFn);
 const { drawTree, drawPerson, drawTractor, drawFuelTruck, drawHeli } = createDrawObjects(
@@ -89,7 +88,7 @@ const { drawTree, drawPerson, drawTractor, drawFuelTruck, drawHeli } = createDra
 
 const hasCarrier = () => _missionHasCarrier;
 const hasPad = () => _missionHasPad;
-const isVisible = (objX: number, objY: number, margin = 16) => {
+const isVisible = (objX: number, objY: number, margin = 19) => {
     if (_isTouchDevice()) {
         const viewCX = zstate.cam.x / tileW + zstate.cam.y / tileH;
         const viewCY = zstate.cam.y / tileH - zstate.cam.x / tileW;
@@ -696,8 +695,8 @@ const drawScene = () => {
                       ) {
                           const rs = G.rescuerSwing;
                           const winchTipZ = Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
-                          const hP = iso(G.heli.x, G.heli.y, G.heli.z, cx, cy, { stepH, tileW, tileH, canvas });
-                          const wP = iso(rs.x, rs.y, winchTipZ, cx, cy, { stepH, tileW, tileH, canvas });
+                          const hP = isoFn(G.heli.x, G.heli.y, G.heli.z, cx, cy);
+                          const wP = isoFn(rs.x, rs.y, winchTipZ, cx, cy);
                           ctx.strokeStyle = '#bbb';
                           ctx.lineWidth = 1;
                           ctx.beginPath();
@@ -753,7 +752,7 @@ const drawScene = () => {
         p.x += p.vx || 0;
         p.y += p.vy || 0;
         p.life -= p.isSmoke ? 0.018 : 0.025;
-        let pos = iso(p.x, p.y, Math.max(p.z, 0), camX, camY, { stepH, tileW, tileH, canvas });
+        let pos = isoFn(p.x, p.y, Math.max(p.z, 0), camX, camY);
         const alpha = Math.min(1.0, p.life * (p.isSmoke ? 1.5 : 2.0));
         const pScale = tileW / 64;
         const size = (p.size || 3) * pScale;

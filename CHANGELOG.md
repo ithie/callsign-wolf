@@ -1,5 +1,22 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.3.2 — Visibility Refactor, Winch Fix & Draw-World Split
+
+### Changed
+
+- **Carrier/Pad visibility gating** — `drawWorldObjects` now computes `showCarrier` and `showPad` once as gate booleans; all sub-objects (bow wave, windsock, hangar, fuel truck, pad lights, NPC helis) inherit that visibility instead of each calling `isVisible` independently.
+- **NPC heli visibility** — `parked ? showCarrier : isVisible(npc)` replaces the duplicated carrier/npc check; carrier half-length margin (+9) is automatically covered by the gate.
+- **Default `isVisible` margin** — raised from 16 to 19 to cover the largest vessel radius without per-site workarounds.
+- **`draw-world.ts` split** — extracted into `src/game/draws-world/` with one file per domain: `carrier`, `vessels`, `structures`, `payloads`, `collision` (incl. debug overlay), `misc`. Main file is now a thin compositor.
+- **`createIsoFn` factory** — `render.ts` now exports `createIsoFn(config)` returning a pre-configured `IsoFn`; the manual 2-line wrapper in `game.ts` is gone and all remaining direct `iso(…, {config})` calls replaced.
+
+### Fixes
+
+- **Winch clamp ground-only** — winch length was clamped whenever a payload was hanging; now only triggers when `payload.z ≤ groundZ + 0.5`, preventing involuntary rope shortening mid-air.
+- **Pad windsock margin** — missing `visMargin` argument in `isVisible` call restored.
+
+---
+
 ## v28.3.1 — Swift Controls Bugfixes & Physics Tweaks
 
 ### Fixes
