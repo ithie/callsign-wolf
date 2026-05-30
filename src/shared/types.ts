@@ -66,12 +66,6 @@ export const OBJECTIVE_TYPE = {
 } as const;
 export type ObjectiveType = typeof OBJECTIVE_TYPE[keyof typeof OBJECTIVE_TYPE];
 
-export const CTRL_MODE = {
-    SCREEN:  'screen',
-    HEADING: 'heading',
-} as const;
-export type CtrlMode = typeof CTRL_MODE[keyof typeof CTRL_MODE];
-
 type PadObject = { type: 'pad'; x: number; y: number };
 type CarrierObject = {
     type: 'carrier';

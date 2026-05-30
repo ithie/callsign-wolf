@@ -220,15 +220,6 @@ describe('touch-controls', () => {
         delete (window as any).webkit;
     });
 
-    it('setRightStickProfi posts controlMode to webkit controls handler', () => {
-        const postMessage = vi.fn();
-        (window as any).webkit = { messageHandlers: { controls: { postMessage } } };
-        TouchControls.setRightStickProfi(true);
-        expect(postMessage).toHaveBeenCalledWith({ type: 'controlMode', mode: 'screen' });
-        TouchControls.setRightStickProfi(false);
-        expect(postMessage).toHaveBeenCalledWith({ type: 'controlMode', mode: 'heading' });
-        delete (window as any).webkit;
-    });
 });
 
 // ─── swipe-carousel ───────────────────────────────────────────────────────────

@@ -67,23 +67,20 @@ private final class ControlsHandler: NSObject, WKScriptMessageHandler {
     weak var overlay: GameControlOverlay?
 
     func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
+        // WKScriptMessageHandler is already called on the main thread — no async dispatch needed.
         guard let body = message.body as? [String: Any],
-              let type = body["type"] as? String else { return }
-        DispatchQueue.main.async { [weak self] in
-            guard let overlay = self?.overlay else { return }
-            switch type {
-            case "showControls":
-                overlay.isHidden = (body["visible"] as? Bool) == false
-            case "deliverToggle":
-                overlay.setDeliverOn((body["on"] as? Bool) == true)
-            case "controlMode":
-                overlay.setProfiMode((body["mode"] as? String) == "screen")
-            case "tutorialHighlight":
-                overlay.setTutorialHighlight(body["control"] as? String)
-            case "tutorialDim":
-                overlay.setTutorialDim(Set(body["controls"] as? [String] ?? []))
-            default: break
-            }
+              let type = body["type"] as? String,
+              let overlay else { return }
+        switch type {
+        case "showControls":
+            overlay.setVisible((body["visible"] as? Bool) == true)
+        case "deliverToggle":
+            overlay.setDeliverOn((body["on"] as? Bool) == true)
+        case "tutorialHighlight":
+            overlay.setTutorialHighlight(body["control"] as? String)
+        case "tutorialDim":
+            overlay.setTutorialDim(Set(body["controls"] as? [String] ?? []))
+        default: break
         }
     }
 }
@@ -138,7 +135,7 @@ class ViewController: UIViewController {
 
     // MARK: - Storage helpers
 
-    private let storageKeys = ["zw_session", "zw_lang", "z_ctrl_mode", "zw_music", "zw_sfx"]
+    private let storageKeys = ["zw_session", "zw_lang", "zw_music", "zw_sfx"]
 
     private func migrateCapacitorStorage() {
         let prefix = "CapacitorStorage."

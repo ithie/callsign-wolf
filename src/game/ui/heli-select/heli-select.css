@@ -146,6 +146,7 @@
     cursor: pointer;
     border-radius: 3px;
     text-transform: uppercase;
+    touch-action: manipulation;
     transition: background 0.2s, color 0.2s, box-shadow 0.2s;
 }
 

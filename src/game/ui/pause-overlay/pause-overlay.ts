@@ -7,8 +7,6 @@ type PauseOverlayDeps = {
     setMusicEnabled: (v: boolean) => void;
     isSfxEnabled: () => boolean;
     setSfxEnabled: (v: boolean) => void;
-    getControlMode: () => 'heading' | 'screen';
-    setControlMode: (m: 'heading' | 'screen') => void;
     isTouchDevice: () => boolean;
     onPause: () => void;
     onResume: () => void;
@@ -22,7 +20,6 @@ const HL = 'var(--accent, #4af)';
 const _refreshButtons = () => {
     const music = _deps.isMusicEnabled();
     const sfx   = _deps.isSfxEnabled();
-    const mode  = _deps.getControlMode();
 
     const set = (id: string, active: boolean) => {
         const el = document.getElementById(id) as HTMLButtonElement | null;
@@ -35,8 +32,6 @@ const _refreshButtons = () => {
     set('pause-music-off', !music);
     set('pause-sfx-on',    sfx);
     set('pause-sfx-off',   !sfx);
-    set('pause-ctrl-simplified', mode === 'heading');
-    set('pause-ctrl-profi',      mode === 'screen');
 };
 
 const _show = () => {
@@ -104,13 +99,6 @@ export const mount = (deps: PauseOverlayDeps) => {
                     <button class="settings-btn" id="pause-sfx-off">${I18N.AUDIO_OFF}</button>
                 </div>
             </div>
-            <div class="pause-field">
-                <label>${I18N.CONTROLS_HEADING}</label>
-                <div class="pause-row">
-                    <button class="settings-btn" id="pause-ctrl-simplified">${I18N.CONTROLS_SIMPLIFIED}</button>
-                    <button class="settings-btn" id="pause-ctrl-profi">${I18N.CONTROLS_PROFESSIONAL}</button>
-                </div>
-            </div>
             <button class="settings-btn" id="pause-resume">${I18N.PAUSE_RESUME}</button>
             <button class="settings-btn" id="pause-abort" style="background:#1a0000;border-color:#500;color:#c44">${I18N.PAUSE_ABORT}</button>
         </div>`;
@@ -119,10 +107,6 @@ export const mount = (deps: PauseOverlayDeps) => {
     document.getElementById('pause-music-off')!.onclick = () => { _deps.setMusicEnabled(false); _refreshButtons(); };
     document.getElementById('pause-sfx-on')!.onclick    = () => { _deps.setSfxEnabled(true);    _refreshButtons(); };
     document.getElementById('pause-sfx-off')!.onclick   = () => { _deps.setSfxEnabled(false);   _refreshButtons(); };
-    document.getElementById('pause-ctrl-simplified')!.onclick = () => { _deps.setControlMode('heading'); _refreshButtons(); };
-    document.getElementById('pause-ctrl-profi')!.onclick      = () => { _deps.setControlMode('screen');  _refreshButtons(); };
-    (document.querySelector('#pause-panel .pause-field:last-of-type') as HTMLElement).style.display =
-        _deps.isTouchDevice() ? '' : 'none';
     document.getElementById('pause-resume')!.onclick = _hide;
     document.getElementById('pause-abort')!.onclick  = _abort;
 };

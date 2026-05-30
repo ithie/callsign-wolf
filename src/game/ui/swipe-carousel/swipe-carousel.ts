@@ -157,7 +157,7 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
         state.isDragging = true;
         state.hasMoved = false;
         track.classList.add('dragging');
-        root.setPointerCapture(e.pointerId);
+        // Capture only after drag is confirmed to avoid iOS touch cancellation on taps
     };
 
     const _onPointerMove = (e: PointerEvent) => {
@@ -171,7 +171,10 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
             return;
         }
 
-        if (Math.abs(dx) > AXIS_LOCK_THRESHOLD) state.hasMoved = true;
+        if (Math.abs(dx) > AXIS_LOCK_THRESHOLD) {
+            state.hasMoved = true;
+            if (!root.hasPointerCapture(e.pointerId)) root.setPointerCapture(e.pointerId);
+        }
         state.pointerCurrentX = e.clientX;
         _applyTransform(dx);
     };

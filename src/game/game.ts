@@ -63,7 +63,7 @@ import {
     isTutorialFuelLocked,
 } from './ui/tutorial/tutorial';
 import { requestReview } from './reviewRequest';
-import { VESSEL, PAYLOAD, CAMPAIGN_TYPE, CTRL_MODE } from '../shared/types';
+import { VESSEL, PAYLOAD, CAMPAIGN_TYPE } from '../shared/types';
 
 const assertDom = () => {
     if (!document.getElementById('gameCanvas')) {
@@ -961,45 +961,7 @@ const setTouchVisible = (v: boolean) => {
     if (touchEl) touchEl.style.display = v ? 'flex' : 'none';
 };
 
-const CTRL_MODE_KEY = 'z_ctrl_mode';
-const getControlMode = (): 'heading' | 'screen' =>
-    storageGet(CTRL_MODE_KEY) === CTRL_MODE.SCREEN ? 'screen' : 'heading';
-const setControlMode = (m: 'heading' | 'screen') => {
-    storageSet(CTRL_MODE_KEY, m);
-    window.webkit?.messageHandlers?.controls?.postMessage({ type: 'controlMode', mode: m });
-};
-
 // ─── Native touch control state (set by Swift via window.__nativeControls) ───
-let _stickDx = 0, _stickDy = 0, _stickJr = 80, _stickActive = false;
-
-const _startHeadingTick = () => {
-    const tick = () => {
-        if (
-            _stickActive &&
-            !isTutorialRunning() &&
-            getControlMode() === CTRL_MODE.HEADING &&
-            zstate.gameStarted &&
-            Math.hypot(_stickDx, _stickDy) > _stickJr * 0.18
-        ) {
-            const targetAngle = Math.atan2(_stickDy, _stickDx);
-            let diff = targetAngle - G.heli.angle;
-            while (diff > Math.PI)  diff -= Math.PI * 2;
-            while (diff < -Math.PI) diff += Math.PI * 2;
-            const turnDead = 0.15;
-            (G.keys as Record<string, boolean>)['ArrowLeft']  = diff < -turnDead;
-            (G.keys as Record<string, boolean>)['ArrowRight'] = diff >  turnDead;
-            const stickLen = Math.hypot(_stickDx, _stickDy);
-            const normSx = _stickDx / stickLen, normSy = _stickDy / stickLen;
-            const fwdX = Math.cos(G.heli.angle), fwdY = Math.sin(G.heli.angle);
-            const dot = normSx * fwdX + normSy * fwdY;
-            const accelDead = 0.3;
-            (G.keys as Record<string, boolean>)['ArrowUp']   = dot >  accelDead;
-            (G.keys as Record<string, boolean>)['ArrowDown'] = dot < -accelDead;
-        }
-        requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-};
 
 (window as any).__nativeControls = (input: {
     leftJoy:    { dx: number; dy: number; jr: number; active: boolean };
@@ -1023,21 +985,18 @@ const _startHeadingTick = () => {
         (G.keys as Record<string, boolean>)['KeyD'] = false;
     }
 
-    // Right joystick state (HEADING mode tick reads these each frame)
-    _stickActive = input.rightJoy.active;
-    _stickDx     = input.rightJoy.active ? input.rightJoy.dx : 0;
-    _stickDy     = input.rightJoy.active ? input.rightJoy.dy : 0;
-    _stickJr     = input.rightJoy.jr;
-
-    // Right joystick PROFI / tutorial: set keys directly
-    if (input.rightJoy.active && (isTutorialRunning() || getControlMode() === CTRL_MODE.SCREEN)) {
+    // Right joystick → ArrowUp/Down/Left/Right with axis safe zones
+    if (input.rightJoy.active) {
         const { dx, dy, jr } = input.rightJoy;
-        const t = jr * 0.35;
-        (G.keys as Record<string, boolean>)['ArrowUp']    = _isKeyAllowed('ArrowUp')    && dy < -t;
-        (G.keys as Record<string, boolean>)['ArrowDown']  = _isKeyAllowed('ArrowDown')  && dy >  t;
-        (G.keys as Record<string, boolean>)['ArrowLeft']  = _isKeyAllowed('ArrowLeft')  && dx < -t;
-        (G.keys as Record<string, boolean>)['ArrowRight'] = _isKeyAllowed('ArrowRight') && dx >  t;
-    } else if (!input.rightJoy.active) {
+        const t    = jr * 0.35;
+        const SAFE = 0.70; // tan(35°) — safe-zone half-angle
+        const inVertSafe  = Math.abs(dx) < Math.abs(dy) * SAFE; // near vertical → accel only
+        const inHorizSafe = Math.abs(dy) < Math.abs(dx) * SAFE; // near horizontal → steer only
+        (G.keys as Record<string, boolean>)['ArrowUp']    = _isKeyAllowed('ArrowUp')    && !inHorizSafe && dy < -t;
+        (G.keys as Record<string, boolean>)['ArrowDown']  = _isKeyAllowed('ArrowDown')  && !inHorizSafe && dy >  t;
+        (G.keys as Record<string, boolean>)['ArrowLeft']  = _isKeyAllowed('ArrowLeft')  && !inVertSafe  && dx < -t;
+        (G.keys as Record<string, boolean>)['ArrowRight'] = _isKeyAllowed('ArrowRight') && !inVertSafe  && dx >  t;
+    } else {
         (G.keys as Record<string, boolean>)['ArrowUp']    = false;
         (G.keys as Record<string, boolean>)['ArrowDown']  = false;
         (G.keys as Record<string, boolean>)['ArrowLeft']  = false;
@@ -1052,11 +1011,7 @@ const _startHeadingTick = () => {
     (G.keys as Record<string, boolean>)['KeyR'] = input.deliverBtn;
 };
 
-const setupTouchControls = () => {
-    if (!_isTouchDevice()) return;
-    _startHeadingTick();
-    window.webkit?.messageHandlers?.controls?.postMessage({ type: 'controlMode', mode: getControlMode() });
-};
+const setupTouchControls = () => { /* right stick always in screen mode — no init needed */ };
 
 const _ensureEl = ensureEl;
 
@@ -1191,7 +1146,7 @@ window.onload = () => {
                 _onloadPreview();
                 return;
             }
-            await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, CTRL_MODE_KEY, 'zw_music', 'zw_sfx']);
+            await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, 'zw_music', 'zw_sfx']);
             _session = loadSession();
             const _sl = storageGet(LANG_PREF_KEY);
             if (_sl === 'de' || _sl === 'en') setLanguage(_sl);
@@ -1249,8 +1204,6 @@ const _onloadMain = () => {
             setSfxEnabled(v);
             _setPref('zw_sfx', v);
         },
-        getControlMode,
-        setControlMode,
         isTouchDevice: _isTouchDevice,
         onPause: () => {
             cancelAnimationFrame(_rafId);
@@ -1272,8 +1225,6 @@ const _onloadMain = () => {
         getSession: () => _session,
         saveSession,
         getRankMissions: _getRankMissions,
-        getControlMode,
-        setControlMode,
         isTouchDevice: _isTouchDevice,
         isMusicEnabled: () => !soundHandler.state.isMuted,
         setMusicEnabled: (v: boolean) => {

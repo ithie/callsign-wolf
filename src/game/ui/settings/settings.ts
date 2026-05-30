@@ -8,8 +8,6 @@ type Deps = {
     getSession: () => PlayerSession;
     saveSession: (s: PlayerSession) => void;
     getRankMissions: () => number;
-    getControlMode: () => 'heading' | 'screen';
-    setControlMode: (m: 'heading' | 'screen') => void;
     isTouchDevice: () => boolean;
     isMusicEnabled: () => boolean;
     setMusicEnabled: (v: boolean) => void;
@@ -48,16 +46,6 @@ export const mount = () => {
             </div>
             <div id="import-code-msg" style="font-size: 12px; letter-spacing: 2px; min-height: 18px; margin-top: 4px"></div>
         </div>
-        <div id="settings-ctrl-row" style="display:none; flex-direction:column; align-items:center; margin-top:16px; width:100%">
-            <div class="settings-field" style="width:100%">
-                <label>${I18N.CONTROLS_HEADING}</label>
-                <div style="display:flex; gap:10px; margin-top:6px">
-                    <button class="settings-btn" id="ctrl-btn-profi">${I18N.CONTROLS_SIMPLIFIED}</button>
-                    <button class="settings-btn" id="ctrl-btn-vereinfacht">${I18N.CONTROLS_PROFESSIONAL}</button>
-                </div>
-                <div id="ctrl-mode-hint" style="font-size:11px; letter-spacing:1px; color:#8af; margin-top:4px; min-height:16px"></div>
-            </div>
-        </div>
         <div style="margin-top: 20px; border-top: 1px solid #1a1a2e; padding-top: 16px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px">
             <div class="settings-field" style="width:100%">
                 <label>${I18N.MUSIC_HEADING}</label>
@@ -95,15 +83,6 @@ export const mount = () => {
     document.getElementById('sfx-off-btn')!.addEventListener('click', () => { _deps.setSfxEnabled(false); _refreshAudioButtons(); });
     document.getElementById('lang-de-btn')!.addEventListener('click', () => { setLanguage('de'); show(); });
     document.getElementById('lang-en-btn')!.addEventListener('click', () => { setLanguage('en'); show(); });
-    document.getElementById('ctrl-btn-profi')!.addEventListener('click', () => {
-        _deps.setControlMode('heading');
-        _refreshCtrlButtons();
-    });
-    document.getElementById('ctrl-btn-vereinfacht')!.addEventListener('click', () => {
-        _deps.setControlMode('screen');
-        _refreshCtrlButtons();
-    });
-
 };
 
 const HL = 'var(--accent, #4af)';
@@ -131,18 +110,6 @@ const _refreshLangButtons = () => {
     en.style.color       = LANG === 'en' ? HL : '';
 };
 
-const _refreshCtrlButtons = () => {
-    const mode = _deps.getControlMode();
-    const profi = document.getElementById('ctrl-btn-profi') as HTMLButtonElement;
-    const vereinfacht = document.getElementById('ctrl-btn-vereinfacht') as HTMLButtonElement;
-    const hint = document.getElementById('ctrl-mode-hint') as HTMLElement;
-    profi.style.borderColor = mode === 'heading' ? HL : '';
-    profi.style.color = mode === 'heading' ? HL : '';
-    vereinfacht.style.borderColor = mode === 'screen' ? HL : '';
-    vereinfacht.style.color = mode === 'screen' ? HL : '';
-    hint.textContent = mode === 'heading' ? I18N.CONTROLS_SIMPLIFIED_DETAILS : I18N.CONTROLS_PROFESSIONAL_DETAILS;
-};
-
 const _refreshSettingsScreen = () => {
     const session = _deps.getSession();
     const rank = getRank(session, _deps.getRankMissions());
@@ -168,13 +135,6 @@ export const show = () => {
     };
     (document.getElementById('import-code-input') as HTMLInputElement).value = '';
     (document.getElementById('import-code-msg') as HTMLElement).textContent = '';
-    const ctrlRow = document.getElementById('settings-ctrl-row') as HTMLElement;
-    if (_deps.isTouchDevice()) {
-        ctrlRow.style.display = 'flex';
-        _refreshCtrlButtons();
-    } else {
-        ctrlRow.style.display = 'none';
-    }
     _refreshAudioButtons();
     _refreshLangButtons();
     showScreenCrtEnter('settings-screen');

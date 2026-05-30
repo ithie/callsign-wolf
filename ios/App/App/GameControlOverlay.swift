@@ -17,7 +17,6 @@ final class GameControlOverlay: UIView {
     private var wheel      = WheelState()
     private var deliverPressed = false
     private var deliverOn  = false   // visual state, set by JS
-    private var profiMode  = false   // set by JS via controlMode message
 
     // ── Touch tracking ───────────────────────────────────────────────────────────
     private var leftTouch:    UITouch?
@@ -29,7 +28,9 @@ final class GameControlOverlay: UIView {
     private var tutorialHighlight: String?     = nil
     private var tutorialDimmed:    Set<String> = []
     private var pulsePhase:        CGFloat     = 0
-    private var displayLink:       CADisplayLink?
+
+    // ── Display link — drives both controls→JS (60fps) and tutorial pulse ────────
+    private var _link: CADisplayLink?
 
     // ── Layout (recomputed in layoutSubviews) ─────────────────────────────────────
     private var leftCenter:  CGPoint = .zero
@@ -52,36 +53,41 @@ final class GameControlOverlay: UIView {
         backgroundColor = .clear
         isOpaque = false
         isMultipleTouchEnabled = true
+        isUserInteractionEnabled = false  // enabled only via setVisible(true)
     }
     required init?(coder: NSCoder) { fatalError() }
 
     // ── External state setters ────────────────────────────────────────────────────
-    func setProfiMode(_ profi: Bool)  { profiMode  = profi; setNeedsDisplay() }
-    func setDeliverOn(_ on: Bool)     { deliverOn  = on;    setNeedsDisplay() }
+    func setDeliverOn(_ on: Bool)  { deliverOn = on }
+
+    func setVisible(_ visible: Bool) {
+        isHidden = !visible
+        isUserInteractionEnabled = visible
+        if visible {
+            if _link == nil {
+                _link = CADisplayLink(target: self, selector: #selector(_tick(_:)))
+                _link?.preferredFramesPerSecond = 30
+                _link?.add(to: .main, forMode: .common)
+            }
+        } else {
+            _link?.invalidate()
+            _link = nil
+            pulsePhase = 0
+        }
+    }
 
     func setTutorialHighlight(_ control: String?) {
         tutorialHighlight = control
-        if control != nil {
-            if displayLink == nil {
-                pulsePhase  = 0
-                displayLink = CADisplayLink(target: self, selector: #selector(_pulseTick(_:)))
-                displayLink?.add(to: .main, forMode: .common)
-            }
-        } else {
-            displayLink?.invalidate()
-            displayLink = nil
-            pulsePhase  = 0
+        if control == nil { pulsePhase = 0 }
+    }
+
+    func setTutorialDim(_ controls: Set<String>) { tutorialDimmed = controls }
+
+    @objc private func _tick(_ link: CADisplayLink) {
+        if tutorialHighlight != nil {
+            pulsePhase = CGFloat(link.timestamp.truncatingRemainder(dividingBy: 1.4) / 1.4)
         }
-        setNeedsDisplay()
-    }
-
-    func setTutorialDim(_ controls: Set<String>) {
-        tutorialDimmed = controls
-        setNeedsDisplay()
-    }
-
-    @objc private func _pulseTick(_ link: CADisplayLink) {
-        pulsePhase = CGFloat(link.timestamp.truncatingRemainder(dividingBy: 1.4) / 1.4)
+        _sendControlsToJS()
         setNeedsDisplay()
     }
 
@@ -115,7 +121,7 @@ final class GameControlOverlay: UIView {
         let dd = tutorialDimmed.contains("deliver-toggle")  ? 0.15 as CGFloat : 1.0
 
         _withDim(ld) { drawJoystick(center: leftCenter,  joy: leftJoy,  safezoneStyle: .fourSector) }
-        _withDim(rd) { drawJoystick(center: rightCenter, joy: rightJoy, safezoneStyle: profiMode ? .axisCross : .none) }
+        _withDim(rd) { drawJoystick(center: rightCenter, joy: rightJoy, safezoneStyle: .axisCross) }
         _withDim(wd) { drawPitchWheel() }
         _withDim(dd) { drawDeliverToggle() }
 
@@ -133,7 +139,7 @@ final class GameControlOverlay: UIView {
         ctx.restoreGState()
     }
 
-    private enum SafezoneStyle { case none, fourSector, axisCross }
+    private enum SafezoneStyle { case fourSector, axisCross }
 
     // ── Joystick ──────────────────────────────────────────────────────────────────
     private func drawJoystick(center: CGPoint, joy: JoyState, safezoneStyle: SafezoneStyle) {
@@ -147,10 +153,9 @@ final class GameControlOverlay: UIView {
             drawSectors(center: center, radius: r,
                         starts: [-45, 135], span: 90, alpha: 0.10)
         case .axisCross:
-            // 70° arcs centred on N (CG 270°) and S (CG 90°) only — vertical safe zones
+            // 70° arcs centred on N/S (vertical = accel-only) and E/W (horizontal = steer-only)
             drawSectors(center: center, radius: r,
-                        starts: [235, 55], span: 70, alpha: 0.13)
-        case .none: break
+                        starts: [235, 55, -35, 145], span: 70, alpha: 0.13)
         }
 
         // Outer circle
@@ -301,6 +306,7 @@ final class GameControlOverlay: UIView {
     // MARK: - Hit testing
 
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        guard !isHidden, isUserInteractionEnabled, alpha > 0.01 else { return nil }
         return zone(for: point) != nil ? self : nil
     }
 
@@ -335,7 +341,6 @@ final class GameControlOverlay: UIView {
             default: break
             }
         }
-        notifyJS()
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -351,7 +356,6 @@ final class GameControlOverlay: UIView {
                 wheel.dy = max(-48, min(48, pt.y - wheel.startY))
             }
         }
-        notifyJS()
     }
 
     override func touchesEnded(_ touches: Set<UITouch>,   with event: UIEvent?) { release(touches) }
@@ -364,7 +368,6 @@ final class GameControlOverlay: UIView {
             else if t === wheelTouch  { wheelTouch  = nil; wheel    = WheelState() }
             else if t === deliverTouch { deliverTouch = nil; deliverPressed = false }
         }
-        notifyJS()
     }
 
     // MARK: - Tutorial highlight
@@ -413,10 +416,9 @@ final class GameControlOverlay: UIView {
         ctx.restoreGState()
     }
 
-    // MARK: - JS notification
+    // MARK: - JS notification (called from display link, max 60fps)
 
-    private func notifyJS() {
-        setNeedsDisplay()
+    private func _sendControlsToJS() {
         let jr = joyRadius
         let js = """
         window.__nativeControls && window.__nativeControls({
