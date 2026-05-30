@@ -1,6 +1,6 @@
 # SAR: Callsign WOLF — Changelog
 
-## v28.3.2 — Visibility Refactor, Winch Fix & Draw-World Split
+## v28.3.2 — Visibility Refactor, Controls Fixes & Performance
 
 ### Changed
 
@@ -9,11 +9,18 @@
 - **Default `isVisible` margin** — raised from 16 to 19 to cover the largest vessel radius without per-site workarounds.
 - **`draw-world.ts` split** — extracted into `src/game/draws-world/` with one file per domain: `carrier`, `vessels`, `structures`, `payloads`, `collision` (incl. debug overlay), `misc`. Main file is now a thin compositor.
 - **`createIsoFn` factory** — `render.ts` now exports `createIsoFn(config)` returning a pre-configured `IsoFn`; the manual 2-line wrapper in `game.ts` is gone and all remaining direct `iso(…, {config})` calls replaced.
+- **Right joystick safe zones** — ±35° around the vertical axis: only accelerate/brake (no steering). ±35° around the horizontal axis: only steer (no acceleration). Diagonal zone: both simultaneously. Swift visual updated to show all four safe-zone sectors (N/S/E/W, 70° each).
+- **Climb decay matches descent** — `vz` release decay now uses `friction²` in both directions; the previous `sqrt(friction)` for rising caused noticeable upward drift after releasing the climb key.
+- **VEREINFACHT control mode removed** — only screen-relative (PROFI) steering remains. Heading-tick RAF loop, `CTRL_MODE` type, storage key `z_ctrl_mode`, settings toggle, and pause-overlay toggle all removed.
+- **Controls IPC rate-limited to 30 fps** — a single `CADisplayLink` (30 fps, matches game loop) now drives all Swift→JS control updates and tutorial-pulse animation. Previously `evaluateJavaScript` was called on every `touchesMoved` event (up to 120 Hz on ProMotion), causing sustained HIGH energy impact and device heating.
 
 ### Fixes
 
 - **Winch clamp ground-only** — winch length was clamped whenever a payload was hanging; now only triggers when `payload.z ≤ groundZ + 0.5`, preventing involuntary rope shortening mid-air.
 - **Pad windsock margin** — missing `visMargin` argument in `isVisible` call restored.
+- **Heli-select button fully tappable** — `GameControlOverlay.hitTest` override now includes the standard UIKit guards (`isHidden`, `isUserInteractionEnabled`, `alpha`). Without them, the overlay intercepted touches in joystick zones even when hidden, blocking the centre of the confirm button.
+- **Controls overlay no longer blocks menus** — `ControlsHandler` previously wrapped state updates in `DispatchQueue.main.async`, adding a run-loop-cycle delay during which the overlay remained interactive. Now processed synchronously (WKScriptMessageHandler is already on the main thread).
+- **Overlay non-interactive from startup** — `GameControlOverlay.init` sets `isUserInteractionEnabled = false`; `setVisible` toggles it in sync with `isHidden` as a second guard layer.
 
 ---
 
