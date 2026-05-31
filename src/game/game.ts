@@ -28,6 +28,8 @@ import { carrierCar } from './sim/vehicles/carrier-car';
 import { fuelTruck } from './sim/vehicles/fuel-truck';
 import { initBirds, updateBirds, updateDebris, spawnExplosion } from './sim/particles';
 import { updatePhysics } from './sim/simulation';
+import { voiceEvents } from './voice-events';
+import { mountVoiceLine, hideVoiceLine } from './ui/voice-line/voice-line';
 import { createDrawObjects } from './draw-objects';
 import { initFoliageFromMission, createFoliage } from './foliage';
 import { initNpcHelisFromMission, updateNpcHelis } from './sim/npc-helis';
@@ -156,16 +158,6 @@ const { drawTerrain, precomputeDayColors } = createDrawTerrain({
 
 import { buildStartZone } from './start-zone';
 
-// ─── UI helpers ──────────────────────────────────────────────────────────────
-const showMsg = (txt: string) => {
-    const m = document.getElementById('msg')!;
-    m.innerHTML = txt;
-    m.style.opacity = '1';
-    setTimeout(() => {
-        m.style.opacity = '0';
-    }, 2000);
-};
-
 // ─── screens ────────────────────────────────────────────────────────────────
 const _stopMission = () => {
     cancelAnimationFrame(_rafId);
@@ -180,10 +172,12 @@ const _stopMission = () => {
     _showRainOverlay(false);
     const flashEl = document.getElementById('flash-overlay');
     if (flashEl) flashEl.style.opacity = '0';
+    hideVoiceLine();
 };
 
 const triggerCrash = () => {
     if (zstate.crashed) return;
+    voiceEvents.emit('mayday');
     stopHeliSound();
     soundHandler.play(musicConfig.defeat || 'final', false);
     spawnExplosion(G.heli, G.particles, G.debris, G.points, G.CARRIER);
@@ -881,7 +875,6 @@ const _physicsCtx = {
     get isTutorialFuelLocked() {
         return isTutorialFuelLocked();
     },
-    showMsg,
     get missionComplete() {
         if (isTutorialRunning()) return () => {};
         return missionComplete;
@@ -964,8 +957,8 @@ const setTouchVisible = (v: boolean) => {
 // ─── Native touch control state (set by Swift via window.__nativeControls) ───
 
 (window as any).__nativeControls = (input: {
-    leftJoy:    { dx: number; dy: number; jr: number; active: boolean };
-    rightJoy:   { dx: number; dy: number; jr: number; active: boolean };
+    leftJoy: { dx: number; dy: number; jr: number; active: boolean };
+    rightJoy: { dx: number; dy: number; jr: number; active: boolean };
     pitchWheel: { dy: number; active: boolean };
     deliverBtn: boolean;
 }) => {
@@ -975,9 +968,9 @@ const setTouchVisible = (v: boolean) => {
         const dead = jr * 0.18;
         const isH = Math.abs(dx) >= Math.abs(dy);
         (G.keys as Record<string, boolean>)['KeyW'] = _isKeyAllowed('KeyW') && !isH && dy < -dead;
-        (G.keys as Record<string, boolean>)['KeyS'] = _isKeyAllowed('KeyS') && !isH && dy >  dead;
-        (G.keys as Record<string, boolean>)['KeyA'] = _isKeyAllowed('KeyA') &&  isH && dx < -dead;
-        (G.keys as Record<string, boolean>)['KeyD'] = _isKeyAllowed('KeyD') &&  isH && dx >  dead;
+        (G.keys as Record<string, boolean>)['KeyS'] = _isKeyAllowed('KeyS') && !isH && dy > dead;
+        (G.keys as Record<string, boolean>)['KeyA'] = _isKeyAllowed('KeyA') && isH && dx < -dead;
+        (G.keys as Record<string, boolean>)['KeyD'] = _isKeyAllowed('KeyD') && isH && dx > dead;
     } else {
         (G.keys as Record<string, boolean>)['KeyW'] = false;
         (G.keys as Record<string, boolean>)['KeyS'] = false;
@@ -988,30 +981,32 @@ const setTouchVisible = (v: boolean) => {
     // Right joystick → ArrowUp/Down/Left/Right with axis safe zones
     if (input.rightJoy.active) {
         const { dx, dy, jr } = input.rightJoy;
-        const t    = jr * 0.35;
-        const SAFE = 0.70; // tan(35°) — safe-zone half-angle
-        const inVertSafe  = Math.abs(dx) < Math.abs(dy) * SAFE; // near vertical → accel only
+        const t = jr * 0.35;
+        const SAFE = 0.7; // tan(35°) — safe-zone half-angle
+        const inVertSafe = Math.abs(dx) < Math.abs(dy) * SAFE; // near vertical → accel only
         const inHorizSafe = Math.abs(dy) < Math.abs(dx) * SAFE; // near horizontal → steer only
-        (G.keys as Record<string, boolean>)['ArrowUp']    = _isKeyAllowed('ArrowUp')    && !inHorizSafe && dy < -t;
-        (G.keys as Record<string, boolean>)['ArrowDown']  = _isKeyAllowed('ArrowDown')  && !inHorizSafe && dy >  t;
-        (G.keys as Record<string, boolean>)['ArrowLeft']  = _isKeyAllowed('ArrowLeft')  && !inVertSafe  && dx < -t;
-        (G.keys as Record<string, boolean>)['ArrowRight'] = _isKeyAllowed('ArrowRight') && !inVertSafe  && dx >  t;
+        (G.keys as Record<string, boolean>)['ArrowUp'] = _isKeyAllowed('ArrowUp') && !inHorizSafe && dy < -t;
+        (G.keys as Record<string, boolean>)['ArrowDown'] = _isKeyAllowed('ArrowDown') && !inHorizSafe && dy > t;
+        (G.keys as Record<string, boolean>)['ArrowLeft'] = _isKeyAllowed('ArrowLeft') && !inVertSafe && dx < -t;
+        (G.keys as Record<string, boolean>)['ArrowRight'] = _isKeyAllowed('ArrowRight') && !inVertSafe && dx > t;
     } else {
-        (G.keys as Record<string, boolean>)['ArrowUp']    = false;
-        (G.keys as Record<string, boolean>)['ArrowDown']  = false;
-        (G.keys as Record<string, boolean>)['ArrowLeft']  = false;
+        (G.keys as Record<string, boolean>)['ArrowUp'] = false;
+        (G.keys as Record<string, boolean>)['ArrowDown'] = false;
+        (G.keys as Record<string, boolean>)['ArrowLeft'] = false;
         (G.keys as Record<string, boolean>)['ArrowRight'] = false;
     }
 
     // Pitch wheel → KeyQ/KeyE
     (G.keys as Record<string, boolean>)['KeyQ'] = input.pitchWheel.active && input.pitchWheel.dy < -6;
-    (G.keys as Record<string, boolean>)['KeyE'] = input.pitchWheel.active && input.pitchWheel.dy >  6;
+    (G.keys as Record<string, boolean>)['KeyE'] = input.pitchWheel.active && input.pitchWheel.dy > 6;
 
     // Deliver button → KeyR
     (G.keys as Record<string, boolean>)['KeyR'] = input.deliverBtn;
 };
 
-const setupTouchControls = () => { /* right stick always in screen mode — no init needed */ };
+const setupTouchControls = () => {
+    /* right stick always in screen mode — no init needed */
+};
 
 const _ensureEl = ensureEl;
 
@@ -1031,7 +1026,7 @@ const _showRainOverlay = (active: boolean, windDir = 225, windStr = 1) => {
 const mountGameOverlays = () => {
     _ensureEl('rain-overlay');
     _ensureEl('flash-overlay');
-    _ensureEl('msg');
+    mountVoiceLine();
 };
 
 const mountGameScreens = () => {

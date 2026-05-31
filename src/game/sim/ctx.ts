@@ -6,7 +6,6 @@ export interface PhysicsCtx {
     hasCarrier: boolean;
     isTutorialMode?: boolean;
     isTutorialFuelLocked?: boolean;
-    showMsg: (txt: string) => void;
     missionComplete: () => void;
     triggerCrash: () => void;
     orniWreckDelivered: () => void;

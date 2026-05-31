@@ -1,6 +1,7 @@
 import { G } from '../../state';
 import { PhysicsCtx } from '../ctx';
 import { VEHICLE_STATE } from '../../../shared/types';
+import { voiceEvents } from '../../voice-events';
 
 export interface FuelVehicle {
     init(): void;
@@ -155,6 +156,7 @@ export const runFuelVehicle = (v: FuelVehicleState, dt: number, _ctx: PhysicsCtx
         if (heli.fuel < 100) {
             heli.fuel = Math.min(100, heli.fuel + cfg.FUEL_RATE * dt);
         } else {
+            voiceEvents.emit('fuel-maxed');
             v.state = cfg.hasArm ? VEHICLE_STATE.ARM_IN : VEHICLE_STATE.RETURNING;
             v.t = cfg.hasArm ? 0 : 1.0;
         }

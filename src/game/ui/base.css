@@ -115,19 +115,6 @@ body {
     50%  { transform: scaleY(0.012) scaleX(1);    filter: brightness(4); }
     100% { transform: scaleY(1)     scaleX(1);    filter: brightness(1); }
 }
-#msg {
-    position: absolute;
-    top: 20%;
-    width: 100%;
-    text-align: center;
-    font-size: 24px;
-    color: #fff;
-    text-shadow: 0 0 5px #000;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.5s;
-    z-index: 300;
-}
 #menu-heli-big {
     width: 800px;
     height: 300px;

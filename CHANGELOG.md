@@ -1,5 +1,26 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.3.3 — Voice Line System & HUD Cleanup
+
+### Added
+
+- **Voice line system** — event-based architecture (`voice-events.ts`) with a typed event bus (`VoiceEvent`). The simulation emits abstract events; a decoupled UI subscriber (`ui/voice-line/`) maps them to blinking monospace text at the bottom of the screen (z-index 220, above crash screen). Placeholder beep SFX until audio sprite is ready.
+- **Voice lines** — `LIFTOFF`, `WINCH DOWN`, `HAULING UP`, `PACKAGE SECURED`, `DELIVERED`, `NO DROP ZONE`, `DROP AT LANDING PAD`, `TOUCHDOWN`, `YOU'RE ON THE DECK`, `FUEL MAXED`, `WE'RE BINGO FUEL`, `HELI 1 DO YOU COPY`, `DECK CLEARED`.
+- **Carrier proximity callout** — `DECK CLEARED` fires once per approach when the heli closes within 25 units of the carrier while airborne.
+
+### Changed
+
+- **Empty-tank crash** — fuel reaching zero now triggers a rapid descent (`vz` acceleration 9× higher than before). Any ground contact with an empty tank is a crash — no survivable landing. `vzAtImpact` is now captured before the ground clamp so the vertical speed at the moment of impact correctly drives the crash check.
+- **`CABIN FULL` feedback** — replaced text message with a haptic error pulse (`NotificationType.Error`).
+
+### Removed
+
+- **`showMsg` system removed entirely** — all in-game HUD text messages replaced by voice lines or made redundant by the permanent HUD display (`ALT`, `FUEL`, `PAX`, `SAVED`). The `#msg` DOM element, CSS rule, `showMsg()` function, and `PhysicsCtx.showMsg` are gone.
+- **Dead I18N keys removed** — `OUT_OF_FUEL`, `MAX_ALTITUDE`, `CARGO_SECURED`, `PATIENT_SECURED`, `ONBOARD`, `CABIN_FULL`, `DELIVERED`, `DELIVERED_TO_ZONE`, `DELIVER_NO_ZONE`, `DROP_AT_PAD`, `SECURED` removed from both language blocks.
+- **`I18N` import removed from `simulation.ts`** — simulation no longer touches localisation at all.
+
+---
+
 ## v28.3.2 — Visibility Refactor, Controls Fixes & Performance
 
 ### Changed

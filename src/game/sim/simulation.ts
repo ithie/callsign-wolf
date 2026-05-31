@@ -2,7 +2,6 @@ import { campaignHandler } from '../main';
 import { G, zstate } from '../state';
 import { VESSEL, PAYLOAD, VEHICLE_STATE, RESCUE_ZONE_ROLE, OBJECTIVE_TYPE } from '../../shared/types';
 import { PAYLOAD_DEFS } from '../payload-defs';
-import { I18N } from '../i18n';
 import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from '../haptics';
 import { PhysicsCtx } from './ctx';
 import { getGround, getCarrierLocal, isFlatTerrain } from './terrain';
@@ -10,10 +9,16 @@ import { updateBoats, updateSubmarines, updateCarrierPos, resolveAttachTo } from
 import { carrierCar } from './vehicles/carrier-car';
 import { fuelTruck } from './vehicles/fuel-truck';
 import { handleParticles } from './particles';
+import { voiceEvents } from '../voice-events';
 
 export type { PhysicsCtx };
 
 let _prevKeyR = false;
+let _prevKeyQ = false;
+let _prevKeyE = false;
+let _prevEngineOn = false;
+let _prevFuelLow = false;
+let _prevCarrierNear = false;
 
 const _pointInVesselZone = (wx: number, wy: number, vessel: any, zone: any): boolean => {
     const c = Math.cos(-vessel.angle), s = Math.sin(-vessel.angle);
@@ -90,24 +95,23 @@ const _deliveryDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface }: _Deposit
     p.hanging = false; p.rescued = true; G.activePayload = null;
     if (inZone) {
         G.totalRescued++;
-        ctx.showMsg(I18N.DELIVERED_TO_ZONE);
+        voiceEvents.emit('delivered');
         if (G.totalRescued >= G.goalCount) ctx.missionComplete();
     } else {
         G.heli.onboard++;
-        ctx.showMsg(I18N.DELIVER_NO_ZONE);
+        voiceEvents.emit('no-zone');
         G.heli.winch = 0.6;
     }
     if (G.heli.onboard === 0) G.deliverMode = false;
 };
 
-const _personDeposit = (p: any, { ctx }: _DepositState) => {
+const _personDeposit = (p: any, _state: _DepositState) => {
     if (G.heli.onboard < G.heli.maxLoad) {
         p.hanging = false; p.rescued = true; G.activePayload = null;
         G.heli.onboardDeliverQueue.push((p as any).deliverTo as string | undefined);
         G.heli.onboard++;
         hapticNotification(NotificationType.Success);
-        ctx.showMsg(I18N.ONBOARD(G.heli.onboard, G.heli.maxLoad));
-    } else ctx.showMsg(I18N.CABIN_FULL);
+    } else hapticNotification(NotificationType.Error);
 };
 
 const _orniWreckDeposit = (p: any, { ctx, onPadSurface }: _DepositState) => {
@@ -115,7 +119,7 @@ const _orniWreckDeposit = (p: any, { ctx, onPadSurface }: _DepositState) => {
         p.hanging = false; p.rescued = true; G.activePayload = null;
         ctx.orniWreckDelivered();
     } else {
-        ctx.showMsg(I18N.DROP_AT_PAD);
+        voiceEvents.emit('drop-at-pad');
         G.heli.winch = 0.6;
     }
 };
@@ -128,10 +132,10 @@ const _genericDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface }: _DepositS
     if (onCarrierOk || onPadOk || inZone) {
         p.hanging = false; p.rescued = true; G.activePayload = null;
         G.totalRescued++;
-        ctx.showMsg(I18N.DELIVERED);
+        voiceEvents.emit('delivered');
         if (G.totalRescued >= G.goalCount) ctx.missionComplete();
     } else {
-        ctx.showMsg(I18N.DROP_AT_PAD);
+        voiceEvents.emit('drop-at-pad');
         G.heli.winch = 0.6;
     }
 };
@@ -206,7 +210,10 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
 
     // engine
     const onFlatTerrain = groundH > G.waterLevel + 0.1 && isFlatTerrain(G.heli.x, G.heli.y);
+    const _engineWas = G.heli.engineOn;
     if (G.keys['KeyW'] && !G.heli.engineOn && G.heli.fuel > 0 && (onPad || (!G.heli.inAir && onFlatTerrain))) G.heli.engineOn = true;
+    if (G.heli.engineOn && !_engineWas && !_prevEngineOn) voiceEvents.emit('liftoff');
+    _prevEngineOn = G.heli.engineOn;
     if (G.keys['KeyS'] && !G.heli.inAir && G.heli.engineOn) {
         G.heli.engineOn = false;
         const landObj = G.objectives.find((o: any) => o.type === OBJECTIVE_TYPE.LAND_AT);
@@ -292,8 +299,20 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     // flight
     const lift = G.heli.rotorRPM > 0.9 ? 1.0 : 0.0;
     const inAir = G.heli.z > effectiveGroundH + 0.15;
-    if (!inAir && G.heli.inAir) hapticImpact(ImpactStyle.Medium);
+    if (!inAir && G.heli.inAir) {
+        hapticImpact(ImpactStyle.Medium);
+        voiceEvents.emit(onCarrierDeck ? 'on-the-deck' : 'touchdown');
+    }
     G.heli.inAir = inAir;
+
+    // carrier proximity — "deck cleared" on approach
+    if (ctx.hasCarrier) {
+        const _nearNow = inAir && Math.hypot(G.heli.x - G.CARRIER.x, G.heli.y - G.CARRIER.y) < 25;
+        if (_nearNow && !_prevCarrierNear) voiceEvents.emit('deck-cleared');
+        _prevCarrierNear = _nearNow;
+    } else {
+        _prevCarrierNear = false;
+    }
 
     if (inAir || (G.heli.engineOn && lift > 0)) {
         const spd = Math.hypot(G.heli.vx, G.heli.vy);
@@ -347,9 +366,16 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
         }
     }
 
+    if (G.heli.fuel >= 50) _prevFuelLow = false;
+    if (G.heli.fuel > 0 && G.heli.fuel < 20 && !_prevFuelLow && inAir && G.heli.engineOn) {
+        voiceEvents.emit('bingo-fuel');
+        _prevFuelLow = true;
+    }
+
     if (G.heli.fuel <= 0 && inAir) {
-        if (G.heli.fuel > -1) { ctx.showMsg(I18N.OUT_OF_FUEL); G.heli.fuel = -1; }
-        G.heli.engineOn = false; G.heli.vz -= 0.002 * dt;
+        if (G.heli.fuel > -1) G.heli.fuel = -1;
+        G.heli.engineOn = false;
+        G.heli.vz -= 0.018 * dt;
     }
 
     G.heli.vx *= Math.pow(G.heli.friction, dt); G.heli.vy *= Math.pow(G.heli.friction, dt);
@@ -371,13 +397,20 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     const zMax = 20.0;
     if (G.heli.z > zMax) {
         G.heli.z = zMax; G.heli.vz = 0;
-        if (Math.random() < 0.05) ctx.showMsg(I18N.MAX_ALTITUDE);
     }
+    const vzAtImpact = G.heli.vz;
     if (G.heli.z < effectiveGroundH + 0.1) { G.heli.z = effectiveGroundH + 0.1; G.heli.vz = 0; }
 
     // winch
-    if (G.keys['KeyQ']) G.heli.winch = Math.max(0, G.heli.winch - 0.02 * dt);
-    if (G.keys['KeyE']) G.heli.winch = Math.min(5.0, G.heli.winch + 0.02 * dt);
+    const _keyQ = !!G.keys['KeyQ'];
+    const _keyE = !!G.keys['KeyE'];
+    if (_keyQ) G.heli.winch = Math.max(0, G.heli.winch - 0.02 * dt);
+    if (_keyE) G.heli.winch = Math.min(5.0, G.heli.winch + 0.02 * dt);
+
+    if (_keyE && !_prevKeyE && G.heli.winch < 0.1) voiceEvents.emit('winch-down');
+    if (_keyQ && !_prevKeyQ && G.activePayload)     voiceEvents.emit('haul-up');
+    _prevKeyE = _keyE;
+    _prevKeyQ = _keyQ;
     if (!G.heli.inAir && !G.activePayload) {
         G.heli.winch = 0;
         G.rescuerSwing.x = G.heli.x; G.rescuerSwing.y = G.heli.y;
@@ -441,7 +474,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
                 p.hanging = true; G.activePayload = p;
                 G.rescuerSwing.x = p.x; G.rescuerSwing.y = p.y;
                 G.rescuerSwing.vx = 0; G.rescuerSwing.vy = 0;
-                ctx.showMsg(p.type === PAYLOAD.ORNI_WRECK || p.type === PAYLOAD.CRATE ? I18N.CARGO_SECURED : I18N.PATIENT_SECURED);
+                voiceEvents.emit('package-secured');
                 G.heli.winch = Math.max(0.6, G.heli.winch - 0.5);
                 break;
             }
@@ -467,7 +500,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
             if ((G.activePayload as any).z <= padSurfaceZ + 0.4) {
                 p.hanging = false; p.rescued = true; G.activePayload = null;
                 G.totalRescued++;
-                ctx.showMsg(I18N.DELIVERED);
+                voiceEvents.emit('delivered');
                 if (G.totalRescued >= G.goalCount) ctx.missionComplete();
             }
         }
@@ -491,7 +524,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
             G.heli.onboard -= countedNow;
             G.totalRescued += countedNow;
             if (G.totalRescued >= G.goalCount) ctx.missionComplete();
-            else ctx.showMsg(I18N.SECURED(G.totalRescued, G.goalCount));
+            else voiceEvents.emit('delivered');
         }
     }
 
@@ -509,7 +542,8 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     if (G.heli.z < groundH + 0.25) {
         if (!onPad && !onFlatTerrain && groundH > G.waterLevel + 0.1) ctx.triggerCrash();
         else if (Math.hypot(G.heli.vx, G.heli.vy) > 0.12) ctx.triggerCrash();
-        else if (G.heli.vz < -0.15) ctx.triggerCrash();
+        else if (vzAtImpact < -0.15) ctx.triggerCrash();
+        else if (G.heli.fuel < 0) ctx.triggerCrash();
     }
 
 }

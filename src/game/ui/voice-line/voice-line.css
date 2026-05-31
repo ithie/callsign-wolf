@@ -1,0 +1,15 @@
+#voice-line {
+    display: none;
+    position: fixed;
+    bottom: 64px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font: bold 13px monospace;
+    letter-spacing: 3px;
+    color: #5f5;
+    text-shadow: 0 0 8px rgba(80, 255, 80, 0.5);
+    pointer-events: none;
+    z-index: 220;
+    animation: blink 1s infinite;
+}

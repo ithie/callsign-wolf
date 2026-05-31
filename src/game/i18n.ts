@@ -39,15 +39,6 @@ const _detectLang = (): 'de' | 'en' => {
 
 const _DE = {
     DONE: 'abgeschlossen',
-    OUT_OF_FUEL: 'KEIN TREIBSTOFF!',
-    MAX_ALTITUDE: 'MAX. HÖHE',
-    CARGO_SECURED: 'FRACHT GESICHERT!',
-    PATIENT_SECURED: 'PATIENT GESICHERT!',
-    DELIVERED: 'ABGELIEFERT!',
-    ONBOARD: (n: number, max: number) => `AN BORD [${n}/${max}]`,
-    CABIN_FULL: 'KABINE VOLL!',
-    DROP_AT_PAD: 'AM LANDEPLATZ ABLEGEN!',
-    SECURED: (rescued: number, total: number) => `GESICHERT: ${rescued}/${total}`,
 
     SPLASH_TITLE: 'SAR: CALLSIGN WOLF',
     SPLASH_HINT: 'KLICKEN ZUM STARTEN',
@@ -103,8 +94,6 @@ const _DE = {
 
     DELIVER_MODE_ON: 'ABSETZ-MODUS — [R] ABBRECHEN',
     DELIVER_MODE_OFF: '',
-    DELIVERED_TO_ZONE: 'PERSON ABGESETZT!',
-    DELIVER_NO_ZONE: 'KEINE ABSETZZONE HIER',
 
     PILOT_HEADING: 'PROFIL',
     PILOT_CALLSIGN: 'RUFZEICHEN (MAX. 8 ZEICHEN, A–Z)',
@@ -185,15 +174,6 @@ const _DE = {
 
 const _EN = {
     DONE: 'complete',
-    OUT_OF_FUEL: 'OUT OF FUEL!',
-    MAX_ALTITUDE: 'MAX. ALTITUDE',
-    CARGO_SECURED: 'CARGO SECURED!',
-    PATIENT_SECURED: 'PATIENT SECURED!',
-    DELIVERED: 'DELIVERED!',
-    ONBOARD: (n: number, max: number) => `ON BOARD [${n}/${max}]`,
-    CABIN_FULL: 'CABIN FULL!',
-    DROP_AT_PAD: 'DROP AT LANDING PAD!',
-    SECURED: (rescued: number, total: number) => `SECURED: ${rescued}/${total}`,
 
     SPLASH_TITLE: 'SAR: CALLSIGN WOLF',
     SPLASH_HINT: 'CLICK TO START',
@@ -249,8 +229,6 @@ const _EN = {
 
     DELIVER_MODE_ON: 'DEPLOY MODE — [R] CANCEL',
     DELIVER_MODE_OFF: '',
-    DELIVERED_TO_ZONE: 'PERSON DEPLOYED!',
-    DELIVER_NO_ZONE: 'NO DEPLOY ZONE HERE',
 
     PILOT_HEADING: 'PROFILE',
     PILOT_CALLSIGN: 'CALLSIGN (MAX. 8 CHARS, A–Z)',
