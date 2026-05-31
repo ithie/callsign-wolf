@@ -13,6 +13,10 @@
 - **Empty-tank crash** — fuel reaching zero now triggers a rapid descent (`vz` acceleration 9× higher than before). Any ground contact with an empty tank is a crash — no survivable landing. `vzAtImpact` is now captured before the ground clamp so the vertical speed at the moment of impact correctly drives the crash check.
 - **`CABIN FULL` feedback** — replaced text message with a haptic error pulse (`NotificationType.Error`).
 
+### Fixes
+
+- **Vertical momentum on key release** — `vz` decay after releasing climb/descend now uses `0.80` per frame (half-life ~3 frames) instead of `friction²` (~69–173 frames). Heli stops climbing/sinking near-instantly when the pad is released.
+
 ### Removed
 
 - **`showMsg` system removed entirely** — all in-game HUD text messages replaced by voice lines or made redundant by the permanent HUD display (`ALT`, `FUEL`, `PAX`, `SAVED`). The `#msg` DOM element, CSS rule, `showMsg()` function, and `PhysicsCtx.showMsg` are gone.
