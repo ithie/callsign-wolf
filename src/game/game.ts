@@ -23,6 +23,7 @@ import {
     initSubmarinesFromMission,
     initStaticObjectsFromMission,
     initPayloadsFromMission,
+    spawnPayload,
 } from './sim/world-init';
 import { carrierCar } from './sim/vehicles/carrier-car';
 import { fuelTruck } from './sim/vehicles/fuel-truck';
@@ -418,16 +419,7 @@ const _maybeSpawnOrniWreck = () => {
     for (const c of order) {
         const gz = getGround(c.x, c.y, G.points, G.CARRIER);
         if (gz <= G.waterLevel + 0.3) continue;
-        G.payloads.push({
-            type: PAYLOAD.ORNI_WRECK,
-            x: c.x,
-            y: c.y,
-            z: gz,
-            angle: Math.random() * Math.PI * 2,
-            hanging: false,
-            rescued: false,
-            deliverTo: VESSEL.PAD,
-        });
+        spawnPayload({ type: PAYLOAD.ORNI_WRECK, x: c.x, y: c.y, z: gz, angle: Math.random() * Math.PI * 2, deliverTo: VESSEL.PAD });
         return;
     }
 };
@@ -553,17 +545,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
                         .getCurrentMissionData()
                         .payloads?.find((p: any) => p.type === PAYLOAD.PERSON);
                     if (!personDef) return;
-                    const gz = getGround(personDef.x, personDef.y, G.points, G.CARRIER);
-                    G.payloads.push({
-                        type: PAYLOAD.PERSON,
-                        x: personDef.x,
-                        y: personDef.y,
-                        z: gz,
-                        angle: 0,
-                        hanging: false,
-                        rescued: false,
-                        deliverTo: VESSEL.PAD,
-                    } as any);
+                    spawnPayload({ ...personDef, deliverTo: VESSEL.PAD }, false);
                 }
             );
         }

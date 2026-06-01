@@ -1,5 +1,19 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.3.4 — Tutorial Payload Spawn Fix
+
+### Fixed
+
+- **Tutorial heli invisible after person pickup** — The tutorial person spawned at runtime via `_onSpawnPerson` was missing `vx`/`vy` initialisation. When the rescuer grabbed the person, payload physics produced NaN velocity on the heli, which propagated through `aero` into `G.heli.vAngle` and then `G.heli.angle` the first time the player steered. A NaN angle makes all vertex projections in `drawHeli` produce NaN canvas coordinates, silently rendering the heli and its shadow invisible for the remainder of the mission.
+
+### Changed
+
+- **`initPayloadEntry` extracted** (`world-init.ts`) — shared initialisation logic for payload entries (`vx`/`vy`, `npcTarget`, `attachTo`, `outfitColors` fallback). Used by both `initPayloadsFromMission` and runtime spawning.
+- **`spawnPayload` added** (`world-init.ts`) — wraps `initPayloadEntry`, pushes to `G.payloads`, and optionally increments `G.goalCount` (`addToGoal` flag, default `true`). Use `false` when the payload is already counted in `goalCount` (e.g. was present in the mission JSON before being filtered).
+- **`_maybeSpawnOrniWreck`** migrated to `spawnPayload`.
+
+---
+
 ## v28.3.3 — Voice Line System & HUD Cleanup
 
 ### Added

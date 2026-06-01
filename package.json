@@ -2,7 +2,7 @@
     "name": "callsign-wolf",
     "private": true,
     "license": "UNLICENSED",
-    "version": "28.3.3",
+    "version": "28.3.4",
     "type": "module",
     "scripts": {
         "dev": "vite",

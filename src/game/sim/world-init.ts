@@ -210,6 +210,46 @@ export const initStaticObjectsFromMission = () => {
     }));
 }
 
+const _SURVIVOR_OUTFITS = [
+    { shirt: '#e74c3c', pants: '#2c3e50' },
+    { shirt: '#3498db', pants: '#1a252f' },
+    { shirt: '#2ecc71', pants: '#2c3e50' },
+    { shirt: '#f39c12', pants: '#2c3e50' },
+    { shirt: '#9b59b6', pants: '#2c3e50' },
+    { shirt: '#e8e8e8', pants: '#555555' },
+    { shirt: '#e67e22', pants: '#1a5276' },
+    { shirt: '#c0392b', pants: '#17202a' },
+];
+
+export const initPayloadEntry = (p: any): any => {
+    let px = p.x, py = p.y, pz: number | null = null;
+    if (p.attachTo) {
+        const resolved = resolveAttachTo(p.attachTo);
+        if (resolved) { px = resolved.x; py = resolved.y; pz = resolved.z; }
+    }
+    return {
+        ...p,
+        x: px, y: py,
+        z: pz ?? getGround(px, py, G.points, G.CARRIER),
+        vx: 0, vy: 0,
+        rescued: false, hanging: false,
+        attachTo: p.attachTo || null,
+        npcTarget: p.npcTarget ?? false,
+        outfitColors: p.type === PAYLOAD.PERSON
+            ? (p.outfitColors ?? _SURVIVOR_OUTFITS[Math.floor(Math.random() * _SURVIVOR_OUTFITS.length)])
+            : null,
+    };
+};
+
+// Spawns a payload at runtime and pushes it to G.payloads.
+// addToGoal: pass false if the payload is already counted in G.goalCount (e.g. was in mission JSON).
+export const spawnPayload = (p: any, addToGoal = true): any => {
+    const entry = initPayloadEntry(p);
+    G.payloads.push(entry);
+    if (addToGoal && !entry.npcTarget) G.goalCount++;
+    return entry;
+};
+
 export const initPayloadsFromMission = () => {
     const missionData = campaignHandler.getCurrentMissionData();
     G.objectives = missionData.objectives || [];
@@ -219,35 +259,7 @@ export const initPayloadsFromMission = () => {
         G.goalCount = 0;
         return;
     }
-    const SURVIVOR_OUTFITS = [
-        { shirt: '#e74c3c', pants: '#2c3e50' },
-        { shirt: '#3498db', pants: '#1a252f' },
-        { shirt: '#2ecc71', pants: '#2c3e50' },
-        { shirt: '#f39c12', pants: '#2c3e50' },
-        { shirt: '#9b59b6', pants: '#2c3e50' },
-        { shirt: '#e8e8e8', pants: '#555555' },
-        { shirt: '#e67e22', pants: '#1a5276' },
-        { shirt: '#c0392b', pants: '#17202a' },
-    ];
-    G.payloads = missionPayloads.map((p: any) => {
-        let px = p.x, py = p.y, pz: number | null = null;
-        if (p.attachTo) {
-            const resolved = resolveAttachTo(p.attachTo);
-            if (resolved) { px = resolved.x; py = resolved.y; pz = resolved.z; }
-        }
-        return {
-            ...p,
-            x: px, y: py,
-            z: pz ?? getGround(px, py, G.points, G.CARRIER),
-            vx: 0, vy: 0,
-            rescued: false, hanging: false,
-            attachTo: p.attachTo || null,
-            npcTarget: p.npcTarget ?? false,
-            outfitColors: p.type === PAYLOAD.PERSON
-                ? SURVIVOR_OUTFITS[Math.floor(Math.random() * SURVIVOR_OUTFITS.length)]
-                : null,
-        };
-    });
+    G.payloads = missionPayloads.map((p: any) => initPayloadEntry(p));
     G.goalCount = G.payloads.filter((p: any) => !p.npcTarget).length;
     G.totalRescued = 0;
     G.activePayload = null;
