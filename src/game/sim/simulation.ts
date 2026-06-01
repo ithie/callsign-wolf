@@ -350,7 +350,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
                 G.heli.roll = Math.max(G.heli.roll - 0.012 * dt, -0.4); turning = true;
             }
             if (!turning) {
-                G.heli.vAngle *= Math.pow(0.95, dt);
+                G.heli.vAngle *= Math.pow(0.9025, dt);
                 G.heli.roll *= Math.pow(0.96, dt);
             }
             G.heli.angle += G.heli.vAngle * dt;

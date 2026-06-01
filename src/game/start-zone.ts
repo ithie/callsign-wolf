@@ -1,5 +1,6 @@
 import { campaignHandler } from './main';
 import { G } from './state';
+import { applyVesselOffset } from './sim/world-init';
 
 export interface StartZone {
     getPos(): { x: number; y: number; z: number };
@@ -10,8 +11,7 @@ export const buildStartZone = (): StartZone =>
     campaignHandler.getCurrentMissionData().spawnObject === 'carrier'
         ? {
               getPos: () => ({
-                  x: G.CARRIER.x - 4.0 * Math.cos(G.CARRIER.angle),
-                  y: G.CARRIER.y - 14.0 * Math.sin(G.CARRIER.angle),
+                  ...applyVesselOffset(G.CARRIER, -4, 0),
                   z: G.CARRIER.zDeck + 0.1,
               }),
               getAngle: () => G.CARRIER.angle,

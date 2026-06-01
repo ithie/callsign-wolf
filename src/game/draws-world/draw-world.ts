@@ -21,7 +21,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
     const { _drawPadLights, _drawVectorCarrier, _drawNpcHelis } = createCarrierDraw(dwCtx);
     const { _drawBowWave, _drawBoatModel, _drawSubmarine, _drawResearchPlatform } = createVesselsDraw(dwCtx);
     const { _drawWindTurbine, _drawPlaneWreck, _drawBrokenSailboat, _drawHangar, _drawLighthouse, _renderWindsock, _drawWindsock } = createStructuresDraw(dwCtx);
-    const { drawPayloadObjects } = createPayloadsDraw(dwCtx);
+    const { drawPayloadObjects, queueAttachedPayloads } = createPayloadsDraw(dwCtx);
     const { handleCollisionBoxes, drawDebugOverlay } = createCollisionDraw(dwCtx);
     const { drawBirds, drawDebris, renderRain } = createMiscDraw(dwCtx);
 
@@ -92,6 +92,9 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             });
         if (showPad) _drawPadLights(G.PAD.z, false);
         if (queueFoliage) queueFoliage(camX, camY);
+        // Vessel-deck payloads enqueued BEFORE the heli so that on an equal depth value
+        // the heli wins via JS stable-sort insertion order (heli inserted after = drawn later = on top).
+        if (!zstate.crashed) queueAttachedPayloads();
         if (heliAt) SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt.x + heliAt.y, drawFn: (cx, cy) => heliAt.fn(cx, cy) });
         // Carrier windsock: queued before flush so it depth-sorts with the ship.
         if (showCarrier) {

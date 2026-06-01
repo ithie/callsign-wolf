@@ -52,9 +52,9 @@ Rank is derived from completed non-tutorial missions.
 | Rank         | Insignia | Min. missions (excl. Tutorial) |
 | ------------ | -------- | ------------------------------ |
 | Leutnant     | ★        | 0                              |
-| Oberleutnant | ★ ★      | 10                             |
-| Hauptmann    | ★ ★ ★    | 30                             |
-| Major        | ◆        | 60                             |
+| Oberleutnant | ★ ★      | 5                              |
+| Hauptmann    | ★ ★ ★    | 10                             |
+| Major        | ◆        | 30                             |
 
 - Tutorial missions do **not** count toward rank progression. Free Flight missions do.
 - `rankOverride` ensures the rank is never lower than what was imported via save code.

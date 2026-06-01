@@ -1,8 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
-    encodeSession, decodeSession,
-    getRank, getMissionsDone, getCampaignsDone,
-    isCampaignUnlocked, isMissionUnlocked,
+    encodeSession,
+    decodeSession,
+    getRank,
+    getMissionsDone,
+    getCampaignsDone,
+    isCampaignUnlocked,
+    isMissionUnlocked,
     type PlayerSession,
 } from './session';
 
@@ -24,13 +28,14 @@ describe('getMissionsDone', () => {
     it('counts only completed missions', () => {
         const s = mkSession({
             campaignProgress: {
-                '0': { completed: true, missions: [
-                    { completed: true, bestTimeMs: 1000 },
-                    { completed: false, bestTimeMs: null },
-                ]},
-                '1': { completed: false, missions: [
-                    { completed: true, bestTimeMs: 500 },
-                ]},
+                '0': {
+                    completed: true,
+                    missions: [
+                        { completed: true, bestTimeMs: 1000 },
+                        { completed: false, bestTimeMs: null },
+                    ],
+                },
+                '1': { completed: false, missions: [{ completed: true, bestTimeMs: 500 }] },
             },
         });
         expect(getMissionsDone(s)).toBe(2);
@@ -45,9 +50,9 @@ describe('getCampaignsDone', () => {
     it('counts only completed campaigns', () => {
         const s = mkSession({
             campaignProgress: {
-                '0': { completed: true,  missions: [] },
+                '0': { completed: true, missions: [] },
                 '1': { completed: false, missions: [] },
-                '2': { completed: true,  missions: [] },
+                '2': { completed: true, missions: [] },
             },
         });
         expect(getCampaignsDone(s)).toBe(2);
@@ -61,16 +66,16 @@ describe('getRank', () => {
         expect(getRank(mkSession(), 0).name).toBe('Leutnant');
     });
 
-    it('Oberleutnant at 10 missions', () => {
-        expect(getRank(mkSession(), 10).name).toBe('Oberleutnant');
+    it('Oberleutnant at 5 missions', () => {
+        expect(getRank(mkSession(), 5).name).toBe('Oberleutnant');
     });
 
-    it('Hauptmann at 30 missions', () => {
-        expect(getRank(mkSession(), 30).name).toBe('Hauptmann');
+    it('Hauptmann at 10 missions', () => {
+        expect(getRank(mkSession(), 10).name).toBe('Hauptmann');
     });
 
-    it('Major at 60 missions', () => {
-        expect(getRank(mkSession(), 60).name).toBe('Major');
+    it('Major at 30 missions', () => {
+        expect(getRank(mkSession(), 30).name).toBe('Major');
     });
 
     it('rankOverride elevates rank with 0 missions', () => {
@@ -78,13 +83,13 @@ describe('getRank', () => {
     });
 
     it('rankOverride does not lower a higher earned rank', () => {
-        expect(getRank(mkSession({ rankOverride: 0 }), 60).name).toBe('Major');
+        expect(getRank(mkSession({ rankOverride: 0 }), 30).name).toBe('Major');
     });
 
     it('uses getMissionsDone when nonTutorialMissions is omitted', () => {
         const s = mkSession({
             campaignProgress: {
-                '0': { completed: false, missions: Array(10).fill({ completed: true, bestTimeMs: null }) },
+                '0': { completed: false, missions: Array(5).fill({ completed: true, bestTimeMs: null }) },
             },
         });
         expect(getRank(s).name).toBe('Oberleutnant');
@@ -119,12 +124,7 @@ describe('isMissionUnlocked', () => {
 // ─── isCampaignUnlocked ───────────────────────────────────────────────────────
 
 describe('isCampaignUnlocked', () => {
-    const campaigns = [
-        { type: 'tutorial' },
-        { type: 'free-flight' },
-        { type: 'regular' },
-        { type: 'regular' },
-    ];
+    const campaigns = [{ type: 'tutorial' }, { type: 'free-flight' }, { type: 'regular' }, { type: 'regular' }];
 
     it('tutorial is always unlocked', () => {
         expect(isCampaignUnlocked(mkSession(), campaigns, 0)).toBe(true);
@@ -199,10 +199,13 @@ describe('encodeSession / decodeSession', () => {
     it('reconstructs campaign progress from nextMission count', () => {
         const s = mkSession({
             campaignProgress: {
-                '1': { completed: false, missions: [
-                    { completed: true, bestTimeMs: null },
-                    { completed: true, bestTimeMs: null },
-                ]},
+                '1': {
+                    completed: false,
+                    missions: [
+                        { completed: true, bestTimeMs: null },
+                        { completed: true, bestTimeMs: null },
+                    ],
+                },
             },
         });
         const decoded = decodeSession(encodeSession(s, 0));

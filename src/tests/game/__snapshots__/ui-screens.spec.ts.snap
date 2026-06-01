@@ -56,16 +56,6 @@ exports[`UI screen snapshots > settings-screen 1`] = `
             </div>
             <div id="import-code-msg" style="font-size: 12px; letter-spacing: 2px; min-height: 18px; margin-top: 4px"></div>
         </div>
-        <div id="settings-ctrl-row" style="display:none; flex-direction:column; align-items:center; margin-top:16px; width:100%">
-            <div class="settings-field" style="width:100%">
-                <label>CONTROLS</label>
-                <div style="display:flex; gap:10px; margin-top:6px">
-                    <button class="settings-btn" id="ctrl-btn-profi">SIMPLIFIED</button>
-                    <button class="settings-btn" id="ctrl-btn-vereinfacht">PROFESSIONAL</button>
-                </div>
-                <div id="ctrl-mode-hint" style="font-size:11px; letter-spacing:1px; color:#8af; margin-top:4px; min-height:16px"></div>
-            </div>
-        </div>
         <div style="margin-top: 20px; border-top: 1px solid #1a1a2e; padding-top: 16px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px">
             <div class="settings-field" style="width:100%">
                 <label>MUSIC</label>

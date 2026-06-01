@@ -1161,7 +1161,7 @@ const _onloadMain = () => {
     const _setPref = (key: string, v: boolean) => storageSet(key, v ? '1' : '0');
 
     // Apply saved preferences on startup
-    if (!_getPref('zw_music', true)) soundHandler.mute();
+    if (_getPref('zw_music', true)) soundHandler.unmute(); else soundHandler.mute();
     setSfxEnabled(_getPref('zw_sfx', true));
 
     // DEV mode: mute everything initially

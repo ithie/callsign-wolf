@@ -14,10 +14,10 @@ export interface CampaignProgress {
 }
 
 export interface PlayerSession {
-    playerName: string;               // callsign, max 5 chars A-Z
+    playerName: string; // callsign, max 5 chars A-Z
     highestUnlockedCampaignIndex: number; // highest regular campaign index reachable (for cross-device import)
     campaignProgress: Record<string, CampaignProgress>;
-    rankOverride: number;             // rank index preserved across device imports
+    rankOverride: number; // rank index preserved across device imports
 }
 
 export interface Rank {
@@ -27,10 +27,10 @@ export interface Rank {
 }
 
 export const RANKS: Rank[] = [
-    { name: 'Leutnant',     pips: '★',     minMissions: 0  },
-    { name: 'Oberleutnant', pips: '★  ★',  minMissions: 10 },
-    { name: 'Hauptmann',    pips: '★ ★ ★', minMissions: 30 },
-    { name: 'Major',        pips: '◆',     minMissions: 60 },
+    { name: 'Leutnant', pips: '★', minMissions: 0 },
+    { name: 'Oberleutnant', pips: '★  ★', minMissions: 5 },
+    { name: 'Hauptmann', pips: '★ ★ ★', minMissions: 10 },
+    { name: 'Major', pips: '◆', minMissions: 30 },
 ];
 
 const _default = (): PlayerSession => ({
@@ -59,14 +59,13 @@ export const loadSession = (): PlayerSession => {
 };
 
 export const saveSession = (s: PlayerSession): void => {
-    try { storageSet(STORAGE_KEY, JSON.stringify(s)); } catch {}
+    try {
+        storageSet(STORAGE_KEY, JSON.stringify(s));
+    } catch {}
 };
 
 export const getMissionsDone = (s: PlayerSession): number =>
-    Object.values(s.campaignProgress).reduce(
-        (sum, cp) => sum + cp.missions.filter(m => m.completed).length,
-        0
-    );
+    Object.values(s.campaignProgress).reduce((sum, cp) => sum + cp.missions.filter(m => m.completed).length, 0);
 
 export const getCampaignsDone = (s: PlayerSession): number =>
     Object.values(s.campaignProgress).filter(cp => cp.completed).length;
@@ -75,7 +74,10 @@ export const getRank = (s: PlayerSession, nonTutorialMissions?: number): Rank =>
     const missions = nonTutorialMissions ?? getMissionsDone(s);
     let derivedIdx = 0;
     for (let i = RANKS.length - 1; i >= 0; i--) {
-        if (missions >= RANKS[i].minMissions) { derivedIdx = i; break; }
+        if (missions >= RANKS[i].minMissions) {
+            derivedIdx = i;
+            break;
+        }
     }
     return RANKS[Math.max(derivedIdx, s.rankOverride ?? 0)];
 };
@@ -94,7 +96,7 @@ export const isCampaignUnlocked = (
     if (type === CAMPAIGN_TYPE.FREE_FLIGHT) return true;
 
     const tutorialIndex = campaigns.findIndex(c => c.type === CAMPAIGN_TYPE.TUTORIAL);
-    const tutorialDone = tutorialIndex === -1 || !!(s.campaignProgress[String(tutorialIndex)]?.completed);
+    const tutorialDone = tutorialIndex === -1 || !!s.campaignProgress[String(tutorialIndex)]?.completed;
     if (!tutorialDone) return false;
 
     const regular = campaigns
@@ -103,7 +105,7 @@ export const isCampaignUnlocked = (
     const pos = regular.findIndex(c => c.i === index);
     if (pos <= 0) return true;
     const prev = regular[pos - 1];
-    return !!(s.campaignProgress[String(prev.i)]?.completed);
+    return !!s.campaignProgress[String(prev.i)]?.completed;
 };
 
 export const isCampaignLockedByTutorial = (
@@ -116,7 +118,7 @@ export const isCampaignLockedByTutorial = (
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return false;
     const tutorialIndex = campaigns.findIndex(c => c.type === CAMPAIGN_TYPE.TUTORIAL);
     if (tutorialIndex === -1) return false;
-    return !(s.campaignProgress[String(tutorialIndex)]?.completed);
+    return !s.campaignProgress[String(tutorialIndex)]?.completed;
 };
 
 export const isMissionUnlocked = (
@@ -127,7 +129,7 @@ export const isMissionUnlocked = (
 ): boolean => {
     if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return true;
     if (missionIndex === 0) return true;
-    return !!(s.campaignProgress[campaignKey]?.missions[missionIndex - 1]?.completed);
+    return !!s.campaignProgress[campaignKey]?.missions[missionIndex - 1]?.completed;
 };
 
 // ─── Save Code (9-char Base32) ────────────────────────────────────────────────
@@ -148,21 +150,24 @@ const B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
 const _checksumBits = (bits: number[]): number => {
     let acc = 0;
     for (let i = 0; i < 37; i++) {
-        if (bits[i]) acc ^= (1 << (i % 8));
+        if (bits[i]) acc ^= 1 << (i % 8);
     }
-    return acc & 0xFF;
+    return acc & 0xff;
 };
 
 export const encodeSession = (s: PlayerSession, nonTutorialMissions: number): string => {
-    const rankIdx    = RANKS.indexOf(getRank(s, nonTutorialMissions));
-    const highest    = Math.min(s.highestUnlockedCampaignIndex ?? 0, 7);
+    const rankIdx = RANKS.indexOf(getRank(s, nonTutorialMissions));
+    const highest = Math.min(s.highestUnlockedCampaignIndex ?? 0, 7);
     const activeEntry = Object.entries(s.campaignProgress)
         .filter(([, cp]) => cp.missions.some(m => m.completed))
         .sort((a, b) => Number(b[0]) - Number(a[0]))[0];
-    const active      = activeEntry ? Math.min(Number(activeEntry[0]), 7) : 0;
-    const activeCp    = activeEntry?.[1];
+    const active = activeEntry ? Math.min(Number(activeEntry[0]), 7) : 0;
+    const activeCp = activeEntry?.[1];
     const nextMission = Math.min(activeCp ? activeCp.missions.filter(m => m.completed).length : 0, 15);
-    const callsign   = (s.playerName || '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 5);
+    const callsign = (s.playerName || '')
+        .toUpperCase()
+        .replace(/[^A-Z]/g, '')
+        .slice(0, 5);
 
     const bits: number[] = [];
     const push = (val: number, n: number) => {
@@ -196,15 +201,14 @@ export const decodeSession = (input: string): Partial<PlayerSession> | null => {
         if (v < 0) return null;
         for (let i = 4; i >= 0; i--) bits.push((v >> i) & 1);
     }
-    const read = (start: number, n: number) =>
-        bits.slice(start, start + n).reduce((a, b) => (a << 1) | b, 0);
+    const read = (start: number, n: number) => bits.slice(start, start + n).reduce((a, b) => (a << 1) | b, 0);
 
     if (read(37, 8) !== _checksumBits(bits)) return null; // rejects old/corrupt codes
 
-    const rankIdx                    = Math.min(read(0, 2), RANKS.length - 1);
+    const rankIdx = Math.min(read(0, 2), RANKS.length - 1);
     const highestUnlockedCampaignIndex = read(2, 3);
-    const activeCampaignIndex        = read(5, 3);
-    const nextMission                = read(8, 4);
+    const activeCampaignIndex = read(5, 3);
+    const nextMission = read(8, 4);
 
     let playerName = '';
     for (let i = 0; i < 5; i++) {

@@ -7,6 +7,37 @@ import ORNI_WRECK_CARRY_DEF from '../models/ornithopter_wreck_carry.zdef';
 export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, tileW, drawFns: { drawPerson }, isVisible, isNight } = dwCtx;
 
+    // Draws one non-hanging, non-orni payload. cx/cy are the camera coords for this frame.
+    const _drawSinglePayload = (payload: any, cx: number, cy: number) => {
+        const p = isoFn(payload.x, payload.y, payload.z, cx, cy);
+        if (payload.type === PAYLOAD.CRATE) {
+            ctx.fillStyle = '#d84';
+            ctx.strokeStyle = '#530';
+            ctx.lineWidth = Math.max(0.5, tileW / 64);
+            const s = tileW * 0.22;
+            ctx.fillRect(p.x - s / 2, p.y - s, s, s);
+            ctx.strokeRect(p.x - s / 2, p.y - s, s, s);
+        } else {
+            const inWater =
+                !payload.hanging &&
+                G.waterLevel > 0 &&
+                getGround(payload.x, payload.y) < G.waterLevel;
+            drawPerson(
+                payload.x, payload.y, payload.z, 0, !payload.hanging,
+                cx, cy,
+                payload.type === PAYLOAD.RESCUER ? PAYLOAD.RESCUER : undefined,
+                payload.outfitColors,
+                inWater,
+            );
+            if (payload.z < 0) {
+                ctx.strokeStyle = '#aaf';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 6, 0, 7);
+                ctx.stroke();
+            }
+        }
+    };
+
     const drawPayloadObjects = (hangingOnly = false, ropeOnly = false) => {
         const night = isNight();
         const { cam } = zstate;
@@ -14,6 +45,9 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
             if (payload.rescued && !payload.hanging) return;
             if (hangingOnly && !payload.hanging) return;
             if (!hangingOnly && payload.hanging) return;
+            // Vessel-deck payloads are queued into the final SceneRenderer flush via
+            // queueAttachedPayloads() so they render correctly on top of their vessel.
+            if (!hangingOnly && payload.attachTo) return;
             if (payload.type === PAYLOAD.ORNI_WRECK && !payload.hanging) return;
             if (!payload.hanging && !isVisible(payload.x, payload.y)) return;
 
@@ -43,41 +77,34 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
 
             if (payload.hanging && G.heli.winch < 0.4) return;
 
-            const p = isoFn(payload.x, payload.y, payload.z, cam.x, cam.y);
             if (payload.type === PAYLOAD.ORNI_WRECK) {
                 SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, {
                     x: payload.x, y: payload.y, z: payload.z, angle: payload.angle ?? 0,
                 });
                 SceneRenderer.flush(cam.x, cam.y);
                 return;
-            } else if (payload.type === PAYLOAD.CRATE) {
-                ctx.fillStyle = '#d84';
-                ctx.strokeStyle = '#530';
-                ctx.lineWidth = Math.max(0.5, tileW / 64);
-                const s = tileW * 0.22;
-                ctx.fillRect(p.x - s / 2, p.y - s, s, s);
-                ctx.strokeRect(p.x - s / 2, p.y - s, s, s);
-            } else {
-                const inWater =
-                    !payload.hanging &&
-                    G.waterLevel > 0 &&
-                    getGround(payload.x, payload.y) < G.waterLevel;
-                drawPerson(
-                    payload.x, payload.y, payload.z, 0, !payload.hanging,
-                    cam.x, cam.y,
-                    payload.type === PAYLOAD.RESCUER ? PAYLOAD.RESCUER : undefined,
-                    payload.outfitColors,
-                    inWater,
-                );
-                if (payload.z < 0) {
-                    ctx.strokeStyle = '#aaf';
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, 6, 0, 7);
-                    ctx.stroke();
-                }
             }
+            _drawSinglePayload(payload, cam.x, cam.y);
         });
     };
 
-    return { drawPayloadObjects };
+    // Enqueues vessel-deck payloads into the shared SceneRenderer batch.
+    // Must be called AFTER vessels are added (lines 76-83 draw-world.ts) and
+    // BEFORE the heli is added (line 95) so that on a depth tie the heli wins
+    // via JS stable sort insertion order.
+    const queueAttachedPayloads = () => {
+        G.payloads.forEach((payload: any) => {
+            if (payload.rescued && !payload.hanging) return;
+            if (payload.hanging || !payload.attachTo) return;
+            if (payload.type === PAYLOAD.ORNI_WRECK) return;
+            if (!isVisible(payload.x, payload.y)) return;
+            SceneRenderer.add(null, {
+                x: 0, y: 0,
+                depth: payload.x + payload.y,
+                drawFn: (cx: number, cy: number) => _drawSinglePayload(payload, cx, cy),
+            });
+        });
+    };
+
+    return { drawPayloadObjects, queueAttachedPayloads };
 };
