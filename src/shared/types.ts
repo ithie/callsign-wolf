@@ -59,6 +59,7 @@ export const RESCUE_ZONE_ROLE = {
     BOTH:    'both',
 } as const;
 export type RescueZoneRole = typeof RESCUE_ZONE_ROLE[keyof typeof RESCUE_ZONE_ROLE];
+export type RescueZone = { x: number; y: number; w: number; h: number; role: RescueZoneRole; z?: number; dz?: number };
 
 export const OBJECTIVE_TYPE = {
     RESCUE_ALL: 'rescue_all',
@@ -94,6 +95,7 @@ type SubmarineObject = {
     path: VesselPath;
     speed: number;
     radius: number;
+    rescueZones?: RescueZone[];
 };
 type LighthouseObject = { type: 'lighthouse'; x: number; y: number };
 type PilotBoatObject = {
@@ -115,7 +117,7 @@ type SalvageTugObject = {
     radius: number;
 };
 type ResearchPlatformObject = { type: 'research_platform'; x: number; y: number };
-type WindTurbineObject = { type: 'wind_turbine'; x: number; y: number; spinning?: boolean; rescueZones?: Array<{ x: number; y: number; w: number; h: number; role: RescueZoneRole }> };
+type WindTurbineObject = { type: 'wind_turbine'; x: number; y: number; spinning?: boolean; rescueZones?: RescueZone[] };
 type PlaneWreckObject = { type: 'plane_wreck'; x: number; y: number; angle?: number };
 type SailboatBrokenObject = { type: 'sailboat_broken'; x: number; y: number; angle?: number };
 type OrnithopterWreckObject = { type: 'ornithopter_wreck'; x: number; y: number; angle?: number };

@@ -50,11 +50,11 @@ const mockSettingsDeps = () => ({
 });
 
 const noopCallbacks = {
+    onSplashClick: vi.fn(),
     onStart: vi.fn(),
     onSettings: vi.fn(),
     onCredits: vi.fn(),
     onLegal: vi.fn(),
-    onSplashClick: vi.fn(),
 };
 
 // ─── Tests ────────────────────────────────────────────────────────────────────

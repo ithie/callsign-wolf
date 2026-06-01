@@ -6,6 +6,7 @@ import { mountScreenShell } from '../screen-shell/screen-shell';
 import { playSfx } from '../../heli-sound';
 
 type MainMenuCallbacks = {
+    onSplashStart?: () => void;
     onSplashClick: () => void;
     onStart: () => void;
     onSettings: () => void;
@@ -45,6 +46,7 @@ export const mount = (cb: MainMenuCallbacks) => {
     };
 
     const _handleSplashClick = () => {
+        cb.onSplashStart?.();
         splash.removeEventListener('click', _handleSplashClick);
         _splashHandler = null;
 

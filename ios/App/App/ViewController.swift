@@ -135,7 +135,7 @@ class ViewController: UIViewController {
 
     // MARK: - Storage helpers
 
-    private let storageKeys = ["zw_session", "zw_lang", "zw_music", "zw_sfx"]
+    private let storageKeys = ["z_session", "z_lang", "z_music", "z_sfx"]
 
     private func migrateCapacitorStorage() {
         let prefix = "CapacitorStorage."

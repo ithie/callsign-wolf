@@ -35,6 +35,8 @@ declare module '*.zdef' {
             w: number;
             h: number;
             role: 'pickup' | 'dropoff' | 'both';
+            z?: number;
+            dz?: number;
         }>;
         parts?: Array<{
             id: string;

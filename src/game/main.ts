@@ -33,7 +33,7 @@ const soundHandler = (() => {
 
     const state: { activeTheme: string; isMuted: boolean } = {
         activeTheme: '',
-        isMuted: true,
+        isMuted: false,
     };
 
     ZsynthPlayer.init(songList);

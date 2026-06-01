@@ -140,7 +140,6 @@ export const initSubmarinesFromMission = () => {
         const s = {
             x: obj.x, y: obj.y, angle: 0, path: VESSEL_PATH.STATIC, speed: 0,
             w: 0.7, l: 5.4, zDeck: 0.25, zHull: 0,
-            rescueZones: (obj as any).rescueZones || [],
             radiusX: 0, radiusY: 0, centerX: 0, centerY: 0,
             lineStartX: 0, lineStartY: 0, lineDirX: 0, lineDirY: 0, lineProgress: 0,
             _seaTime: 0, _objIdx: allObjects.indexOf(obj),
@@ -190,7 +189,6 @@ export const initStaticObjectsFromMission = () => {
     G.RESEARCH_PLATFORMS = getObjectsByType(VESSEL.RESEARCH_PLATFORM).map((obj: any) => ({
         x: obj.x, y: obj.y, angle: 0,
         zDeck: G.waterLevel + 6.51,
-        rescueZones: [] as any[],
     }));
     G.WIND_TURBINES = getObjectsByType(VESSEL.WIND_TURBINE).map((obj: any) => ({
         x: obj.x, y: obj.y, angle: 0,

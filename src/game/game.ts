@@ -11,7 +11,6 @@ import { zstate } from './state';
 import { initHeliSound, updateHeliSound, stopHeliSound, setSfxEnabled, isSfxEnabled } from './heli-sound';
 
 import { createDrawWorld } from './draws-world/draw-world';
-import CARRIER_DEF from './models/carrier.zdef';
 import RESEARCH_PLATFORM_DEF from './models/research_platform.zdef';
 import { createSceneRenderer } from './scene-renderer';
 import { getHeliType, HELI_TYPES } from './heli-types';
@@ -453,14 +452,12 @@ const launchMission = async (showLoader = true): Promise<void> => {
 
     // Step 2 — objects
     initCarrierFromMission();
-    if (G.CARRIER && G.CARRIER.x !== undefined) G.CARRIER.rescueZones = CARRIER_DEF.rescueZones || [];
     if (hasCarrier()) carrierCar.init();
     initBoatsFromMission();
     initSubmarinesFromMission();
     initStaticObjectsFromMission();
     G.LANDING_ZONES = [];
     G.RESEARCH_PLATFORMS.forEach((rp: any) => {
-        rp.rescueZones = (RESEARCH_PLATFORM_DEF as any).rescueZones || [];
         const lz = (RESEARCH_PLATFORM_DEF as any).landingZone;
         if (lz) {
             G.LANDING_ZONES.push({
@@ -1123,7 +1120,7 @@ window.onload = () => {
                 _onloadPreview();
                 return;
             }
-            await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, 'zw_music', 'zw_sfx']);
+            await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, 'z_music', 'z_sfx']);
             _session = loadSession();
             const _sl = storageGet(LANG_PREF_KEY);
             if (_sl === 'de' || _sl === 'en') setLanguage(_sl);
@@ -1138,6 +1135,7 @@ const _onloadMain = () => {
         CreditsScreen.mount(toMainMenu);
         LegalScreen.mount(toMainMenu);
         MainMenu.mount({
+            onSplashStart: () => soundHandler.play(musicConfig.mainMenu || 'maintheme', true),
             onSplashClick: toMainMenu,
             onStart: toCampaignSelect,
             onSettings: Settings.show,
@@ -1161,8 +1159,8 @@ const _onloadMain = () => {
     const _setPref = (key: string, v: boolean) => storageSet(key, v ? '1' : '0');
 
     // Apply saved preferences on startup
-    if (_getPref('zw_music', true)) soundHandler.unmute(); else soundHandler.mute();
-    setSfxEnabled(_getPref('zw_sfx', true));
+    if (!_getPref('z_music', true)) soundHandler.mute();
+    setSfxEnabled(_getPref('z_sfx', true));
 
     // DEV mode: mute everything initially
     if (import.meta.env.DEV) {
@@ -1174,12 +1172,12 @@ const _onloadMain = () => {
         isMusicEnabled: () => !soundHandler.state.isMuted,
         setMusicEnabled: (v: boolean) => {
             v ? soundHandler.unmute() : soundHandler.mute();
-            _setPref('zw_music', v);
+            _setPref('z_music', v);
         },
         isSfxEnabled: () => isSfxEnabled(),
         setSfxEnabled: (v: boolean) => {
             setSfxEnabled(v);
-            _setPref('zw_sfx', v);
+            _setPref('z_sfx', v);
         },
         isTouchDevice: _isTouchDevice,
         onPause: () => {
@@ -1206,12 +1204,12 @@ const _onloadMain = () => {
         isMusicEnabled: () => !soundHandler.state.isMuted,
         setMusicEnabled: (v: boolean) => {
             v ? soundHandler.unmute() : soundHandler.mute();
-            _setPref('zw_music', v);
+            _setPref('z_music', v);
         },
         isSfxEnabled: () => isSfxEnabled(),
         setSfxEnabled: (v: boolean) => {
             setSfxEnabled(v);
-            _setPref('zw_sfx', v);
+            _setPref('z_sfx', v);
         },
         onBack: HeliSelect.animMainMenuBg,
     });

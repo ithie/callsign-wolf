@@ -1,6 +1,9 @@
 import { campaignHandler } from '../main';
 import { G, zstate } from '../state';
-import { VESSEL, PAYLOAD, VEHICLE_STATE, RESCUE_ZONE_ROLE, OBJECTIVE_TYPE } from '../../shared/types';
+import { VESSEL, PAYLOAD, VEHICLE_STATE, RESCUE_ZONE_ROLE, OBJECTIVE_TYPE, type RescueZone } from '../../shared/types';
+import CARRIER_DEF from '../models/carrier.zdef';
+import SUBMARINE_DEF from '../models/submarine.zdef';
+import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
 import { PAYLOAD_DEFS } from '../payload-defs';
 import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from '../haptics';
 import { PhysicsCtx } from './ctx';
@@ -20,18 +23,34 @@ let _prevEngineOn = false;
 let _prevFuelLow = false;
 let _prevCarrierNear = false;
 
-const _pointInVesselZone = (wx: number, wy: number, vessel: any, zone: any): boolean => {
+const DEF_RESCUE_ZONES: Partial<Record<string, RescueZone[]>> = {
+    [VESSEL.CARRIER]:           (CARRIER_DEF.rescueZones           ?? []) as RescueZone[],
+    [VESSEL.SUBMARINE]:         (SUBMARINE_DEF.rescueZones         ?? []) as RescueZone[],
+    [VESSEL.RESEARCH_PLATFORM]: (RESEARCH_PLATFORM_DEF.rescueZones ?? []) as RescueZone[],
+};
+
+const _zonesFor = (vessel: any, type: string | null): RescueZone[] =>
+    vessel.rescueZones?.length ? vessel.rescueZones as RescueZone[] :
+    (type ? DEF_RESCUE_ZONES[type] ?? [] : []);
+
+const _pointInZone = (wx: number, wy: number, vessel: any, zone: any, wz?: number): boolean => {
     const c = Math.cos(-vessel.angle), s = Math.sin(-vessel.angle);
     const dx = wx - vessel.x, dy = wy - vessel.y;
     const lx = dx * c - dy * s, ly = dx * s + dy * c;
-    return Math.abs(lx - zone.x) <= zone.w && Math.abs(ly - zone.y) <= zone.h;
+    if (!( Math.abs(lx - zone.x) <= zone.w && Math.abs(ly - zone.y) <= zone.h)) return false;
+    if (zone.z != null && wz != null) {
+        const zCenter = G.waterLevel + zone.z;
+        return Math.abs(wz - zCenter) <= (zone.dz ?? 0.5);
+    }
+    return true;
 };
 
-const _vesselPickupAllowed = (wx: number, wy: number, vessel: any): boolean => {
-    if (!vessel.rescueZones?.length) return true;
-    const pickupZones = vessel.rescueZones.filter((z: any) => z.role === RESCUE_ZONE_ROLE.PICKUP || z.role === RESCUE_ZONE_ROLE.BOTH);
+const _vesselPickupAllowed = (wx: number, wy: number, vessel: any, type: string): boolean => {
+    const zones = _zonesFor(vessel, type);
+    if (!zones.length) return true;
+    const pickupZones = zones.filter(z => z.role === RESCUE_ZONE_ROLE.PICKUP || z.role === RESCUE_ZONE_ROLE.BOTH);
     if (!pickupZones.length) return true;
-    return pickupZones.some((z: any) => _pointInVesselZone(wx, wy, vessel, z));
+    return pickupZones.some(z => _pointInZone(wx, wy, vessel, z));
 };
 
 // All droppable vessel collections with their specific deliverTo type (null = accepts any)
@@ -39,15 +58,16 @@ const _dropzoneVessels = (): Array<{ vessel: any; type: string | null }> => [
     { vessel: G.CARRIER, type: VESSEL.CARRIER },
     ...G.BOATS.map(v => ({ vessel: v, type: VESSEL.BOAT as string | null })),
     ...G.SUBMARINES.map(v => ({ vessel: v, type: VESSEL.SUBMARINE as string | null })),
-    ...G.RESEARCH_PLATFORMS.map(v => ({ vessel: v, type: null })),
+    ...G.RESEARCH_PLATFORMS.map(v => ({ vessel: v, type: VESSEL.RESEARCH_PLATFORM as string | null })),
     ...G.WIND_TURBINES.map(v => ({ vessel: v, type: null })),
 ];
 
-const _inDropzone = (wx: number, wy: number, deliverTo?: string): boolean =>
+const _inDropzone = (wx: number, wy: number, deliverTo?: string, wz?: number): boolean =>
     _dropzoneVessels().some(({ vessel, type }) => {
-        if (!vessel?.rescueZones?.length) return false;
+        const zones = _zonesFor(vessel, type);
+        if (!zones.length) return false;
         const want = !deliverTo || (type !== null && deliverTo === type);
-        return want && vessel.rescueZones.some((z: any) => z.role !== RESCUE_ZONE_ROLE.PICKUP && _pointInVesselZone(wx, wy, vessel, z));
+        return want && zones.some(z => z.role !== RESCUE_ZONE_ROLE.PICKUP && _pointInZone(wx, wy, vessel, z, wz));
     });
 
 const _computeLandingState = (ctx: PhysicsCtx, groundH: number) => {
@@ -75,7 +95,7 @@ const _computeLandingState = (ctx: PhysicsCtx, groundH: number) => {
 const _singleDropzoneType = (): string | undefined => {
     const types = new Set<string>();
     for (const { vessel, type } of _dropzoneVessels()) {
-        if (type && vessel?.rescueZones?.some((z: any) => z.role !== RESCUE_ZONE_ROLE.PICKUP))
+        if (type && _zonesFor(vessel, type).some(z => z.role !== RESCUE_ZONE_ROLE.PICKUP))
             types.add(type);
     }
     return types.size === 1 ? [...types][0] : undefined;
@@ -90,7 +110,7 @@ const _deliveryDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface }: _Deposit
     const effectiveDeliverTo = deliverTo ?? _singleDropzoneType();
     const onCarrierOk = (!deliverTo || deliverTo === VESSEL.CARRIER) && onCarrierDeck && G.heli.z < 3.0;
     const onPadOk     = (!deliverTo || deliverTo === VESSEL.PAD)     && onPadSurface  && G.heli.z < 3.0;
-    const inZone = onCarrierOk || onPadOk || _inDropzone(p.x, p.y, effectiveDeliverTo);
+    const inZone = onCarrierOk || onPadOk || _inDropzone(p.x, p.y, effectiveDeliverTo, p.z);
     G.payloads.splice(G.payloads.indexOf(p), 1);
     p.hanging = false; p.rescued = true; G.activePayload = null;
     if (inZone) {
@@ -128,7 +148,7 @@ const _genericDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface }: _DepositS
     const deliverTo = (p as any).deliverTo as string | undefined;
     const onCarrierOk = (!deliverTo || deliverTo === VESSEL.CARRIER) && onCarrierDeck && G.heli.z < 3.0;
     const onPadOk     = (!deliverTo || deliverTo === VESSEL.PAD)     && onPadSurface  && G.heli.z < 3.0;
-    const inZone = _inDropzone(p.x, p.y, deliverTo) || _inDropzone(G.heli.x, G.heli.y, deliverTo);
+    const inZone = _inDropzone(p.x, p.y, deliverTo, p.z) || _inDropzone(G.heli.x, G.heli.y, deliverTo);
     if (onCarrierOk || onPadOk || inZone) {
         p.hanging = false; p.rescued = true; G.activePayload = null;
         G.totalRescued++;
@@ -469,7 +489,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
                     if (p.attachTo.objectType === VESSEL.CARRIER) vessel = G.CARRIER;
                     else if (p.attachTo.objectType === VESSEL.BOAT) vessel = G.BOATS.find((b: any) => b._objIdx === p.attachTo.objectIdx);
                     else if (p.attachTo.objectType === VESSEL.SUBMARINE) vessel = G.SUBMARINES.find((s: any) => s._objIdx === p.attachTo.objectIdx);
-                    if (vessel && !_vesselPickupAllowed(G.heli.x, G.heli.y, vessel)) continue;
+                    if (vessel && !_vesselPickupAllowed(G.heli.x, G.heli.y, vessel, p.attachTo.objectType)) continue;
                 }
                 p.hanging = true; G.activePayload = p;
                 G.rescuerSwing.x = p.x; G.rescuerSwing.y = p.y;
@@ -491,18 +511,18 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     }
 
     // crate touchdown delivery
-    if (G.activePayload?.type === PAYLOAD.CRATE && onPad) {
+    if (G.activePayload?.type === PAYLOAD.CRATE) {
         const p = G.activePayload;
         const deliverTo = (p as any).deliverTo as string | undefined;
-        const padTypeOk = !deliverTo || (onCarrierDeck ? deliverTo === VESSEL.CARRIER : deliverTo === VESSEL.PAD);
-        if (padTypeOk) {
-            const padSurfaceZ = onCarrierDeck ? G.CARRIER.zDeck : G.PAD.z;
-            if ((G.activePayload as any).z <= padSurfaceZ + 0.4) {
-                p.hanging = false; p.rescued = true; G.activePayload = null;
-                G.totalRescued++;
-                voiceEvents.emit('delivered');
-                if (G.totalRescued >= G.goalCount) ctx.missionComplete();
-            }
+        const padTypeOk = onPad && (!deliverTo || (onCarrierDeck ? deliverTo === VESSEL.CARRIER : deliverTo === VESSEL.PAD));
+        const padSurfaceZ = onCarrierDeck ? G.CARRIER.zDeck : G.PAD?.z ?? 0;
+        const atPad = padTypeOk && (p as any).z <= padSurfaceZ + 0.4;
+        const inZone = _inDropzone(p.x, p.y, deliverTo, (p as any).z);
+        if (atPad || inZone) {
+            p.hanging = false; p.rescued = true; G.activePayload = null;
+            G.totalRescued++;
+            voiceEvents.emit('delivered');
+            if (G.totalRescued >= G.goalCount) ctx.missionComplete();
         }
     }
 
@@ -515,7 +535,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
             const valid =
                 ((!dt || dt === VESSEL.CARRIER) && onCarrierDeck) ||
                 ((!dt || dt === VESSEL.PAD)     && onPadSurface)  ||
-                _inDropzone(G.heli.x, G.heli.y, eff);
+                _inDropzone(G.heli.x, G.heli.y, eff, G.heli.z);
             if (valid) countedNow++;
             else undelivered.push(dt);
         }

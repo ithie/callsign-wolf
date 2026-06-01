@@ -68,62 +68,63 @@ const ZsynthPlayer = {
     } as Record<string, number>,
 
     init: (songList: Record<string, SongData>): void => {
-        ZsynthPlayer.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         ZsynthPlayer.songs = songList;
-        ZsynthPlayer.masterGain = ZsynthPlayer.ctx.createGain();
-        ZsynthPlayer.masterGain.connect(ZsynthPlayer.ctx.destination);
     },
 
     play: (key: string, crossfade: number = 0.5, volume: number = 1.0): void => {
-        if (!ZsynthPlayer.ctx || !ZsynthPlayer.masterGain) {
-            console.error('ZSynthPlayer nicht initialisiert!');
-            return;
-        }
-
-        // iOS suspends AudioContext before a user gesture — resume on every play call
-        if (ZsynthPlayer.ctx.state === 'suspended') {
-            ZsynthPlayer.ctx.resume();
+        // Lazy-init: AudioContext created here (inside user gesture) starts as 'running' on iOS
+        if (!ZsynthPlayer.ctx) {
+            ZsynthPlayer.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            ZsynthPlayer.masterGain = ZsynthPlayer.ctx.createGain();
+            ZsynthPlayer.masterGain.connect(ZsynthPlayer.ctx.destination);
         }
 
         const songData = ZsynthPlayer.songs[key];
-
         if (!songData) return;
 
-        const startTime = ZsynthPlayer.ctx.currentTime;
-
-        if (ZsynthPlayer.currentTrack && ZsynthPlayer.currentTrack.isPlaying) {
-            const oldTrack = ZsynthPlayer.currentTrack;
-            oldTrack.gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + crossfade);
-            setTimeout(() => {
-                oldTrack.isPlaying = false;
-            }, crossfade * 1000);
-        }
-
         const stepMap: Record<number, Array<{ trackId: string; note: string }>> = {};
-        for (const key in songData.activeData) {
-            const sepIdx = key.lastIndexOf('-');
-            const trackId = key.substring(0, sepIdx);
-            const step = parseInt(key.substring(sepIdx + 1));
-            const note = songData.activeData[key] as string;
+        for (const k in songData.activeData) {
+            const sepIdx = k.lastIndexOf('-');
+            const trackId = k.substring(0, sepIdx);
+            const step = parseInt(k.substring(sepIdx + 1));
+            const note = songData.activeData[k] as string;
             if (!stepMap[step]) stepMap[step] = [];
             stepMap[step].push({ trackId, note });
         }
 
-        const track: ActiveTrack = {
-            data: songData,
-            isPlaying: true,
-            currentStep: 0,
-            gainNode: ZsynthPlayer.ctx.createGain(),
-            nextNoteTime: ZsynthPlayer.ctx.currentTime + 0.05,
-            stepMap,
+        const _start = () => {
+            const ctx = ZsynthPlayer.ctx!;
+            const startTime = ctx.currentTime;
+
+            if (ZsynthPlayer.currentTrack && ZsynthPlayer.currentTrack.isPlaying) {
+                const oldTrack = ZsynthPlayer.currentTrack;
+                oldTrack.gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + crossfade);
+                setTimeout(() => { oldTrack.isPlaying = false; }, crossfade * 1000);
+            }
+
+            const track: ActiveTrack = {
+                data: songData,
+                isPlaying: true,
+                currentStep: 0,
+                gainNode: ctx.createGain(),
+                nextNoteTime: startTime + 0.05,
+                stepMap,
+            };
+
+            track.gainNode.gain.setValueAtTime(0.0001, startTime);
+            track.gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), startTime + crossfade);
+            track.gainNode.connect(ZsynthPlayer.masterGain!);
+
+            ZsynthPlayer.currentTrack = track;
+            ZsynthPlayer.scheduler(track);
         };
 
-        track.gainNode.gain.setValueAtTime(0.0001, startTime);
-        track.gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), startTime + crossfade);
-        track.gainNode.connect(ZsynthPlayer.masterGain);
-
-        ZsynthPlayer.currentTrack = track;
-        ZsynthPlayer.scheduler(track);
+        // AudioContext starts suspended on iOS until a user gesture — await resume before scheduling
+        if (ZsynthPlayer.ctx.state === 'suspended') {
+            ZsynthPlayer.ctx.resume().then(_start);
+        } else {
+            _start();
+        }
     },
 
     scheduler: (track: ActiveTrack): void => {
