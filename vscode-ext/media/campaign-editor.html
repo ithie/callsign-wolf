@@ -537,7 +537,9 @@ Viel Glück, Pilot.</textarea>
 
             const edRefreshPanel = () => {
                 const controls = document.getElementById('editor-controls');
-                if (controls && controls.contains(document.activeElement)) return;
+                const ae = document.activeElement;
+                const tag = ae ? ae.tagName : '';
+                if (controls && controls.contains(ae) && (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT')) return;
                 if (!window.editorGetState) return;
                 edRenderPanel(window.editorGetState());
             };
