@@ -4,7 +4,7 @@ import * as LoadingScreen from './ui/loading-screen/loading-screen';
 import { ensureEl } from './ui/dom-helpers';
 import { setDeliverToggle as _touchSetDeliverToggle } from './ui/touch-controls/touch-controls';
 import { createIsoFn } from './render';
-import { campaignHandler, soundHandler, zinit, musicConfig } from './main';
+import { campaignHandler, soundHandler, zinit } from './main';
 import { loadSession, saveSession, getRank, RANKS, STORAGE_KEY, type PlayerSession, type Rank } from './session';
 import { initAppStorage, storageGet, storageSet } from './storage';
 import { zstate } from './state';
@@ -53,6 +53,7 @@ import * as CampaignSelect from './ui/campaign-select/campaign-select';
 import * as MissionFailedScreen from './ui/mission-failed-screen/mission-failed-screen';
 import * as MissionSuccessScreen from './ui/mission-success-screen/mission-success-screen';
 import * as CampaignCompleteScreen from './ui/campaign-complete-screen/campaign-complete-screen';
+import * as CampaignEndScreen from './ui/campaign-end-screen/campaign-end-screen';
 import { showScreen } from './ui/nav';
 import { mountMinimap, initMinimapTerrain } from './ui/minimap/minimap';
 import { createHud } from './ui/hud/hud';
@@ -179,7 +180,7 @@ const triggerCrash = () => {
     if (zstate.crashed) return;
     voiceEvents.emit('mayday');
     stopHeliSound();
-    soundHandler.play(musicConfig.defeat || 'final', false);
+    soundHandler.play('final', false);
     spawnExplosion(G.heli, G.particles, G.debris, G.points, G.CARRIER);
     zstate.crashed = true;
     setTimeout(() => {
@@ -215,6 +216,7 @@ const missionComplete = () => {
     const campaigns = campaignHandler.getCampaigns();
     const totalMissions = campaigns[_selectedCampaignIndex].levels.length;
     const allDone = cp.missions.filter((m, i) => i < totalMissions && m?.completed).length >= totalMissions;
+    const firstCompletion = allDone && !cp.completed;
     if (allDone) {
         cp.completed = true;
         // Unlock next regular campaign for cross-device import
@@ -246,8 +248,16 @@ const missionComplete = () => {
     if (allDone || rankUpRank) requestReview();
 
     if (allDone) {
-        CampaignCompleteScreen.show('');
-        soundHandler.play(musicConfig.success || 'final', false);
+        const isStoryCampaign = campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT;
+        soundHandler.play('success', false);
+        if (isStoryCampaign && firstCompletion) {
+            const campaignTitle = campaignHandler.getCampaigns()[_selectedCampaignIndex]?.campaignTitle;
+            const name =
+                typeof campaignTitle === 'string' ? campaignTitle : (campaignTitle?.de ?? campaignTitle?.en ?? '');
+            CampaignEndScreen.show(name, () => soundHandler.play('destroid', false));
+        } else {
+            CampaignCompleteScreen.show('');
+        }
         if (rankUpRank)
             Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
         return;
@@ -299,8 +309,13 @@ const returnToBase = () => {
     MissionFailedScreen.hide();
     MissionSuccessScreen.hide();
     Briefing.hide();
-    _openMissionSelect(); // calls showScreen('mission-select')
-    soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
+    const isTutorial = campaignHandler.getCurrentMissionData().campaignType === CAMPAIGN_TYPE.TUTORIAL;
+    if (isTutorial) {
+        toCampaignSelect();
+    } else {
+        _openMissionSelect();
+    }
+    soundHandler.play('maintheme', true);
 };
 
 const returnToCampaignSelect = () => {
@@ -310,7 +325,13 @@ const returnToCampaignSelect = () => {
     CampaignCompleteScreen.hide();
     Briefing.hide();
     _openCampaignSelect(); // calls showScreen('campaign-select')
-    soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
+    soundHandler.play('maintheme', true);
+};
+
+const _returnFromCampaignEnd = () => {
+    CampaignEndScreen.hide();
+    showScreen('main-menu');
+    soundHandler.play('maintheme', true);
 };
 
 const _openCampaignSelect = () => {
@@ -324,7 +345,7 @@ const _openCampaignSelect = () => {
 
 // ─── campaign / G.heli select ──────────────────────────────────────────────────
 const toCampaignSelect = () => {
-    soundHandler.play(musicConfig.mainMenu || 'maintheme', false);
+    soundHandler.play('maintheme', false);
     _openCampaignSelect();
 };
 
@@ -418,7 +439,14 @@ const _maybeSpawnOrniWreck = () => {
     for (const c of order) {
         const gz = getGround(c.x, c.y, G.points, G.CARRIER);
         if (gz <= G.waterLevel + 0.3) continue;
-        spawnPayload({ type: PAYLOAD.ORNI_WRECK, x: c.x, y: c.y, z: gz, angle: Math.random() * Math.PI * 2, deliverTo: VESSEL.PAD });
+        spawnPayload({
+            type: PAYLOAD.ORNI_WRECK,
+            x: c.x,
+            y: c.y,
+            z: gz,
+            angle: Math.random() * Math.PI * 2,
+            deliverTo: VESSEL.PAD,
+        });
         return;
     }
 };
@@ -521,13 +549,10 @@ const launchMission = async (showLoader = true): Promise<void> => {
 
     const rank = getRank(_session, _getRankMissions());
     const address = I18N.BRIEFING_ADDRESS(rank.name, _session.playerName).toUpperCase();
-    const briefingSong = campaignHandler.getActiveCampaignMusic().briefing;
-    if (briefingSong) soundHandler.play(briefingSong, true);
-
     Briefing.show({ headline: _lmd.headline, sublines: _lmd.sublines, briefing: _lmd.briefing, address }, () => {
         _briefingActive = false;
         _missionStartTime = Date.now();
-        soundHandler.play(campaignHandler.getActiveCampaignMusic().ingame || 'clike', false, 0.4);
+        soundHandler.play(_lmd.music || 'clike', false, 0.35);
 
         setTouchVisible(true);
 
@@ -808,7 +833,7 @@ const toMainMenu = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     zstate.gameStarted = false;
     showScreen('main-menu');
-    soundHandler.play(musicConfig.mainMenu || 'maintheme', true);
+    soundHandler.play('maintheme', true);
     HeliSelect.animMainMenuBg();
     startMenuParticles();
 };
@@ -905,11 +930,13 @@ const _isKeyAllowed = (code: string): boolean => {
     return allowed === null || allowed.has(code);
 };
 
-window.onkeydown = e => {
-    if (_isKeyAllowed(e.code)) G.keys[e.code] = true;
-    if ((document.activeElement as HTMLElement)?.tagName === 'INPUT') return;
-};
-window.onkeyup = e => (G.keys[e.code] = false);
+if (import.meta.env.DEV) {
+    window.onkeydown = e => {
+        if (_isKeyAllowed(e.code)) G.keys[e.code] = true;
+        if ((document.activeElement as HTMLElement)?.tagName === 'INPUT') return;
+    };
+    window.onkeyup = e => (G.keys[e.code] = false);
+}
 document.addEventListener('selectstart', e => e.preventDefault());
 document.addEventListener('dragstart', e => e.preventDefault());
 document.addEventListener('contextmenu', e => e.preventDefault());
@@ -1018,6 +1045,7 @@ const mountGameScreens = () => {
     MissionFailedScreen.mount(returnToBase);
     MissionSuccessScreen.mount();
     CampaignCompleteScreen.mount(returnToCampaignSelect);
+    CampaignEndScreen.mount(_returnFromCampaignEnd);
 };
 
 // ─── Preview mode (Kampagnen-Editor Live-Preview) — DEV only ──────────────────
@@ -1135,7 +1163,7 @@ const _onloadMain = () => {
         CreditsScreen.mount(toMainMenu);
         LegalScreen.mount(toMainMenu);
         MainMenu.mount({
-            onSplashStart: () => soundHandler.play(musicConfig.mainMenu || 'maintheme', true),
+            onSplashStart: () => soundHandler.play('maintheme', true),
             onSplashClick: toMainMenu,
             onStart: toCampaignSelect,
             onSettings: Settings.show,
@@ -1188,7 +1216,7 @@ const _onloadMain = () => {
             setTouchVisible(false);
         },
         onResume: () => {
-            if (!soundHandler.state.isMuted) soundHandler.play(soundHandler.state.activeTheme, false, 0.4);
+            if (!soundHandler.state.isMuted) soundHandler.play(soundHandler.state.activeTheme, false, 0.35);
             initHeliSound(G.heli.type);
             _rafId = requestAnimationFrame(drawScene);
             setTouchVisible(true);

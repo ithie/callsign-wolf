@@ -24,7 +24,6 @@ const _DATENSCHUTZ_EN = [
 /** App-version privacy text — used by the ?imprint page (App Store link) for both DE and EN. */
 export const LEGAL_DATENSCHUTZ_IMPRINT = { de: _DATENSCHUTZ_DE, en: _DATENSCHUTZ_EN };
 
-
 import { storageGet, storageSet } from './storage';
 
 const _detectLang = (): 'de' | 'en' => {
@@ -76,7 +75,7 @@ const _DE = {
     OBJECTIVES_CLEARED: 'ALLE ZIELE ERFÜLLT',
     MISSION_FAILED: 'MISSION GESCHEITERT',
     CAMPAIGN_COMPLETE: 'KAMPAGNE GESCHAFFT',
-    ALL_MISSIONS_CLEARED: 'ALLE MISSIOSNEN ABGESCHLOSSEN',
+    ALL_MISSIONS_CLEARED: 'ALLE MISSIONEN ABGESCHLOSSEN',
 
     CLICK_TO_DEPLOY: 'KLICKEN ZUM EINSATZ',
 

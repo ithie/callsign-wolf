@@ -37,7 +37,7 @@ bpm 110
 - Blank lines and `#`-comment lines are ignored
 - Tracks with neither config nor steps can be omitted entirely
 
-**Track IDs:** `kick`, `snare`, `hat`, `synth1`, `synth2`, `synth3`
+**Track IDs:** `kick`, `snare`, `hat`, `clap`, `synth1`, `synth2`, `synth3`, `synth4`
 
 **Note range:** `B4` down to `A1` (chromatic, 40 pitches)
 

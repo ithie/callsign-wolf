@@ -1,5 +1,5 @@
 import '../base.css';
-import '../screens.css';
+import './mission-failed-screen.css';
 import { ensureEl } from '../dom-helpers';
 import { I18N } from '../../i18n';
 

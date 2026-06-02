@@ -1,3 +1,4 @@
+import '../nav-screens.css';
 import { I18N, localize } from '../../i18n';
 import { isCampaignUnlocked, isCampaignLockedByTutorial, type PlayerSession } from '../../session';
 import type { CampaignExport } from '../../../shared/types';

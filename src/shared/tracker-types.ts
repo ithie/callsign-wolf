@@ -28,9 +28,11 @@ export const TRACK_DEFS: TrackDef[] = [
     { id: 'kick', type: 'drum', label: 'KICK' },
     { id: 'snare', type: 'drum', label: 'SNARE' },
     { id: 'hat', type: 'drum', label: 'HI-HAT' },
+    { id: 'clap', type: 'drum', label: 'CLAP' },
     { id: 'synth1', type: 'synth', label: 'SYNTH 1' },
     { id: 'synth2', type: 'synth', label: 'SYNTH 2' },
     { id: 'synth3', type: 'synth', label: 'SYNTH 3' },
+    { id: 'synth4', type: 'synth', label: 'SYNTH 4' },
 ];
 
 export const INSTRUMENTS: Record<string, any> = {

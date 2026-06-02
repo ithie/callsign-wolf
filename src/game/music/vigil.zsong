@@ -1,0 +1,27 @@
+bpm 108
+
+# Mission 4 – Überflutetes Atoll – angespannt, wach (F - C - Dm - Bb)
+
+[kick]  vol=85
+0 8 16 24 32 40 48 56
+
+[snare]  vol=65
+8 24 40 56
+
+[hat]  vol=48
+2 6 10 14 18 22 26 30 34 38 42 46 50 54 58 62
+
+[clap]  vol=58
+4 20 36 52
+
+[synth1]  vol=84  wave=sawtooth  filter=640  attack=0.01  release=0.35  inst=bass_gritty
+0:F1 4:C2 8:F1 12:A1 16:C1 20:G1 24:C1 28:E1 32:D1 36:A1 40:D1 44:F1 48:Bb1 52:F2 56:Bb1 60:D2
+
+[synth2]  vol=74  wave=square  filter=2400  attack=0.02  release=0.30  inst=lead_square
+0:F3 2:A3 4:C4 6:E4 8:C4 10:A3 12:G3 14:F3 16:C3 18:E3 20:G3 22:C4 24:A3 26:G3 28:E3 30:C3 32:D3 34:F3 36:A3 38:D4 40:C4 42:A3 44:F3 46:D3 48:Bb3 50:D4 52:F4 54:Bb4 56:A4 58:F4 60:D4 62:Bb3
+
+[synth3]  vol=38  wave=triangle  filter=2200  attack=0.15  release=0.8  detune=8
+0:F3 2:A3 4:C4 6:A3 8:F3 10:A3 12:C4 14:A3 16:C3 18:E3 20:G3 22:E3 24:C3 26:E3 28:G3 30:E3 32:D3 34:F3 36:A3 38:F3 40:D3 42:F3 44:A3 46:F3 48:Bb3 50:D4 52:F4 54:D4 56:Bb3 58:D4 60:F4 62:D4
+
+[synth4]  vol=62  wave=square  filter=3500  attack=0.005  release=0.10  inst=arp_bright
+0:F3 2:A3 4:C4 6:A3 8:F3 10:A3 12:C4 14:A3 16:C3 18:E3 20:G3 22:E3 24:C3 26:E3 28:G3 30:E3 32:D3 34:F3 36:A3 38:F3 40:D3 42:F3 44:A3 46:F3 48:Bb3 50:D4 52:F4 54:D4 56:Bb3 58:D4 60:F4 62:D4

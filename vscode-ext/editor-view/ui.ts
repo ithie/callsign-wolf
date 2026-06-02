@@ -1239,18 +1239,12 @@ export const initUI = () => {
 
         state.curIdx = savedIdx;
 
-        const briefingSong = getEl<HTMLSelectElement>('c_music_briefing').value;
-        const ingameSong   = getEl<HTMLSelectElement>('c_music_ingame').value;
         const cSubDe = getEl<HTMLTextAreaElement>('c_sublines_de').value.split('\n').filter(l => l.trim());
         const cSubEn = getEl<HTMLTextAreaElement>('c_sublines_en').value.split('\n').filter(l => l.trim());
         const exportData = {
             type: getEl<HTMLSelectElement>('c_type').value || 'ZEEWOLF_CAMPAIGN',
             campaignTitle: { de: getInput('c_title_de').value, en: getInput('c_title_en').value },
             campaignSublines: cSubDe.map((de, i) => ({ de, en: cSubEn[i] || '' })),
-            ...(briefingSong || ingameSong ? { music: {
-                ...(briefingSong ? { briefing: briefingSong } : {}),
-                ...(ingameSong   ? { ingame:   ingameSong   } : {}),
-            } } : {}),
             levels: data,
         };
         getEl<HTMLTextAreaElement>('output').value = JSON.stringify(exportData);
@@ -1283,8 +1277,6 @@ export const initUI = () => {
             getEl<HTMLTextAreaElement>('c_sublines_de').value = cs.map(s => typeof s === 'string' ? s : (s.de || '')).join('\n');
             getEl<HTMLTextAreaElement>('c_sublines_en').value = cs.map(s => typeof s === 'string' ? '' : (s.en || '')).join('\n');
             getEl<HTMLSelectElement>('c_type').value = parsed.type || 'ZEEWOLF_CAMPAIGN';
-            getEl<HTMLSelectElement>('c_music_briefing').value = parsed.music?.briefing || '';
-            getEl<HTMLSelectElement>('c_music_ingame').value   = parsed.music?.ingame   || '';
             state.type = parsed.type;
             state.campaign = parsed.levels.map((m: any) => {
                 const base = {

@@ -1,4 +1,5 @@
 import './heli-select.css';
+import '../nav-screens.css';
 import { iso } from '../../render';
 import { HELI_TYPES, type HeliType } from '../../heli-types';
 import { RANKS } from '../../session';

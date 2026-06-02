@@ -1,4 +1,5 @@
 import './mission-select.css';
+import '../nav-screens.css';
 import { I18N, localize } from '../../i18n';
 import { ensureEl } from '../dom-helpers';
 import { isMissionUnlocked, type PlayerSession } from '../../session';

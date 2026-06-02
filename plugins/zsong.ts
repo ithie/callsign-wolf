@@ -1,7 +1,7 @@
 import type { Plugin } from 'vite';
 
-const DRUM_IDS = new Set(['kick', 'snare', 'hat']);
-const DRUM_LABEL: Record<string, string> = { kick: 'KICK', snare: 'SNARE', hat: 'HI-HAT' };
+const DRUM_IDS = new Set(['kick', 'snare', 'hat', 'clap']);
+const DRUM_LABEL: Record<string, string> = { kick: 'KICK', snare: 'SNARE', hat: 'HI-HAT', clap: 'CLAP' };
 
 const parseZsong = (text: string): object => {
     const lines = text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));

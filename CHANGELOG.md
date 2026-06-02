@@ -1,5 +1,31 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.3.5 — Campaign End Screen, Music System & Audio Fixes
+
+### Added
+
+- **Campaign End Screen** — cinematic credits roll with firework bursts, pulsing heart, and `destroid` soundtrack plays on first completion of any story campaign. Subsequent completions show the standard Campaign Complete screen.
+- **Per-mission music** — missions now carry a `music` field; game reads `mission.music` with `clike` as fallback. Campaign-level music config removed entirely.
+- **New mission tracks** — `coastal` (M1), `ignition` (M2), `offshore` (M3), `vigil` (M4) for Callsign Wolf; `thunderscene` for FreeFlight Carrier; `slowway` for Tutorial.
+- **New instruments** — `clap` drum track (white noise + bandpass) and `synth4` added to ZSynth; music editor dropdown populated dynamically from `src/game/music/`.
+- **AVAudioSession** — configured to `.playback` mode for more reliable audio on iOS; `visibilitychange` + `touchstart`/`click` listeners resume suspended AudioContext.
+
+### Changed
+
+- **Music keys** — `thunder_scene` → `thunderscene`, `carrier_ops` → `carrierops`, `anothermenu` → `success`. Removed `briefing`, `anothersound`. `musicConfig` object and `music-config.json` removed; all play calls use string literals directly.
+- **Mission music volume** — 0.3 (down from 1.0).
+- **Tutorial crash flow** — MissionFailedScreen still shows on crash, but "Return" navigates to campaign select instead of mission select.
+- **Keyboard listeners** — `onkeydown`/`onkeyup` wrapped in `import.meta.env.DEV` guard; no keyboard input reaches `G.keys` in production builds.
+- **CSS self-contained** — per-screen overlay styles moved out of `screens.css` into individual component CSS files; `nav-screens.css` introduced for shared nav screen base styles.
+- **zsong Vite plugin** — `clap` and `synth4` added to `DRUM_IDS`/`TRACK_ORDER`; previously clap steps were silently dropped from production bundles.
+
+### Fixed
+
+- **Campaign editor buttons** — `edDispatch` and `edSetLang` exposed on `window` so inline `onclick` attributes work correctly.
+- **ZSong tracker** — `clap` and `synth4` added to `DRUM_IDS`, `DRUM_LABEL`, and `TRACK_ORDER` in `zsong.ts`; editor now parses and displays all tracks correctly.
+
+---
+
 ## v28.3.4 — Tutorial Payload Spawn Fix
 
 ### Fixed

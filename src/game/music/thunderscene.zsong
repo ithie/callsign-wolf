@@ -1,0 +1,27 @@
+bpm 142
+
+# Thunderscene – Gewittersturm – dunkel, treibend (Am)
+
+[kick]  vol=100
+0 6 8 16 22 24 32 38 40 48 54 56
+
+[snare]  vol=80
+8 24 40 56
+
+[hat]  vol=52
+0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48 50 52 54 56 58 60 62
+
+[clap]  vol=75
+8 24 40 56
+
+[synth1]  vol=88  wave=sawtooth  filter=700  attack=0.01  release=0.3  inst=bass_gritty
+0:A1 2:C2 4:A1 6:G1 8:A1 10:G1 12:F1 14:E1 16:F1 18:A1 20:F1 22:E1 24:D1 26:F1 28:D1 30:E1 32:A1 34:C2 36:A1 38:G1 40:E1 42:G1 44:A1 46:C2 48:A1 50:G1 52:A1 54:C2 56:A1 58:G1 60:F1 62:E1
+
+[synth2]  vol=82  wave=sawtooth  filter=3200  attack=0.01  release=0.18  inst=lead_saw
+0:A3 2:C4 4:E4 6:A4 8:G4 10:E4 12:C4 14:A3 16:F3 18:A3 20:C4 22:F4 24:E4 26:C4 28:A3 30:G3 32:A3 34:E4 36:A4 38:C5 40:B4 42:A4 44:G4 46:E4 48:A4 50:G4 52:E4 54:C4 56:A3 58:C4 60:E4 62:G4
+
+[synth3]  vol=44  wave=triangle  filter=1400  attack=0.15  release=0.9  detune=6
+0:A2 16:F2 32:A2 48:E2
+
+[synth4]  vol=60  wave=square  filter=4000  attack=0.005  release=0.08  inst=arp_bright
+1:E4 3:A4 5:C5 7:E5 9:C5 11:A4 13:E4 15:C4 17:A3 19:C4 21:E4 23:A4 25:G4 27:E4 29:C4 31:G3 33:A3 35:E4 37:A4 39:C5 41:E5 43:C5 45:A4 47:E4 49:A4 51:E5 53:C5 55:A4 57:E4 59:A4 61:C5 63:E5

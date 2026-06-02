@@ -1,0 +1,24 @@
+bpm 115
+
+# Mission 2 – Nachtflug – aufbauende Spannung (Dm - Bb - F - A)
+
+[kick]  vol=92
+0 8 16 24 32 40 48 56
+
+[snare]  vol=72
+8 24 40 56
+
+[hat]  vol=48
+2 6 10 14 18 22 26 30 34 38 42 46 50 54 58 62
+
+[clap]  vol=68
+6 22 38 54
+
+[synth1]  vol=88  wave=sawtooth  filter=600  attack=0.01  release=0.35  inst=bass_gritty
+0:D1 4:D2 8:D1 12:A1 16:Bb1 20:Bb2 24:Bb1 28:F1 32:F1 36:F2 40:C2 44:A1 48:A1 52:A2 56:E2 60:A1
+
+[synth2]  vol=82  wave=sawtooth  filter=3000  attack=0.01  release=0.2  inst=lead_saw
+0:D3 2:F3 4:A3 6:C4 8:A3 10:F3 12:E3 14:D3 16:Bb3 18:D4 20:F4 22:Bb3 24:A3 26:G3 28:F3 30:D3 32:F3 34:A3 36:C4 38:F4 40:E4 42:C4 44:A3 46:C4 48:A3 50:C4 52:E4 54:A4 56:G4 58:E4 60:C4 62:A3
+
+[synth3]  vol=38  wave=square  filter=1500  attack=0.15  release=1.0  inst=pad_cold
+0:D3 16:Bb2 32:F2 48:A2

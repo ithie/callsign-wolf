@@ -1,4 +1,5 @@
 import './main-menu.css';
+import '../nav-screens.css';
 import { I18N } from '../../i18n';
 import { ensureEl as _ensureEl } from '../dom-helpers';
 import { showScreen } from '../nav';

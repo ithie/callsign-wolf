@@ -1823,18 +1823,12 @@
         };
       });
       state.curIdx = savedIdx;
-      const briefingSong = getEl("c_music_briefing").value;
-      const ingameSong = getEl("c_music_ingame").value;
       const cSubDe = getEl("c_sublines_de").value.split("\n").filter((l) => l.trim());
       const cSubEn = getEl("c_sublines_en").value.split("\n").filter((l) => l.trim());
       const exportData = {
         type: getEl("c_type").value || "ZEEWOLF_CAMPAIGN",
         campaignTitle: { de: getInput("c_title_de").value, en: getInput("c_title_en").value },
         campaignSublines: cSubDe.map((de, i) => ({ de, en: cSubEn[i] || "" })),
-        ...briefingSong || ingameSong ? { music: {
-          ...briefingSong ? { briefing: briefingSong } : {},
-          ...ingameSong ? { ingame: ingameSong } : {}
-        } } : {},
         levels: data
       };
       getEl("output").value = JSON.stringify(exportData);
@@ -1862,8 +1856,6 @@
         getEl("c_sublines_de").value = cs.map((s) => typeof s === "string" ? s : s.de || "").join("\n");
         getEl("c_sublines_en").value = cs.map((s) => typeof s === "string" ? "" : s.en || "").join("\n");
         getEl("c_type").value = parsed.type || "ZEEWOLF_CAMPAIGN";
-        getEl("c_music_briefing").value = parsed.music?.briefing || "";
-        getEl("c_music_ingame").value = parsed.music?.ingame || "";
         state.type = parsed.type;
         state.campaign = parsed.levels.map((m) => {
           const base = {

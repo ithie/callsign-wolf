@@ -1,0 +1,14 @@
+#mission-failed-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgb(60, 0, 0);
+    display: none;
+    flex-direction: column;
+    justify-content: safe center;
+    align-items: center;
+    z-index: 210;
+    cursor: pointer;
+}

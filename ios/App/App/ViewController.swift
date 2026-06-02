@@ -1,6 +1,7 @@
 import UIKit
 import WebKit
 import StoreKit
+import AVFoundation
 
 // MARK: - Storage bridge
 
@@ -95,6 +96,10 @@ class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+        try? AVAudioSession.sharedInstance().setActive(true)
+        NotificationCenter.default.addObserver(self, selector: #selector(_appDidBecomeActive),
+                                               name: UIApplication.didBecomeActiveNotification, object: nil)
         migrateCapacitorStorage()
 
         let config = WKWebViewConfiguration()
@@ -131,6 +136,12 @@ class ViewController: UIViewController {
             fatalError("[SAR] index.html not found in bundle")
         }
         webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+    }
+
+    // MARK: - Audio resume
+
+    @objc private func _appDidBecomeActive() {
+        webView.evaluateJavaScript("window.__zsynthResume?.();", completionHandler: nil)
     }
 
     // MARK: - Storage helpers

@@ -69,6 +69,13 @@ const ZsynthPlayer = {
 
     init: (songList: Record<string, SongData>): void => {
         ZsynthPlayer.songs = songList;
+        const _tryResume = () => { if (ZsynthPlayer.ctx?.state === 'suspended') ZsynthPlayer.ctx.resume(); };
+        (window as any).__zsynthResume = _tryResume;
+        document.addEventListener('touchstart', _tryResume, { passive: true });
+        document.addEventListener('click',      _tryResume, { passive: true });
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') _tryResume();
+        });
     },
 
     play: (key: string, crossfade: number = 0.5, volume: number = 1.0): void => {
@@ -168,23 +175,57 @@ const ZsynthPlayer = {
 
     playDrum: (type: string, time: number, vol: number, target: AudioNode): void => {
         if (!ZsynthPlayer.ctx) return;
-        const g = ZsynthPlayer.ctx.createGain();
+        const ctx = ZsynthPlayer.ctx;
+        const g = ctx.createGain();
         g.connect(target);
-        g.gain.setValueAtTime(vol * 0.5, time);
 
-        const osc = ZsynthPlayer.ctx.createOscillator();
+        if (type === 'CLAP') {
+            const bufSize = Math.floor(ctx.sampleRate * 0.05);
+            const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+            const src = ctx.createBufferSource();
+            src.buffer = buf;
+            const bp = ctx.createBiquadFilter();
+            bp.type = 'bandpass';
+            bp.frequency.value = 2800;
+            bp.Q.value = 0.8;
+            g.gain.setValueAtTime(vol * 0.9, time);
+            g.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+            src.connect(bp);
+            bp.connect(g);
+            src.start(time);
+            src.stop(time + 0.05);
+            return;
+        }
+
+        const osc = ctx.createOscillator();
         if (type === 'KICK') {
+            g.gain.setValueAtTime(vol * 0.5, time);
             osc.frequency.setValueAtTime(150, time);
             osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.2);
             g.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+            osc.connect(g);
+            osc.start(time);
+            osc.stop(time + 0.2);
+        } else if (type === 'HI-HAT') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(300, time);
+            g.gain.setValueAtTime(vol * 0.35, time);
+            g.gain.exponentialRampToValueAtTime(0.01, time + 0.04);
+            osc.connect(g);
+            osc.start(time);
+            osc.stop(time + 0.05);
         } else {
+            // SNARE
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(120, time);
-            g.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+            g.gain.setValueAtTime(vol * 0.5, time);
+            g.gain.exponentialRampToValueAtTime(0.01, time + 0.12);
+            osc.connect(g);
+            osc.start(time);
+            osc.stop(time + 0.2);
         }
-        osc.connect(g);
-        osc.start(time);
-        osc.stop(time + 0.2);
     },
 
     playSynth: (note: string, time: number, cfg: SynthConfig, target: AudioNode): void => {

@@ -3,16 +3,23 @@ bpm 85
 [kick]  vol=70
 0 16 32 48
 
-[snare]  vol=60
+[snare]  vol=30
 8 24 40 56
 
-[hat]  vol=30
+[hat]  vol=100
+0 8 16 24 32 40 48 56
+
+[clap]  vol=14
+24 56
 
 [synth1]  vol=80  wave=sine  filter=1200  inst=pluck  attack=0.02  release=0.3  detune=0
 0:A3 2:C4 4:E4 8:D4 10:C4 12:B3 16:A3 20:F3 24:E3 32:A3 34:C4 36:E4 40:G4 44:F4 48:E4 52:D4 56:C4 60:B3
 
-[synth2]  vol=75  wave=triangle  filter=3000  inst=bass_deep  attack=0.02  release=0.3  detune=0
+[synth2]  vol=75  wave=triangle  filter=3000  inst=custom  attack=0.02  release=0.3  detune=0
 0:A1 4:A1 8:G1 12:G1 16:F1 20:F1 24:E1 28:E1 32:A1 36:A1 40:G1 44:G1 48:F1 52:F1 56:E1 60:E1
 
-[synth3]  vol=50  wave=square  filter=800  inst=  attack=0.02  release=0.3  detune=0
+[synth3]  vol=50  wave=square  filter=800  inst=custom  attack=0.02  release=0.3  detune=0
 1:E4 9:E4 17:D4 25:C4 33:B3 41:A3 49:E3 57:E3
+
+[synth4]  vol=38  wave=triangle  filter=1500  inst=pad_warm  attack=0.35  release=1.8  detune=0
+0:A2 16:F2 32:A2 48:E2

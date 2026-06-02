@@ -4,31 +4,38 @@ import FreeFlight from './campaigns/freeFlight.zcampaign';
 import CallsignWolf from './campaigns/callsignwolf.zcampaign';
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
-import SoundAnothermenu from './music/anothermenu.zsong';
-import SoundAnothersound from './music/anothersound.zsong';
-import SoundBriefing from './music/briefing.zsong';
+import SoundSuccess from './music/success.zsong';
 import SoundClike from './music/clike.zsong';
 import SoundDestroid from './music/destroid.zsong';
 import SoundFinal from './music/final.zsong';
 import SoundMaintheme from './music/maintheme.zsong';
-import SoundMenusound from './music/menusound.zsong';
+import SlowWay from './music/slowway.zsong';
 import SoundSpocktribute from './music/spocktribute.zsong';
+import ThunderScene from './music/thunderscene.zsong';
+import PartyTime from './music/partytime.zsong';
+import CarrierOps from './music/carrierops.zsong';
+import Coastal from './music/coastal.zsong';
+import Ignition from './music/ignition.zsong';
+import Offshore from './music/offshore.zsong';
+import Vigil from './music/vigil.zsong';
 import { SongData } from '@/shared/tracker-types';
-import MusicConfigJson from './music-config.json';
-
-export const musicConfig: { mainMenu: string; credits: string; success: string; defeat: string } = MusicConfigJson;
 
 const soundHandler = (() => {
     const songList: Record<string, SongData> = {
-        anothermenu: SoundAnothermenu,
-        anothersound: SoundAnothersound,
-        briefing: SoundBriefing,
+        success: SoundSuccess,
+        carrierops: CarrierOps,
         clike: SoundClike,
+        coastal: Coastal,
+        ignition: Ignition,
+        offshore: Offshore,
+        vigil: Vigil,
         destroid: SoundDestroid,
         final: SoundFinal,
         maintheme: SoundMaintheme,
-        menusound: SoundMenusound,
+        partytime: PartyTime,
+        slowway: SlowWay,
         spocktribute: SoundSpocktribute,
+        thunderscene: ThunderScene,
     };
 
     const state: { activeTheme: string; isMuted: boolean } = {
@@ -121,9 +128,6 @@ const createCampaignHandler = () => {
         return cachedTerrain;
     };
 
-    const getActiveCampaignMusic = (): { briefing?: string; ingame?: string } =>
-        campaigns[campaignState.activeCampaign]?.music ?? {};
-
     return {
         getCampaigns,
         campaign: {
@@ -132,7 +136,6 @@ const createCampaignHandler = () => {
             setActiveMission,
         },
         getCurrentMissionData,
-        getActiveCampaignMusic,
         getTerrain,
     };
 };

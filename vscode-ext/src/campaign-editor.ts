@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
 interface CampaignDoc extends vscode.CustomDocument {
@@ -62,9 +62,21 @@ export class CampaignEditorProvider implements vscode.CustomEditorProvider<Campa
             .replace('<meta charset="UTF-8" />', `<meta charset="UTF-8" />\n        ${csp}`)
             .replace('</body>', `    <script src="${scriptUri}"></script>\n    </body>`);
 
+        const songKeys = (() => {
+            try {
+                const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                if (!ws) return [];
+                const musicDir = join(ws, 'src', 'game', 'music');
+                return readdirSync(musicDir)
+                    .filter(f => f.endsWith('.zsong'))
+                    .map(f => f.replace('.zsong', ''))
+                    .sort();
+            } catch { return []; }
+        })();
+
         panel.webview.onDidReceiveMessage((msg: { type: string; content?: string; value?: number }) => {
             if (msg.type === 'ready') {
-                panel.webview.postMessage({ type: 'load', content: document.content });
+                panel.webview.postMessage({ type: 'load', content: document.content, songKeys });
             } else if (msg.type === 'change' && msg.content !== undefined) {
                 document.content = msg.content;
                 if (normalizeJson(msg.content) !== document.normalizedContent) {

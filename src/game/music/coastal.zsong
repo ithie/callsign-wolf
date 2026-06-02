@@ -1,0 +1,25 @@
+bpm 92
+
+[kick]  vol=70
+0 20 32 52
+
+[snare]  vol=78
+8 40
+
+[hat]  vol=100
+2 6 10 14 18 22 26 30 34 38 42 46 50 54 58 62
+
+[clap]  vol=28
+24 56
+
+[synth1]  vol=46  wave=sine  filter=500  inst=bass_deep  attack=0.01  release=0.38  detune=0
+0:A1 4:E2 8:A1 12:C2 16:F1 20:C2 24:F1 28:A1 32:C1 36:G1 40:E1 44:G1 48:G1 52:D2 56:G1 60:B1
+
+[synth2]  vol=68  wave=square  filter=2300  inst=lead_square  attack=0.02  release=0.32  detune=0
+0:A3 2:B3 4:C4 6:E4 8:G4 10:E4 12:C4 14:B3 16:F3 18:G3 20:A3 22:C4 24:E4 26:C4 28:A3 30:G3 32:E3 34:G3 36:A3 38:C4 40:G3 42:E3 44:D3 46:C3 48:G3 50:A3 52:B3 54:D4 56:E4 58:D4 60:B3 62:G3
+
+[synth3]  vol=40  wave=square  filter=1200  inst=pluck  attack=0.005  release=0.15  detune=0
+1:E4 5:A4 9:G4 13:E4 17:C4 21:E4 25:A3 29:F3 33:G3 37:B3 41:E4 45:D4 49:B3 53:E4 57:G4 61:E4
+
+[synth4]  vol=42  wave=triangle  filter=1600  inst=pad_warm  attack=0.1  release=0.8  detune=0
+0:A2 4:A2 8:A2 12:A2 16:F2 20:F2 24:F2 28:F2 32:C2 36:C2 40:C2 44:C2 48:G2 52:G2 56:G2 60:G2

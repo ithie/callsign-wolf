@@ -1,5 +1,5 @@
 import './credits-screen.css';
-import { soundHandler, musicConfig } from '../../main';
+import { soundHandler } from '../../main';
 import { I18N } from '../../i18n';
 
 import { ensureEl as _ensureEl } from '../dom-helpers';
@@ -21,7 +21,7 @@ export const mount = (onBack: () => void): void => {
 export const show = () => {
     _buildCredits();
     showScreenCrtEnter('credits-screen');
-    if (musicConfig.credits) soundHandler.play(musicConfig.credits, true);
+    soundHandler.play('spocktribute', true);
 };
 
 const _buildCredits = () => {

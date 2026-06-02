@@ -157,6 +157,7 @@ export interface Mission {
     windStr: number;
     windVar: boolean;
     waterLevel?: number;
+    music?: string;
 }
 
 export type MissionData = Omit<Mission, 'terrain' | 'foliage'> & {

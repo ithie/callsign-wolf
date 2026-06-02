@@ -1,8 +1,8 @@
 import type { SongData } from './tracker-types';
 
-const DRUM_IDS = new Set(['kick', 'snare', 'hat']);
-const DRUM_LABEL: Record<string, string> = { kick: 'KICK', snare: 'SNARE', hat: 'HI-HAT' };
-const TRACK_ORDER = ['kick', 'snare', 'hat', 'synth1', 'synth2', 'synth3'];
+const DRUM_IDS = new Set(['kick', 'snare', 'hat', 'clap']);
+const DRUM_LABEL: Record<string, string> = { kick: 'KICK', snare: 'SNARE', hat: 'HI-HAT', clap: 'CLAP' };
+const TRACK_ORDER = ['kick', 'snare', 'hat', 'clap', 'synth1', 'synth2', 'synth3', 'synth4'];
 
 export const parseZsong = (text: string): SongData => {
     const lines = text.split('\n').map(l => l.trim()).filter(l => l && !l.startsWith('#'));

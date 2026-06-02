@@ -1,0 +1,24 @@
+bpm 140
+
+# Mission 3 – Hochsee-Transfer – volle Dramatik (Dm - Gm - Bb - A)
+
+[kick]  vol=100
+0 4 12 16 20 28 32 36 44 48 52 60
+
+[snare]  vol=90
+8 24 40 56
+
+[hat]  vol=55
+0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48 50 52 54 56 58 60 62
+
+[clap]  vol=88
+8 24 40 56
+
+[synth1]  vol=95  wave=sawtooth  filter=600  attack=0.01  release=0.35  inst=bass_gritty
+0:D1 2:D2 4:D1 8:D1 10:D2 16:G1 18:G2 20:G1 24:G1 26:G2 32:Bb1 34:Bb2 36:Bb1 40:Bb1 42:F2 48:A1 50:A2 52:A1 56:A1 58:A2 60:E2 62:A1
+
+[synth2]  vol=88  wave=sawtooth  filter=3200  attack=0.01  release=0.2  inst=lead_saw
+0:D4 2:A3 4:F3 6:A3 8:D4 10:C4 12:Bb3 14:A3 16:G3 18:Bb3 20:D4 22:G4 24:F4 26:D4 28:Bb3 30:G3 32:Bb3 34:D4 36:F4 38:Bb4 40:A4 42:G4 44:F4 46:D4 48:A3 50:C4 52:E4 54:G4 56:A4 58:G4 60:E4 62:C4
+
+[synth3]  vol=68  wave=square  filter=3500  attack=0.005  release=0.1  inst=arp_bright
+0:D3 4:F3 8:A3 12:F3 16:G3 20:Bb3 24:D4 28:Bb3 32:Bb2 36:D3 40:F3 44:D3 48:A2 52:C3 56:E3 60:C3

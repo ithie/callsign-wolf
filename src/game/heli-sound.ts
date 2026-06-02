@@ -80,12 +80,17 @@ const _makeWindPath = (actx: AudioContext, master: GainNode) => {
     const nd = buf.getChannelData(0);
     for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
     const windSrc = actx.createBufferSource();
-    windSrc.buffer = buf; windSrc.loop = true;
+    windSrc.buffer = buf;
+    windSrc.loop = true;
     const windFilt = actx.createBiquadFilter();
-    windFilt.type = 'lowpass'; windFilt.frequency.value = 200; windFilt.Q.value = 0.5;
+    windFilt.type = 'lowpass';
+    windFilt.frequency.value = 200;
+    windFilt.Q.value = 0.5;
     const windGain = actx.createGain();
     windGain.gain.value = 0;
-    windSrc.connect(windFilt); windFilt.connect(windGain); windGain.connect(master);
+    windSrc.connect(windFilt);
+    windFilt.connect(windGain);
+    windGain.connect(master);
     windSrc.start();
     return { windSrc, windFilt, windGain };
 };
@@ -105,17 +110,21 @@ export const initHeliSound = (heliType: string): void => {
         const nd = noiseBuf.getChannelData(0);
         for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
         const flapNoiseSrc = actx.createBufferSource();
-        flapNoiseSrc.buffer = noiseBuf; flapNoiseSrc.loop = true;
+        flapNoiseSrc.buffer = noiseBuf;
+        flapNoiseSrc.loop = true;
 
         const flapFilt = actx.createBiquadFilter();
-        flapFilt.type = 'bandpass'; flapFilt.frequency.value = 700; flapFilt.Q.value = 1.8;
+        flapFilt.type = 'bandpass';
+        flapFilt.frequency.value = 700;
+        flapFilt.Q.value = 1.8;
 
         // Amplitude envelope driven by LFO: gain oscillates [0.05 … 0.95]
         const flapEnv = actx.createGain();
         flapEnv.gain.value = 0.5;
 
         const flapLFO = actx.createOscillator();
-        flapLFO.type = 'sine'; flapLFO.frequency.value = 1.1;
+        flapLFO.type = 'sine';
+        flapLFO.frequency.value = 1.1;
 
         const flapLFOGain = actx.createGain();
         flapLFOGain.gain.value = 0.45;
@@ -126,13 +135,17 @@ export const initHeliSound = (heliType: string): void => {
         flapFilt.connect(flapEnv);
         flapEnv.connect(master);
 
-        flapNoiseSrc.start(); flapLFO.start();
+        flapNoiseSrc.start();
+        flapLFO.start();
         _nodes = { actx, master, flapLFO, flapLFOGain, flapNoiseSrc, flapFilt, flapEnv, ...wind };
         return;
     }
 
     const blades = BLADES[heliType] ?? 4;
-    if (blades === 0) { _nodes = { actx, master, ...wind }; return; }
+    if (blades === 0) {
+        _nodes = { actx, master, ...wind };
+        return;
+    }
 
     const [clipAmount, filterCut, filterQ] = PRESETS[heliType] ?? PRESETS['dolphin'];
 
@@ -145,24 +158,35 @@ export const initHeliSound = (heliType: string): void => {
     shaper.oversample = '4x';
 
     const filt = actx.createBiquadFilter();
-    filt.type = 'bandpass'; filt.frequency.value = filterCut; filt.Q.value = filterQ;
+    filt.type = 'bandpass';
+    filt.frequency.value = filterCut;
+    filt.Q.value = filterQ;
 
     const rotorGain = actx.createGain();
     rotorGain.gain.value = 1.15;
 
-    osc.connect(shaper); shaper.connect(filt); filt.connect(rotorGain); rotorGain.connect(master);
+    osc.connect(shaper);
+    shaper.connect(filt);
+    filt.connect(rotorGain);
+    rotorGain.connect(master);
     osc.start();
 
     _nodes = { actx, osc, shaper, filt, rotorGain, master, ...wind };
 };
 
-export const updateHeliSound = (rotorRPM: number, engineOn: boolean, heliType: string, windSpeed: number, flapRate = 1.0): void => {
+export const updateHeliSound = (
+    rotorRPM: number,
+    engineOn: boolean,
+    heliType: string,
+    windSpeed: number,
+    flapRate = 1.0
+): void => {
     if (!_nodes) return;
     const { actx, master, windGain } = _nodes;
     const t = actx.currentTime;
 
     // windSpeed = Math.hypot(G.wind.x, G.wind.y), max ~0.0005 at windStr=10
-    windGain.gain.setTargetAtTime(Math.min(1, windSpeed * 2000) * 0.5, t, 0.3);
+    windGain.gain.setTargetAtTime(Math.min(1, windSpeed * 2000) * 0.5, t, 0.4);
 
     if (heliType === 'ornithopter') {
         const { flapLFO, flapLFOGain } = _nodes;
@@ -196,7 +220,9 @@ export const stopHeliSound = (): void => {
             flapNoiseSrc?.stop();
             windSrc.stop();
             actx.close();
-        } catch (_) { /* already stopped */ }
+        } catch (_) {
+            /* already stopped */
+        }
     }, 600);
     _nodes = null;
 };

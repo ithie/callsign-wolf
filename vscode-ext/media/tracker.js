@@ -59,6 +59,15 @@
     },
     init: (songList) => {
       ZsynthPlayer.songs = songList;
+      const _tryResume = () => {
+        if (ZsynthPlayer.ctx?.state === "suspended") ZsynthPlayer.ctx.resume();
+      };
+      window.__zsynthResume = _tryResume;
+      document.addEventListener("touchstart", _tryResume, { passive: true });
+      document.addEventListener("click", _tryResume, { passive: true });
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") _tryResume();
+      });
     },
     play: (key, crossfade = 0.5, volume = 1) => {
       if (!ZsynthPlayer.ctx) {
@@ -138,22 +147,54 @@
     },
     playDrum: (type, time, vol, target) => {
       if (!ZsynthPlayer.ctx) return;
-      const g = ZsynthPlayer.ctx.createGain();
+      const ctx = ZsynthPlayer.ctx;
+      const g = ctx.createGain();
       g.connect(target);
-      g.gain.setValueAtTime(vol * 0.5, time);
-      const osc = ZsynthPlayer.ctx.createOscillator();
+      if (type === "CLAP") {
+        const bufSize = Math.floor(ctx.sampleRate * 0.05);
+        const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const bp = ctx.createBiquadFilter();
+        bp.type = "bandpass";
+        bp.frequency.value = 2800;
+        bp.Q.value = 0.8;
+        g.gain.setValueAtTime(vol * 0.9, time);
+        g.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
+        src.connect(bp);
+        bp.connect(g);
+        src.start(time);
+        src.stop(time + 0.05);
+        return;
+      }
+      const osc = ctx.createOscillator();
       if (type === "KICK") {
+        g.gain.setValueAtTime(vol * 0.5, time);
         osc.frequency.setValueAtTime(150, time);
         osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.2);
         g.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
+        osc.connect(g);
+        osc.start(time);
+        osc.stop(time + 0.2);
+      } else if (type === "HI-HAT") {
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(300, time);
+        g.gain.setValueAtTime(vol * 0.35, time);
+        g.gain.exponentialRampToValueAtTime(0.01, time + 0.04);
+        osc.connect(g);
+        osc.start(time);
+        osc.stop(time + 0.05);
       } else {
         osc.type = "triangle";
         osc.frequency.setValueAtTime(120, time);
-        g.gain.exponentialRampToValueAtTime(0.01, time + 0.1);
+        g.gain.setValueAtTime(vol * 0.5, time);
+        g.gain.exponentialRampToValueAtTime(0.01, time + 0.12);
+        osc.connect(g);
+        osc.start(time);
+        osc.stop(time + 0.2);
       }
-      osc.connect(g);
-      osc.start(time);
-      osc.stop(time + 0.2);
     },
     playSynth: (note, time, cfg, target) => {
       if (!ZsynthPlayer.ctx) return;
@@ -201,9 +242,9 @@
   var ZsynthPlayer_default = ZsynthPlayer;
 
   // ../src/shared/zsong.ts
-  var DRUM_IDS = /* @__PURE__ */ new Set(["kick", "snare", "hat"]);
-  var DRUM_LABEL = { kick: "KICK", snare: "SNARE", hat: "HI-HAT" };
-  var TRACK_ORDER = ["kick", "snare", "hat", "synth1", "synth2", "synth3"];
+  var DRUM_IDS = /* @__PURE__ */ new Set(["kick", "snare", "hat", "clap"]);
+  var DRUM_LABEL = { kick: "KICK", snare: "SNARE", hat: "HI-HAT", clap: "CLAP" };
+  var TRACK_ORDER = ["kick", "snare", "hat", "clap", "synth1", "synth2", "synth3", "synth4"];
   var parseZsong = (text) => {
     const lines = text.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("#"));
     let bpm = "120";
@@ -269,9 +310,11 @@
     { id: "kick", type: "drum", label: "KICK" },
     { id: "snare", type: "drum", label: "SNARE" },
     { id: "hat", type: "drum", label: "HI-HAT" },
+    { id: "clap", type: "drum", label: "CLAP" },
     { id: "synth1", type: "synth", label: "SYNTH 1" },
     { id: "synth2", type: "synth", label: "SYNTH 2" },
-    { id: "synth3", type: "synth", label: "SYNTH 3" }
+    { id: "synth3", type: "synth", label: "SYNTH 3" },
+    { id: "synth4", type: "synth", label: "SYNTH 4" }
   ];
   var INSTRUMENTS = {
     lead_square: {

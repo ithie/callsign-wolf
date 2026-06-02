@@ -260,18 +260,6 @@ Viel Glück, Pilot.</textarea>
                 <option value="tutorial">Tutorial</option>
                 <option value="free-flight">Free Flight</option>
             </select>
-            <select id="c_music_briefing">
-                <option value="">— kein Song —</option>
-                <option value="main">main</option>
-                <option value="tutorial">tutorial</option>
-                <option value="final">final</option>
-            </select>
-            <select id="c_music_ingame">
-                <option value="">— kein Song —</option>
-                <option value="main">main</option>
-                <option value="tutorial">tutorial</option>
-                <option value="final">final</option>
-            </select>
 
             <div id="mission-list"></div>
             <div id="payload-list"></div>
@@ -354,8 +342,6 @@ Viel Glück, Pilot.</textarea>
                         en: document.getElementById('c_sublines_en').value,
                     },
                     campaignType: document.getElementById('c_type').value,
-                    musicBriefing: document.getElementById('c_music_briefing').value,
-                    musicIngame: document.getElementById('c_music_ingame').value,
                     missions: s.campaign.map((mis, i) => ({ idx: i, headline: mis.headline, active: i === s.curIdx })),
                     tool: s.currentTool,
                     brushRadius: s.brushRadius,
@@ -369,6 +355,7 @@ Viel Glück, Pilot.</textarea>
                         rain: m.rain, night: m.night, waterLevel: m.waterLevel || 0,
                         windDir: m.windDir, windStr: m.windStr, windVar: m.windVar,
                         npcHeliCount: m.npcHeliCount || 0, npcHeliType: m.npcHeliType || 'random',
+                        music: m.music || '',
                         objectives: (m.objectives || []).map((o, i) => Object.assign({ idx: i }, o)),
                         objects: (m.objects || []).map((o, i) => ({ idx: i, type: o.type, x: o.x, y: o.y })),
                         payloads: (m.payloads || []).map((p, i) => ({ idx: i, type: p.type, x: p.x, y: p.y, npcTarget: !!p.npcTarget })),
@@ -391,8 +378,9 @@ Viel Glück, Pilot.</textarea>
                     case 'set-campaign-title': set('c_title_' + (data.lang || 'de'), data.value); break;
                     case 'set-campaign-sublines': set('c_sublines_' + (data.lang || 'de'), data.value); break;
                     case 'set-campaign-type': set('c_type', data.value); break;
-                    case 'set-campaign-music-briefing': set('c_music_briefing', data.value); break;
-                    case 'set-campaign-music-ingame': set('c_music_ingame', data.value); break;
+                    case 'set-mission-music':
+                        if (m) { m.music = data.value || undefined; ed.syncToData(); }
+                        break;
                     case 'select-mission': ed.loadMission(data.idx); break;
                     case 'add-mission': clk('btn-add-mission'); break;
                     case 'copy-mission': clk('btn-copy-mission'); break;
@@ -509,7 +497,7 @@ Viel Glück, Pilot.</textarea>
                 { v: 'foliage', l: '🌲 Bäume' },
             ];
             const OBJ_ICONS = { pad: '🟩', carrier: '🚢', boat: '⛵', submarine: '🤿', lighthouse: '🔦' };
-            const SONG_KEYS = ['', 'main', 'tutorial', 'final'];
+            let SONG_KEYS = [''];
 
             let _edLang = 'de';
             let edLastState = null;
@@ -520,6 +508,7 @@ Viel Glück, Pilot.</textarea>
                     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
             const edSetLang = (lang) => { _edLang = lang; if (edLastState) edRenderPanel(edLastState); };
+            window.edSetLang = edSetLang;
 
             const edTabs = () =>
                 '<div style="display:flex;gap:4px;margin-bottom:4px">'
@@ -544,6 +533,7 @@ Viel Glück, Pilot.</textarea>
                     setTimeout(edRefreshPanel, 80);
                 }
             };
+            window.edDispatch = edDispatch;
 
             const edRefreshPanel = () => {
                 const controls = document.getElementById('editor-controls');
@@ -575,10 +565,6 @@ Viel Glück, Pilot.</textarea>
                     + '<option value="tutorial"' + (st.campaignType === 'tutorial' ? ' selected' : '') + '>Tutorial</option>'
                     + '<option value="free-flight"' + (st.campaignType === 'free-flight' ? ' selected' : '') + '>Free Flight</option>'
                     + '</select>'
-                    + '<label style="font-size:10px;color:var(--text-dim);margin-top:6px">Musik – Briefing</label>'
-                    + '<select onchange="edDispatch(\'set-campaign-music-briefing\',{value:this.value})">' + edSongOptions(st.musicBriefing) + '</select>'
-                    + '<label style="font-size:10px;color:var(--text-dim);margin-top:4px">Musik – In-Game</label>'
-                    + '<select onchange="edDispatch(\'set-campaign-music-ingame\',{value:this.value})">' + edSongOptions(st.musicIngame) + '</select>'
                     + '</div>'
 
                     + '<div class="ed-section">'
@@ -667,7 +653,12 @@ Viel Glück, Pilot.</textarea>
                         + [['random','Zufällig'],['dolphin','Dolphin'],['coasthawk','Coast-Hawk'],['atlas','Atlas']].map((e) =>
                             '<option value="' + e[0] + '"' + ((cm.npcHeliType === e[0] || (!cm.npcHeliType && e[0] === 'random')) ? ' selected' : '') + '>' + e[1] + '</option>'
                         ).join('') + '</select>'
-                        + '</div></div>'
+                        + '</div>'
+                        + '<div class="ed-row" style="margin-top:6px"><label style="color:var(--text-dim)">🎵 Musik</label>'
+                        + '<select style="flex:1" onchange="edDispatch(\'set-mission-music\',{value:this.value})">'
+                        + edSongOptions(cm.music)
+                        + '</select></div>'
+                        + '</div>'
 
                         + '<div class="ed-section"><div class="ed-section-title">Objekte</div>'
                         + (cm.objects.length ? cm.objects.map((o) =>
@@ -703,6 +694,12 @@ Viel Glück, Pilot.</textarea>
             };
 
             window.__onEditorStateChanged = edRefreshPanel;
+
+            window.addEventListener('message', (e) => {
+                if (e.data && e.data.type === 'load' && Array.isArray(e.data.songKeys)) {
+                    SONG_KEYS = ['', ...e.data.songKeys];
+                }
+            });
         </script>
 
     </body>
