@@ -9,19 +9,19 @@ final class GameControlOverlay: UIView {
     weak var webView: WKWebView?
 
     // ── State ────────────────────────────────────────────────────────────────────
-    private struct JoyState  { var dx: CGFloat = 0; var dy: CGFloat = 0; var active = false }
-    private struct WheelState { var dy: CGFloat = 0; var startY: CGFloat = 0; var active = false }
+    private struct JoyState    { var dx: CGFloat = 0; var dy: CGFloat = 0; var active = false }
+    private struct RockerState { var active = false; var isUp = false }
 
-    private var leftJoy    = JoyState()
-    private var rightJoy   = JoyState()
-    private var wheel      = WheelState()
+    private var leftJoy      = JoyState()
+    private var rightJoy     = JoyState()
+    private var winch        = RockerState()
     private var deliverPressed = false
-    private var deliverOn  = false   // visual state, set by JS
+    private var deliverOn    = false   // visual state, set by JS
 
     // ── Touch tracking ───────────────────────────────────────────────────────────
     private var leftTouch:    UITouch?
     private var rightTouch:   UITouch?
-    private var wheelTouch:   UITouch?
+    private var winchTouch:   UITouch?
     private var deliverTouch: UITouch?
 
     // ── Tutorial state ────────────────────────────────────────────────────────────
@@ -33,11 +33,11 @@ final class GameControlOverlay: UIView {
     private var _link: CADisplayLink?
 
     // ── Layout (recomputed in layoutSubviews) ─────────────────────────────────────
-    private var leftCenter:  CGPoint = .zero
-    private var rightCenter: CGPoint = .zero
-    private var wheelRect:   CGRect  = .zero
-    private var deliverRect: CGRect  = .zero
-    private var joyRadius:   CGFloat = 65
+    private var leftCenter:      CGPoint = .zero
+    private var rightCenter:     CGPoint = .zero
+    private var winchRockerRect: CGRect  = .zero
+    private var deliverRect:     CGRect  = .zero
+    private var joyRadius:       CGFloat = 75
 
     // ── Colours ───────────────────────────────────────────────────────────────────
     private let cBorder   = UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.28)
@@ -99,15 +99,18 @@ final class GameControlOverlay: UIView {
         let sr = safeAreaInsets.right + 16
         let sb = safeAreaInsets.bottom + 12
 
-        joyRadius    = min(65, b.height * 0.28)
-        let joyY     = b.height - sb - joyRadius
-        leftCenter   = CGPoint(x: sl + joyRadius, y: joyY)
-        rightCenter  = CGPoint(x: b.width - sr - joyRadius, y: joyY)
+        joyRadius   = min(75, b.height * 0.32)
+        let joyY    = b.height - sb - joyRadius
+        leftCenter  = CGPoint(x: sl + joyRadius, y: joyY)
+        rightCenter = CGPoint(x: b.width - sr - joyRadius, y: joyY)
 
-        let wW: CGFloat = 52, wH: CGFloat = 96
-        let topY      = joyY - joyRadius - 8 - wH
-        wheelRect     = CGRect(x: sl,          y: topY, width: wW, height: wH)
-        deliverRect   = CGRect(x: sl + wW + 8, y: topY, width: wW, height: wH)
+        let btnH: CGFloat = 52
+        let btnY = joyY - joyRadius - 8 - btnH
+
+        winchRockerRect = CGRect(x: rightCenter.x - joyRadius, y: btnY,
+                                 width: joyRadius * 2,          height: btnH)
+        deliverRect     = CGRect(x: leftCenter.x  - joyRadius, y: btnY,
+                                 width: joyRadius * 2,          height: btnH)
 
         setNeedsDisplay()
     }
@@ -122,7 +125,7 @@ final class GameControlOverlay: UIView {
 
         _withDim(ld) { drawJoystick(center: leftCenter,  joy: leftJoy,  safezoneStyle: .fourSector) }
         _withDim(rd) { drawJoystick(center: rightCenter, joy: rightJoy, safezoneStyle: .axisCross) }
-        _withDim(wd) { drawPitchWheel() }
+        _withDim(wd) { drawWinchRocker() }
         _withDim(dd) { drawDeliverToggle() }
 
         if let hl = tutorialHighlight { _drawTutorialHighlight(hl) }
@@ -146,23 +149,18 @@ final class GameControlOverlay: UIView {
         let r    = joyRadius
         let circ = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
 
-        // Safe-zone sectors
         switch safezoneStyle {
         case .fourSector:
-            // 2 bright 90° sectors (E and W = strafe zones); dim sectors are the background fill
             drawSectors(center: center, radius: r,
                         starts: [-45, 135], span: 90, alpha: 0.10)
         case .axisCross:
-            // 70° arcs centred on N/S (vertical = accel-only) and E/W (horizontal = steer-only)
             drawSectors(center: center, radius: r,
                         starts: [235, 55, -35, 145], span: 70, alpha: 0.13)
         }
 
-        // Outer circle
         cFill.setFill();   UIBezierPath(ovalIn: circ).fill()
         let ring = UIBezierPath(ovalIn: circ); ring.lineWidth = 1; cBorder.setStroke(); ring.stroke()
 
-        // Direction arrows
         let attrs: [NSAttributedString.Key: Any] = [
             .font: UIFont.monospacedSystemFont(ofSize: 11, weight: .bold),
             .foregroundColor: cLabel
@@ -176,11 +174,10 @@ final class GameControlOverlay: UIView {
         label("◀", at: CGPoint(x: center.x - r + 8,  y: center.y - 6))
         label("▶", at: CGPoint(x: center.x + r - 12, y: center.y - 6))
 
-        // Knob
         let clamp  = r * 0.55
         let kdx    = max(-clamp, min(clamp, joy.dx))
         let kdy    = max(-clamp, min(clamp, joy.dy))
-        let kR: CGFloat = 26
+        let kR: CGFloat = 28
         let knob   = CGRect(x: center.x + kdx - kR, y: center.y + kdy - kR, width: kR * 2, height: kR * 2)
         cKnob.setFill();    UIBezierPath(ovalIn: knob).fill()
         let kp = UIBezierPath(ovalIn: knob); kp.lineWidth = 1; cKnobRing.setStroke(); kp.stroke()
@@ -200,107 +197,88 @@ final class GameControlOverlay: UIView {
         }
     }
 
-    // ── Pitch wheel ───────────────────────────────────────────────────────────────
-    private func drawPitchWheel() {
-        let r: CGFloat = 10
-        let borderColor = wheel.active ? cActive : cBorder
-
-        // Background
-        cFill.setFill()
-        UIBezierPath(roundedRect: wheelRect, cornerRadius: r).fill()
-        let border = UIBezierPath(roundedRect: wheelRect, cornerRadius: r)
-        border.lineWidth = 1; borderColor.setStroke(); border.stroke()
-
-        // Drum stripes
+    // ── Shared: glowing pip ───────────────────────────────────────────────────────
+    private func _drawPip(at center: CGPoint, alpha: CGFloat) {
+        let r: CGFloat = 4
+        let rect = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
         let ctx = UIGraphicsGetCurrentContext()!
-        ctx.saveGState()
-        UIBezierPath(roundedRect: wheelRect, cornerRadius: r).addClip()
-        UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.10).setStroke()
-        let offset = wheel.dy.truncatingRemainder(dividingBy: 9)
-        var ly = wheelRect.minY + offset
-        while ly <= wheelRect.maxY {
-            let lp = UIBezierPath(); lp.move(to: CGPoint(x: wheelRect.minX, y: ly))
-            lp.addLine(to: CGPoint(x: wheelRect.maxX, y: ly)); lp.lineWidth = 2; lp.stroke()
-            ly += 9
+        if alpha > 0.5 {
+            ctx.saveGState()
+            ctx.setShadow(offset: .zero, blur: 10,
+                          color: UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.85).cgColor)
+            UIColor(red: 1, green: 0.4, blue: 0, alpha: alpha).setFill()
+            UIBezierPath(ovalIn: rect).fill()
+            ctx.restoreGState()
+        } else {
+            UIColor(red: 1, green: 0.4, blue: 0, alpha: alpha).setFill()
+            UIBezierPath(ovalIn: rect).fill()
         }
+    }
+
+    private func _drawHorizontalLever(in rect: CGRect,
+                                       leftActive:  Bool = false,
+                                       rightActive: Bool = false,
+                                       leftLabel:   String? = nil,
+                                       rightLabel:  String? = nil,
+                                       centerLabel: String? = nil) {
+        let active = leftActive || rightActive
+        let ctx    = UIGraphicsGetCurrentContext()!
+        let cx = rect.midX, cy = rect.midY
+
+        let barW: CGFloat = rect.width
+        let barH: CGFloat = rect.height * 0.65
+        let capR: CGFloat = barH * 0.22
+        let lr = CGRect(x: cx - barW/2, y: cy - barH/2, width: barW, height: barH)
+
+        UIColor.black.setFill()
+        UIBezierPath(roundedRect: lr, cornerRadius: capR).fill()
+
+        // Glanzpunkt — left-side strip
+        ctx.saveGState()
+        UIBezierPath(roundedRect: lr, cornerRadius: capR).addClip()
+        UIColor(white: 1, alpha: 0.16).setFill()
+        UIBezierPath(roundedRect: CGRect(x: lr.minX + 2, y: lr.minY + 2,
+                                         width: barH * 0.28, height: barH - 4),
+                     cornerRadius: 3).fill()
         ctx.restoreGState()
 
-        // Indicator bar
-        let indH: CGFloat = 18
-        let rawIndY = wheelRect.midY + wheel.dy - indH / 2
-        let indY    = max(wheelRect.minY + 2, min(wheelRect.maxY - indH - 2, rawIndY))
-        let indRect = CGRect(x: wheelRect.minX + 5, y: indY, width: wheelRect.width - 10, height: indH)
-        UIColor(red: 1, green: 0.4, blue: 0, alpha: wheel.active ? 0.32 : 0.18).setFill()
-        UIBezierPath(roundedRect: indRect, cornerRadius: 5).fill()
-        let indPath = UIBezierPath(roundedRect: indRect, cornerRadius: 5)
-        indPath.lineWidth = 1
-        UIColor(red: 1, green: 0.4, blue: 0, alpha: wheel.active ? 0.9 : 0.45).setStroke()
-        indPath.stroke()
 
         // Labels
-        let la: [NSAttributedString.Key: Any] = [
-            .font: UIFont.monospacedSystemFont(ofSize: 11, weight: .regular),
-            .foregroundColor: cLabel
-        ]
-        "↑".draw(at: CGPoint(x: wheelRect.midX - 5, y: wheelRect.minY + 4),  withAttributes: la)
-        "↓".draw(at: CGPoint(x: wheelRect.midX - 5, y: wheelRect.maxY - 17), withAttributes: la)
+        func leverLabel(_ s: String, x: CGFloat, isActive: Bool) {
+            let a: [NSAttributedString.Key: Any] = [
+                .font: UIFont.monospacedSystemFont(ofSize: 13, weight: .bold),
+                .foregroundColor: isActive ? cActive : cLabel
+            ]
+            let sz = s.size(withAttributes: a)
+            s.draw(at: CGPoint(x: x - sz.width/2, y: cy - sz.height/2), withAttributes: a)
+        }
+        if let l  = leftLabel   { leverLabel(l,  x: cx - barW * 0.26, isActive: leftActive) }
+        if let rr = rightLabel  { leverLabel(rr, x: cx + barW * 0.26, isActive: rightActive) }
+        if let c  = centerLabel { leverLabel(c,  x: cx,                isActive: active) }
+    }
+
+    // ── Winch rocker ──────────────────────────────────────────────────────────────
+    private func drawWinchRocker() {
+        let upActive   = winch.active &&  winch.isUp
+        let downActive = winch.active && !winch.isUp
+
+        _drawHorizontalLever(in: winchRockerRect,
+                             leftActive: upActive, rightActive: downActive,
+                             leftLabel: "↑", rightLabel: "↓")
+
+        let pipInset = winchRockerRect.height * 0.65 * 0.22 + 8
+        _drawPip(at: CGPoint(x: winchRockerRect.minX + pipInset, y: winchRockerRect.midY), alpha: upActive   ? 1.0 : 0.15)
+        _drawPip(at: CGPoint(x: winchRockerRect.maxX - pipInset, y: winchRockerRect.midY), alpha: downActive ? 1.0 : 0.15)
     }
 
     // ── Deliver toggle ────────────────────────────────────────────────────────────
     private func drawDeliverToggle() {
-        let r: CGFloat = 10
-        let ctx = UIGraphicsGetCurrentContext()!
-        ctx.saveGState()
+        _drawHorizontalLever(in: deliverRect,
+                             leftActive: deliverOn, centerLabel: "R")
 
-        // Simulate CSS rotateX(-22deg / +22deg): Y-scale around top/bottom pivot
-        let yScale = CGFloat(cos(22.0 * .pi / 180.0))   // ≈ 0.927
-        let pivotX = deliverRect.midX
-        let pivotY = deliverOn ? deliverRect.minY : deliverRect.maxY
-        ctx.translateBy(x: pivotX, y: pivotY)
-        ctx.scaleBy(x: 1.0, y: yScale)
-        ctx.translateBy(x: -pivotX, y: -pivotY)
-
-        // Gradient body
-        let colors: [CGFloat]
-        if deliverOn {
-            colors = [1,0.4,0,0.06, 0,0,0,0.60, 1,0.4,0,0.30, 1,0.4,0,0.55]
-        } else {
-            colors = [1,0.4,0,0.14, 0,0,0,0.70, 0,0,0,0.70, 1,0.4,0,0.06]
-        }
-        let cgColors = stride(from: 0, to: colors.count, by: 4).map { i in
-            UIColor(red: colors[i], green: colors[i+1], blue: colors[i+2], alpha: colors[i+3]).cgColor
-        }
-        let gradient = CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                                  colors: cgColors as CFArray,
-                                  locations: [0, 0.25, 0.75, 1.0])!
-        ctx.saveGState()
-        UIBezierPath(roundedRect: deliverRect, cornerRadius: r).addClip()
-        ctx.drawLinearGradient(gradient,
-                               start: CGPoint(x: deliverRect.midX, y: deliverRect.minY),
-                               end:   CGPoint(x: deliverRect.midX, y: deliverRect.maxY),
-                               options: [])
-        ctx.restoreGState()
-
-        // Pips
-        let pipR: CGFloat = 4
-        let topPipAlpha: CGFloat = deliverOn ? 0.15 : 0.5
-        let botPipAlpha: CGFloat = deliverOn ? 1.0  : 0.15
-        UIColor(red: 1, green: 0.4, blue: 0, alpha: topPipAlpha).setFill()
-        UIBezierPath(ovalIn: CGRect(x: deliverRect.midX - pipR, y: deliverRect.minY + 6,
-                                   width: pipR * 2, height: pipR * 2)).fill()
-        UIColor(red: 1, green: 0.4, blue: 0, alpha: botPipAlpha).setFill()
-        UIBezierPath(ovalIn: CGRect(x: deliverRect.midX - pipR,
-                                   y: deliverRect.maxY - 6 - pipR * 2,
-                                   width: pipR * 2, height: pipR * 2)).fill()
-
-        if deliverOn {
-            ctx.setShadow(offset: .zero, blur: 20,
-                          color: UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.4).cgColor)
-            let glow = UIBezierPath(roundedRect: deliverRect.insetBy(dx: 4, dy: 4), cornerRadius: r - 2)
-            UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.1).setFill(); glow.fill()
-        }
-
-        ctx.restoreGState()
+        let pipInset = deliverRect.height * 0.65 * 0.22 + 8
+        _drawPip(at: CGPoint(x: deliverRect.minX + pipInset, y: deliverRect.midY),
+                 alpha: deliverOn ? 1.0 : 0.15)
     }
 
     // MARK: - Hit testing
@@ -310,7 +288,7 @@ final class GameControlOverlay: UIView {
         return zone(for: point) != nil ? self : nil
     }
 
-    private enum Zone { case leftJoy, rightJoy, pitchWheel, deliverBtn }
+    private enum Zone { case leftJoy, rightJoy, winchRocker, deliverBtn }
 
     private func zone(for pt: CGPoint) -> Zone? {
         if !tutorialDimmed.contains("joystick-left") {
@@ -321,8 +299,8 @@ final class GameControlOverlay: UIView {
             let rdx = pt.x - rightCenter.x, rdy = pt.y - rightCenter.y
             if rdx*rdx + rdy*rdy <= joyRadius*joyRadius { return .rightJoy }
         }
-        if !tutorialDimmed.contains("pitch-wheel")    && wheelRect.contains(pt)   { return .pitchWheel }
-        if !tutorialDimmed.contains("deliver-toggle") && deliverRect.contains(pt) { return .deliverBtn }
+        if !tutorialDimmed.contains("pitch-wheel")    && winchRockerRect.contains(pt) { return .winchRocker }
+        if !tutorialDimmed.contains("deliver-toggle") && deliverRect.contains(pt)     { return .deliverBtn }
         return nil
     }
 
@@ -334,8 +312,9 @@ final class GameControlOverlay: UIView {
             switch zone(for: pt) {
             case .leftJoy   where leftTouch   == nil: leftTouch   = t; leftJoy.active  = true
             case .rightJoy  where rightTouch  == nil: rightTouch  = t; rightJoy.active = true
-            case .pitchWheel where wheelTouch == nil:
-                wheelTouch = t; wheel.active = true; wheel.startY = pt.y; wheel.dy = 0
+            case .winchRocker where winchTouch == nil:
+                winchTouch = t; winch.active = true
+                winch.isUp = pt.x < winchRockerRect.midX
             case .deliverBtn where deliverTouch == nil:
                 deliverTouch = t; deliverPressed = true
             default: break
@@ -352,8 +331,8 @@ final class GameControlOverlay: UIView {
             } else if t === rightTouch {
                 rightJoy.dx = pt.x - rightCenter.x
                 rightJoy.dy = pt.y - rightCenter.y
-            } else if t === wheelTouch {
-                wheel.dy = max(-48, min(48, pt.y - wheel.startY))
+            } else if t === winchTouch {
+                winch.isUp = pt.x < winchRockerRect.midX
             }
         }
     }
@@ -363,9 +342,9 @@ final class GameControlOverlay: UIView {
 
     private func release(_ touches: Set<UITouch>) {
         for t in touches {
-            if t === leftTouch    { leftTouch   = nil; leftJoy  = JoyState() }
-            else if t === rightTouch  { rightTouch  = nil; rightJoy = JoyState() }
-            else if t === wheelTouch  { wheelTouch  = nil; wheel    = WheelState() }
+            if      t === leftTouch    { leftTouch    = nil; leftJoy  = JoyState() }
+            else if t === rightTouch   { rightTouch   = nil; rightJoy = JoyState() }
+            else if t === winchTouch   { winchTouch   = nil; winch    = RockerState() }
             else if t === deliverTouch { deliverTouch = nil; deliverPressed = false }
         }
     }
@@ -395,9 +374,9 @@ final class GameControlOverlay: UIView {
             ctx.restoreGState()
 
         case "pitch-wheel":
-            _drawRectPulse(wheelRect,   ringW: ringW, ringA: ringA, blurR: blurR, glowA: glowA)
+            _drawRectPulse(winchRockerRect, ringW: ringW, ringA: ringA, blurR: blurR, glowA: glowA)
         case "deliver-toggle":
-            _drawRectPulse(deliverRect, ringW: ringW, ringA: ringA, blurR: blurR, glowA: glowA)
+            _drawRectPulse(deliverRect,     ringW: ringW, ringA: ringA, blurR: blurR, glowA: glowA)
         default: break
         }
     }
@@ -419,12 +398,13 @@ final class GameControlOverlay: UIView {
     // MARK: - JS notification (called from display link, max 60fps)
 
     private func _sendControlsToJS() {
-        let jr = joyRadius
+        let jr   = joyRadius
+        let wDy: CGFloat = winch.active ? (winch.isUp ? -30 : 30) : 0
         let js = """
         window.__nativeControls && window.__nativeControls({
           leftJoy:    {dx:\(leftJoy.dx),dy:\(leftJoy.dy),jr:\(jr),active:\(leftJoy.active)},
           rightJoy:   {dx:\(rightJoy.dx),dy:\(rightJoy.dy),jr:\(jr),active:\(rightJoy.active)},
-          pitchWheel: {dy:\(wheel.dy),active:\(wheel.active)},
+          pitchWheel: {dy:\(wDy),active:\(winch.active)},
           deliverBtn: \(deliverPressed)
         })
         """
