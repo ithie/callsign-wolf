@@ -69,19 +69,12 @@ const ZsynthPlayer = {
 
     init: (songList: Record<string, SongData>): void => {
         ZsynthPlayer.songs = songList;
-        const _ensureCtx = () => {
-            if (!ZsynthPlayer.ctx) {
-                ZsynthPlayer.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                ZsynthPlayer.masterGain = ZsynthPlayer.ctx.createGain();
-                ZsynthPlayer.masterGain.connect(ZsynthPlayer.ctx.destination);
-            }
-            if (ZsynthPlayer.ctx.state === 'suspended') ZsynthPlayer.ctx.resume();
-        };
-        (window as any).__zsynthResume = _ensureCtx;
-        document.addEventListener('touchstart', _ensureCtx, { passive: true });
-        document.addEventListener('click',      _ensureCtx, { passive: true });
+        const _tryResume = () => { if (ZsynthPlayer.ctx?.state === 'suspended') ZsynthPlayer.ctx.resume(); };
+        (window as any).__zsynthResume = _tryResume;
+        document.addEventListener('touchstart', _tryResume, { passive: true });
+        document.addEventListener('click',      _tryResume, { passive: true });
         document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') _ensureCtx();
+            if (document.visibilityState === 'visible') _tryResume();
         });
     },
 
@@ -109,16 +102,11 @@ const ZsynthPlayer = {
         const _start = () => {
             const ctx = ZsynthPlayer.ctx!;
             const startTime = ctx.currentTime;
-            const fadeEnd = startTime + crossfade;
 
             if (ZsynthPlayer.currentTrack && ZsynthPlayer.currentTrack.isPlaying) {
                 const oldTrack = ZsynthPlayer.currentTrack;
-                if (crossfade > 0.05) {
-                    oldTrack.gainNode.gain.exponentialRampToValueAtTime(0.0001, fadeEnd);
-                    setTimeout(() => { oldTrack.isPlaying = false; }, crossfade * 1000);
-                } else {
-                    oldTrack.isPlaying = false;
-                }
+                oldTrack.gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + crossfade);
+                setTimeout(() => { oldTrack.isPlaying = false; }, crossfade * 1000);
             }
 
             const track: ActiveTrack = {
@@ -130,13 +118,8 @@ const ZsynthPlayer = {
                 stepMap,
             };
 
-            const safeVol = Math.max(0.0001, volume);
-            if (crossfade > 0.05) {
-                track.gainNode.gain.setValueAtTime(0.0001, startTime);
-                track.gainNode.gain.exponentialRampToValueAtTime(safeVol, fadeEnd);
-            } else {
-                track.gainNode.gain.setValueAtTime(safeVol, startTime);
-            }
+            track.gainNode.gain.setValueAtTime(0.0001, startTime);
+            track.gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), startTime + crossfade);
             track.gainNode.connect(ZsynthPlayer.masterGain!);
 
             ZsynthPlayer.currentTrack = track;
