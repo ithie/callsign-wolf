@@ -9,11 +9,17 @@ export interface HudUpdateState {
     camY: number;
     dt: number;
     heli: {
-        x: number; y: number; z: number;
-        vx: number; vy: number;
-        winch: number; fuel: number;
-        inAir: boolean; engineOn: boolean;
-        onboard: number; maxLoad: number;
+        x: number;
+        y: number;
+        z: number;
+        vx: number;
+        vy: number;
+        winch: number;
+        fuel: number;
+        inAir: boolean;
+        engineOn: boolean;
+        onboard: number;
+        maxLoad: number;
     };
     groundUnderHeli: number;
     totalRescued: number;
@@ -36,11 +42,13 @@ export const createHud = ({ isoFn, canvas }: HudOpts) => {
         document.body.appendChild(el);
         return el;
     };
-    const isTouch = () =>
-        ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.matchMedia('(pointer: coarse)').matches;
-    const touchShadow = () => (isTouch() ? 'text-shadow:0 0 3px rgba(0,0,0,0.9),0 0 3px rgba(0,0,0,0.9);' : '');
 
-    const panel = d('hud-panel', `font:bold 13px monospace;color:#5f5;line-height:16px;white-space:nowrap;${touchShadow()}`);
+    const touchShadow = () => 'text-shadow:0 0 3px rgba(0,0,0,0.9),0 0 3px rgba(0,0,0,0.9);';
+
+    const panel = d(
+        'hud-panel',
+        `font:bold 13px monospace;color:#5f5;line-height:16px;white-space:nowrap;${touchShadow()}`
+    );
     const alt = document.createElement('div');
     panel.appendChild(alt);
     const spd = document.createElement('div');

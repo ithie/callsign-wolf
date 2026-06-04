@@ -92,12 +92,9 @@ const { drawTree, drawPerson, drawTractor, drawFuelTruck, drawHeli } = createDra
 const hasCarrier = () => _missionHasCarrier;
 const hasPad = () => _missionHasPad;
 const isVisible = (objX: number, objY: number, margin = 19) => {
-    if (_isTouchDevice()) {
-        const viewCX = zstate.cam.x / tileW + zstate.cam.y / tileH;
-        const viewCY = zstate.cam.y / tileH - zstate.cam.x / tileW;
-        return Math.abs(objX - viewCX) < margin && Math.abs(objY - viewCY) < margin;
-    }
-    return Math.abs(objX - G.heli.x) < margin && Math.abs(objY - G.heli.y) < margin;
+    const viewCX = zstate.cam.x / tileW + zstate.cam.y / tileH;
+    const viewCY = zstate.cam.y / tileH - zstate.cam.x / tileW;
+    return Math.abs(objX - viewCX) < margin && Math.abs(objY - viewCY) < margin;
 };
 
 const _drawWorldFns = createDrawWorld({
@@ -549,6 +546,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
 
     const rank = getRank(_session, _getRankMissions());
     const address = I18N.BRIEFING_ADDRESS(rank.name, _session.playerName).toUpperCase();
+
     Briefing.show({ headline: _lmd.headline, sublines: _lmd.sublines, briefing: _lmd.briefing, address }, () => {
         _briefingActive = false;
         _missionStartTime = Date.now();
@@ -557,19 +555,13 @@ const launchMission = async (showLoader = true): Promise<void> => {
         setTouchVisible(true);
 
         if (_lmd.campaignType === CAMPAIGN_TYPE.TUTORIAL) {
-            initTutorial(
-                _isTouchDevice(),
-                G,
-                getGround(G.heli.x, G.heli.y, G.points, G.CARRIER),
-                missionComplete,
-                () => {
-                    const personDef = campaignHandler
-                        .getCurrentMissionData()
-                        .payloads?.find((p: any) => p.type === PAYLOAD.PERSON);
-                    if (!personDef) return;
-                    spawnPayload({ ...personDef, deliverTo: VESSEL.PAD }, false);
-                }
-            );
+            initTutorial(G, getGround(G.heli.x, G.heli.y, G.points, G.CARRIER), missionComplete, () => {
+                const personDef = campaignHandler
+                    .getCurrentMissionData()
+                    .payloads?.find((p: any) => p.type === PAYLOAD.PERSON);
+                if (!personDef) return;
+                spawnPayload({ ...personDef, deliverTo: VESSEL.PAD }, false);
+            });
         }
     });
 };
@@ -603,7 +595,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
 let _fpsLastTime = 0;
 const drawScene = () => {
     const _now = performance.now();
-    if (_isTouchDevice() && _fpsLastTime > 0 && _now - _fpsLastTime < 1000 / 30 - 1) {
+    if (_fpsLastTime > 0 && _now - _fpsLastTime < 1000 / 30 - 1) {
         _rafId = requestAnimationFrame(drawScene);
         return;
     }
@@ -620,30 +612,18 @@ const drawScene = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const tx = (G.heli.x - G.heli.y) * (tileW / 2);
-    if (_isTouchDevice()) {
-        // Mobile: snap camera to heli incl. altitude so terrain shifts with height
-        const ty = (G.heli.x + G.heli.y) * (tileH / 2) - G.heli.z * stepH;
-        zstate.cam.x = tx;
-        zstate.cam.y = ty;
-    } else {
-        // Desktop: smooth-follow ground point only — camera doesn't rise with heli
-        const ty = (G.heli.x + G.heli.y) * (tileH / 2);
-        zstate.cam.x += (tx - zstate.cam.x) * 0.1 * dt;
-        zstate.cam.y += (ty - zstate.cam.y) * 0.1 * dt;
-    }
+
+    const ty = (G.heli.x + G.heli.y) * (tileH / 2) - G.heli.z * stepH;
+    zstate.cam.x = tx;
+    zstate.cam.y = ty;
 
     const camX = zstate.cam.x,
         camY = zstate.cam.y;
 
     let rx: number, ry: number;
-    if (_isTouchDevice()) {
-        // Mobile: derive tile center from camera (includes z-shift)
-        rx = camX / tileW + camY / tileH;
-        ry = camY / tileH - camX / tileW;
-    } else {
-        rx = G.heli.x;
-        ry = G.heli.y;
-    }
+
+    rx = camX / tileW + camY / tileH;
+    ry = camY / tileH - camX / tileW;
 
     drawTerrain(camX, camY, rx, ry, isNight, rain);
 
@@ -800,7 +780,6 @@ const drawScene = () => {
         deliverMode: G.deliverMode,
         minimap: {
             gridSize,
-            isTouch: _isTouchDevice(),
             pad: hasPad() ? G.PAD : null,
             carrier: hasCarrier() ? G.CARRIER : null,
             vessels: [
@@ -951,62 +930,30 @@ const _resizeCanvas = () => {
 window.addEventListener('resize', _resizeCanvas);
 _resizeCanvas();
 
-const _isTouchDevice = () =>
-    ('ontouchstart' in window || navigator.maxTouchPoints > 0) && window.matchMedia('(pointer: coarse)').matches;
 const setTouchVisible = (v: boolean) => {
-    if (!_isTouchDevice()) return;
     window.webkit?.messageHandlers?.controls?.postMessage({ type: 'showControls', visible: v });
     const touchEl = document.getElementById('touch-controls');
+
     if (touchEl) touchEl.style.display = v ? 'flex' : 'none';
 };
 
 // ─── Native touch control state (set by Swift via window.__nativeControls) ───
 
+const _LEFT_KEYS = ['KeyW', 'KeyS', 'ArrowLeft', 'ArrowRight'] as const;
+const _RIGHT_KEYS = ['ArrowUp', 'ArrowDown', 'KeyA', 'KeyD'] as const;
+
 (window as any).__nativeControls = (input: {
-    leftJoy: { dx: number; dy: number; jr: number; active: boolean };
-    rightJoy: { dx: number; dy: number; jr: number; active: boolean };
+    leftKey: string | null;
+    rightKey: string | null;
     pitchWheel: { dy: number; active: boolean };
     deliverBtn: boolean;
 }) => {
-    // Left joystick → W/S/A/D (4-sector)
-    if (input.leftJoy.active) {
-        const { dx, dy, jr } = input.leftJoy;
-        const dead = jr * 0.18;
-        const isH = Math.abs(dx) >= Math.abs(dy);
-        (G.keys as Record<string, boolean>)['KeyW'] = _isKeyAllowed('KeyW') && !isH && dy < -dead;
-        (G.keys as Record<string, boolean>)['KeyS'] = _isKeyAllowed('KeyS') && !isH && dy > dead;
-        (G.keys as Record<string, boolean>)['KeyA'] = _isKeyAllowed('KeyA') && isH && dx < -dead;
-        (G.keys as Record<string, boolean>)['KeyD'] = _isKeyAllowed('KeyD') && isH && dx > dead;
-    } else {
-        (G.keys as Record<string, boolean>)['KeyW'] = false;
-        (G.keys as Record<string, boolean>)['KeyS'] = false;
-        (G.keys as Record<string, boolean>)['KeyA'] = false;
-        (G.keys as Record<string, boolean>)['KeyD'] = false;
-    }
-
-    // Right joystick → ArrowUp/Down/Left/Right with axis safe zones
-    if (input.rightJoy.active) {
-        const { dx, dy, jr } = input.rightJoy;
-        const t = jr * 0.35;
-        const SAFE = 0.7; // tan(35°) — safe-zone half-angle
-        const inVertSafe = Math.abs(dx) < Math.abs(dy) * SAFE; // near vertical → accel only
-        const inHorizSafe = Math.abs(dy) < Math.abs(dx) * SAFE; // near horizontal → steer only
-        (G.keys as Record<string, boolean>)['ArrowUp'] = _isKeyAllowed('ArrowUp') && !inHorizSafe && dy < -t;
-        (G.keys as Record<string, boolean>)['ArrowDown'] = _isKeyAllowed('ArrowDown') && !inHorizSafe && dy > t;
-        (G.keys as Record<string, boolean>)['ArrowLeft'] = _isKeyAllowed('ArrowLeft') && !inVertSafe && dx < -t;
-        (G.keys as Record<string, boolean>)['ArrowRight'] = _isKeyAllowed('ArrowRight') && !inVertSafe && dx > t;
-    } else {
-        (G.keys as Record<string, boolean>)['ArrowUp'] = false;
-        (G.keys as Record<string, boolean>)['ArrowDown'] = false;
-        (G.keys as Record<string, boolean>)['ArrowLeft'] = false;
-        (G.keys as Record<string, boolean>)['ArrowRight'] = false;
-    }
-
-    // Pitch wheel → KeyQ/KeyE
+    for (const k of _LEFT_KEYS) (G.keys as Record<string, boolean>)[k] = false;
+    for (const k of _RIGHT_KEYS) (G.keys as Record<string, boolean>)[k] = false;
+    if (input.leftKey && _isKeyAllowed(input.leftKey)) (G.keys as Record<string, boolean>)[input.leftKey] = true;
+    if (input.rightKey && _isKeyAllowed(input.rightKey)) (G.keys as Record<string, boolean>)[input.rightKey] = true;
     (G.keys as Record<string, boolean>)['KeyQ'] = input.pitchWheel.active && input.pitchWheel.dy < -6;
     (G.keys as Record<string, boolean>)['KeyE'] = input.pitchWheel.active && input.pitchWheel.dy > 6;
-
-    // Deliver button → KeyR
     (G.keys as Record<string, boolean>)['KeyR'] = input.deliverBtn;
 };
 
@@ -1207,7 +1154,6 @@ const _onloadMain = () => {
             setSfxEnabled(v);
             _setPref('z_sfx', v);
         },
-        isTouchDevice: _isTouchDevice,
         onPause: () => {
             cancelAnimationFrame(_rafId);
             _rafId = 0;
@@ -1228,7 +1174,6 @@ const _onloadMain = () => {
         getSession: () => _session,
         saveSession,
         getRankMissions: _getRankMissions,
-        isTouchDevice: _isTouchDevice,
         isMusicEnabled: () => !soundHandler.state.isMuted,
         setMusicEnabled: (v: boolean) => {
             v ? soundHandler.unmute() : soundHandler.mute();

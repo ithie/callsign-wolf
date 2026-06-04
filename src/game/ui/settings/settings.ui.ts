@@ -17,14 +17,13 @@ const _session = (overrides: Partial<PlayerSession> = {}): PlayerSession => ({
 
 export const Desktop = () => {
     init({
-        getSession:      () => _session(),
-        saveSession:     (_s: PlayerSession) => {},
+        getSession: () => _session(),
+        saveSession: (_s: PlayerSession) => {},
         getRankMissions: () => 6,
-        isTouchDevice:   () => false,
-        isMusicEnabled:  () => true,
+        isMusicEnabled: () => true,
         setMusicEnabled: (_v: boolean) => {},
-        isSfxEnabled:    () => true,
-        setSfxEnabled:   (_v: boolean) => {},
+        isSfxEnabled: () => true,
+        setSfxEnabled: (_v: boolean) => {},
         onBack: () => {},
     });
     mount();
@@ -33,14 +32,13 @@ export const Desktop = () => {
 
 export const TouchHeading = () => {
     init({
-        getSession:      () => _session(),
-        saveSession:     (_s: PlayerSession) => {},
+        getSession: () => _session(),
+        saveSession: (_s: PlayerSession) => {},
         getRankMissions: () => 6,
-        isTouchDevice:   () => true,
-        isMusicEnabled:  () => false,
+        isMusicEnabled: () => false,
         setMusicEnabled: (_v: boolean) => {},
-        isSfxEnabled:    () => false,
-        setSfxEnabled:   (_v: boolean) => {},
+        isSfxEnabled: () => false,
+        setSfxEnabled: (_v: boolean) => {},
         onBack: () => {},
     });
     mount();
@@ -49,14 +47,13 @@ export const TouchHeading = () => {
 
 export const NeuerSpieler = () => {
     init({
-        getSession:      () => _session({ playerName: '', campaignProgress: {} }),
-        saveSession:     (_s: PlayerSession) => {},
+        getSession: () => _session({ playerName: '', campaignProgress: {} }),
+        saveSession: (_s: PlayerSession) => {},
         getRankMissions: () => 0,
-        isTouchDevice:   () => false,
-        isMusicEnabled:  () => true,
+        isMusicEnabled: () => true,
         setMusicEnabled: (_v: boolean) => {},
-        isSfxEnabled:    () => true,
-        setSfxEnabled:   (_v: boolean) => {},
+        isSfxEnabled: () => true,
+        setSfxEnabled: (_v: boolean) => {},
         onBack: () => {},
     });
     mount();

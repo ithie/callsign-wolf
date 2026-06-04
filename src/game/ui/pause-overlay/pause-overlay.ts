@@ -7,7 +7,6 @@ type PauseOverlayDeps = {
     setMusicEnabled: (v: boolean) => void;
     isSfxEnabled: () => boolean;
     setSfxEnabled: (v: boolean) => void;
-    isTouchDevice: () => boolean;
     onPause: () => void;
     onResume: () => void;
     onAbort: () => void;
@@ -19,19 +18,19 @@ const HL = 'var(--accent, #4af)';
 
 const _refreshButtons = () => {
     const music = _deps.isMusicEnabled();
-    const sfx   = _deps.isSfxEnabled();
+    const sfx = _deps.isSfxEnabled();
 
     const set = (id: string, active: boolean) => {
         const el = document.getElementById(id) as HTMLButtonElement | null;
         if (!el) return;
         el.style.borderColor = active ? HL : '';
-        el.style.color       = active ? HL : '';
+        el.style.color = active ? HL : '';
     };
 
-    set('pause-music-on',  music);
+    set('pause-music-on', music);
     set('pause-music-off', !music);
-    set('pause-sfx-on',    sfx);
-    set('pause-sfx-off',   !sfx);
+    set('pause-sfx-on', sfx);
+    set('pause-sfx-off', !sfx);
 };
 
 const _show = () => {
@@ -67,7 +66,11 @@ export const mount = (deps: PauseOverlayDeps) => {
     // gear button — mounted inside #hud-tl alongside the mute button
     const container = ensureEl('hud-tl');
     let btn = document.getElementById('pause-btn');
-    if (!btn) { btn = document.createElement('div'); btn.id = 'pause-btn'; container.appendChild(btn); }
+    if (!btn) {
+        btn = document.createElement('div');
+        btn.id = 'pause-btn';
+        container.appendChild(btn);
+    }
     btn.innerHTML = `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
             <defs><filter id="glow-gear"><feGaussianBlur stdDeviation="1.5" result="blur"/>
@@ -103,10 +106,22 @@ export const mount = (deps: PauseOverlayDeps) => {
             <button class="settings-btn" id="pause-abort" style="background:#1a0000;border-color:#500;color:#c44">${I18N.PAUSE_ABORT}</button>
         </div>`;
 
-    document.getElementById('pause-music-on')!.onclick  = () => { _deps.setMusicEnabled(true);  _refreshButtons(); };
-    document.getElementById('pause-music-off')!.onclick = () => { _deps.setMusicEnabled(false); _refreshButtons(); };
-    document.getElementById('pause-sfx-on')!.onclick    = () => { _deps.setSfxEnabled(true);    _refreshButtons(); };
-    document.getElementById('pause-sfx-off')!.onclick   = () => { _deps.setSfxEnabled(false);   _refreshButtons(); };
+    document.getElementById('pause-music-on')!.onclick = () => {
+        _deps.setMusicEnabled(true);
+        _refreshButtons();
+    };
+    document.getElementById('pause-music-off')!.onclick = () => {
+        _deps.setMusicEnabled(false);
+        _refreshButtons();
+    };
+    document.getElementById('pause-sfx-on')!.onclick = () => {
+        _deps.setSfxEnabled(true);
+        _refreshButtons();
+    };
+    document.getElementById('pause-sfx-off')!.onclick = () => {
+        _deps.setSfxEnabled(false);
+        _refreshButtons();
+    };
     document.getElementById('pause-resume')!.onclick = _hide;
-    document.getElementById('pause-abort')!.onclick  = _abort;
+    document.getElementById('pause-abort')!.onclick = _abort;
 };

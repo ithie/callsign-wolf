@@ -41,7 +41,6 @@ const mockSettingsDeps = () => ({
     getRankMissions: () => 0,
     getControlMode: () => 'heading' as const,
     setControlMode: vi.fn(),
-    isTouchDevice: () => false,
     isMusicEnabled: () => true,
     setMusicEnabled: vi.fn(),
     isSfxEnabled: () => true,
@@ -59,7 +58,9 @@ const noopCallbacks = {
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-beforeEach(() => { document.body.innerHTML = ''; });
+beforeEach(() => {
+    document.body.innerHTML = '';
+});
 
 describe('UI screen snapshots', () => {
     it('main-menu', () => {
@@ -74,13 +75,15 @@ describe('UI screen snapshots', () => {
 
     it('settings-screen', () => {
         Settings.init(mockSettingsDeps());
-        Settings.mount(); Rankup.mount();
+        Settings.mount();
+        Rankup.mount();
         snap('settings-screen');
     });
 
     it('rankup-overlay', () => {
         Settings.init(mockSettingsDeps());
-        Settings.mount(); Rankup.mount();
+        Settings.mount();
+        Rankup.mount();
         snap('rankup-overlay');
     });
 
@@ -88,5 +91,4 @@ describe('UI screen snapshots', () => {
         CreditsScreen.mount(vi.fn());
         snap('credits-screen');
     });
-
 });

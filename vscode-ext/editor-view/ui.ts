@@ -5,7 +5,9 @@ import { Mission } from '@/shared/types';
 
 // Overrideable callback — set by VS Code bridge to receive state changes
 let _onStateChanged: (() => void) | null = null;
-export const setOnStateChanged = (fn: (() => void) | null): void => { _onStateChanged = fn; };
+export const setOnStateChanged = (fn: (() => void) | null): void => {
+    _onStateChanged = fn;
+};
 
 // Notify the Electron workbench parent frame that editor state has changed
 const notifyWorkbench = () => {
@@ -32,7 +34,10 @@ const getInput = (id: string) => getEl<HTMLInputElement>(id);
 export const renderPayloadList = () => {
     const m = getCurrentMission();
     const container = getEl('payload-list');
-    if (!container || !m) { notifyWorkbench(); return; }
+    if (!container || !m) {
+        notifyWorkbench();
+        return;
+    }
     container.innerHTML = '';
     const payloads = m.payloads || [];
     if (payloads.length === 0) {
@@ -50,9 +55,7 @@ export const renderPayloadList = () => {
         const typeName = p.type === 'person' ? 'Person' : p.type === 'rescuer' ? 'Retter' : 'Crate';
         const label = document.createElement('span');
         label.style.flex = '1';
-        const attach = pa.attachTo
-            ? ` → ${pa.attachTo.objectType} #${pa.attachTo.objectIdx + 1}`
-            : '';
+        const attach = pa.attachTo ? ` → ${pa.attachTo.objectType} #${pa.attachTo.objectIdx + 1}` : '';
         label.innerText = `${i + 1}. ${icon} ${typeName} @ (${p.x}, ${p.y})${attach}`;
 
         // NPC-Target Checkbox
@@ -61,26 +64,30 @@ export const renderPayloadList = () => {
         const npcCb = document.createElement('input');
         npcCb.type = 'checkbox';
         npcCb.checked = !!pa.npcTarget;
-        npcCb.onchange = () => { pa.npcTarget = npcCb.checked; drawMap(); };
+        npcCb.onchange = () => {
+            pa.npcTarget = npcCb.checked;
+            drawMap();
+        };
         npcLabel.append(npcCb, 'NPC');
 
         // deliverTo — only for crates
         let deliverToEl: HTMLElement | null = null;
         if (p.type === 'crate') {
-            const hasPad      = m.objects.some((o: any) => o.type === 'pad');
-            const hasCarrier  = m.objects.some((o: any) => o.type === 'carrier');
-            const hasSub      = m.objects.some((o: any) => o.type === 'submarine');
+            const hasPad = m.objects.some((o: any) => o.type === 'pad');
+            const hasCarrier = m.objects.some((o: any) => o.type === 'carrier');
+            const hasSub = m.objects.some((o: any) => o.type === 'submarine');
 
             const sel = document.createElement('select');
-            sel.style.cssText = 'background:#222;color:#fa8;border:1px solid #555;font-size:10px;padding:1px 3px;cursor:pointer';
+            sel.style.cssText =
+                'background:#222;color:#fa8;border:1px solid #555;font-size:10px;padding:1px 3px;cursor:pointer';
             const opts: Array<[string, string]> = [['', 'Ziel: –']];
-            if (hasPad)     opts.push(['pad',       'Ziel: Pad']);
-            if (hasCarrier) opts.push(['carrier',   'Ziel: Carrier']);
-            if (hasSub)     opts.push(['submarine', 'Ziel: U-Boot']);
+            if (hasPad) opts.push(['pad', 'Ziel: Pad']);
+            if (hasCarrier) opts.push(['carrier', 'Ziel: Carrier']);
+            if (hasSub) opts.push(['submarine', 'Ziel: U-Boot']);
             opts.forEach(([val, lbl]) => {
                 const opt = document.createElement('option');
                 opt.value = val;
-                opt.text  = lbl;
+                opt.text = lbl;
                 if ((pa.deliverTo ?? '') === val) opt.selected = true;
                 sel.appendChild(opt);
             });
@@ -94,14 +101,19 @@ export const renderPayloadList = () => {
         const btnDel = document.createElement('button');
         btnDel.innerText = 'X';
         btnDel.style.cssText = 'background:#822;color:#fff;border:none;padding:2px 6px;cursor:pointer;font-size:10px';
-        btnDel.onclick = () => { m.payloads.splice(i, 1); renderPayloadList(); drawMap(); };
+        btnDel.onclick = () => {
+            m.payloads.splice(i, 1);
+            renderPayloadList();
+            drawMap();
+        };
         row.append(label, npcLabel, ...(deliverToEl ? [deliverToEl] : []), btnDel);
         wrap.appendChild(row);
 
         // localX / localY — only when attached to a vessel
         if (pa.attachTo) {
             const offsetRow = document.createElement('div');
-            offsetRow.style.cssText = 'display:flex;align-items:center;gap:4px;font-size:10px;color:#aaa;padding-left:12px;margin-top:2px';
+            offsetRow.style.cssText =
+                'display:flex;align-items:center;gap:4px;font-size:10px;color:#aaa;padding-left:12px;margin-top:2px';
             const makeOffsetInput = (axis: 'localX' | 'localY', axisLabel: string) => {
                 const lbl = document.createElement('span');
                 lbl.innerText = axisLabel + ':';
@@ -109,7 +121,8 @@ export const renderPayloadList = () => {
                 inp.type = 'number';
                 inp.step = '0.5';
                 inp.value = String(pa.attachTo[axis] ?? 0);
-                inp.style.cssText = 'width:48px;background:#222;color:#ddd;border:1px solid #444;padding:1px 3px;font-size:10px';
+                inp.style.cssText =
+                    'width:48px;background:#222;color:#ddd;border:1px solid #444;padding:1px 3px;font-size:10px';
                 inp.onchange = () => {
                     pa.attachTo[axis] = parseFloat(inp.value) || 0;
                     notifyWorkbench();
@@ -120,7 +133,7 @@ export const renderPayloadList = () => {
             offsetRow.append(
                 document.createTextNode('offset '),
                 ...makeOffsetInput('localX', 'X'),
-                ...makeOffsetInput('localY', 'Y'),
+                ...makeOffsetInput('localY', 'Y')
             );
             wrap.appendChild(offsetRow);
         }
@@ -139,7 +152,20 @@ export const renderObjectList = () => {
     m.objects.forEach((obj, idx) => {
         const row = document.createElement('div');
         row.style.cssText = 'display:flex;align-items:center;gap:6px;margin:3px 0;font-size:11px';
-        const icons: Record<string, string> = { pad: '🟩', carrier: '🚢', boat: '⛵', pilot_boat: '🚤', salvage_tug: '🛳', submarine: '🤿', lighthouse: '🔦', research_platform: '🏗', wind_turbine: '🌀', plane_wreck: '✈️', sailboat_broken: '⛵', ornithopter_wreck: '🛸' };
+        const icons: Record<string, string> = {
+            pad: '🟩',
+            carrier: '🚢',
+            boat: '⛵',
+            pilot_boat: '🚤',
+            salvage_tug: '🛳',
+            submarine: '🤿',
+            lighthouse: '🔦',
+            research_platform: '🏗',
+            wind_turbine: '🌀',
+            plane_wreck: '✈️',
+            sailboat_broken: '⛵',
+            ornithopter_wreck: '🛸',
+        };
         const label = document.createElement('span');
         label.style.flex = '1';
         label.innerText = `${icons[obj.type] || '?'} ${obj.type} @ (${obj.x}, ${obj.y})`;
@@ -181,18 +207,25 @@ export const renderFoliageList = () => {
     notifyWorkbench();
 };
 const _lsDe = (ls: string | { de: string; en?: string } | undefined): string =>
-    !ls ? '' : typeof ls === 'string' ? ls : (ls.de || '');
+    !ls ? '' : typeof ls === 'string' ? ls : ls.de || '';
 const _lsEn = (ls: string | { de: string; en?: string } | undefined): string =>
-    !ls ? '' : typeof ls === 'string' ? '' : (ls.en || '');
+    !ls ? '' : typeof ls === 'string' ? '' : ls.en || '';
 
 export const syncToData = () => {
     const m = getCurrentMission();
     if (!m) return;
     m.headline = { de: getInput('m_headline_de').value, en: getInput('m_headline_en').value };
-    const subDe = getEl<HTMLTextAreaElement>('m_sublines_de').value.split('\n').filter(l => l.trim());
-    const subEn = getEl<HTMLTextAreaElement>('m_sublines_en').value.split('\n').filter(l => l.trim());
+    const subDe = getEl<HTMLTextAreaElement>('m_sublines_de')
+        .value.split('\n')
+        .filter(l => l.trim());
+    const subEn = getEl<HTMLTextAreaElement>('m_sublines_en')
+        .value.split('\n')
+        .filter(l => l.trim());
     m.sublines = subDe.map((de, i) => ({ de, en: subEn[i] || '' }));
-    m.briefing = { de: getEl<HTMLTextAreaElement>('m_briefing_de').value, en: getEl<HTMLTextAreaElement>('m_briefing_en').value };
+    m.briefing = {
+        de: getEl<HTMLTextAreaElement>('m_briefing_de').value,
+        en: getEl<HTMLTextAreaElement>('m_briefing_en').value,
+    };
     m.rain = getInput('m_rain').checked;
     m.night = getInput('m_night').checked;
     (m as any).waterLevel = parseFloat(getInput('m_water_level').value) || 0;
@@ -353,7 +386,8 @@ const makePayload = (type: 'person' | 'crate' | 'rescuer', gx: number, gy: numbe
         nearestDist = SNAP_RADIUS;
     for (let i = 0; i < m.objects.length; i++) {
         const obj = m.objects[i];
-        if (obj.type !== 'carrier' && obj.type !== 'boat' && obj.type !== 'submarine' && obj.type !== 'sailboat_broken') continue;
+        if (obj.type !== 'carrier' && obj.type !== 'boat' && obj.type !== 'submarine' && obj.type !== 'sailboat_broken')
+            continue;
         const d = Math.hypot(gx - obj.x, gy - obj.y);
         if (d <= nearestDist) {
             nearestDist = d;
@@ -362,7 +396,15 @@ const makePayload = (type: 'person' | 'crate' | 'rescuer', gx: number, gy: numbe
     }
     if (nearestIdx >= 0) {
         const obj = m.objects[nearestIdx] as any;
-        return { type, x: gx, y: gy, attachTo: { objectType: obj.type as 'carrier' | 'boat' | 'submarine' | 'sailboat_broken', objectIdx: nearestIdx } };
+        return {
+            type,
+            x: gx,
+            y: gy,
+            attachTo: {
+                objectType: obj.type as 'carrier' | 'boat' | 'submarine' | 'sailboat_broken',
+                objectIdx: nearestIdx,
+            },
+        };
     }
     return { type, x: gx, y: gy };
 };
@@ -487,19 +529,27 @@ const paint = (e: MouseEvent) => {
         }
     } else if (state.currentTool === 'submarine') {
         if (e.shiftKey) {
-            let nearestIdx = -1, nearestDist = 8;
+            let nearestIdx = -1,
+                nearestDist = 8;
             m.objects.forEach((o, i) => {
                 if (o.type !== 'submarine') return;
                 const d = Math.hypot(o.x - gx, o.y - gy);
-                if (d < nearestDist) { nearestDist = d; nearestIdx = i; }
+                if (d < nearestDist) {
+                    nearestDist = d;
+                    nearestIdx = i;
+                }
             });
             if (nearestIdx >= 0) m.objects.splice(nearestIdx, 1);
         } else {
-            let nearestIdx = -1, nearestDist = 8;
+            let nearestIdx = -1,
+                nearestDist = 8;
             m.objects.forEach((o, i) => {
                 if (o.type !== 'submarine') return;
                 const d = Math.hypot(o.x - gx, o.y - gy);
-                if (d < nearestDist) { nearestDist = d; nearestIdx = i; }
+                if (d < nearestDist) {
+                    nearestDist = d;
+                    nearestIdx = i;
+                }
             });
             if (nearestIdx >= 0) {
                 m.objects[nearestIdx] = { ...m.objects[nearestIdx], x: gx, y: gy };
@@ -634,13 +684,15 @@ const paint = (e: MouseEvent) => {
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 export const initUI = () => {
-
     // ── Payload-Popup (Rechtsklick) ────────────────────────────────────────────
     const popup = document.createElement('div');
-    popup.style.cssText = 'position:fixed;display:none;background:rgba(10,10,10,0.96);border:1px solid #5f5;padding:10px 12px;font-family:monospace;font-size:12px;color:#fff;border-radius:4px;z-index:9999;box-shadow:0 5px 20px rgba(0,0,0,0.8);min-width:170px';
+    popup.style.cssText =
+        'position:fixed;display:none;background:rgba(10,10,10,0.96);border:1px solid #5f5;padding:10px 12px;font-family:monospace;font-size:12px;color:#fff;border-radius:4px;z-index:9999;box-shadow:0 5px 20px rgba(0,0,0,0.8);min-width:170px';
     document.body.appendChild(popup);
 
-    const hidePopup = () => { popup.style.display = 'none'; };
+    const hidePopup = () => {
+        popup.style.display = 'none';
+    };
 
     const showPayloadPopup = (idx: number, cx: number, cy: number) => {
         const m = getCurrentMission()!;
@@ -651,7 +703,8 @@ export const initUI = () => {
         popup.innerHTML = '';
 
         const header = document.createElement('div');
-        header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px';
+        header.style.cssText =
+            'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px';
         const title = document.createElement('span');
         title.style.fontWeight = 'bold';
         title.textContent = `${icon} ${typeName} #${idx + 1}`;
@@ -668,15 +721,18 @@ export const initUI = () => {
         deliverLabel.style.color = '#aaa';
         deliverLabel.textContent = 'Ziel:';
         const deliverSel = document.createElement('select');
-        deliverSel.style.cssText = 'flex:1;background:#111;color:#5f5;border:1px solid #444;font-family:monospace;font-size:11px';
+        deliverSel.style.cssText =
+            'flex:1;background:#111;color:#5f5;border:1px solid #444;font-family:monospace;font-size:11px';
         const opts: Array<[string, string]> = [['', '–']];
-        if (m.objects.some((o: any) => o.type === 'pad'))                                          opts.push(['pad', 'Pad']);
-        if (m.objects.some((o: any) => o.type === 'carrier'))                                      opts.push(['carrier', 'Carrier']);
-        if (m.objects.some((o: any) => o.type === 'submarine'))                                    opts.push(['submarine', 'U-Boot']);
-        if (m.objects.some((o: any) => ['boat','pilot_boat','salvage_tug'].includes(o.type)))      opts.push(['boat', 'Boot']);
+        if (m.objects.some((o: any) => o.type === 'pad')) opts.push(['pad', 'Pad']);
+        if (m.objects.some((o: any) => o.type === 'carrier')) opts.push(['carrier', 'Carrier']);
+        if (m.objects.some((o: any) => o.type === 'submarine')) opts.push(['submarine', 'U-Boot']);
+        if (m.objects.some((o: any) => ['boat', 'pilot_boat', 'salvage_tug'].includes(o.type)))
+            opts.push(['boat', 'Boot']);
         opts.forEach(([val, lbl]) => {
             const opt = document.createElement('option');
-            opt.value = val; opt.text = lbl;
+            opt.value = val;
+            opt.text = lbl;
             if ((pa.deliverTo ?? '') === val) opt.selected = true;
             deliverSel.appendChild(opt);
         });
@@ -706,9 +762,10 @@ export const initUI = () => {
         npcRow.appendChild(npcLabel);
         popup.appendChild(npcRow);
 
-        const vw = window.innerWidth, vh = window.innerHeight;
+        const vw = window.innerWidth,
+            vh = window.innerHeight;
         popup.style.left = Math.min(cx + 6, vw - 190) + 'px';
-        popup.style.top  = Math.min(cy + 6, vh - 120) + 'px';
+        popup.style.top = Math.min(cy + 6, vh - 120) + 'px';
         popup.style.display = 'block';
     };
 
@@ -861,8 +918,10 @@ export const initUI = () => {
 
     // General sync
     [
-        'm_headline_de', 'm_headline_en',
-        'm_briefing_de', 'm_briefing_en',
+        'm_headline_de',
+        'm_headline_en',
+        'm_briefing_de',
+        'm_briefing_en',
         'm_rain',
         'm_night',
         'm_wind_dir',
@@ -870,7 +929,8 @@ export const initUI = () => {
         'm_wind_var',
         'm_npc_heli_count',
         'm_npc_heli_type',
-        'm_sublines_de', 'm_sublines_en',
+        'm_sublines_de',
+        'm_sublines_en',
     ].forEach(id => getEl(id)?.addEventListener('input', syncToData));
 
     const canvas = getEl<HTMLCanvasElement>('editorCanvas');
@@ -882,7 +942,23 @@ export const initUI = () => {
     document.body.appendChild(cursorEl);
     const cursorCtx = cursorEl.getContext('2d')!;
     const PAINT_TOOLS = new Set(['terrain', 'flatten', 'foliage']);
-    const POINT_TOOLS = new Set(['pad', 'carrier', 'boat', 'pilot_boat', 'salvage_tug', 'submarine', 'lighthouse', 'research_platform', 'wind_turbine', 'plane_wreck', 'sailboat_broken', 'ornithopter_wreck', 'person', 'rescuer', 'crate']);
+    const POINT_TOOLS = new Set([
+        'pad',
+        'carrier',
+        'boat',
+        'pilot_boat',
+        'salvage_tug',
+        'submarine',
+        'lighthouse',
+        'research_platform',
+        'wind_turbine',
+        'plane_wreck',
+        'sailboat_broken',
+        'ornithopter_wreck',
+        'person',
+        'rescuer',
+        'crate',
+    ]);
     const dotColors: Record<string, string> = {
         pad: '#5f5',
         carrier: '#88aaff',
@@ -1040,8 +1116,8 @@ export const initUI = () => {
                 const snapped = makePayload(p.type, Math.floor(gx), Math.floor(gy), m);
                 m.payloads[state.selectedPayloadIdx] = {
                     ...snapped,
-                    ...(p.deliverTo  ? { deliverTo:  p.deliverTo  } : {}),
-                    ...(p.npcTarget  ? { npcTarget:  p.npcTarget  } : {}),
+                    ...(p.deliverTo ? { deliverTo: p.deliverTo } : {}),
+                    ...(p.npcTarget ? { npcTarget: p.npcTarget } : {}),
                 } as any;
                 renderPayloadList();
             }
@@ -1056,16 +1132,22 @@ export const initUI = () => {
             const startDrag = (type: 'payload' | 'object', idx: number, ox: number, oy: number) => {
                 hidePopup();
                 state.isDraggingItem = true;
-                state.dragItemType   = type;
-                state.dragItemIdx    = idx;
-                state.dragHasMoved   = false;
-                state.dragWasSelected = type === 'payload' ? state.selectedPayloadIdx === idx : state.selectedObjectIdx === idx;
-                state.dragStartMX    = e.clientX;
-                state.dragStartMY    = e.clientY;
-                state.dragOrigX      = ox;
-                state.dragOrigY      = oy;
-                if (type === 'payload') { state.selectedPayloadIdx = idx; state.selectedObjectIdx = null; }
-                else                    { state.selectedObjectIdx  = idx; state.selectedPayloadIdx = null; }
+                state.dragItemType = type;
+                state.dragItemIdx = idx;
+                state.dragHasMoved = false;
+                state.dragWasSelected =
+                    type === 'payload' ? state.selectedPayloadIdx === idx : state.selectedObjectIdx === idx;
+                state.dragStartMX = e.clientX;
+                state.dragStartMY = e.clientY;
+                state.dragOrigX = ox;
+                state.dragOrigY = oy;
+                if (type === 'payload') {
+                    state.selectedPayloadIdx = idx;
+                    state.selectedObjectIdx = null;
+                } else {
+                    state.selectedObjectIdx = idx;
+                    state.selectedPayloadIdx = null;
+                }
                 state.selectedUI = null;
                 drawMap();
             };
@@ -1073,16 +1155,25 @@ export const initUI = () => {
             const payloads = m.payloads || [];
             for (let i = 0; i < payloads.length; i++) {
                 const p = payloads[i] as any;
-                if (Math.hypot(gx - p.x, gy - p.y) < 2) { startDrag('payload', i, p.x, p.y); return; }
+                if (Math.hypot(gx - p.x, gy - p.y) < 2) {
+                    startDrag('payload', i, p.x, p.y);
+                    return;
+                }
             }
             for (let i = 0; i < m.objects.length; i++) {
                 const obj = m.objects[i] as any;
                 let hit = false;
                 if (obj.type === 'pad') hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
-                else if (['carrier','boat','pilot_boat','salvage_tug','submarine'].includes(obj.type))       hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
-                else if (['lighthouse','research_platform','wind_turbine'].includes(obj.type))               hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
-                else if (['plane_wreck','sailboat_broken','ornithopter_wreck'].includes(obj.type))           hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
-                if (hit) { startDrag('object', i, obj.x, obj.y); return; }
+                else if (['carrier', 'boat', 'pilot_boat', 'salvage_tug', 'submarine'].includes(obj.type))
+                    hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
+                else if (['lighthouse', 'research_platform', 'wind_turbine'].includes(obj.type))
+                    hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
+                else if (['plane_wreck', 'sailboat_broken', 'ornithopter_wreck'].includes(obj.type))
+                    hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
+                if (hit) {
+                    startDrag('object', i, obj.x, obj.y);
+                    return;
+                }
             }
         }
 
@@ -1103,18 +1194,17 @@ export const initUI = () => {
 
     window.addEventListener('mousemove', e => {
         if (state.isDraggingItem) {
-            if (Math.hypot(e.clientX - state.dragStartMX, e.clientY - state.dragStartMY) > 3)
-                state.dragHasMoved = true;
+            if (Math.hypot(e.clientX - state.dragStartMX, e.clientY - state.dragStartMY) > 3) state.dragHasMoved = true;
             if (state.dragHasMoved) {
                 const m = getCurrentMission()!;
                 const tSize = (600 / m.gridSize) * state.zoom;
                 const rect = canvas.getBoundingClientRect();
                 const gx = (e.clientX - rect.left) / tSize + state.panX;
-                const gy = (e.clientY - rect.top)  / tSize + state.panY;
+                const gy = (e.clientY - rect.top) / tSize + state.panY;
                 if (state.dragItemType === 'payload')
                     Object.assign(m.payloads[state.dragItemIdx!], { x: Math.round(gx), y: Math.round(gy) });
                 else if (state.dragItemType === 'object')
-                    Object.assign(m.objects[state.dragItemIdx!],  { x: Math.round(gx), y: Math.round(gy) });
+                    Object.assign(m.objects[state.dragItemIdx!], { x: Math.round(gx), y: Math.round(gy) });
                 canvas.style.cursor = 'grabbing';
                 drawMap();
             }
@@ -1173,16 +1263,16 @@ export const initUI = () => {
             } else if (state.dragWasSelected) {
                 // second click on already-selected item → deselect + close popup
                 state.selectedPayloadIdx = null;
-                state.selectedObjectIdx  = null;
+                state.selectedObjectIdx = null;
                 hidePopup();
             } else if (!state.dragHasMoved && state.dragItemType === 'payload' && state.dragItemIdx !== null) {
                 // fresh selection of a payload → show popup near click position
                 showPayloadPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
             }
             state.isDraggingItem = false;
-            state.dragItemType   = null;
-            state.dragItemIdx    = null;
-            state.dragHasMoved   = false;
+            state.dragItemType = null;
+            state.dragItemIdx = null;
+            state.dragHasMoved = false;
             updateCursor();
             drawMap();
             return;
@@ -1225,7 +1315,6 @@ export const initUI = () => {
 
         const data = state.campaign.map((m, i) => {
             state.curIdx = i;
-            console.log('CURR', state.curIdx);
             return {
                 ...m,
                 terrain: typeof m.terrain === 'string' ? m.terrain : compressTerrain(m.terrain),
@@ -1239,8 +1328,12 @@ export const initUI = () => {
 
         state.curIdx = savedIdx;
 
-        const cSubDe = getEl<HTMLTextAreaElement>('c_sublines_de').value.split('\n').filter(l => l.trim());
-        const cSubEn = getEl<HTMLTextAreaElement>('c_sublines_en').value.split('\n').filter(l => l.trim());
+        const cSubDe = getEl<HTMLTextAreaElement>('c_sublines_de')
+            .value.split('\n')
+            .filter(l => l.trim());
+        const cSubEn = getEl<HTMLTextAreaElement>('c_sublines_en')
+            .value.split('\n')
+            .filter(l => l.trim());
         const exportData = {
             type: getEl<HTMLSelectElement>('c_type').value || 'ZEEWOLF_CAMPAIGN',
             campaignTitle: { de: getInput('c_title_de').value, en: getInput('c_title_en').value },
@@ -1271,11 +1364,15 @@ export const initUI = () => {
                 return;
             }
             const ct = parsed.campaignTitle;
-            getInput('c_title_de').value = ct ? (typeof ct === 'string' ? ct : (ct.de || '')) : 'Imported Campaign';
-            getInput('c_title_en').value = ct && typeof ct !== 'string' ? (ct.en || '') : '';
+            getInput('c_title_de').value = ct ? (typeof ct === 'string' ? ct : ct.de || '') : 'Imported Campaign';
+            getInput('c_title_en').value = ct && typeof ct !== 'string' ? ct.en || '' : '';
             const cs: any[] = parsed.campaignSublines || [];
-            getEl<HTMLTextAreaElement>('c_sublines_de').value = cs.map(s => typeof s === 'string' ? s : (s.de || '')).join('\n');
-            getEl<HTMLTextAreaElement>('c_sublines_en').value = cs.map(s => typeof s === 'string' ? '' : (s.en || '')).join('\n');
+            getEl<HTMLTextAreaElement>('c_sublines_de').value = cs
+                .map(s => (typeof s === 'string' ? s : s.de || ''))
+                .join('\n');
+            getEl<HTMLTextAreaElement>('c_sublines_en').value = cs
+                .map(s => (typeof s === 'string' ? '' : s.en || ''))
+                .join('\n');
             getEl<HTMLSelectElement>('c_type').value = parsed.type || 'ZEEWOLF_CAMPAIGN';
             state.type = parsed.type;
             state.campaign = parsed.levels.map((m: any) => {

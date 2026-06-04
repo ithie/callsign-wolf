@@ -2,42 +2,39 @@ import { mount, show } from './pause-overlay';
 
 export const Standard = () => {
     mount({
-        isMusicEnabled:  () => true,
+        isMusicEnabled: () => true,
         setMusicEnabled: (_v: boolean) => {},
-        isSfxEnabled:    () => true,
-        setSfxEnabled:   (_v: boolean) => {},
-        isTouchDevice:   () => false,
-        onPause:  () => {},
+        isSfxEnabled: () => true,
+        setSfxEnabled: (_v: boolean) => {},
+        onPause: () => {},
         onResume: () => {},
-        onAbort:  () => {},
+        onAbort: () => {},
     });
     show();
 };
 
 export const AllesStumm = () => {
     mount({
-        isMusicEnabled:  () => false,
+        isMusicEnabled: () => false,
         setMusicEnabled: (_v: boolean) => {},
-        isSfxEnabled:    () => false,
-        setSfxEnabled:   (_v: boolean) => {},
-        isTouchDevice:   () => false,
-        onPause:  () => {},
+        isSfxEnabled: () => false,
+        setSfxEnabled: (_v: boolean) => {},
+        onPause: () => {},
         onResume: () => {},
-        onAbort:  () => {},
+        onAbort: () => {},
     });
     show();
 };
 
 export const TouchHeading = () => {
     mount({
-        isMusicEnabled:  () => true,
+        isMusicEnabled: () => true,
         setMusicEnabled: (_v: boolean) => {},
-        isSfxEnabled:    () => true,
-        setSfxEnabled:   (_v: boolean) => {},
-        isTouchDevice:   () => true,
-        onPause:  () => {},
+        isSfxEnabled: () => true,
+        setSfxEnabled: (_v: boolean) => {},
+        onPause: () => {},
         onResume: () => {},
-        onAbort:  () => {},
+        onAbort: () => {},
     });
     show();
 };

@@ -123,8 +123,8 @@ final class GameControlOverlay: UIView {
         let wd = tutorialDimmed.contains("pitch-wheel")     ? 0.15 as CGFloat : 1.0
         let dd = tutorialDimmed.contains("deliver-toggle")  ? 0.15 as CGFloat : 1.0
 
-        _withDim(ld) { drawJoystick(center: leftCenter,  joy: leftJoy,  safezoneStyle: .fourSector) }
-        _withDim(rd) { drawJoystick(center: rightCenter, joy: rightJoy, safezoneStyle: .axisCross) }
+        _withDim(ld) { drawJoystick(center: leftCenter,  joy: leftJoy) }
+        _withDim(rd) { drawJoystick(center: rightCenter, joy: rightJoy) }
         _withDim(wd) { drawWinchRocker() }
         _withDim(dd) { drawDeliverToggle() }
 
@@ -142,21 +142,12 @@ final class GameControlOverlay: UIView {
         ctx.restoreGState()
     }
 
-    private enum SafezoneStyle { case fourSector, axisCross }
-
     // ── Joystick ──────────────────────────────────────────────────────────────────
-    private func drawJoystick(center: CGPoint, joy: JoyState, safezoneStyle: SafezoneStyle) {
+    private func drawJoystick(center: CGPoint, joy: JoyState) {
         let r    = joyRadius
         let circ = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
 
-        switch safezoneStyle {
-        case .fourSector:
-            drawSectors(center: center, radius: r,
-                        starts: [-45, 135], span: 90, alpha: 0.10)
-        case .axisCross:
-            drawSectors(center: center, radius: r,
-                        starts: [235, 55, -35, 145], span: 70, alpha: 0.13)
-        }
+        drawSectors(center: center, radius: r, starts: [-45, 135], span: 90, alpha: 0.10)
 
         cFill.setFill();   UIBezierPath(ovalIn: circ).fill()
         let ring = UIBezierPath(ovalIn: circ); ring.lineWidth = 1; cBorder.setStroke(); ring.stroke()
@@ -397,13 +388,29 @@ final class GameControlOverlay: UIView {
 
     // MARK: - JS notification (called from display link, max 60fps)
 
+    private struct JoyMapping { let up, down, left, right: String }
+    private let _leftMap  = JoyMapping(up: "KeyW",    down: "KeyS",     left: "ArrowLeft",  right: "ArrowRight")
+    private let _rightMap = JoyMapping(up: "ArrowUp", down: "ArrowDown", left: "KeyA",       right: "KeyD")
+
+    private func _joyKey(_ dx: CGFloat, _ dy: CGFloat, map: JoyMapping) -> String? {
+        guard hypot(dx, dy) > joyRadius * 0.18 else { return nil }
+        let deg = atan2(dy, dx) * 180 / .pi
+        if deg >= -45  && deg <  45  { return map.right }
+        if deg >=  45  && deg < 135  { return map.down  }
+        if deg >= -135 && deg < -45  { return map.up    }
+        return map.left
+    }
+
     private func _sendControlsToJS() {
-        let jr   = joyRadius
+        let lk = leftJoy.active  ? _joyKey(leftJoy.dx,  leftJoy.dy,  map: _leftMap)  : nil
+        let rk = rightJoy.active ? _joyKey(rightJoy.dx, rightJoy.dy, map: _rightMap) : nil
         let wDy: CGFloat = winch.active ? (winch.isUp ? -30 : 30) : 0
+        let lkStr = lk.map { "\"\($0)\"" } ?? "null"
+        let rkStr = rk.map { "\"\($0)\"" } ?? "null"
         let js = """
         window.__nativeControls && window.__nativeControls({
-          leftJoy:    {dx:\(leftJoy.dx),dy:\(leftJoy.dy),jr:\(jr),active:\(leftJoy.active)},
-          rightJoy:   {dx:\(rightJoy.dx),dy:\(rightJoy.dy),jr:\(jr),active:\(rightJoy.active)},
+          leftKey:    \(lkStr),
+          rightKey:   \(rkStr),
           pitchWheel: {dy:\(wDy),active:\(winch.active)},
           deliverBtn: \(deliverPressed)
         })

@@ -1,6 +1,14 @@
 import './settings.css';
 import { I18N, LANG, setLanguage } from '../../i18n';
-import { getRank, encodeSession, decodeSession, getCampaignsDone, getMissionsDone, STORAGE_KEY, type PlayerSession } from '../../session';
+import {
+    getRank,
+    encodeSession,
+    decodeSession,
+    getCampaignsDone,
+    getMissionsDone,
+    STORAGE_KEY,
+    type PlayerSession,
+} from '../../session';
 import { storageRemove } from '../../storage';
 import { rankBadgeHtml } from '../rankup/rankup';
 
@@ -8,7 +16,6 @@ type Deps = {
     getSession: () => PlayerSession;
     saveSession: (s: PlayerSession) => void;
     getRankMissions: () => number;
-    isTouchDevice: () => boolean;
     isMusicEnabled: () => boolean;
     setMusicEnabled: (v: boolean) => void;
     isSfxEnabled: () => boolean;
@@ -77,27 +84,49 @@ export const mount = () => {
 
     document.getElementById('apply-save-code-btn')!.addEventListener('click', applySaveCode);
     document.getElementById('delete-session-btn')!.addEventListener('click', deleteSessionData);
-    document.getElementById('music-on-btn')!.addEventListener('click', () => { _deps.setMusicEnabled(true);  _refreshAudioButtons(); });
-    document.getElementById('music-off-btn')!.addEventListener('click', () => { _deps.setMusicEnabled(false); _refreshAudioButtons(); });
-    document.getElementById('sfx-on-btn')!.addEventListener('click', () => { _deps.setSfxEnabled(true);  _refreshAudioButtons(); });
-    document.getElementById('sfx-off-btn')!.addEventListener('click', () => { _deps.setSfxEnabled(false); _refreshAudioButtons(); });
-    document.getElementById('lang-de-btn')!.addEventListener('click', () => { setLanguage('de'); show(); });
-    document.getElementById('lang-en-btn')!.addEventListener('click', () => { setLanguage('en'); show(); });
+    document.getElementById('music-on-btn')!.addEventListener('click', () => {
+        _deps.setMusicEnabled(true);
+        _refreshAudioButtons();
+    });
+    document.getElementById('music-off-btn')!.addEventListener('click', () => {
+        _deps.setMusicEnabled(false);
+        _refreshAudioButtons();
+    });
+    document.getElementById('sfx-on-btn')!.addEventListener('click', () => {
+        _deps.setSfxEnabled(true);
+        _refreshAudioButtons();
+    });
+    document.getElementById('sfx-off-btn')!.addEventListener('click', () => {
+        _deps.setSfxEnabled(false);
+        _refreshAudioButtons();
+    });
+    document.getElementById('lang-de-btn')!.addEventListener('click', () => {
+        setLanguage('de');
+        show();
+    });
+    document.getElementById('lang-en-btn')!.addEventListener('click', () => {
+        setLanguage('en');
+        show();
+    });
 };
 
 const HL = 'var(--accent, #4af)';
 
 const _refreshAudioButtons = () => {
-    const musicOn  = document.getElementById('music-on-btn')  as HTMLButtonElement;
+    const musicOn = document.getElementById('music-on-btn') as HTMLButtonElement;
     const musicOff = document.getElementById('music-off-btn') as HTMLButtonElement;
-    const sfxOn    = document.getElementById('sfx-on-btn')    as HTMLButtonElement;
-    const sfxOff   = document.getElementById('sfx-off-btn')   as HTMLButtonElement;
+    const sfxOn = document.getElementById('sfx-on-btn') as HTMLButtonElement;
+    const sfxOff = document.getElementById('sfx-off-btn') as HTMLButtonElement;
     const music = _deps.isMusicEnabled();
-    const sfx   = _deps.isSfxEnabled();
-    musicOn.style.borderColor  = music ? HL : '';  musicOn.style.color  = music ? HL : '';
-    musicOff.style.borderColor = music ? '' : HL;  musicOff.style.color = music ? '' : HL;
-    sfxOn.style.borderColor    = sfx   ? HL : '';  sfxOn.style.color    = sfx   ? HL : '';
-    sfxOff.style.borderColor   = sfx   ? '' : HL;  sfxOff.style.color   = sfx   ? '' : HL;
+    const sfx = _deps.isSfxEnabled();
+    musicOn.style.borderColor = music ? HL : '';
+    musicOn.style.color = music ? HL : '';
+    musicOff.style.borderColor = music ? '' : HL;
+    musicOff.style.color = music ? '' : HL;
+    sfxOn.style.borderColor = sfx ? HL : '';
+    sfxOn.style.color = sfx ? HL : '';
+    sfxOff.style.borderColor = sfx ? '' : HL;
+    sfxOff.style.color = sfx ? '' : HL;
 };
 
 const _refreshLangButtons = () => {
@@ -105,16 +134,19 @@ const _refreshLangButtons = () => {
     const en = document.getElementById('lang-en-btn') as HTMLButtonElement | null;
     if (!de || !en) return;
     de.style.borderColor = LANG === 'de' ? HL : '';
-    de.style.color       = LANG === 'de' ? HL : '';
+    de.style.color = LANG === 'de' ? HL : '';
     en.style.borderColor = LANG === 'en' ? HL : '';
-    en.style.color       = LANG === 'en' ? HL : '';
+    en.style.color = LANG === 'en' ? HL : '';
 };
 
 const _refreshSettingsScreen = () => {
     const session = _deps.getSession();
     const rank = getRank(session, _deps.getRankMissions());
     (document.getElementById('settings-badge') as HTMLElement).innerHTML = rankBadgeHtml(rank);
-    (document.getElementById('settings-code-display') as HTMLElement).textContent = encodeSession(session, _deps.getRankMissions());
+    (document.getElementById('settings-code-display') as HTMLElement).textContent = encodeSession(
+        session,
+        _deps.getRankMissions()
+    );
     const statsEl = document.getElementById('settings-stats') as HTMLElement;
     statsEl.textContent = I18N.STATS(getCampaignsDone(session), getMissionsDone(session));
 };
@@ -176,4 +208,3 @@ const _confirmDeleteSession = () => {
     storageRemove(STORAGE_KEY);
     setTimeout(() => window.location.reload(), 1200);
 };
-

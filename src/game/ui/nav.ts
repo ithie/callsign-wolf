@@ -9,7 +9,7 @@ export const NAV_SCREENS = [
     'legal-screen',
 ] as const;
 
-export type NavScreen = typeof NAV_SCREENS[number];
+export type NavScreen = (typeof NAV_SCREENS)[number];
 
 /** Show one nav screen and hide all others. Pass null to hide all (game active). */
 export const showScreen = (id: NavScreen | null): void => {
@@ -24,7 +24,11 @@ export const showScreen = (id: NavScreen | null): void => {
         }
     });
     if (id !== null) {
-        window.webkit?.messageHandlers?.controls?.postMessage({ type: 'showControls', visible: false });
+        window.webkit?.messageHandlers?.controls?.postMessage({
+            type: 'showControls',
+            visible: false,
+            debug: `ID ${id} showScreen`,
+        });
     }
 };
 

@@ -8,12 +8,14 @@ const getObjectByType = (type: string) => getObjects().find((o: any) => o.type =
 const getObjectsByType = (type: string) => getObjects().filter((o: any) => o.type === type);
 
 export const applyVesselOffset = (vessel: any, localX: number, localY: number) => {
-    const c = Math.cos(vessel.angle), s = Math.sin(vessel.angle);
+    const c = Math.cos(vessel.angle),
+        s = Math.sin(vessel.angle);
     return { x: vessel.x + localX * c - localY * s, y: vessel.y + localX * s + localY * c };
 };
 
 export const resolveAttachTo = (attachTo: any): { x: number; y: number; z: number } | null => {
-    const lx = attachTo.localX ?? 0, ly = attachTo.localY ?? 0;
+    const lx = attachTo.localX ?? 0,
+        ly = attachTo.localY ?? 0;
     switch (attachTo.objectType) {
         case VESSEL.CARRIER:
             if (!G.CARRIER || G.CARRIER.x === undefined) return null;
@@ -63,16 +65,20 @@ const initVessel = (obj: any, vessel: any, seaTimeRef: { t: number }) => {
         vessel.y = vessel.centerY + Math.sin(t0) * vessel.radiusY;
         vessel.angle = Math.atan2(vessel.radiusY * Math.cos(t0), -vessel.radiusX * Math.sin(t0));
     } else if (obj.path === VESSEL_PATH.STRAIGHT) {
-        vessel.x = obj.x; vessel.y = obj.y; vessel.angle = angleRad;
-        vessel.lineStartX = obj.x; vessel.lineStartY = obj.y;
-        vessel.lineDirX = Math.cos(angleRad); vessel.lineDirY = Math.sin(angleRad);
+        vessel.x = obj.x;
+        vessel.y = obj.y;
+        vessel.angle = angleRad;
+        vessel.lineStartX = obj.x;
+        vessel.lineStartY = obj.y;
+        vessel.lineDirX = Math.cos(angleRad);
+        vessel.lineDirY = Math.sin(angleRad);
         vessel.lineProgress = 0;
-        console.log('initVessel straight:', obj.type, 'angle:', obj.angle, 'angleRad:', angleRad,
-            'lineDirX:', vessel.lineDirX, 'lineDirY:', vessel.lineDirY);
     } else {
-        vessel.x = obj.x; vessel.y = obj.y; vessel.angle = angleRad;
+        vessel.x = obj.x;
+        vessel.y = obj.y;
+        vessel.angle = angleRad;
     }
-}
+};
 
 // Shared straight/circle path update — used by both boats and submarines
 const updateVesselPath = (v: any, dt: number) => {
@@ -80,16 +86,20 @@ const updateVesselPath = (v: any, dt: number) => {
         v.lineProgress += v.speed * dt;
         const nx = v.lineStartX + v.lineDirX * v.lineProgress;
         const ny = v.lineStartY + v.lineDirY * v.lineProgress;
-        const dx = nx - v.x, dy = ny - v.y;
+        const dx = nx - v.x,
+            dy = ny - v.y;
         if (Math.abs(dx) > 0.00001 || Math.abs(dy) > 0.00001) v.angle = Math.atan2(dy, dx);
-        v.x = nx; v.y = ny;
+        v.x = nx;
+        v.y = ny;
     } else if (v.path === VESSEL_PATH.CIRCLE) {
         v._seaTime += v.speed * dt;
         const nx = v.centerX + Math.cos(v._seaTime) * v.radiusX;
         const ny = v.centerY + Math.sin(v._seaTime) * v.radiusY;
-        const dx = nx - v.x, dy = ny - v.y;
+        const dx = nx - v.x,
+            dy = ny - v.y;
         if (Math.abs(dx) > 0.00001 || Math.abs(dy) > 0.00001) v.angle = Math.atan2(dy, dx);
-        v.x = nx; v.y = ny;
+        v.x = nx;
+        v.y = ny;
     }
 };
 
@@ -102,9 +112,11 @@ export const updateCarrierPos = (CARRIER: any, seaTimeRef: any, forceUpdate = fa
             CARRIER.lineProgress += CARRIER.speed * dt;
             const nx = CARRIER.lineStartX + CARRIER.lineDirX * CARRIER.lineProgress;
             const ny = CARRIER.lineStartY + CARRIER.lineDirY * CARRIER.lineProgress;
-            const dx = nx - CARRIER.x, dy = ny - CARRIER.y;
+            const dx = nx - CARRIER.x,
+                dy = ny - CARRIER.y;
             if (Math.abs(dx) > 0.00001 || Math.abs(dy) > 0.00001) CARRIER.angle = Math.atan2(dy, dx);
-            CARRIER.x = nx; CARRIER.y = ny;
+            CARRIER.x = nx;
+            CARRIER.y = ny;
         }
     } else {
         if (!forceUpdate) seaTimeRef.t += CARRIER.speed * dt;
@@ -116,97 +128,170 @@ export const updateCarrierPos = (CARRIER: any, seaTimeRef: any, forceUpdate = fa
                 -CARRIER.radiusX * Math.sin(seaTimeRef.t)
             );
         } else {
-            const dx = nx - CARRIER.x, dy = ny - CARRIER.y;
+            const dx = nx - CARRIER.x,
+                dy = ny - CARRIER.y;
             if (Math.abs(dx) > 0.00001 || Math.abs(dy) > 0.00001) CARRIER.angle = Math.atan2(dy, dx);
         }
-        CARRIER.x = nx; CARRIER.y = ny;
+        CARRIER.x = nx;
+        CARRIER.y = ny;
     }
-}
+};
 
 export const initCarrierFromMission = () => {
     const carrierObj = getObjectByType(VESSEL.CARRIER);
     if (!carrierObj) return;
     const seaTimeRef = {
-        get t() { return G.seaTime; },
-        set t(v) { G.seaTime = v; },
+        get t() {
+            return G.seaTime;
+        },
+        set t(v) {
+            G.seaTime = v;
+        },
     };
     initVessel(carrierObj, G.CARRIER, seaTimeRef);
     updateCarrierPos(G.CARRIER, seaTimeRef, true);
-}
+};
 
 export const initSubmarinesFromMission = () => {
     const allObjects = getObjects();
     G.SUBMARINES = getObjectsByType(VESSEL.SUBMARINE).map((obj: any) => {
         const s = {
-            x: obj.x, y: obj.y, angle: 0, path: VESSEL_PATH.STATIC, speed: 0,
-            w: 0.7, l: 5.4, zDeck: 0.25, zHull: 0,
-            radiusX: 0, radiusY: 0, centerX: 0, centerY: 0,
-            lineStartX: 0, lineStartY: 0, lineDirX: 0, lineDirY: 0, lineProgress: 0,
-            _seaTime: 0, _objIdx: allObjects.indexOf(obj),
+            x: obj.x,
+            y: obj.y,
+            angle: 0,
+            path: VESSEL_PATH.STATIC,
+            speed: 0,
+            w: 0.7,
+            l: 5.4,
+            zDeck: 0.25,
+            zHull: 0,
+            radiusX: 0,
+            radiusY: 0,
+            centerX: 0,
+            centerY: 0,
+            lineStartX: 0,
+            lineStartY: 0,
+            lineDirX: 0,
+            lineDirY: 0,
+            lineProgress: 0,
+            _seaTime: 0,
+            _objIdx: allObjects.indexOf(obj),
         };
-        const st = { get t() { return s._seaTime; }, set t(v) { s._seaTime = v; } };
+        const st = {
+            get t() {
+                return s._seaTime;
+            },
+            set t(v) {
+                s._seaTime = v;
+            },
+        };
         initVessel(obj, s, st);
         // initVessel overwrites w/l/zDeck with generic boat values — restore submarine-specific ones
-        s.w = 0.7; s.l = 5.4; s.zDeck = G.waterLevel + 0.25;
+        s.w = 0.7;
+        s.l = 5.4;
+        s.zDeck = G.waterLevel + 0.25;
         return s;
     });
-}
+};
 
-export const updateSubmarines = (SUBMARINES: any[], dt: number) =>
-    SUBMARINES.forEach(s => updateVesselPath(s, dt));
+export const updateSubmarines = (SUBMARINES: any[], dt: number) => SUBMARINES.forEach(s => updateVesselPath(s, dt));
 
 const BOAT_CFG: Record<string, { w: number; l: number; zDeck: number }> = {
-    boat:        { w: 1.5, l: 3.0, zDeck: 0.35 },
-    pilot_boat:  { w: 0.8, l: 2.0, zDeck: 0.30 },
-    salvage_tug: { w: 1.2, l: 3.5, zDeck: 1.20 },
+    boat: { w: 1.5, l: 3.0, zDeck: 0.35 },
+    pilot_boat: { w: 0.8, l: 2.0, zDeck: 0.3 },
+    salvage_tug: { w: 1.2, l: 3.5, zDeck: 1.2 },
 };
 
 export const initBoatsFromMission = () => {
     const allObjects = getObjects();
     const boatTypes = [VESSEL.BOAT, VESSEL.PILOT_BOAT, VESSEL.SALVAGE_TUG];
-    G.BOATS = boatTypes.flatMap(type => getObjectsByType(type)).map((obj: any) => {
-        const cfg = BOAT_CFG[obj.type] ?? BOAT_CFG.boat;
-        const b = {
-            x: obj.x, y: obj.y, objectType: obj.type as string, angle: 0, path: VESSEL_PATH.STATIC, speed: 0,
-            w: cfg.w, l: cfg.l, zDeck: cfg.zDeck, zHull: 0.15,
-            radiusX: 0, radiusY: 0, centerX: 0, centerY: 0,
-            lineStartX: 0, lineStartY: 0, lineDirX: 0, lineDirY: 0, lineProgress: 0,
-            _seaTime: 0, _objIdx: allObjects.indexOf(obj),
-        };
-        const st = { get t() { return b._seaTime; }, set t(v) { b._seaTime = v; } };
-        initVessel(obj, b, st);
-        // initVessel overwrites w/l/zDeck with generic values — restore per-type dimensions
-        b.w = cfg.w; b.l = cfg.l; b.zDeck = G.waterLevel + cfg.zDeck; b.zHull = G.waterLevel + 0.15;
-        return b;
-    });
-}
+    G.BOATS = boatTypes
+        .flatMap(type => getObjectsByType(type))
+        .map((obj: any) => {
+            const cfg = BOAT_CFG[obj.type] ?? BOAT_CFG.boat;
+            const b = {
+                x: obj.x,
+                y: obj.y,
+                objectType: obj.type as string,
+                angle: 0,
+                path: VESSEL_PATH.STATIC,
+                speed: 0,
+                w: cfg.w,
+                l: cfg.l,
+                zDeck: cfg.zDeck,
+                zHull: 0.15,
+                radiusX: 0,
+                radiusY: 0,
+                centerX: 0,
+                centerY: 0,
+                lineStartX: 0,
+                lineStartY: 0,
+                lineDirX: 0,
+                lineDirY: 0,
+                lineProgress: 0,
+                _seaTime: 0,
+                _objIdx: allObjects.indexOf(obj),
+            };
+            const st = {
+                get t() {
+                    return b._seaTime;
+                },
+                set t(v) {
+                    b._seaTime = v;
+                },
+            };
+            initVessel(obj, b, st);
+            // initVessel overwrites w/l/zDeck with generic values — restore per-type dimensions
+            b.w = cfg.w;
+            b.l = cfg.l;
+            b.zDeck = G.waterLevel + cfg.zDeck;
+            b.zHull = G.waterLevel + 0.15;
+            return b;
+        });
+};
 
-export const updateBoats = (BOATS: any[], dt: number) =>
-    BOATS.forEach(b => updateVesselPath(b, dt));
+export const updateBoats = (BOATS: any[], dt: number) => BOATS.forEach(b => updateVesselPath(b, dt));
 
 export const initStaticObjectsFromMission = () => {
     const allObjects = getObjects();
     G.RESEARCH_PLATFORMS = getObjectsByType(VESSEL.RESEARCH_PLATFORM).map((obj: any) => ({
-        x: obj.x, y: obj.y, angle: 0,
+        x: obj.x,
+        y: obj.y,
+        angle: 0,
         zDeck: G.waterLevel + 6.51,
     }));
     G.WIND_TURBINES = getObjectsByType(VESSEL.WIND_TURBINE).map((obj: any) => ({
-        x: obj.x, y: obj.y, angle: 0,
+        x: obj.x,
+        y: obj.y,
+        angle: 0,
         spinning: obj.spinning ?? false,
         rescueZones: (obj.rescueZones || []) as any[],
     }));
     G.PLANE_WRECKS = getObjectsByType(VESSEL.PLANE_WRECK).map((obj: any) => ({
-        x: obj.x, y: obj.y, angle: obj.angle ?? 0,
+        x: obj.x,
+        y: obj.y,
+        angle: obj.angle ?? 0,
     }));
     getObjectsByType(VESSEL.ORNITHOPTER_WRECK).forEach((obj: any) => {
         const gz = getGround(obj.x, obj.y, G.points, G.CARRIER);
-        G.payloads.push({ type: PAYLOAD.ORNI_WRECK, x: obj.x, y: obj.y, z: gz, angle: obj.angle ?? 0, hanging: false, rescued: false, deliverTo: VESSEL.PAD });
+        G.payloads.push({
+            type: PAYLOAD.ORNI_WRECK,
+            x: obj.x,
+            y: obj.y,
+            z: gz,
+            angle: obj.angle ?? 0,
+            hanging: false,
+            rescued: false,
+            deliverTo: VESSEL.PAD,
+        });
     });
     G.BROKEN_SAILBOATS = getObjectsByType(VESSEL.SAILBOAT_BROKEN).map((obj: any) => ({
-        x: obj.x, y: obj.y, angle: obj.angle ?? 0,
+        x: obj.x,
+        y: obj.y,
+        angle: obj.angle ?? 0,
         _objIdx: allObjects.indexOf(obj),
     }));
-}
+};
 
 const _SURVIVOR_OUTFITS = [
     { shirt: '#e74c3c', pants: '#2c3e50' },
@@ -220,22 +305,32 @@ const _SURVIVOR_OUTFITS = [
 ];
 
 export const initPayloadEntry = (p: any): any => {
-    let px = p.x, py = p.y, pz: number | null = null;
+    let px = p.x,
+        py = p.y,
+        pz: number | null = null;
     if (p.attachTo) {
         const resolved = resolveAttachTo(p.attachTo);
-        if (resolved) { px = resolved.x; py = resolved.y; pz = resolved.z; }
+        if (resolved) {
+            px = resolved.x;
+            py = resolved.y;
+            pz = resolved.z;
+        }
     }
     return {
         ...p,
-        x: px, y: py,
+        x: px,
+        y: py,
         z: pz ?? getGround(px, py, G.points, G.CARRIER),
-        vx: 0, vy: 0,
-        rescued: false, hanging: false,
+        vx: 0,
+        vy: 0,
+        rescued: false,
+        hanging: false,
         attachTo: p.attachTo || null,
         npcTarget: p.npcTarget ?? false,
-        outfitColors: p.type === PAYLOAD.PERSON
-            ? (p.outfitColors ?? _SURVIVOR_OUTFITS[Math.floor(Math.random() * _SURVIVOR_OUTFITS.length)])
-            : null,
+        outfitColors:
+            p.type === PAYLOAD.PERSON
+                ? (p.outfitColors ?? _SURVIVOR_OUTFITS[Math.floor(Math.random() * _SURVIVOR_OUTFITS.length)])
+                : null,
     };
 };
 
@@ -261,4 +356,4 @@ export const initPayloadsFromMission = () => {
     G.goalCount = G.payloads.filter((p: any) => !p.npcTarget).length;
     G.totalRescued = 0;
     G.activePayload = null;
-}
+};

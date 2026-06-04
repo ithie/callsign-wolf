@@ -7,7 +7,10 @@ vi.mock('../../game/render', () => ({
 }));
 // render-config evaluates matchMedia at module level — provide constants directly
 vi.mock('../../game/render-config', () => ({
-    tileW: 64, tileH: 32, stepH: 16, CANVAS_SCALE: 1, isTouchDevice: false,
+    tileW: 64,
+    tileH: 32,
+    stepH: 16,
+    CANVAS_SCALE: 1,
 }));
 
 // ─── Imports ──────────────────────────────────────────────────────────────────
@@ -17,7 +20,13 @@ import * as PauseOverlay from '../../game/ui/pause-overlay/pause-overlay';
 import * as TouchControls from '../../game/ui/touch-controls/touch-controls';
 import { createSwipeCarousel } from '../../game/ui/swipe-carousel/swipe-carousel';
 import * as MissionSelect from '../../game/ui/mission-select/mission-select';
-import { mountMinimap, showMinimap, updateMinimap, initMinimapTerrain, type MinimapData } from '../../game/ui/minimap/minimap';
+import {
+    mountMinimap,
+    showMinimap,
+    updateMinimap,
+    initMinimapTerrain,
+    type MinimapData,
+} from '../../game/ui/minimap/minimap';
 import { startMenuParticles, stopMenuParticles } from '../../game/ui/menu-particles/menu-particles';
 import { createHud } from '../../game/ui/hud/hud';
 import * as HeliSelect from '../../game/ui/heli-select/heli-select';
@@ -29,52 +38,88 @@ import type { GameState } from '../../game/state';
 
 // ─── Canvas & AudioContext stubs ──────────────────────────────────────────────
 const makeCtx2d = () => ({
-    fillRect: vi.fn(), clearRect: vi.fn(), beginPath: vi.fn(),
-    moveTo: vi.fn(), lineTo: vi.fn(), arc: vi.fn(), fill: vi.fn(),
-    stroke: vi.fn(), save: vi.fn(), restore: vi.fn(),
-    scale: vi.fn(), translate: vi.fn(), rotate: vi.fn(), setTransform: vi.fn(),
-    fillText: vi.fn(), strokeText: vi.fn(), strokeRect: vi.fn(),
+    fillRect: vi.fn(),
+    clearRect: vi.fn(),
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    arc: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    save: vi.fn(),
+    restore: vi.fn(),
+    scale: vi.fn(),
+    translate: vi.fn(),
+    rotate: vi.fn(),
+    setTransform: vi.fn(),
+    fillText: vi.fn(),
+    strokeText: vi.fn(),
+    strokeRect: vi.fn(),
     measureText: vi.fn(() => ({ width: 0 })),
     drawImage: vi.fn(),
     getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4) })),
-    putImageData: vi.fn(), setLineDash: vi.fn(), closePath: vi.fn(),
-    clip: vi.fn(), quadraticCurveTo: vi.fn(), bezierCurveTo: vi.fn(),
+    putImageData: vi.fn(),
+    setLineDash: vi.fn(),
+    closePath: vi.fn(),
+    clip: vi.fn(),
+    quadraticCurveTo: vi.fn(),
+    bezierCurveTo: vi.fn(),
     createLinearGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
     createRadialGradient: vi.fn(() => ({ addColorStop: vi.fn() })),
-    fillStyle: '', strokeStyle: '', lineWidth: 1, globalAlpha: 1,
-    shadowBlur: 0, shadowColor: '', font: '', textAlign: 'left' as CanvasTextAlign,
+    fillStyle: '',
+    strokeStyle: '',
+    lineWidth: 1,
+    globalAlpha: 1,
+    shadowBlur: 0,
+    shadowColor: '',
+    font: '',
+    textAlign: 'left' as CanvasTextAlign,
 });
 
 beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
         writable: true,
         value: vi.fn((query: string) => ({
-            matches: false, media: query, onchange: null,
-            addListener: vi.fn(), removeListener: vi.fn(),
-            addEventListener: vi.fn(), removeEventListener: vi.fn(),
+            matches: false,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
             dispatchEvent: vi.fn(),
         })),
     });
     HTMLCanvasElement.prototype.getContext = vi.fn(() => makeCtx2d()) as any;
-    vi.stubGlobal('AudioContext', vi.fn(() => ({
-        createOscillator: vi.fn(() => ({
-            connect: vi.fn(), frequency: { value: 880 },
-            start: vi.fn(), stop: vi.fn(), onended: null,
-        })),
-        createGain: vi.fn(() => ({
-            connect: vi.fn(),
-            gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
-        })),
-        close: vi.fn(), currentTime: 0, destination: {},
-    })));
+    vi.stubGlobal(
+        'AudioContext',
+        vi.fn(() => ({
+            createOscillator: vi.fn(() => ({
+                connect: vi.fn(),
+                frequency: { value: 880 },
+                start: vi.fn(),
+                stop: vi.fn(),
+                onended: null,
+            })),
+            createGain: vi.fn(() => ({
+                connect: vi.fn(),
+                gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+            })),
+            close: vi.fn(),
+            currentTime: 0,
+            destination: {},
+        }))
+    );
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const snap = (id: string) => expect(document.getElementById(id)!.innerHTML).toMatchSnapshot();
 
 const mkSession = (o: Partial<PlayerSession> = {}): PlayerSession => ({
-    playerName: 'WOLF', highestUnlockedCampaignIndex: 0,
-    campaignProgress: {}, rankOverride: 0,
+    playerName: 'WOLF',
+    highestUnlockedCampaignIndex: 0,
+    campaignProgress: {},
+    rankOverride: 0,
     ...o,
 });
 
@@ -86,43 +131,62 @@ const mkCampaign = (levels = 1): CampaignExport => ({
         headline: `Mission ${i + 1}`,
         sublines: [`Sublevel ${i + 1}`],
         briefing: 'Briefing text',
-        terrain: '', gridSize: 10, foliage: '',
-        objects: [], waterLevel: 0,
+        terrain: '',
+        gridSize: 10,
+        foliage: '',
+        objects: [],
+        waterLevel: 0,
     })) as any,
 });
 
 const mkPauseDeps = () => ({
-    isMusicEnabled: vi.fn(() => true),   setMusicEnabled: vi.fn(),
-    isSfxEnabled:   vi.fn(() => true),   setSfxEnabled:   vi.fn(),
+    isMusicEnabled: vi.fn(() => true),
+    setMusicEnabled: vi.fn(),
+    isSfxEnabled: vi.fn(() => true),
+    setSfxEnabled: vi.fn(),
     getControlMode: vi.fn(() => 'heading' as const),
     setControlMode: vi.fn(),
-    isTouchDevice: vi.fn(() => false),
-    onPause: vi.fn(), onResume: vi.fn(), onAbort: vi.fn(),
+    onPause: vi.fn(),
+    onResume: vi.fn(),
+    onAbort: vi.fn(),
 });
 
-const mkGameState = (heliOverrides: Partial<GameState['heli']> = {}): GameState => ({
-    heli: {
-        x: 0, y: 0, z: 0, angle: 0,
-        vx: 0, vy: 0, vz: 0,
-        fuel: 100, winch: 0,
-        engineOn: false, inAir: false,
-        onboard: 0, maxLoad: 4,
-        ...heliOverrides,
-    } as any,
-    payloads: [] as any,
-    START_POS: { x: 0, y: 0 },
-} as unknown as GameState);
+const mkGameState = (heliOverrides: Partial<GameState['heli']> = {}): GameState =>
+    ({
+        heli: {
+            x: 0,
+            y: 0,
+            z: 0,
+            angle: 0,
+            vx: 0,
+            vy: 0,
+            vz: 0,
+            fuel: 100,
+            winch: 0,
+            engineOn: false,
+            inAir: false,
+            onboard: 0,
+            maxLoad: 4,
+            ...heliOverrides,
+        } as any,
+        payloads: [] as any,
+        START_POS: { x: 0, y: 0 },
+    }) as unknown as GameState;
 
 const mkMinimapData = (): MinimapData => ({
-    gridSize: 10, isTouch: false,
-    pad: null, carrier: null, vessels: [],
+    gridSize: 10,
+    pad: null,
+    carrier: null,
+    vessels: [],
     heli: { x: 5, y: 5, angle: 0 },
     payloads: [],
 });
 
 // ─── legal-screen ─────────────────────────────────────────────────────────────
 describe('legal-screen', () => {
-    beforeEach(() => { document.body.innerHTML = ''; });
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
 
     it('mounts the screen', () => {
         LegalScreen.mount(vi.fn());
@@ -143,7 +207,9 @@ describe('legal-screen', () => {
 
 // ─── loading-screen ───────────────────────────────────────────────────────────
 describe('loading-screen', () => {
-    beforeEach(() => { document.body.innerHTML = ''; });
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
 
     it('shows on creation', () => {
         const h = LoadingScreen.show('Laden...');
@@ -219,12 +285,13 @@ describe('touch-controls', () => {
         expect(postMessage).toHaveBeenCalledWith({ type: 'deliverToggle', on: false });
         delete (window as any).webkit;
     });
-
 });
 
 // ─── swipe-carousel ───────────────────────────────────────────────────────────
 describe('swipe-carousel', () => {
-    beforeEach(() => { document.body.innerHTML = ''; });
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
 
     const makeCard = (item: string) => {
         const el = document.createElement('div');
@@ -259,7 +326,9 @@ describe('swipe-carousel', () => {
 
 // ─── mission-select ───────────────────────────────────────────────────────────
 describe('mission-select', () => {
-    beforeEach(() => { document.body.innerHTML = ''; });
+    beforeEach(() => {
+        document.body.innerHTML = '';
+    });
 
     it('mountMissionSelect creates the element', () => {
         MissionSelect.mount();
@@ -285,10 +354,13 @@ describe('mission-select', () => {
             campaignIndex: 1,
             session: mkSession({
                 campaignProgress: {
-                    '1': { completed: false, missions: [
-                        { completed: true, bestTimeMs: 12345 },
-                        { completed: false, bestTimeMs: null },
-                    ]},
+                    '1': {
+                        completed: false,
+                        missions: [
+                            { completed: true, bestTimeMs: 12345 },
+                            { completed: false, bestTimeMs: null },
+                        ],
+                    },
                 },
             }),
             onSelect: vi.fn(),
@@ -404,10 +476,27 @@ describe('hud', () => {
     it('update renders heli stats', () => {
         hud.showAll(true);
         hud.update({
-            camX: 0, camY: 0, dt: 16,
-            heli: { x: 5, y: 5, z: 3, vx: 0.01, vy: 0, winch: 0, fuel: 75, inAir: true, engineOn: true, onboard: 1, maxLoad: 4 },
+            camX: 0,
+            camY: 0,
+            dt: 16,
+            heli: {
+                x: 5,
+                y: 5,
+                z: 3,
+                vx: 0.01,
+                vy: 0,
+                winch: 0,
+                fuel: 75,
+                inAir: true,
+                engineOn: true,
+                onboard: 1,
+                maxLoad: 4,
+            },
             groundUnderHeli: 0,
-            totalRescued: 2, goalCount: 5, playerName: 'WOLF', deliverMode: false,
+            totalRescued: 2,
+            goalCount: 5,
+            playerName: 'WOLF',
+            deliverMode: false,
             minimap: mkMinimapData(),
         } as any);
         const text = document.getElementById('hud-panel')!.textContent!;
@@ -419,10 +508,27 @@ describe('hud', () => {
     it('fuel display turns red below 20%', () => {
         hud.showAll(true);
         hud.update({
-            camX: 0, camY: 0, dt: 16,
-            heli: { x: 0, y: 0, z: 1, vx: 0, vy: 0, winch: 0, fuel: 15, inAir: true, engineOn: true, onboard: 0, maxLoad: 4 },
+            camX: 0,
+            camY: 0,
+            dt: 16,
+            heli: {
+                x: 0,
+                y: 0,
+                z: 1,
+                vx: 0,
+                vy: 0,
+                winch: 0,
+                fuel: 15,
+                inAir: true,
+                engineOn: true,
+                onboard: 0,
+                maxLoad: 4,
+            },
             groundUnderHeli: 0,
-            totalRescued: 0, goalCount: 3, playerName: '', deliverMode: false,
+            totalRescued: 0,
+            goalCount: 3,
+            playerName: '',
+            deliverMode: false,
             minimap: mkMinimapData(),
         } as any);
         expect(document.getElementById('hud-panel')!.textContent).toContain('FUEL: 15%');
@@ -473,19 +579,19 @@ describe('tutorial', () => {
     });
 
     it('initTutorial starts the tutorial and creates DOM', () => {
-        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
+        initTutorial(mkGameState(), 0, vi.fn(), vi.fn());
         expect(isTutorialRunning()).toBe(true);
         expect(document.getElementById('tutorial-hud')).not.toBeNull();
     });
 
     it('first step text is set after init', () => {
-        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
+        initTutorial(mkGameState(), 0, vi.fn(), vi.fn());
         const text = document.getElementById('tutorial-step-text')!.textContent;
         expect(text!.length).toBeGreaterThan(0);
     });
 
     it('tutorialTick advances when step-1 condition (engineOn) is met', () => {
-        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
+        initTutorial(mkGameState(), 0, vi.fn(), vi.fn());
         tutorialTick(mkGameState({ z: 10 }));
         // After advance the text changes (flashing, then next step)
         expect(isTutorialRunning()).toBe(true);
@@ -493,21 +599,21 @@ describe('tutorial', () => {
     });
 
     it('tutorialTick does not advance when condition is not met', () => {
-        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
+        initTutorial(mkGameState(), 0, vi.fn(), vi.fn());
         const textBefore = document.getElementById('tutorial-step-text')!.textContent;
         tutorialTick(mkGameState({ z: 0 }));
         expect(document.getElementById('tutorial-step-text')!.textContent).toBe(textBefore);
     });
 
     it('destroyTutorial stops the tutorial', () => {
-        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
+        initTutorial(mkGameState(), 0, vi.fn(), vi.fn());
         destroyTutorial();
         expect(isTutorialRunning()).toBe(false);
     });
 
     it('calling initTutorial twice restarts cleanly', () => {
-        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
-        initTutorial(false, mkGameState(), 0, vi.fn(), vi.fn());
+        initTutorial(mkGameState(), 0, vi.fn(), vi.fn());
+        initTutorial(mkGameState(), 0, vi.fn(), vi.fn());
         expect(document.querySelectorAll('#tutorial-hud').length).toBe(1);
         expect(isTutorialRunning()).toBe(true);
     });

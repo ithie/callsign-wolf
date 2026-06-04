@@ -103,6 +103,8 @@ class ViewController: UIViewController {
         migrateCapacitorStorage()
 
         let config = WKWebViewConfiguration()
+        config.allowsInlineMediaPlayback = true
+        config.mediaTypesRequiringUserActionForPlayback = []
         injectNativeStorage(into: config)
 
         let ucc = config.userContentController

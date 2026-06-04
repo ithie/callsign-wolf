@@ -827,7 +827,20 @@
     m.objects.forEach((obj, idx) => {
       const row = document.createElement("div");
       row.style.cssText = "display:flex;align-items:center;gap:6px;margin:3px 0;font-size:11px";
-      const icons = { pad: "\u{1F7E9}", carrier: "\u{1F6A2}", boat: "\u26F5", pilot_boat: "\u{1F6A4}", salvage_tug: "\u{1F6F3}", submarine: "\u{1F93F}", lighthouse: "\u{1F526}", research_platform: "\u{1F3D7}", wind_turbine: "\u{1F300}", plane_wreck: "\u2708\uFE0F", sailboat_broken: "\u26F5", ornithopter_wreck: "\u{1F6F8}" };
+      const icons = {
+        pad: "\u{1F7E9}",
+        carrier: "\u{1F6A2}",
+        boat: "\u26F5",
+        pilot_boat: "\u{1F6A4}",
+        salvage_tug: "\u{1F6F3}",
+        submarine: "\u{1F93F}",
+        lighthouse: "\u{1F526}",
+        research_platform: "\u{1F3D7}",
+        wind_turbine: "\u{1F300}",
+        plane_wreck: "\u2708\uFE0F",
+        sailboat_broken: "\u26F5",
+        ornithopter_wreck: "\u{1F6F8}"
+      };
       const label = document.createElement("span");
       label.style.flex = "1";
       label.innerText = `${icons[obj.type] || "?"} ${obj.type} @ (${obj.x}, ${obj.y})`;
@@ -873,7 +886,10 @@
     const subDe = getEl("m_sublines_de").value.split("\n").filter((l) => l.trim());
     const subEn = getEl("m_sublines_en").value.split("\n").filter((l) => l.trim());
     m.sublines = subDe.map((de, i) => ({ de, en: subEn[i] || "" }));
-    m.briefing = { de: getEl("m_briefing_de").value, en: getEl("m_briefing_en").value };
+    m.briefing = {
+      de: getEl("m_briefing_de").value,
+      en: getEl("m_briefing_en").value
+    };
     m.rain = getInput("m_rain").checked;
     m.night = getInput("m_night").checked;
     m.waterLevel = parseFloat(getInput("m_water_level").value) || 0;
@@ -1016,7 +1032,8 @@
     let nearestIdx = -1, nearestDist = SNAP_RADIUS;
     for (let i = 0; i < m.objects.length; i++) {
       const obj = m.objects[i];
-      if (obj.type !== "carrier" && obj.type !== "boat" && obj.type !== "submarine" && obj.type !== "sailboat_broken") continue;
+      if (obj.type !== "carrier" && obj.type !== "boat" && obj.type !== "submarine" && obj.type !== "sailboat_broken")
+        continue;
       const d = Math.hypot(gx - obj.x, gy - obj.y);
       if (d <= nearestDist) {
         nearestDist = d;
@@ -1025,7 +1042,15 @@
     }
     if (nearestIdx >= 0) {
       const obj = m.objects[nearestIdx];
-      return { type, x: gx, y: gy, attachTo: { objectType: obj.type, objectIdx: nearestIdx } };
+      return {
+        type,
+        x: gx,
+        y: gy,
+        attachTo: {
+          objectType: obj.type,
+          objectIdx: nearestIdx
+        }
+      };
     }
     return { type, x: gx, y: gy };
   };
@@ -1317,7 +1342,8 @@
       if (m.objects.some((o) => o.type === "pad")) opts.push(["pad", "Pad"]);
       if (m.objects.some((o) => o.type === "carrier")) opts.push(["carrier", "Carrier"]);
       if (m.objects.some((o) => o.type === "submarine")) opts.push(["submarine", "U-Boot"]);
-      if (m.objects.some((o) => ["boat", "pilot_boat", "salvage_tug"].includes(o.type))) opts.push(["boat", "Boot"]);
+      if (m.objects.some((o) => ["boat", "pilot_boat", "salvage_tug"].includes(o.type)))
+        opts.push(["boat", "Boot"]);
       opts.forEach(([val, lbl]) => {
         const opt = document.createElement("option");
         opt.value = val;
@@ -1511,7 +1537,23 @@
     document.body.appendChild(cursorEl);
     const cursorCtx = cursorEl.getContext("2d");
     const PAINT_TOOLS = /* @__PURE__ */ new Set(["terrain", "flatten", "foliage"]);
-    const POINT_TOOLS = /* @__PURE__ */ new Set(["pad", "carrier", "boat", "pilot_boat", "salvage_tug", "submarine", "lighthouse", "research_platform", "wind_turbine", "plane_wreck", "sailboat_broken", "ornithopter_wreck", "person", "rescuer", "crate"]);
+    const POINT_TOOLS = /* @__PURE__ */ new Set([
+      "pad",
+      "carrier",
+      "boat",
+      "pilot_boat",
+      "salvage_tug",
+      "submarine",
+      "lighthouse",
+      "research_platform",
+      "wind_turbine",
+      "plane_wreck",
+      "sailboat_broken",
+      "ornithopter_wreck",
+      "person",
+      "rescuer",
+      "crate"
+    ]);
     const dotColors = {
       pad: "#5f5",
       carrier: "#88aaff",
@@ -1694,9 +1736,12 @@
           const obj = m.objects[i];
           let hit = false;
           if (obj.type === "pad") hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
-          else if (["carrier", "boat", "pilot_boat", "salvage_tug", "submarine"].includes(obj.type)) hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
-          else if (["lighthouse", "research_platform", "wind_turbine"].includes(obj.type)) hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
-          else if (["plane_wreck", "sailboat_broken", "ornithopter_wreck"].includes(obj.type)) hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
+          else if (["carrier", "boat", "pilot_boat", "salvage_tug", "submarine"].includes(obj.type))
+            hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
+          else if (["lighthouse", "research_platform", "wind_turbine"].includes(obj.type))
+            hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
+          else if (["plane_wreck", "sailboat_broken", "ornithopter_wreck"].includes(obj.type))
+            hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
           if (hit) {
             startDrag("object", i, obj.x, obj.y);
             return;
@@ -1719,8 +1764,7 @@
     };
     window.addEventListener("mousemove", (e) => {
       if (state.isDraggingItem) {
-        if (Math.hypot(e.clientX - state.dragStartMX, e.clientY - state.dragStartMY) > 3)
-          state.dragHasMoved = true;
+        if (Math.hypot(e.clientX - state.dragStartMX, e.clientY - state.dragStartMY) > 3) state.dragHasMoved = true;
         if (state.dragHasMoved) {
           const m = getCurrentMission();
           const tSize = 600 / m.gridSize * state.zoom;
@@ -1813,7 +1857,6 @@
       const savedIdx = state.curIdx;
       const data = state.campaign.map((m, i) => {
         state.curIdx = i;
-        console.log("CURR", state.curIdx);
         return {
           ...m,
           terrain: typeof m.terrain === "string" ? m.terrain : compressTerrain(m.terrain),
