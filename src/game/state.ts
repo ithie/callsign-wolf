@@ -53,6 +53,8 @@ export const G = {
     LANDING_ZONES: [] as { xMin: number; xMax: number; yMin: number; yMax: number; z: number }[],
     PLANE_WRECKS: [] as any[],
     BROKEN_SAILBOATS: [] as any[],
+    BAYWATCH_CARS: [] as any[],
+    BAYWATCH_BUILDINGS: [] as any[],
     seaTime: 0,
     payloads: [] as any[],
     activePayload: null as any,

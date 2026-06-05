@@ -14,6 +14,9 @@ export const VESSEL = {
     PLANE_WRECK:        'plane_wreck',
     ORNITHOPTER_WRECK:  'ornithopter_wreck',
     SAILBOAT_BROKEN:    'sailboat_broken',
+    BAYWATCH_CAR:       'baywatch_car',
+    BAYWATCH_HQ:        'baywatch_hq',
+    BAYWATCH_TOWER:     'baywatch_tower',
 } as const;
 
 export const PAYLOAD = {

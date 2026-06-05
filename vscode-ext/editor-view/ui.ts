@@ -165,6 +165,9 @@ export const renderObjectList = () => {
             plane_wreck: '✈️',
             sailboat_broken: '⛵',
             ornithopter_wreck: '🛸',
+            baywatch_car: '🚗',
+            baywatch_hq: '🏠',
+            baywatch_tower: '🗼',
         };
         const label = document.createElement('span');
         label.style.flex = '1';
@@ -497,35 +500,14 @@ const paint = (e: MouseEvent) => {
         }
     } else if (state.currentTool === 'boat') {
         if (e.shiftKey) {
-            // Remove nearest boat
-            let nearestIdx = -1,
-                nearestDist = 8;
-            m.objects.forEach((o, i) => {
-                if (o.type !== 'boat') return;
+            const near = m.objects.reduce((best: any, o: any, i: number) => {
+                if (o.type !== 'boat') return best;
                 const d = Math.hypot(o.x - gx, o.y - gy);
-                if (d < nearestDist) {
-                    nearestDist = d;
-                    nearestIdx = i;
-                }
-            });
-            if (nearestIdx >= 0) m.objects.splice(nearestIdx, 1);
+                return !best || d < best.d ? { d, i } : best;
+            }, null as any);
+            if (near && near.d < 8) m.objects.splice(near.i, 1);
         } else {
-            // Move nearest boat if close enough, otherwise add new
-            let nearestIdx = -1,
-                nearestDist = 8;
-            m.objects.forEach((o, i) => {
-                if (o.type !== 'boat') return;
-                const d = Math.hypot(o.x - gx, o.y - gy);
-                if (d < nearestDist) {
-                    nearestDist = d;
-                    nearestIdx = i;
-                }
-            });
-            if (nearestIdx >= 0) {
-                m.objects[nearestIdx] = { ...m.objects[nearestIdx], x: gx, y: gy };
-            } else {
-                m.objects.push({ type: 'boat', x: gx, y: gy, angle: 0, path: 'circle', speed: 3, radius: 20 });
-            }
+            m.objects.push({ type: 'boat', x: gx, y: gy, angle: 0, path: 'circle', speed: 3, radius: 20 });
         }
     } else if (state.currentTool === 'submarine') {
         if (e.shiftKey) {
@@ -630,6 +612,18 @@ const paint = (e: MouseEvent) => {
             if (near && near.d < 5) m.objects.splice(near.i, 1);
         } else {
             m.objects.push({ type: 'sailboat_broken' as any, x: gx, y: gy, angle: 0 });
+        }
+    } else if (state.currentTool === 'baywatch_car' || state.currentTool === 'baywatch_hq' || state.currentTool === 'baywatch_tower') {
+        const bwType = state.currentTool;
+        if (e.shiftKey) {
+            const near = m.objects.reduce((best: any, o: any, i: number) => {
+                if (o.type !== bwType) return best;
+                const d = Math.hypot(o.x - gx, o.y - gy);
+                return !best || d < best.d ? { d, i } : best;
+            }, null as any);
+            if (near && near.d < 5) m.objects.splice(near.i, 1);
+        } else {
+            m.objects.push({ type: bwType as any, x: gx, y: gy, angle: 0 });
         }
     } else if (state.currentTool === 'person' || state.currentTool === 'rescuer') {
         const t = state.currentTool as 'person' | 'rescuer';
@@ -910,6 +904,21 @@ export const initUI = () => {
         state.selectedObjectIdx = null;
         drawMap();
     });
+    safeClick('close-baywatch-car', () => { state.selectedObjectIdx = null; drawMap(); });
+    safeClick('close-baywatch-hq', () => { state.selectedObjectIdx = null; drawMap(); });
+    safeClick('close-baywatch-tower', () => { state.selectedObjectIdx = null; drawMap(); });
+    (['m_bwc_angle', 'm_bwh_angle', 'm_bwt_angle'] as const).forEach(id => {
+        document.getElementById(id)?.addEventListener('input', () => {
+            const m = getCurrentMission();
+            if (!m || state.selectedObjectIdx === null) return;
+            const obj = m.objects[state.selectedObjectIdx] as any;
+            const typeMap: Record<string, string> = { m_bwc_angle: 'baywatch_car', m_bwh_angle: 'baywatch_hq', m_bwt_angle: 'baywatch_tower' };
+            if (obj?.type !== typeMap[id]) return;
+            obj.angle = parseInt((document.getElementById(id) as HTMLInputElement).value) || 0;
+            drawMap();
+            broadcastPreview();
+        });
+    });
     document.getElementById('m_wt_spinning')?.addEventListener('change', () => {
         const m = getCurrentMission();
         if (!m || state.selectedObjectIdx === null) return;
@@ -1009,6 +1018,9 @@ export const initUI = () => {
         'plane_wreck',
         'sailboat_broken',
         'ornithopter_wreck',
+        'baywatch_car',
+        'baywatch_hq',
+        'baywatch_tower',
         'person',
         'rescuer',
         'crate',
@@ -1022,6 +1034,9 @@ export const initUI = () => {
         plane_wreck: '#aaa',
         sailboat_broken: '#b96',
         ornithopter_wreck: '#aaa',
+        baywatch_car: '#cc2200',
+        baywatch_hq: '#cc4400',
+        baywatch_tower: '#cc4400',
         person: '#ffe033',
         crate: '#ff8800',
     };
@@ -1224,7 +1239,7 @@ export const initUI = () => {
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
                 else if (['lighthouse', 'research_platform', 'wind_turbine'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
-                else if (['plane_wreck', 'sailboat_broken', 'ornithopter_wreck'].includes(obj.type))
+                else if (['plane_wreck', 'sailboat_broken', 'ornithopter_wreck', 'baywatch_car', 'baywatch_hq', 'baywatch_tower'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
                 if (hit) {
                     startDrag('object', i, obj.x, obj.y);
@@ -1291,6 +1306,9 @@ export const initUI = () => {
                 state.currentTool !== 'plane_wreck' &&
                 state.currentTool !== 'sailboat_broken' &&
                 state.currentTool !== 'ornithopter_wreck' &&
+                state.currentTool !== 'baywatch_car' &&
+                state.currentTool !== 'baywatch_hq' &&
+                state.currentTool !== 'baywatch_tower' &&
                 state.currentTool !== 'foliage'
             ) {
                 paint(e);

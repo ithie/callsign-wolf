@@ -8,6 +8,9 @@ import SAILBOAT_BROKEN_DEF from '../models/sailboat_broken.zdef';
 import HANGAR_DEF from '../models/hangar.zdef';
 import TOWER_DEF from '../models/tower.zdef';
 import LIGHTHOUSE_DEF from '../models/lighthouse.zdef';
+import BAYWATCH_CAR_DEF from '../models/baywatch_car.zdef';
+import BAYWATCH_HQ_DEF from '../models/baywatch_hq.zdef';
+import BAYWATCH_TOWER_DEF from '../models/baywatch_tower.zdef';
 
 export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, tileW, tileH, getLighthouse, getWindStr } = dwCtx;
@@ -105,5 +108,17 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         }});
     };
 
-    return { _drawWindTurbine, _drawPlaneWreck, _drawBrokenSailboat, _drawHangar, _drawLighthouse, _renderWindsock, _drawWindsock };
+    const _drawBaywatchObjects = () => {
+        G.BAYWATCH_CARS.forEach((car: any) => {
+            const gz = getGround(car.x, car.y);
+            SceneRenderer.add(BAYWATCH_CAR_DEF as any, { x: car.x, y: car.y, z: gz, angle: car.angle });
+        });
+        G.BAYWATCH_BUILDINGS.forEach((b: any) => {
+            const gz = getGround(b.x, b.y);
+            const def = b.type === 'baywatch_hq' ? BAYWATCH_HQ_DEF : BAYWATCH_TOWER_DEF;
+            SceneRenderer.add(def as any, { x: b.x, y: b.y, z: gz, angle: b.angle });
+        });
+    };
+
+    return { _drawWindTurbine, _drawPlaneWreck, _drawBrokenSailboat, _drawHangar, _drawLighthouse, _renderWindsock, _drawWindsock, _drawBaywatchObjects };
 };

@@ -291,6 +291,17 @@ export const initStaticObjectsFromMission = () => {
         angle: obj.angle ?? 0,
         _objIdx: allObjects.indexOf(obj),
     }));
+    G.BAYWATCH_CARS = getObjectsByType(VESSEL.BAYWATCH_CAR).map((obj: any) => ({
+        x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+    }));
+    G.BAYWATCH_BUILDINGS = [
+        ...getObjectsByType(VESSEL.BAYWATCH_HQ).map((obj: any) => ({
+            type: VESSEL.BAYWATCH_HQ, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+        })),
+        ...getObjectsByType(VESSEL.BAYWATCH_TOWER).map((obj: any) => ({
+            type: VESSEL.BAYWATCH_TOWER, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+        })),
+    ];
 };
 
 const _SURVIVOR_OUTFITS = [

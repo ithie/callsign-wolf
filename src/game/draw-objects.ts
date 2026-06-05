@@ -244,6 +244,136 @@ export const createDrawObjects = (
                 ctx.lineTo(pb.x + sw2, pb.y);
                 ctx.stroke();
             });
+        } else if (type === 'beach_umbrella') {
+            const poleTop = iso(tX, tY, z0 + 1.0 * scale, cx, cy);
+            const poleBase = iso(tX, tY, z0, cx, cy);
+            ctx.strokeStyle = '#d8d0b8';
+            ctx.lineWidth = Math.max(1, tileW * 0.04 * scale);
+            ctx.beginPath();
+            ctx.moveTo(poleBase.x, poleBase.y);
+            ctx.lineTo(poleTop.x, poleTop.y);
+            ctx.stroke();
+            const rw = 0.50 * scale * tileW / 2;
+            const rh = 0.50 * scale * tileH / 2;
+            ctx.fillStyle = '#881500';
+            ctx.beginPath();
+            ctx.ellipse(poleTop.x + 2, poleTop.y + 1, rw, rh, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#cc2200';
+            ctx.beginPath();
+            ctx.ellipse(poleTop.x, poleTop.y, rw, rh, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(240,240,240,0.9)';
+            ctx.beginPath();
+            ctx.ellipse(poleTop.x, poleTop.y, rw, rh * 0.2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (type === 'beach_lounger') {
+            const s1 = iso(tX - 0.38 * scale, tY - 0.18 * scale, z0 + 0.08 * scale, cx, cy);
+            const s2 = iso(tX + 0.22 * scale, tY - 0.18 * scale, z0 + 0.10 * scale, cx, cy);
+            const s3 = iso(tX + 0.22 * scale, tY + 0.18 * scale, z0 + 0.10 * scale, cx, cy);
+            const s4 = iso(tX - 0.38 * scale, tY + 0.18 * scale, z0 + 0.08 * scale, cx, cy);
+            ctx.fillStyle = '#d8cc90';
+            ctx.beginPath();
+            ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y);
+            ctx.lineTo(s3.x, s3.y); ctx.lineTo(s4.x, s4.y);
+            ctx.closePath(); ctx.fill();
+            ctx.fillStyle = '#e8dcc0';
+            ctx.beginPath();
+            ctx.moveTo(s1.x, s1.y); ctx.lineTo(s4.x, s4.y);
+            ctx.lineTo(s4.x, s4.y - Math.abs(s1.y - iso(tX - 0.38 * scale, tY - 0.18 * scale, z0 + 0.44 * scale, cx, cy).y));
+            ctx.lineTo(s1.x, s1.y - Math.abs(s1.y - iso(tX - 0.38 * scale, tY - 0.18 * scale, z0 + 0.44 * scale, cx, cy).y));
+            ctx.closePath(); ctx.fill();
+        } else if (type === 'beach_cooler') {
+            const p = iso(tX, tY, z0 + 0.13 * scale, cx, cy);
+            const ptop = iso(tX, tY, z0 + 0.27 * scale, cx, cy);
+            const w = Math.max(3, 0.22 * scale * tileW / 2);
+            const h = Math.max(2, 0.14 * scale * tileH / 2);
+            ctx.fillStyle = '#ccd8e4';
+            ctx.fillRect(p.x - w, p.y - h, w * 2, h * 2);
+            ctx.fillStyle = '#3366aa';
+            ctx.fillRect(ptop.x - w - 1, ptop.y - 2, w * 2 + 2, 4);
+        } else if (type === 'beach_umbrella_tilted') {
+            // +x lean: pole base at (tX,tY), top offset toward +x
+            const poleBase = iso(tX, tY, z0, cx, cy);
+            const poleTop  = iso(tX + 0.20 * scale, tY, z0 + 0.80 * scale, cx, cy);
+            ctx.strokeStyle = '#d8d0b8';
+            ctx.lineWidth = Math.max(1, tileW * 0.04 * scale);
+            ctx.beginPath(); ctx.moveTo(poleBase.x, poleBase.y); ctx.lineTo(poleTop.x, poleTop.y); ctx.stroke();
+            // Canopy: rotated ellipse — +x lean ≈ 30° screen rotation, squished depth
+            const canCtr = iso(tX + 0.18 * scale, tY, z0 + 0.80 * scale, cx, cy);
+            const rMaj = 0.50 * scale * tileW / 2;
+            const rMin = rMaj * 0.55;
+            const lean = Math.atan2(tileH / 2, tileW / 2); // iso +x direction ≈26°
+            ctx.save();
+            ctx.translate(canCtr.x, canCtr.y);
+            ctx.rotate(lean);
+            ctx.fillStyle = '#881400';
+            ctx.beginPath(); ctx.ellipse(1, 1, rMaj, rMin, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.fillStyle = '#cc2200';
+            ctx.beginPath(); ctx.ellipse(0, 0, rMaj, rMin, 0, 0, Math.PI * 2); ctx.fill();
+            ctx.strokeStyle = 'rgba(240,240,240,0.88)';
+            ctx.lineWidth = Math.max(1.5, rMin * 0.45);
+            ctx.beginPath(); ctx.moveTo(-rMaj * 0.9, 0); ctx.lineTo(rMaj * 0.9, 0); ctx.stroke();
+            ctx.restore();
+        } else if (type === 'beach_person') {
+            const variant = Math.abs(Math.round(tX * 7 + tY * 3)) % 4;
+            const swimColors = ['#cc2200', '#1166cc', '#cc8800', '#118833'];
+            const swimColor = swimColors[variant];
+            const base = iso(tX, tY, z0, cx, cy);
+            const s = (tileW / 64) * scale;
+            const skin = '#e8b070';
+            const headR = Math.max(1.5, 3 * s);
+            const bw = Math.max(2, 5 * s);
+            const sw = Math.max(1.5, 4.5 * s);  // swimwear height
+            const legH = Math.max(2, 9 * s);
+            const torsoH = Math.max(1.5, sw * 2.5); // skin above swimwear
+            const bx = base.x, by = base.y;
+            // Ground shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath();
+            ctx.ellipse(bx, by, tileW * 0.15 * scale, tileH * 0.10 * scale, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Legs (skin)
+            ctx.fillStyle = skin;
+            ctx.fillRect(bx - bw / 2, by - legH, bw * 0.38, legH);
+            ctx.fillRect(bx + bw / 2 - bw * 0.38, by - legH, bw * 0.38, legH);
+            // Swimwear / trunk
+            ctx.fillStyle = swimColor;
+            ctx.fillRect(bx - bw / 2, by - legH - sw, bw, sw);
+            // Torso (skin — above swimwear, bikini/open chest)
+            ctx.fillStyle = skin;
+            ctx.fillRect(bx - bw / 2, by - legH - sw - torsoH, bw, torsoH);
+            // Arms (skin — short stubs out to sides)
+            ctx.fillRect(bx - bw, by - legH - sw - torsoH * 0.7, bw * 0.5, Math.max(1, 2 * s));
+            ctx.fillRect(bx + bw / 2, by - legH - sw - torsoH * 0.7, bw * 0.5, Math.max(1, 2 * s));
+            // Head
+            ctx.fillStyle = skin;
+            ctx.beginPath();
+            ctx.arc(bx, by - legH - sw - torsoH - headR + s * 0.5, headR, 0, Math.PI * 2);
+            ctx.fill();
+        } else if (type === 'swimmer') {
+            // Draw at water surface (gz may be negative — clamp to 0)
+            const wz = Math.max(gz, 0);
+            const pHead = iso(tX, tY, wz + 0.22 * scale, cx, cy);
+            // Arms
+            const pArmL = iso(tX - 0.30 * scale, tY, wz + 0.10 * scale, cx, cy);
+            const pArmR = iso(tX + 0.30 * scale, tY, wz + 0.10 * scale, cx, cy);
+            ctx.strokeStyle = '#e0b878';
+            ctx.lineWidth = Math.max(1.5, tileW * 0.05 * scale);
+            ctx.beginPath(); ctx.moveTo(pArmL.x, pArmL.y); ctx.lineTo(pArmR.x, pArmR.y); ctx.stroke();
+            // Small splash circle
+            ctx.strokeStyle = 'rgba(120,180,255,0.6)';
+            ctx.lineWidth = Math.max(1, tileW * 0.04 * scale);
+            ctx.beginPath();
+            ctx.ellipse(pHead.x, pHead.y + tileH * 0.08 * scale,
+                tileW * 0.22 * scale, tileH * 0.14 * scale, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            // Head
+            const hw = tileW * 0.09 * scale;
+            ctx.fillStyle = '#e0b878';
+            ctx.beginPath();
+            ctx.ellipse(pHead.x, pHead.y, hw, hw * 0.75, 0, 0, Math.PI * 2);
+            ctx.fill();
         }
     }
 

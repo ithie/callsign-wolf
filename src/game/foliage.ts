@@ -18,7 +18,7 @@ type EntryOpts = { x: number; y: number; depth: number; drawFn: (camX: number, c
 
 type SceneAddFn = (def: null, opts: EntryOpts) => void;
 
-const FOLIAGE_DECODE: Record<string, string> = { p: 'pine', o: 'oak', b: 'bush', d: 'dead' };
+const FOLIAGE_DECODE: Record<string, string> = { p: 'pine', o: 'oak', b: 'bush', d: 'dead', u: 'beach_umbrella', l: 'beach_lounger', c: 'beach_cooler', v: 'beach_umbrella_tilted', g: 'beach_person', s: 'swimmer' };
 
 const decompressFoliage = (str: string | { x: number; y: number; s: number; type: string }[]) => {
     if (!str) return [];

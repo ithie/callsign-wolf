@@ -121,6 +121,9 @@
     const pwUI = document.getElementById("ui_plane_wreck");
     const sbUI = document.getElementById("ui_sailboat_broken");
     const owUI = document.getElementById("ui_ornithopter_wreck");
+    const bwcUI = document.getElementById("ui_baywatch_car");
+    const bwhUI = document.getElementById("ui_baywatch_hq");
+    const bwtUI2 = document.getElementById("ui_baywatch_tower");
     if (pUI) pUI.style.display = "none";
     if (cUI) cUI.style.display = "none";
     if (bUI) bUI.style.display = "none";
@@ -130,11 +133,15 @@
     if (pwUI) pwUI.style.display = "none";
     if (sbUI) sbUI.style.display = "none";
     if (owUI) owUI.style.display = "none";
+    if (bwcUI) bwcUI.style.display = "none";
+    if (bwhUI) bwhUI.style.display = "none";
+    if (bwtUI2) bwtUI2.style.display = "none";
+    const wl = m.waterLevel ?? 0;
     for (let x = Math.floor(state.panX); x < Math.min(m.gridSize, state.panX + 600 / tSize + 1); x++) {
       for (let y = Math.floor(state.panY); y < Math.min(m.gridSize, state.panY + 600 / tSize + 1); y++) {
         const h = m.terrain[x][y];
-        const isSand = h > 0 && (m.sand?.[x]?.[y] ?? 0) > 0;
-        ctx.fillStyle = h <= 0 ? COLORS.water : isSand ? getSandColor(h) : getLandColor(h, false);
+        const isSand = h > wl && (m.sand?.[x]?.[y] ?? 0) > 0;
+        ctx.fillStyle = h <= wl ? COLORS.water : isSand ? getSandColor(h) : getLandColor(h, false);
         ctx.fillRect((x - state.panX) * tSize, (y - state.panY) * tSize, tSize + 1.5, tSize + 1.5);
       }
     }
@@ -535,6 +542,75 @@
           const angleEl = document.getElementById("m_ow_angle");
           if (angleEl) angleEl.value = (ow.angle ?? 0).toString();
         }
+      } else if (obj.type === "baywatch_car") {
+        const bc = obj;
+        const ox2 = (bc.x + 0.5 - state.panX) * tSize;
+        const oy2 = (bc.y + 0.5 - state.panY) * tSize;
+        const rad = (bc.angle ?? 0) * Math.PI / 180;
+        if (isSelected) {
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = "#f44";
+        }
+        ctx.save();
+        ctx.translate(ox2, oy2);
+        ctx.rotate(rad);
+        ctx.fillStyle = "#cc2200";
+        ctx.fillRect(-2.5 * tSize, -1 * tSize, 5 * tSize, 2 * tSize);
+        ctx.fillStyle = "#ff4422";
+        ctx.fillRect(-1.5 * tSize, -1.4 * tSize, 3 * tSize, 1.4 * tSize);
+        ctx.restore();
+        ctx.shadowBlur = 0;
+        if (isSelected && bwcUI) {
+          bwcUI.style.display = "block";
+          bwcUI.style.left = Math.min(600 - 140, Math.max(0, ox2 + 20)) + "px";
+          bwcUI.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
+          const el = document.getElementById("m_bwc_angle");
+          if (el) el.value = (obj.angle ?? 0).toString();
+        }
+      } else if (obj.type === "baywatch_hq") {
+        const bh = obj;
+        const ox2 = (bh.x + 0.5 - state.panX) * tSize;
+        const oy2 = (bh.y + 0.5 - state.panY) * tSize;
+        if (isSelected) {
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = "#f44";
+        }
+        ctx.fillStyle = "#cc2200";
+        ctx.fillRect(ox2 - 4 * tSize, oy2 - 3 * tSize, 8 * tSize, 6 * tSize);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(ox2 - 1 * tSize, oy2, 2 * tSize, 3 * tSize);
+        ctx.fillStyle = "#dd3300";
+        ctx.fillRect(ox2 - 4 * tSize, oy2 - 1.5 * tSize, 8 * tSize, 1 * tSize);
+        ctx.shadowBlur = 0;
+        if (isSelected && bwhUI) {
+          bwhUI.style.display = "block";
+          bwhUI.style.left = Math.min(600 - 140, Math.max(0, ox2 + 20)) + "px";
+          bwhUI.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
+          const el = document.getElementById("m_bwh_angle");
+          if (el) el.value = (obj.angle ?? 0).toString();
+        }
+      } else if (obj.type === "baywatch_tower") {
+        const bt = obj;
+        const ox2 = (bt.x + 0.5 - state.panX) * tSize;
+        const oy2 = (bt.y + 0.5 - state.panY) * tSize;
+        if (isSelected) {
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = "#f44";
+        }
+        ctx.fillStyle = "#d8d0b8";
+        ctx.fillRect(ox2 - 0.3 * tSize, oy2 - 5 * tSize, 0.6 * tSize, 5 * tSize);
+        ctx.fillStyle = "#cc2200";
+        ctx.fillRect(ox2 - 2 * tSize, oy2 - 5.5 * tSize, 4 * tSize, 2 * tSize);
+        ctx.fillStyle = "#e8e8e8";
+        ctx.fillRect(ox2 - 1.8 * tSize, oy2 - 5.3 * tSize, 3.6 * tSize, 1.6 * tSize);
+        ctx.shadowBlur = 0;
+        if (isSelected && bwtUI2) {
+          bwtUI2.style.display = "block";
+          bwtUI2.style.left = Math.min(600 - 140, Math.max(0, ox2 + 20)) + "px";
+          bwtUI2.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
+          const el = document.getElementById("m_bwt_angle");
+          if (el) el.value = (obj.angle ?? 0).toString();
+        }
       }
     });
     const payloads = m.payloads || [];
@@ -609,7 +685,18 @@
       ctx.textAlign = "left";
     });
     const foliage = m.foliage || [];
-    const treeColors = { pine: "#1a5a1a", oak: "#2a6a1a", bush: "#3a7a2a", dead: "#6a4a2a" };
+    const treeColors = {
+      pine: "#1a5a1a",
+      oak: "#2a6a1a",
+      bush: "#3a7a2a",
+      dead: "#6a4a2a",
+      beach_umbrella: "#cc2200",
+      beach_umbrella_tilted: "#cc2200",
+      beach_lounger: "#d8cc90",
+      beach_cooler: "#3366aa",
+      beach_person: "#e8c090",
+      swimmer: "#1a88cc"
+    };
     foliage.forEach((f) => {
       const fx = (f.x - state.panX) * tSize;
       const fy = (f.y - state.panY) * tSize;
@@ -674,8 +761,8 @@
   };
 
   // ../src/shared/utils.ts
-  var FOLIAGE_ENCODE = { pine: "p", oak: "o", bush: "b", dead: "d" };
-  var FOLIAGE_DECODE = { p: "pine", o: "oak", b: "bush", d: "dead" };
+  var FOLIAGE_ENCODE = { pine: "p", oak: "o", bush: "b", dead: "d", beach_umbrella: "u", beach_lounger: "l", beach_cooler: "c", beach_umbrella_tilted: "v", beach_person: "g", swimmer: "s" };
+  var FOLIAGE_DECODE = { p: "pine", o: "oak", b: "bush", d: "dead", u: "beach_umbrella", l: "beach_lounger", c: "beach_cooler", v: "beach_umbrella_tilted", g: "beach_person", s: "swimmer" };
   var compressFoliage = (foliage) => {
     if (!foliage || foliage.length === 0) return "";
     return foliage.map((f) => {
@@ -871,7 +958,10 @@
         wind_turbine: "\u{1F300}",
         plane_wreck: "\u2708\uFE0F",
         sailboat_broken: "\u26F5",
-        ornithopter_wreck: "\u{1F6F8}"
+        ornithopter_wreck: "\u{1F6F8}",
+        baywatch_car: "\u{1F697}",
+        baywatch_hq: "\u{1F3E0}",
+        baywatch_tower: "\u{1F5FC}"
       };
       const label = document.createElement("span");
       label.style.flex = "1";
@@ -1165,31 +1255,14 @@
       }
     } else if (state.currentTool === "boat") {
       if (e.shiftKey) {
-        let nearestIdx = -1, nearestDist = 8;
-        m.objects.forEach((o, i) => {
-          if (o.type !== "boat") return;
+        const near = m.objects.reduce((best, o, i) => {
+          if (o.type !== "boat") return best;
           const d = Math.hypot(o.x - gx, o.y - gy);
-          if (d < nearestDist) {
-            nearestDist = d;
-            nearestIdx = i;
-          }
-        });
-        if (nearestIdx >= 0) m.objects.splice(nearestIdx, 1);
+          return !best || d < best.d ? { d, i } : best;
+        }, null);
+        if (near && near.d < 8) m.objects.splice(near.i, 1);
       } else {
-        let nearestIdx = -1, nearestDist = 8;
-        m.objects.forEach((o, i) => {
-          if (o.type !== "boat") return;
-          const d = Math.hypot(o.x - gx, o.y - gy);
-          if (d < nearestDist) {
-            nearestDist = d;
-            nearestIdx = i;
-          }
-        });
-        if (nearestIdx >= 0) {
-          m.objects[nearestIdx] = { ...m.objects[nearestIdx], x: gx, y: gy };
-        } else {
-          m.objects.push({ type: "boat", x: gx, y: gy, angle: 0, path: "circle", speed: 3, radius: 20 });
-        }
+        m.objects.push({ type: "boat", x: gx, y: gy, angle: 0, path: "circle", speed: 3, radius: 20 });
       }
     } else if (state.currentTool === "submarine") {
       if (e.shiftKey) {
@@ -1292,6 +1365,18 @@
         if (near && near.d < 5) m.objects.splice(near.i, 1);
       } else {
         m.objects.push({ type: "sailboat_broken", x: gx, y: gy, angle: 0 });
+      }
+    } else if (state.currentTool === "baywatch_car" || state.currentTool === "baywatch_hq" || state.currentTool === "baywatch_tower") {
+      const bwType = state.currentTool;
+      if (e.shiftKey) {
+        const near = m.objects.reduce((best, o, i) => {
+          if (o.type !== bwType) return best;
+          const d = Math.hypot(o.x - gx, o.y - gy);
+          return !best || d < best.d ? { d, i } : best;
+        }, null);
+        if (near && near.d < 5) m.objects.splice(near.i, 1);
+      } else {
+        m.objects.push({ type: bwType, x: gx, y: gy, angle: 0 });
       }
     } else if (state.currentTool === "person" || state.currentTool === "rescuer") {
       const t = state.currentTool;
@@ -1546,6 +1631,30 @@
       state.selectedObjectIdx = null;
       drawMap();
     });
+    safeClick("close-baywatch-car", () => {
+      state.selectedObjectIdx = null;
+      drawMap();
+    });
+    safeClick("close-baywatch-hq", () => {
+      state.selectedObjectIdx = null;
+      drawMap();
+    });
+    safeClick("close-baywatch-tower", () => {
+      state.selectedObjectIdx = null;
+      drawMap();
+    });
+    ["m_bwc_angle", "m_bwh_angle", "m_bwt_angle"].forEach((id) => {
+      document.getElementById(id)?.addEventListener("input", () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx];
+        const typeMap = { m_bwc_angle: "baywatch_car", m_bwh_angle: "baywatch_hq", m_bwt_angle: "baywatch_tower" };
+        if (obj?.type !== typeMap[id]) return;
+        obj.angle = parseInt(document.getElementById(id).value) || 0;
+        drawMap();
+        broadcastPreview();
+      });
+    });
     document.getElementById("m_wt_spinning")?.addEventListener("change", () => {
       const m = getCurrentMission();
       if (!m || state.selectedObjectIdx === null) return;
@@ -1634,6 +1743,9 @@
       "plane_wreck",
       "sailboat_broken",
       "ornithopter_wreck",
+      "baywatch_car",
+      "baywatch_hq",
+      "baywatch_tower",
       "person",
       "rescuer",
       "crate"
@@ -1647,6 +1759,9 @@
       plane_wreck: "#aaa",
       sailboat_broken: "#b96",
       ornithopter_wreck: "#aaa",
+      baywatch_car: "#cc2200",
+      baywatch_hq: "#cc4400",
+      baywatch_tower: "#cc4400",
       person: "#ffe033",
       crate: "#ff8800"
     };
@@ -1824,7 +1939,7 @@
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
           else if (["lighthouse", "research_platform", "wind_turbine"].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
-          else if (["plane_wreck", "sailboat_broken", "ornithopter_wreck"].includes(obj.type))
+          else if (["plane_wreck", "sailboat_broken", "ornithopter_wreck", "baywatch_car", "baywatch_hq", "baywatch_tower"].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
           if (hit) {
             startDrag("object", i, obj.x, obj.y);
@@ -1873,7 +1988,7 @@
         clampCamera();
         drawMap();
       } else if (state.isDrawing) {
-        if (state.currentTool !== "person" && state.currentTool !== "rescuer" && state.currentTool !== "crate" && state.currentTool !== "boat" && state.currentTool !== "pilot_boat" && state.currentTool !== "salvage_tug" && state.currentTool !== "submarine" && state.currentTool !== "carrier" && state.currentTool !== "pad" && state.currentTool !== "lighthouse" && state.currentTool !== "research_platform" && state.currentTool !== "wind_turbine" && state.currentTool !== "plane_wreck" && state.currentTool !== "sailboat_broken" && state.currentTool !== "ornithopter_wreck" && state.currentTool !== "foliage") {
+        if (state.currentTool !== "person" && state.currentTool !== "rescuer" && state.currentTool !== "crate" && state.currentTool !== "boat" && state.currentTool !== "pilot_boat" && state.currentTool !== "salvage_tug" && state.currentTool !== "submarine" && state.currentTool !== "carrier" && state.currentTool !== "pad" && state.currentTool !== "lighthouse" && state.currentTool !== "research_platform" && state.currentTool !== "wind_turbine" && state.currentTool !== "plane_wreck" && state.currentTool !== "sailboat_broken" && state.currentTool !== "ornithopter_wreck" && state.currentTool !== "baywatch_car" && state.currentTool !== "baywatch_hq" && state.currentTool !== "baywatch_tower" && state.currentTool !== "foliage") {
           paint(e);
         }
       }

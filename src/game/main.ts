@@ -60,7 +60,12 @@ const soundHandler = (() => {
             state.activeTheme = theme;
             if (state.isMuted) return;
             if (alreadyPlaying) return;
+
+            try {
             ZsynthPlayer.play(theme, volume);
+            } catch {
+                // nothing to do here
+            }
         },
         stop: () => {
             ZsynthPlayer.stop();

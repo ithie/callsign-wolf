@@ -20,7 +20,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
 
     const { _drawPadLights, _drawVectorCarrier, _drawNpcHelis } = createCarrierDraw(dwCtx);
     const { _drawBowWave, _drawBoatModel, _drawSubmarine, _drawResearchPlatform } = createVesselsDraw(dwCtx);
-    const { _drawWindTurbine, _drawPlaneWreck, _drawBrokenSailboat, _drawHangar, _drawLighthouse, _renderWindsock, _drawWindsock } = createStructuresDraw(dwCtx);
+    const { _drawWindTurbine, _drawPlaneWreck, _drawBrokenSailboat, _drawHangar, _drawLighthouse, _renderWindsock, _drawWindsock, _drawBaywatchObjects } = createStructuresDraw(dwCtx);
     const { drawPayloadObjects, queueAttachedPayloads } = createPayloadsDraw(dwCtx);
     const { handleCollisionBoxes, drawDebugOverlay } = createCollisionDraw(dwCtx);
     const { drawBirds, drawDebris, renderRain } = createMiscDraw(dwCtx);
@@ -79,6 +79,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         G.WIND_TURBINES.forEach((wt: any) => { if (isVisible(wt.x, wt.y, visMargin)) _drawWindTurbine(wt.x, wt.y, wt.spinning); });
         G.PLANE_WRECKS.forEach((pw: any) => { if (isVisible(pw.x, pw.y, visMargin)) _drawPlaneWreck(pw.x, pw.y, pw.angle); });
         G.BROKEN_SAILBOATS.forEach((bs: any) => { if (isVisible(bs.x, bs.y, visMargin)) _drawBrokenSailboat(bs.x, bs.y, bs.angle); });
+        _drawBaywatchObjects();
         const lh = dwCtx.getLighthouse();
         if (lh && isVisible(lh.x, lh.y, visMargin)) _drawLighthouse(camX, camY);
 

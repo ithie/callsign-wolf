@@ -20,6 +20,9 @@ export const drawMap = () => {
     const pwUI = document.getElementById('ui_plane_wreck') as HTMLElement;
     const sbUI = document.getElementById('ui_sailboat_broken') as HTMLElement;
     const owUI = document.getElementById('ui_ornithopter_wreck') as HTMLElement;
+    const bwcUI = document.getElementById('ui_baywatch_car') as HTMLElement;
+    const bwhUI = document.getElementById('ui_baywatch_hq') as HTMLElement;
+    const bwtUI2 = document.getElementById('ui_baywatch_tower') as HTMLElement;
 
     if (pUI) pUI.style.display = 'none';
     if (cUI) cUI.style.display = 'none';
@@ -30,13 +33,17 @@ export const drawMap = () => {
     if (pwUI) pwUI.style.display = 'none';
     if (sbUI) sbUI.style.display = 'none';
     if (owUI) owUI.style.display = 'none';
+    if (bwcUI) bwcUI.style.display = 'none';
+    if (bwhUI) bwhUI.style.display = 'none';
+    if (bwtUI2) bwtUI2.style.display = 'none';
 
     // ── Terrain ────────────────────────────────────────────────────────────────
+    const wl: number = (m as any).waterLevel ?? 0;
     for (let x = Math.floor(state.panX); x < Math.min(m.gridSize, state.panX + 600 / tSize + 1); x++) {
         for (let y = Math.floor(state.panY); y < Math.min(m.gridSize, state.panY + 600 / tSize + 1); y++) {
             const h = m.terrain[x][y];
-            const isSand = h > 0 && ((m as any).sand?.[x]?.[y] ?? 0) > 0;
-            ctx.fillStyle = h <= 0 ? COLORS.water : isSand ? getSandColor(h) : getLandColor(h, false);
+            const isSand = h > wl && ((m as any).sand?.[x]?.[y] ?? 0) > 0;
+            ctx.fillStyle = h <= wl ? COLORS.water : isSand ? getSandColor(h) : getLandColor(h, false);
             ctx.fillRect((x - state.panX) * tSize, (y - state.panY) * tSize, tSize + 1.5, tSize + 1.5);
         }
     }
@@ -456,6 +463,66 @@ export const drawMap = () => {
                 const angleEl = document.getElementById('m_ow_angle') as HTMLInputElement;
                 if (angleEl) angleEl.value = (ow.angle ?? 0).toString();
             }
+        } else if ((obj as any).type === 'baywatch_car') {
+            const bc = obj as any;
+            const ox = (bc.x + 0.5 - state.panX) * tSize;
+            const oy = (bc.y + 0.5 - state.panY) * tSize;
+            const rad = ((bc.angle ?? 0) * Math.PI) / 180;
+            if (isSelected) { ctx.shadowBlur = 8; ctx.shadowColor = '#f44'; }
+            ctx.save();
+            ctx.translate(ox, oy);
+            ctx.rotate(rad);
+            ctx.fillStyle = '#cc2200';
+            ctx.fillRect(-2.5 * tSize, -1 * tSize, 5 * tSize, 2 * tSize);
+            ctx.fillStyle = '#ff4422';
+            ctx.fillRect(-1.5 * tSize, -1.4 * tSize, 3 * tSize, 1.4 * tSize);
+            ctx.restore();
+            ctx.shadowBlur = 0;
+            if (isSelected && bwcUI) {
+                bwcUI.style.display = 'block';
+                bwcUI.style.left = Math.min(600 - 140, Math.max(0, ox + 20)) + 'px';
+                bwcUI.style.top = Math.min(600 - 60, Math.max(0, oy)) + 'px';
+                const el = document.getElementById('m_bwc_angle') as HTMLInputElement;
+                if (el) el.value = ((obj as any).angle ?? 0).toString();
+            }
+        } else if ((obj as any).type === 'baywatch_hq') {
+            const bh = obj as any;
+            const ox = (bh.x + 0.5 - state.panX) * tSize;
+            const oy = (bh.y + 0.5 - state.panY) * tSize;
+            if (isSelected) { ctx.shadowBlur = 8; ctx.shadowColor = '#f44'; }
+            ctx.fillStyle = '#cc2200';
+            ctx.fillRect(ox - 4 * tSize, oy - 3 * tSize, 8 * tSize, 6 * tSize);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(ox - 1 * tSize, oy, 2 * tSize, 3 * tSize);
+            ctx.fillStyle = '#dd3300';
+            ctx.fillRect(ox - 4 * tSize, oy - 1.5 * tSize, 8 * tSize, 1 * tSize);
+            ctx.shadowBlur = 0;
+            if (isSelected && bwhUI) {
+                bwhUI.style.display = 'block';
+                bwhUI.style.left = Math.min(600 - 140, Math.max(0, ox + 20)) + 'px';
+                bwhUI.style.top = Math.min(600 - 60, Math.max(0, oy)) + 'px';
+                const el = document.getElementById('m_bwh_angle') as HTMLInputElement;
+                if (el) el.value = ((obj as any).angle ?? 0).toString();
+            }
+        } else if ((obj as any).type === 'baywatch_tower') {
+            const bt = obj as any;
+            const ox = (bt.x + 0.5 - state.panX) * tSize;
+            const oy = (bt.y + 0.5 - state.panY) * tSize;
+            if (isSelected) { ctx.shadowBlur = 8; ctx.shadowColor = '#f44'; }
+            ctx.fillStyle = '#d8d0b8';
+            ctx.fillRect(ox - 0.3 * tSize, oy - 5 * tSize, 0.6 * tSize, 5 * tSize);
+            ctx.fillStyle = '#cc2200';
+            ctx.fillRect(ox - 2 * tSize, oy - 5.5 * tSize, 4 * tSize, 2 * tSize);
+            ctx.fillStyle = '#e8e8e8';
+            ctx.fillRect(ox - 1.8 * tSize, oy - 5.3 * tSize, 3.6 * tSize, 1.6 * tSize);
+            ctx.shadowBlur = 0;
+            if (isSelected && bwtUI2) {
+                bwtUI2.style.display = 'block';
+                bwtUI2.style.left = Math.min(600 - 140, Math.max(0, ox + 20)) + 'px';
+                bwtUI2.style.top = Math.min(600 - 60, Math.max(0, oy)) + 'px';
+                const el = document.getElementById('m_bwt_angle') as HTMLInputElement;
+                if (el) el.value = ((obj as any).angle ?? 0).toString();
+            }
         }
     });
 
@@ -536,7 +603,12 @@ export const drawMap = () => {
 
     // ── Foliage (2D) ───────────────────────────────────────────────────────────
     const foliage = (m as any).foliage || [];
-    const treeColors: Record<string, string> = { pine: '#1a5a1a', oak: '#2a6a1a', bush: '#3a7a2a', dead: '#6a4a2a' };
+    const treeColors: Record<string, string> = {
+        pine: '#1a5a1a', oak: '#2a6a1a', bush: '#3a7a2a', dead: '#6a4a2a',
+        beach_umbrella: '#cc2200', beach_umbrella_tilted: '#cc2200',
+        beach_lounger: '#d8cc90', beach_cooler: '#3366aa',
+        beach_person: '#e8c090', swimmer: '#1a88cc',
+    };
     foliage.forEach((f: any) => {
         const fx = (f.x - state.panX) * tSize;
         const fy = (f.y - state.panY) * tSize;

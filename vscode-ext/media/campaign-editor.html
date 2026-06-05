@@ -147,6 +147,24 @@
                                 Angle (°): <input type="number" id="m_ow_angle" value="0" min="0" max="359" style="width: 45px" />
                             </div>
 
+                            <div id="ui_baywatch_car" class="floating-ui">
+                                <span class="close-btn" id="close-baywatch-car">✖</span>
+                                <strong style="color: #cc2200">🚗 BAYWATCH AUTO</strong><br />
+                                Angle (°): <input type="number" id="m_bwc_angle" value="0" min="0" max="359" style="width: 45px" />
+                            </div>
+
+                            <div id="ui_baywatch_hq" class="floating-ui">
+                                <span class="close-btn" id="close-baywatch-hq">✖</span>
+                                <strong style="color: #cc4400">🏠 BAYWATCH HQ</strong><br />
+                                Angle (°): <input type="number" id="m_bwh_angle" value="0" min="0" max="359" style="width: 45px" />
+                            </div>
+
+                            <div id="ui_baywatch_tower" class="floating-ui">
+                                <span class="close-btn" id="close-baywatch-tower">✖</span>
+                                <strong style="color: #cc4400">🗼 WACHTURM</strong><br />
+                                Angle (°): <input type="number" id="m_bwt_angle" value="0" min="0" max="359" style="width: 45px" />
+                            </div>
+
                             <div id="ui_wind" class="floating-ui" style="left: 90px; top: 15px">
                                 <span class="close-btn" id="close-wind">✖</span>
                                 <strong style="color: cyan">💨 WIND VECTOR</strong><br />
@@ -224,6 +242,9 @@
             <input type="radio" name="tool" value="plane_wreck" />
             <input type="radio" name="tool" value="sailboat_broken" />
             <input type="radio" name="tool" value="ornithopter_wreck" />
+            <input type="radio" name="tool" value="baywatch_car" />
+            <input type="radio" name="tool" value="baywatch_hq" />
+            <input type="radio" name="tool" value="baywatch_tower" />
             <input type="radio" name="tool" value="person" />
             <input type="radio" name="tool" value="rescuer" />
             <input type="radio" name="tool" value="crate" />
@@ -242,6 +263,12 @@
                 <option value="oak">oak</option>
                 <option value="bush">bush</option>
                 <option value="dead">dead</option>
+                <option value="beach_umbrella">☂ Sonnenschirm</option>
+                <option value="beach_umbrella_tilted">☂ Schirm (gekippt)</option>
+                <option value="beach_lounger">🏖 Liegestuhl</option>
+                <option value="beach_cooler">🧊 Kühlbox</option>
+                <option value="beach_person">🧍 Badegast</option>
+                <option value="swimmer">🏊 Schwimmer</option>
             </select>
             <input type="range" id="foliage-scale" min="0.5" max="2.0" step="0.1" value="1.0" />
             <span id="foliage-scale-val">1.0</span>
@@ -510,6 +537,9 @@ Viel Glück, Pilot.</textarea>
                 { v: 'plane_wreck', l: '✈️ Wrack' },
                 { v: 'sailboat_broken', l: '⛵ Gek. Mast' },
                 { v: 'ornithopter_wreck', l: '🛸 Orni-Wrack' },
+                { v: 'baywatch_car', l: '🚗 Baywatch Auto' },
+                { v: 'baywatch_hq', l: '🏠 Baywatch HQ' },
+                { v: 'baywatch_tower', l: '🗼 Wachturm' },
                 { v: 'person', l: '🟡 Person' },
                 { v: 'rescuer', l: '🔵 Retter' },
                 { v: 'crate', l: '🟠 Crate' },
@@ -614,7 +644,7 @@ Viel Glück, Pilot.</textarea>
                     + (st.tool === 'foliage' ? '<div style="margin-top:6px">'
                         + '<div class="ed-row" style="margin-bottom:4px"><label style="color:var(--text-dim)">Typ</label>'
                         + '<select style="flex:1" onchange="edDispatch(\'set-foliage-type\',{value:this.value})">'
-                        + [['pine','🌲 Nadel'],['oak','🌳 Laub'],['bush','🌿 Busch'],['dead','🪵 Kahl']].map((e) =>
+                        + [['pine','🌲 Nadel'],['oak','🌳 Laub'],['bush','🌿 Busch'],['dead','🪵 Kahl'],['beach_umbrella','☂ Sonnenschirm'],['beach_umbrella_tilted','☂ Schirm (gekippt)'],['beach_lounger','🏖 Liegestuhl'],['beach_cooler','🧊 Kühlbox'],['beach_person','🧍 Badegast'],['swimmer','🏊 Schwimmer']].map((e) =>
                             '<option value="' + e[0] + '"' + (st.foliageType === e[0] ? ' selected' : '') + '>' + e[1] + '</option>'
                         ).join('') + '</select></div>'
                         + '<label style="color:var(--text-dim)">Scale: ' + st.foliageScale + '</label>'
