@@ -21,7 +21,7 @@ export const mount = (onBack: () => void): void => {
 export const show = () => {
     _buildCredits();
     showScreenCrtEnter('credits-screen');
-    soundHandler.play('spocktribute', true);
+    soundHandler.play('spocktribute');
 };
 
 const _buildCredits = () => {

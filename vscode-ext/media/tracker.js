@@ -69,7 +69,7 @@
         if (document.visibilityState === "visible") _tryResume();
       });
     },
-    play: (key, crossfade = 0.5, volume = 1) => {
+    play: (key, volume = 1) => {
       if (!ZsynthPlayer.ctx) {
         ZsynthPlayer.ctx = new (window.AudioContext || window.webkitAudioContext)();
         ZsynthPlayer.masterGain = ZsynthPlayer.ctx.createGain();
@@ -89,12 +89,12 @@
       const _start = () => {
         const ctx = ZsynthPlayer.ctx;
         const startTime = ctx.currentTime;
-        if (ZsynthPlayer.currentTrack && ZsynthPlayer.currentTrack.isPlaying) {
-          const oldTrack = ZsynthPlayer.currentTrack;
-          oldTrack.gainNode.gain.exponentialRampToValueAtTime(1e-4, startTime + crossfade);
+        if (ZsynthPlayer.currentTrack) {
+          const old = ZsynthPlayer.currentTrack;
+          old.gainNode.gain.setTargetAtTime(0, startTime, 0.015);
           setTimeout(() => {
-            oldTrack.isPlaying = false;
-          }, crossfade * 1e3);
+            old.isPlaying = false;
+          }, 100);
         }
         const track = {
           data: songData,
@@ -104,8 +104,8 @@
           nextNoteTime: startTime + 0.05,
           stepMap
         };
-        track.gainNode.gain.setValueAtTime(1e-4, startTime);
-        track.gainNode.gain.exponentialRampToValueAtTime(Math.max(1e-4, volume), startTime + crossfade);
+        track.gainNode.gain.setValueAtTime(0, startTime);
+        track.gainNode.gain.setTargetAtTime(Math.max(1e-4, volume), startTime, 0.015);
         track.gainNode.connect(ZsynthPlayer.masterGain);
         ZsynthPlayer.currentTrack = track;
         ZsynthPlayer.scheduler(track);

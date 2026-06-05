@@ -177,7 +177,7 @@ const triggerCrash = () => {
     if (zstate.crashed) return;
     voiceEvents.emit('mayday');
     stopHeliSound();
-    soundHandler.play('final', false);
+    soundHandler.play('final');
     spawnExplosion(G.heli, G.particles, G.debris, G.points, G.CARRIER);
     zstate.crashed = true;
     setTimeout(() => {
@@ -246,12 +246,12 @@ const missionComplete = () => {
 
     if (allDone) {
         const isStoryCampaign = campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT;
-        soundHandler.play('success', false);
+        soundHandler.play('success');
         if (isStoryCampaign && firstCompletion) {
             const campaignTitle = campaignHandler.getCampaigns()[_selectedCampaignIndex]?.campaignTitle;
             const name =
                 typeof campaignTitle === 'string' ? campaignTitle : (campaignTitle?.de ?? campaignTitle?.en ?? '');
-            CampaignEndScreen.show(name, () => soundHandler.play('destroid', false));
+            CampaignEndScreen.show(name, () => soundHandler.play('destroid'));
         } else {
             CampaignCompleteScreen.show('');
         }
@@ -312,7 +312,7 @@ const returnToBase = () => {
     } else {
         _openMissionSelect();
     }
-    soundHandler.play('maintheme', true);
+    soundHandler.play('maintheme');
 };
 
 const returnToCampaignSelect = () => {
@@ -322,13 +322,13 @@ const returnToCampaignSelect = () => {
     CampaignCompleteScreen.hide();
     Briefing.hide();
     _openCampaignSelect(); // calls showScreen('campaign-select')
-    soundHandler.play('maintheme', true);
+    soundHandler.play('maintheme');
 };
 
 const _returnFromCampaignEnd = () => {
     CampaignEndScreen.hide();
     showScreen('main-menu');
-    soundHandler.play('maintheme', true);
+    soundHandler.play('maintheme');
 };
 
 const _openCampaignSelect = () => {
@@ -342,7 +342,7 @@ const _openCampaignSelect = () => {
 
 // ─── campaign / G.heli select ──────────────────────────────────────────────────
 const toCampaignSelect = () => {
-    soundHandler.play('maintheme', false);
+    soundHandler.play('maintheme');
     _openCampaignSelect();
 };
 
@@ -550,7 +550,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     Briefing.show({ headline: _lmd.headline, sublines: _lmd.sublines, briefing: _lmd.briefing, address }, () => {
         _briefingActive = false;
         _missionStartTime = Date.now();
-        soundHandler.play(_lmd.music || 'clike', false, 0.35);
+        soundHandler.play(_lmd.music || 'clike', 0.35);
 
         setTouchVisible(true);
 
@@ -812,7 +812,7 @@ const toMainMenu = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     zstate.gameStarted = false;
     showScreen('main-menu');
-    soundHandler.play('maintheme', true);
+    soundHandler.play('maintheme');
     HeliSelect.animMainMenuBg();
     startMenuParticles();
 };
@@ -1110,7 +1110,7 @@ const _onloadMain = () => {
         CreditsScreen.mount(toMainMenu);
         LegalScreen.mount(toMainMenu);
         MainMenu.mount({
-            onSplashStart: () => soundHandler.play('maintheme', true),
+            onSplashStart: () => soundHandler.play('maintheme'),
             onSplashClick: toMainMenu,
             onStart: toCampaignSelect,
             onSettings: Settings.show,
@@ -1162,7 +1162,7 @@ const _onloadMain = () => {
             setTouchVisible(false);
         },
         onResume: () => {
-            if (!soundHandler.state.isMuted) soundHandler.play(soundHandler.state.activeTheme, false, 0.35);
+            if (!soundHandler.state.isMuted) soundHandler.play(soundHandler.state.activeTheme, 0.35);
             initHeliSound(G.heli.type);
             _rafId = requestAnimationFrame(drawScene);
             setTouchVisible(true);

@@ -54,18 +54,13 @@ const soundHandler = (() => {
             state.isMuted = false;
             if (state.activeTheme) ZsynthPlayer.play(state.activeTheme);
         },
-        play: (theme: string, fade: boolean, volume: number = 1.0) => {
+        play: (theme: string, volume: number = 1.0) => {
             if (!songList[theme]) return;
             const alreadyPlaying = state.activeTheme === theme && ZsynthPlayer.currentTrack?.isPlaying;
             state.activeTheme = theme;
             if (state.isMuted) return;
             if (alreadyPlaying) return;
-
-            try {
-                ZsynthPlayer.play(theme, fade ? 0.25 : 0.001, volume);
-            } catch (e) {
-                // nothing to catch in here
-            }
+            ZsynthPlayer.play(theme, volume);
         },
         stop: () => {
             ZsynthPlayer.stop();

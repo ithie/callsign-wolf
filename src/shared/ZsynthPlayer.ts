@@ -78,7 +78,7 @@ const ZsynthPlayer = {
         });
     },
 
-    play: (key: string, crossfade: number = 0.5, volume: number = 1.0): void => {
+    play: (key: string, volume: number = 1.0): void => {
         // Lazy-init: AudioContext created here (inside user gesture) starts as 'running' on iOS
         if (!ZsynthPlayer.ctx) {
             ZsynthPlayer.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -103,10 +103,10 @@ const ZsynthPlayer = {
             const ctx = ZsynthPlayer.ctx!;
             const startTime = ctx.currentTime;
 
-            if (ZsynthPlayer.currentTrack && ZsynthPlayer.currentTrack.isPlaying) {
-                const oldTrack = ZsynthPlayer.currentTrack;
-                oldTrack.gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + crossfade);
-                setTimeout(() => { oldTrack.isPlaying = false; }, crossfade * 1000);
+            if (ZsynthPlayer.currentTrack) {
+                const old = ZsynthPlayer.currentTrack;
+                old.gainNode.gain.setTargetAtTime(0, startTime, 0.015);
+                setTimeout(() => { old.isPlaying = false; }, 100);
             }
 
             const track: ActiveTrack = {
@@ -118,8 +118,8 @@ const ZsynthPlayer = {
                 stepMap,
             };
 
-            track.gainNode.gain.setValueAtTime(0.0001, startTime);
-            track.gainNode.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), startTime + crossfade);
+            track.gainNode.gain.setValueAtTime(0, startTime);
+            track.gainNode.gain.setTargetAtTime(Math.max(0.0001, volume), startTime, 0.015);
             track.gainNode.connect(ZsynthPlayer.masterGain!);
 
             ZsynthPlayer.currentTrack = track;
