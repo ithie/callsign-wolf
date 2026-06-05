@@ -69,10 +69,12 @@ const ZsynthPlayer = {
 
     init: (songList: Record<string, SongData>): void => {
         ZsynthPlayer.songs = songList;
-        const _tryResume = () => { if (ZsynthPlayer.ctx?.state === 'suspended') ZsynthPlayer.ctx.resume(); };
+        const _tryResume = () => {
+            if (ZsynthPlayer.ctx?.state === 'suspended') ZsynthPlayer.ctx.resume();
+        };
         (window as any).__zsynthResume = _tryResume;
         document.addEventListener('touchstart', _tryResume, { passive: true });
-        document.addEventListener('click',      _tryResume, { passive: true });
+        document.addEventListener('click', _tryResume, { passive: true });
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') _tryResume();
         });
@@ -80,57 +82,63 @@ const ZsynthPlayer = {
 
     play: (key: string, volume: number = 1.0): void => {
         // Lazy-init: AudioContext created here (inside user gesture) starts as 'running' on iOS
-        if (!ZsynthPlayer.ctx) {
-            ZsynthPlayer.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-            ZsynthPlayer.masterGain = ZsynthPlayer.ctx.createGain();
-            ZsynthPlayer.masterGain.connect(ZsynthPlayer.ctx.destination);
-        }
-
-        const songData = ZsynthPlayer.songs[key];
-        if (!songData) return;
-
-        const stepMap: Record<number, Array<{ trackId: string; note: string }>> = {};
-        for (const k in songData.activeData) {
-            const sepIdx = k.lastIndexOf('-');
-            const trackId = k.substring(0, sepIdx);
-            const step = parseInt(k.substring(sepIdx + 1));
-            const note = songData.activeData[k] as string;
-            if (!stepMap[step]) stepMap[step] = [];
-            stepMap[step].push({ trackId, note });
-        }
-
-        const _start = () => {
-            const ctx = ZsynthPlayer.ctx!;
-            const startTime = ctx.currentTime;
-
-            if (ZsynthPlayer.currentTrack) {
-                const old = ZsynthPlayer.currentTrack;
-                old.gainNode.gain.setTargetAtTime(0, startTime, 0.015);
-                setTimeout(() => { old.isPlaying = false; }, 100);
+        try {
+            if (!ZsynthPlayer.ctx) {
+                ZsynthPlayer.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                ZsynthPlayer.masterGain = ZsynthPlayer.ctx.createGain();
+                ZsynthPlayer.masterGain.connect(ZsynthPlayer.ctx.destination);
             }
 
-            const track: ActiveTrack = {
-                data: songData,
-                isPlaying: true,
-                currentStep: 0,
-                gainNode: ctx.createGain(),
-                nextNoteTime: startTime + 0.05,
-                stepMap,
+            const songData = ZsynthPlayer.songs[key];
+            if (!songData) return;
+
+            const stepMap: Record<number, Array<{ trackId: string; note: string }>> = {};
+            for (const k in songData.activeData) {
+                const sepIdx = k.lastIndexOf('-');
+                const trackId = k.substring(0, sepIdx);
+                const step = parseInt(k.substring(sepIdx + 1));
+                const note = songData.activeData[k] as string;
+                if (!stepMap[step]) stepMap[step] = [];
+                stepMap[step].push({ trackId, note });
+            }
+
+            const _start = () => {
+                const ctx = ZsynthPlayer.ctx!;
+                const startTime = ctx.currentTime;
+
+                if (ZsynthPlayer.currentTrack) {
+                    const old = ZsynthPlayer.currentTrack;
+                    old.gainNode.gain.setTargetAtTime(0, startTime, 0.015);
+                    setTimeout(() => {
+                        old.isPlaying = false;
+                    }, 100);
+                }
+
+                const track: ActiveTrack = {
+                    data: songData,
+                    isPlaying: true,
+                    currentStep: 0,
+                    gainNode: ctx.createGain(),
+                    nextNoteTime: startTime + 0.05,
+                    stepMap,
+                };
+
+                track.gainNode.gain.setValueAtTime(0, startTime);
+                track.gainNode.gain.setTargetAtTime(Math.max(0.0001, volume), startTime, 0.015);
+                track.gainNode.connect(ZsynthPlayer.masterGain!);
+
+                ZsynthPlayer.currentTrack = track;
+                ZsynthPlayer.scheduler(track);
             };
 
-            track.gainNode.gain.setValueAtTime(0, startTime);
-            track.gainNode.gain.setTargetAtTime(Math.max(0.0001, volume), startTime, 0.015);
-            track.gainNode.connect(ZsynthPlayer.masterGain!);
-
-            ZsynthPlayer.currentTrack = track;
-            ZsynthPlayer.scheduler(track);
-        };
-
-        // AudioContext starts suspended on iOS until a user gesture — await resume before scheduling
-        if (ZsynthPlayer.ctx.state === 'suspended') {
-            ZsynthPlayer.ctx.resume().then(_start);
-        } else {
-            _start();
+            // AudioContext starts suspended on iOS until a user gesture — await resume before scheduling
+            if (ZsynthPlayer.ctx.state === 'suspended') {
+                ZsynthPlayer.ctx.resume().then(_start);
+            } else {
+                _start();
+            }
+        } catch {
+            // nothing to do here
         }
     },
 
@@ -158,12 +166,14 @@ const ZsynthPlayer = {
 
             const notes = track.stepMap[sIdx] || [];
             notes.forEach(({ trackId, note }) => {
-                const config = track.data.config[trackId] || { vol: 80 };
-                if (trackId.startsWith('synth')) {
-                    ZsynthPlayer.playSynth(note, track.nextNoteTime, config, track.gainNode);
-                } else {
-                    ZsynthPlayer.playDrum(note, track.nextNoteTime, config.vol / 100, track.gainNode);
-                }
+                try {
+                    const config = track.data.config[trackId] || { vol: 80 };
+                    if (trackId.startsWith('synth')) {
+                        ZsynthPlayer.playSynth(note, track.nextNoteTime, config, track.gainNode);
+                    } else {
+                        ZsynthPlayer.playDrum(note, track.nextNoteTime, config.vol / 100, track.gainNode);
+                    }
+                } catch { /* audio scheduling error — skip note, keep scheduler running */ }
             });
 
             track.currentStep++;
@@ -190,7 +200,7 @@ const ZsynthPlayer = {
             bp.type = 'bandpass';
             bp.frequency.value = 2800;
             bp.Q.value = 0.8;
-            g.gain.setValueAtTime(vol * 0.9, time);
+            g.gain.setValueAtTime(Math.max(0.0001, vol * 0.9), time);
             g.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
             src.connect(bp);
             bp.connect(g);
@@ -201,7 +211,7 @@ const ZsynthPlayer = {
 
         const osc = ctx.createOscillator();
         if (type === 'KICK') {
-            g.gain.setValueAtTime(vol * 0.5, time);
+            g.gain.setValueAtTime(Math.max(0.0001, vol * 0.5), time);
             osc.frequency.setValueAtTime(150, time);
             osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.2);
             g.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
@@ -211,7 +221,7 @@ const ZsynthPlayer = {
         } else if (type === 'HI-HAT') {
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(300, time);
-            g.gain.setValueAtTime(vol * 0.35, time);
+            g.gain.setValueAtTime(Math.max(0.0001, vol * 0.35), time);
             g.gain.exponentialRampToValueAtTime(0.01, time + 0.04);
             osc.connect(g);
             osc.start(time);
@@ -220,7 +230,7 @@ const ZsynthPlayer = {
             // SNARE
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(120, time);
-            g.gain.setValueAtTime(vol * 0.5, time);
+            g.gain.setValueAtTime(Math.max(0.0001, vol * 0.5), time);
             g.gain.exponentialRampToValueAtTime(0.01, time + 0.12);
             osc.connect(g);
             osc.start(time);
@@ -240,7 +250,7 @@ const ZsynthPlayer = {
         const attack = cfg.attack ?? 0.02;
         const release = cfg.release ?? 0.3;
         const detune = cfg.detune ?? 0;
-        const v = (cfg.vol / 100) * 0.2;
+        const v = Math.max(0.0001, (cfg.vol / 100) * 0.2);
 
         const g = ZsynthPlayer.ctx.createGain();
         g.gain.setValueAtTime(0.0001, time);
@@ -250,8 +260,6 @@ const ZsynthPlayer = {
         const osc = ZsynthPlayer.ctx.createOscillator();
         osc.type = cfg.wave || 'square';
         osc.frequency.setValueAtTime(freq || 220, time);
-        f.type = 'lowpass';
-        f.frequency.setValueAtTime(cfg.filter || 2000, time);
 
         if (detune !== 0) {
             const osc2 = ZsynthPlayer.ctx.createOscillator();
@@ -262,15 +270,11 @@ const ZsynthPlayer = {
             osc2.stop(time + attack + release + 0.05);
         }
 
-        g.gain.setValueAtTime(0.0001, time);
-        g.gain.linearRampToValueAtTime(v, time + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, time + 0.3);
-
         osc.connect(f);
         f.connect(g);
         g.connect(target);
         osc.start(time);
-        osc.stop(time + 0.4);
+        osc.stop(time + attack + release + 0.05);
     },
 
     stop: (): void => {

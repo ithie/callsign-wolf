@@ -1,5 +1,15 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.3.6 — Audio Scheduler Hardening
+
+### Fixed
+
+- **ZSynth audio exception** — removed duplicate gain/filter scheduling block in `playSynth` (copy-paste artifact that caused `InvalidStateError` in the Web Audio API on certain transitions).
+- **Zero-volume crash** — all `exponentialRampToValueAtTime` start values in `playSynth` and `playDrum` are now clamped to `0.0001`; a vol of 0 no longer produces a zero-to-zero exponential ramp that throws.
+- **Unguarded scheduler loop** — each note scheduling call in `scheduler()` is now wrapped in a try/catch so a single bad note never breaks the entire playback loop.
+
+---
+
 ## v28.3.5 — Campaign End Screen, Music System & Audio Fixes
 
 ### Added
