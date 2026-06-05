@@ -81,10 +81,13 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
                 const h0 = G.points[x]?.[y] ?? 0;
                 const wl = G.waterLevel;
                 const c = 35 + Math.floor(h0 * 15);
+                const isSand = !isPadTile(x, y) && !isServiceTile(x, y) && h0 > wl && (G.sandPoints[x]?.[y] ?? 0) > 0;
                 _tileColors[x][y] = isPadTile(x, y)
                     ? '#444'
                     : isServiceTile(x, y)
                     ? '#444'
+                    : isSand
+                    ? `rgb(${Math.min(240, c + 160)},${Math.min(215, c + 135)},${Math.min(140, c + 55)})`
                     : h0 > wl
                     ? `rgb(${c - 10},${c + 30},${c - 10})`
                     : rain
@@ -119,6 +122,8 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
                 if (!inLight) return '#020205';
                 if (_isPad) return `rgb(${intensity - 30},${intensity - 30},${intensity - 30})`;
                 if (_isSvc) return `rgb(${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)})`;
+                if (h0 > G.waterLevel && (G.sandPoints[x]?.[y] ?? 0) > 0)
+                    return `rgb(${Math.floor(intensity * 1.05)},${Math.floor(intensity * 0.88)},${Math.floor(intensity * 0.45)})`;
                 return h0 > G.waterLevel
                     ? `rgb(${intensity - 20},${intensity + 10},${intensity - 20})`
                     : `rgb(0,${Math.floor(intensity * 0.3)},${Math.floor(intensity * 0.6)})`;

@@ -673,6 +673,19 @@ const paint = (e: MouseEvent) => {
             }
         }
         renderFoliageList();
+    } else if (state.currentTool === 'sand') {
+        const mSand = m as any;
+        if (!mSand.sand)
+            mSand.sand = Array.from({ length: m.gridSize + 1 }, () => new Array(m.gridSize + 1).fill(0));
+        const val = e.shiftKey ? 0 : 1;
+        const rad = Math.ceil(state.brushRadius);
+        for (let dx = -rad; dx <= rad; dx++) {
+            for (let dy = -rad; dy <= rad; dy++) {
+                const nx = gx + dx, ny = gy + dy;
+                if (Math.hypot(dx, dy) <= state.brushRadius && nx >= 0 && nx <= m.gridSize && ny >= 0 && ny <= m.gridSize)
+                    mSand.sand[nx][ny] = val;
+            }
+        }
     }
 
     if (state.currentTool === 'terrain' || state.currentTool === 'flatten')
@@ -982,7 +995,7 @@ export const initUI = () => {
     cursorEl.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;display:none;';
     document.body.appendChild(cursorEl);
     const cursorCtx = cursorEl.getContext('2d')!;
-    const PAINT_TOOLS = new Set(['terrain', 'flatten', 'foliage']);
+    const PAINT_TOOLS = new Set(['terrain', 'flatten', 'foliage', 'sand']);
     const POINT_TOOLS = new Set([
         'pad',
         'carrier',
@@ -1047,7 +1060,9 @@ export const initUI = () => {
                     ? 'rgba(100,200,255,0.08)'
                     : tool === 'foliage'
                       ? 'rgba(50,200,50,0.1)'
-                      : 'rgba(255,160,0,0.08)';
+                      : tool === 'sand'
+                        ? 'rgba(212,180,80,0.12)'
+                        : 'rgba(255,160,0,0.08)';
             cursorCtx.fill();
         } else if (POINT_TOOLS.has(tool)) {
             const size = 32;
@@ -1356,14 +1371,14 @@ export const initUI = () => {
 
         const data = state.campaign.map((m, i) => {
             state.curIdx = i;
+            const mAny = m as any;
             return {
                 ...m,
                 terrain: typeof m.terrain === 'string' ? m.terrain : compressTerrain(m.terrain),
                 foliage: compressFoliage(
-                    typeof (m as any).foliage === 'string'
-                        ? decompressFoliage((m as any).foliage)
-                        : (m as any).foliage || []
+                    typeof mAny.foliage === 'string' ? decompressFoliage(mAny.foliage) : mAny.foliage || []
                 ),
+                ...(mAny.sand ? { sand: compressTerrain(mAny.sand) } : {}),
             };
         });
 
@@ -1421,6 +1436,7 @@ export const initUI = () => {
                     ...m,
                     terrain: typeof m.terrain === 'string' ? decompressTerrain(m.terrain, m.gridSize) : m.terrain,
                     foliage: typeof m.foliage === 'string' ? decompressFoliage(m.foliage) : m.foliage || [],
+                    ...(m.sand ? { sand: decompressTerrain(m.sand, m.gridSize) } : {}),
                 } as Mission;
                 delete (base as any).previewBase64;
                 return base;

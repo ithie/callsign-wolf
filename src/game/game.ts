@@ -470,6 +470,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
 
     // Step 1 — terrain
     generateTerrain(G.points, _missionHasPad ? { ...G.PAD, yMin: G.PAD.yMin - 3 } : null);
+    G.sandPoints = campaignHandler.getTerrain().sand ?? [];
     initMinimapTerrain(G.points, _missionGridSize, G.waterLevel);
     precomputeDayColors(_missionRain);
     handle?.step('Gelände…', 0.25);

@@ -85,7 +85,7 @@ export const activate = (ctx: vscode.ExtensionContext): void => {
         ),
         vscode.window.registerCustomEditorProvider(
             'zw.zdefEditor',
-            new ZdefEditorProvider(ctx),
+            (() => { const p = new ZdefEditorProvider(ctx); ctx.subscriptions.push(vscode.commands.registerCommand('zw.openZdefRaw', () => p.openRawForActive())); return p; })(),
             { webviewOptions: { retainContextWhenHidden: true } },
         ),
         vscode.window.registerCustomEditorProvider(

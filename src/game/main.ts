@@ -69,7 +69,7 @@ const soundHandler = (() => {
 })();
 
 const createCampaignHandler = () => {
-    let cachedTerrain: { terrain: number[][]; gridSize: number } | null = null;
+    let cachedTerrain: { terrain: number[][]; gridSize: number; sand?: number[][] } | null = null;
 
     const campaigns: CampaignExport[] = [
         Tutorial as unknown as CampaignExport,
@@ -118,10 +118,12 @@ const createCampaignHandler = () => {
 
     const getTerrain = () => {
         if (!cachedTerrain) {
-            const { terrain, gridSize } = campaigns[campaignState.activeCampaign].levels[campaignState.activeMission];
+            const level = campaigns[campaignState.activeCampaign].levels[campaignState.activeMission];
+            const { terrain, gridSize } = level;
             cachedTerrain = {
                 terrain: decompressTerrain(terrain, gridSize),
                 gridSize,
+                sand: (level as any).sand ? decompressTerrain((level as any).sand, gridSize) : undefined,
             };
         }
 
@@ -145,7 +147,7 @@ export const campaignHandler = createCampaignHandler();
 // ─── Preview mode — DEV only, stripped from production bundle ─────────────────
 if (import.meta.env.DEV) {
     let _previewLevel: MissionData | null = null;
-    let _previewTerrain: { terrain: number[][]; gridSize: number } | null = null;
+    let _previewTerrain: { terrain: number[][]; gridSize: number; sand?: number[][] } | null = null;
 
     const _origGetMission = campaignHandler.getCurrentMissionData.bind(campaignHandler);
     const _origGetTerrain = campaignHandler.getTerrain.bind(campaignHandler);
@@ -160,6 +162,7 @@ if (import.meta.env.DEV) {
                 _previewTerrain = {
                     terrain: decompressTerrain(_previewLevel.terrain as string, _previewLevel.gridSize),
                     gridSize: _previewLevel.gridSize,
+                    sand: _previewLevel.sand ? decompressTerrain(_previewLevel.sand, _previewLevel.gridSize) : undefined,
                 };
             return _previewTerrain;
         };

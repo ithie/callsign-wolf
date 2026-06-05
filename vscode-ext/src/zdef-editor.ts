@@ -7,6 +7,18 @@ interface ZdefDoc extends vscode.CustomDocument {
 }
 
 export class ZdefEditorProvider implements vscode.CustomEditorProvider<ZdefDoc> {
+    private _lastActiveDoc: ZdefDoc | undefined;
+
+    openRawForActive(): void {
+        if (!this._lastActiveDoc) return;
+        vscode.commands.executeCommand(
+            'vscode.openWith',
+            this._lastActiveDoc.uri,
+            'default',
+            { viewColumn: vscode.ViewColumn.Beside, preview: true },
+        );
+    }
+
     private readonly _onChange = new vscode.EventEmitter<
         vscode.CustomDocumentContentChangeEvent<ZdefDoc>
     >();
@@ -28,6 +40,9 @@ export class ZdefEditorProvider implements vscode.CustomEditorProvider<ZdefDoc> 
         panel: vscode.WebviewPanel,
         _token: vscode.CancellationToken,
     ): void {
+        this._lastActiveDoc = document;
+        panel.onDidChangeViewState(e => { if (e.webviewPanel.active) this._lastActiveDoc = document; });
+
         const scriptUri = panel.webview.asWebviewUri(
             vscode.Uri.joinPath(this.ctx.extensionUri, 'media', 'zdef.js'),
         );

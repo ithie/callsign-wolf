@@ -158,6 +158,7 @@ export interface Mission {
     windVar: boolean;
     waterLevel?: number;
     music?: string;
+    sand?: number[][];
 }
 
 export type MissionData = Omit<Mission, 'terrain' | 'foliage'> & {
@@ -165,6 +166,7 @@ export type MissionData = Omit<Mission, 'terrain' | 'foliage'> & {
     gridSize: number;
     foliage: string | { x: number; y: number; s: number; type: string }[];
     campaignType: string;
+    sand?: string;
 };
 
 export interface CampaignExport {
@@ -176,6 +178,7 @@ export interface CampaignExport {
         terrain: string;
         gridSize: number;
         foliage: string | { x: number; y: number; s: number; type: string }[];
+        sand?: string;
     })[];
 }
 

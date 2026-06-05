@@ -42,6 +42,7 @@ export const G = {
     menuHover: Object.fromEntries(HELI_TYPES.map(h => [h.id, false])),
     menuAngles: Object.fromEntries(HELI_TYPES.map(h => [h.id, -0.5])),
     points: [] as any[],
+    sandPoints: [] as number[][],
     particles: [] as any[],
     debris: [] as any[],
     CARRIER: {} as any,

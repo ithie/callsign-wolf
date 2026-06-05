@@ -88,6 +88,10 @@
     textDark: "#000",
     shadow: "rgba(0, 0, 0, 0.5)"
   };
+  var getSandColor = (height) => {
+    const c = 35 + height * 15;
+    return `rgb(${Math.min(240, c + 160)},${Math.min(215, c + 135)},${Math.min(140, c + 55)})`;
+  };
   var getLandColor = (height, isNight) => {
     let r = 50 + height * 20;
     let g = 150 + height * 10;
@@ -129,7 +133,8 @@
     for (let x = Math.floor(state.panX); x < Math.min(m.gridSize, state.panX + 600 / tSize + 1); x++) {
       for (let y = Math.floor(state.panY); y < Math.min(m.gridSize, state.panY + 600 / tSize + 1); y++) {
         const h = m.terrain[x][y];
-        ctx.fillStyle = h <= 0 ? COLORS.water : getLandColor(h, false);
+        const isSand = h > 0 && (m.sand?.[x]?.[y] ?? 0) > 0;
+        ctx.fillStyle = h <= 0 ? COLORS.water : isSand ? getSandColor(h) : getLandColor(h, false);
         ctx.fillRect((x - state.panX) * tSize, (y - state.panY) * tSize, tSize + 1.5, tSize + 1.5);
       }
     }
@@ -1328,6 +1333,19 @@
         }
       }
       renderFoliageList();
+    } else if (state.currentTool === "sand") {
+      const mSand = m;
+      if (!mSand.sand)
+        mSand.sand = Array.from({ length: m.gridSize + 1 }, () => new Array(m.gridSize + 1).fill(0));
+      const val = e.shiftKey ? 0 : 1;
+      const rad = Math.ceil(state.brushRadius);
+      for (let dx = -rad; dx <= rad; dx++) {
+        for (let dy = -rad; dy <= rad; dy++) {
+          const nx = gx + dx, ny = gy + dy;
+          if (Math.hypot(dx, dy) <= state.brushRadius && nx >= 0 && nx <= m.gridSize && ny >= 0 && ny <= m.gridSize)
+            mSand.sand[nx][ny] = val;
+        }
+      }
     }
     if (state.currentTool === "terrain" || state.currentTool === "flatten")
       smoothCoast(m, gx, gy, Math.ceil(state.brushRadius) + 2);
@@ -1602,7 +1620,7 @@
     cursorEl.style.cssText = "position:fixed;pointer-events:none;z-index:9999;display:none;";
     document.body.appendChild(cursorEl);
     const cursorCtx = cursorEl.getContext("2d");
-    const PAINT_TOOLS = /* @__PURE__ */ new Set(["terrain", "flatten", "foliage"]);
+    const PAINT_TOOLS = /* @__PURE__ */ new Set(["terrain", "flatten", "foliage", "sand"]);
     const POINT_TOOLS = /* @__PURE__ */ new Set([
       "pad",
       "carrier",
@@ -1661,7 +1679,7 @@
         cursorCtx.fill();
         cursorCtx.beginPath();
         cursorCtx.arc(size / 2, size / 2, radiusPx, 0, Math.PI * 2);
-        cursorCtx.fillStyle = tool === "flatten" ? "rgba(100,200,255,0.08)" : tool === "foliage" ? "rgba(50,200,50,0.1)" : "rgba(255,160,0,0.08)";
+        cursorCtx.fillStyle = tool === "flatten" ? "rgba(100,200,255,0.08)" : tool === "foliage" ? "rgba(50,200,50,0.1)" : tool === "sand" ? "rgba(212,180,80,0.12)" : "rgba(255,160,0,0.08)";
         cursorCtx.fill();
       } else if (POINT_TOOLS.has(tool)) {
         const size = 32;
@@ -1923,12 +1941,14 @@
       const savedIdx = state.curIdx;
       const data = state.campaign.map((m, i) => {
         state.curIdx = i;
+        const mAny = m;
         return {
           ...m,
           terrain: typeof m.terrain === "string" ? m.terrain : compressTerrain(m.terrain),
           foliage: compressFoliage(
-            typeof m.foliage === "string" ? decompressFoliage(m.foliage) : m.foliage || []
-          )
+            typeof mAny.foliage === "string" ? decompressFoliage(mAny.foliage) : mAny.foliage || []
+          ),
+          ...mAny.sand ? { sand: compressTerrain(mAny.sand) } : {}
         };
       });
       state.curIdx = savedIdx;
@@ -1970,7 +1990,8 @@
           const base = {
             ...m,
             terrain: typeof m.terrain === "string" ? decompressTerrain(m.terrain, m.gridSize) : m.terrain,
-            foliage: typeof m.foliage === "string" ? decompressFoliage(m.foliage) : m.foliage || []
+            foliage: typeof m.foliage === "string" ? decompressFoliage(m.foliage) : m.foliage || [],
+            ...m.sand ? { sand: decompressTerrain(m.sand, m.gridSize) } : {}
           };
           delete base.previewBase64;
           return base;

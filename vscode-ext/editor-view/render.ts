@@ -1,5 +1,5 @@
 import { state, getCurrentMission } from './state';
-import { COLORS, getLandColor } from '@/shared/constants';
+import { COLORS, getLandColor, getSandColor } from '@/shared/constants';
 
 const canvas = document.getElementById('editorCanvas') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
@@ -35,7 +35,8 @@ export const drawMap = () => {
     for (let x = Math.floor(state.panX); x < Math.min(m.gridSize, state.panX + 600 / tSize + 1); x++) {
         for (let y = Math.floor(state.panY); y < Math.min(m.gridSize, state.panY + 600 / tSize + 1); y++) {
             const h = m.terrain[x][y];
-            ctx.fillStyle = h <= 0 ? COLORS.water : getLandColor(h, false);
+            const isSand = h > 0 && ((m as any).sand?.[x]?.[y] ?? 0) > 0;
+            ctx.fillStyle = h <= 0 ? COLORS.water : isSand ? getSandColor(h) : getLandColor(h, false);
             ctx.fillRect((x - state.panX) * tSize, (y - state.panY) * tSize, tSize + 1.5, tSize + 1.5);
         }
     }

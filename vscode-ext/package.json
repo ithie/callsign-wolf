@@ -70,6 +70,11 @@
                 "command": "zw.openUIPreview",
                 "title": "Zeewolf: Open UI Preview",
                 "icon": "$(symbol-color)"
+            },
+            {
+                "command": "zw.openZdefRaw",
+                "title": "Open RAW JSON",
+                "icon": "$(json)"
             }
         ],
         "menus": {
@@ -82,6 +87,11 @@
                 {
                     "command": "zw.openUIPreview",
                     "when": "resourcePath =~ /\\.ui\\.ts$/",
+                    "group": "navigation"
+                },
+                {
+                    "command": "zw.openZdefRaw",
+                    "when": "resourceExtname == .zdef",
                     "group": "navigation"
                 }
             ]
