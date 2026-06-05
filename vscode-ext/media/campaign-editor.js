@@ -114,12 +114,18 @@
     const sUI = document.getElementById("ui_submarine");
     const wUI = document.getElementById("ui_wind");
     const wtUI = document.getElementById("ui_wt");
+    const pwUI = document.getElementById("ui_plane_wreck");
+    const sbUI = document.getElementById("ui_sailboat_broken");
+    const owUI = document.getElementById("ui_ornithopter_wreck");
     if (pUI) pUI.style.display = "none";
     if (cUI) cUI.style.display = "none";
     if (bUI) bUI.style.display = "none";
     if (sUI) sUI.style.display = "none";
     if (wtUI) wtUI.style.display = "none";
     if (wUI) wUI.style.display = "none";
+    if (pwUI) pwUI.style.display = "none";
+    if (sbUI) sbUI.style.display = "none";
+    if (owUI) owUI.style.display = "none";
     for (let x = Math.floor(state.panX); x < Math.min(m.gridSize, state.panX + 600 / tSize + 1); x++) {
       for (let y = Math.floor(state.panY); y < Math.min(m.gridSize, state.panY + 600 / tSize + 1); y++) {
         const h = m.terrain[x][y];
@@ -400,6 +406,13 @@
         ctx.fillRect(-1.5 * tSize, -0.35 * tSize, 0.5 * tSize, 0.7 * tSize);
         ctx.restore();
         ctx.shadowBlur = 0;
+        if (isSelected && pwUI) {
+          pwUI.style.display = "block";
+          pwUI.style.left = Math.min(600 - 130, Math.max(0, ox2 + 20)) + "px";
+          pwUI.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
+          const angleEl = document.getElementById("m_pw_angle");
+          if (angleEl) angleEl.value = (pw.angle ?? 0).toString();
+        }
       } else if (obj.type === "sailboat_broken") {
         const sb = obj;
         const ox2 = (sb.x + 0.5 - state.panX) * tSize;
@@ -433,6 +446,13 @@
         ctx.stroke();
         ctx.restore();
         ctx.shadowBlur = 0;
+        if (isSelected && sbUI) {
+          sbUI.style.display = "block";
+          sbUI.style.left = Math.min(600 - 130, Math.max(0, ox2 + 20)) + "px";
+          sbUI.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
+          const angleEl = document.getElementById("m_sb_angle");
+          if (angleEl) angleEl.value = (sb.angle ?? 0).toString();
+        }
       } else if (obj.type === "ornithopter_wreck") {
         const ow = obj;
         const ox2 = (ow.x + 0.5 - state.panX) * tSize;
@@ -503,6 +523,13 @@
         });
         ctx.restore();
         ctx.shadowBlur = 0;
+        if (isSelected && owUI) {
+          owUI.style.display = "block";
+          owUI.style.left = Math.min(600 - 130, Math.max(0, ox2 + 20)) + "px";
+          owUI.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
+          const angleEl = document.getElementById("m_ow_angle");
+          if (angleEl) angleEl.value = (ow.angle ?? 0).toString();
+        }
       }
     });
     const payloads = m.payloads || [];
@@ -1489,6 +1516,18 @@
       state.selectedObjectIdx = null;
       drawMap();
     });
+    safeClick("close-plane-wreck", () => {
+      state.selectedObjectIdx = null;
+      drawMap();
+    });
+    safeClick("close-sailboat-broken", () => {
+      state.selectedObjectIdx = null;
+      drawMap();
+    });
+    safeClick("close-ornithopter-wreck", () => {
+      state.selectedObjectIdx = null;
+      drawMap();
+    });
     document.getElementById("m_wt_spinning")?.addEventListener("change", () => {
       const m = getCurrentMission();
       if (!m || state.selectedObjectIdx === null) return;
@@ -1515,6 +1554,33 @@
     ["submarine_path", "submarine_speed", "submarine_radius", "submarine_angle"].forEach(
       (id) => document.getElementById(`m_${id}`)?.addEventListener("input", () => syncVesselFromUI("submarine"))
     );
+    document.getElementById("m_pw_angle")?.addEventListener("input", () => {
+      const m = getCurrentMission();
+      if (!m || state.selectedObjectIdx === null) return;
+      const obj = m.objects[state.selectedObjectIdx];
+      if (obj?.type !== "plane_wreck") return;
+      obj.angle = parseInt(document.getElementById("m_pw_angle").value) || 0;
+      drawMap();
+      broadcastPreview();
+    });
+    document.getElementById("m_sb_angle")?.addEventListener("input", () => {
+      const m = getCurrentMission();
+      if (!m || state.selectedObjectIdx === null) return;
+      const obj = m.objects[state.selectedObjectIdx];
+      if (obj?.type !== "sailboat_broken") return;
+      obj.angle = parseInt(document.getElementById("m_sb_angle").value) || 0;
+      drawMap();
+      broadcastPreview();
+    });
+    document.getElementById("m_ow_angle")?.addEventListener("input", () => {
+      const m = getCurrentMission();
+      if (!m || state.selectedObjectIdx === null) return;
+      const obj = m.objects[state.selectedObjectIdx];
+      if (obj?.type !== "ornithopter_wreck") return;
+      obj.angle = parseInt(document.getElementById("m_ow_angle").value) || 0;
+      drawMap();
+      broadcastPreview();
+    });
     [
       "m_headline_de",
       "m_headline_en",

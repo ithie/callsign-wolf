@@ -17,6 +17,9 @@ export const drawMap = () => {
     const sUI = document.getElementById('ui_submarine') as HTMLElement;
     const wUI = document.getElementById('ui_wind') as HTMLElement;
     const wtUI = document.getElementById('ui_wt') as HTMLElement;
+    const pwUI = document.getElementById('ui_plane_wreck') as HTMLElement;
+    const sbUI = document.getElementById('ui_sailboat_broken') as HTMLElement;
+    const owUI = document.getElementById('ui_ornithopter_wreck') as HTMLElement;
 
     if (pUI) pUI.style.display = 'none';
     if (cUI) cUI.style.display = 'none';
@@ -24,6 +27,9 @@ export const drawMap = () => {
     if (sUI) sUI.style.display = 'none';
     if (wtUI) wtUI.style.display = 'none';
     if (wUI) wUI.style.display = 'none';
+    if (pwUI) pwUI.style.display = 'none';
+    if (sbUI) sbUI.style.display = 'none';
+    if (owUI) owUI.style.display = 'none';
 
     // ── Terrain ────────────────────────────────────────────────────────────────
     for (let x = Math.floor(state.panX); x < Math.min(m.gridSize, state.panX + 600 / tSize + 1); x++) {
@@ -320,6 +326,13 @@ export const drawMap = () => {
             ctx.fillRect(-1.5 * tSize, -0.35 * tSize, 0.5 * tSize, 0.7 * tSize);
             ctx.restore();
             ctx.shadowBlur = 0;
+            if (isSelected && pwUI) {
+                pwUI.style.display = 'block';
+                pwUI.style.left = Math.min(600 - 130, Math.max(0, ox + 20)) + 'px';
+                pwUI.style.top = Math.min(600 - 60, Math.max(0, oy)) + 'px';
+                const angleEl = document.getElementById('m_pw_angle') as HTMLInputElement;
+                if (angleEl) angleEl.value = (pw.angle ?? 0).toString();
+            }
         } else if ((obj as any).type === 'sailboat_broken') {
             const sb = obj as any;
             const ox = (sb.x + 0.5 - state.panX) * tSize;
@@ -354,6 +367,13 @@ export const drawMap = () => {
             ctx.stroke();
             ctx.restore();
             ctx.shadowBlur = 0;
+            if (isSelected && sbUI) {
+                sbUI.style.display = 'block';
+                sbUI.style.left = Math.min(600 - 130, Math.max(0, ox + 20)) + 'px';
+                sbUI.style.top = Math.min(600 - 60, Math.max(0, oy)) + 'px';
+                const angleEl = document.getElementById('m_sb_angle') as HTMLInputElement;
+                if (angleEl) angleEl.value = (sb.angle ?? 0).toString();
+            }
         } else if ((obj as any).type === 'ornithopter_wreck') {
             const ow = obj as any;
             const ox = (ow.x + 0.5 - state.panX) * tSize;
@@ -428,6 +448,13 @@ export const drawMap = () => {
             });
             ctx.restore();
             ctx.shadowBlur = 0;
+            if (isSelected && owUI) {
+                owUI.style.display = 'block';
+                owUI.style.left = Math.min(600 - 130, Math.max(0, ox + 20)) + 'px';
+                owUI.style.top = Math.min(600 - 60, Math.max(0, oy)) + 'px';
+                const angleEl = document.getElementById('m_ow_angle') as HTMLInputElement;
+                if (angleEl) angleEl.value = (ow.angle ?? 0).toString();
+            }
         }
     });
 

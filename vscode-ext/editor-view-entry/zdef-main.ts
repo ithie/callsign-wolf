@@ -131,10 +131,12 @@ const resize = (): void => {
 };
 new ResizeObserver(resize).observe(area);
 
-const iso = (wx: number, wy: number, wz: number, camX: number, camY: number): { x: number; y: number } => ({
-    x: renderCx + (wx - wy) * ((TW * renderZoom) / 2) - camX,
-    y: renderCy + (wx + wy) * ((TH * renderZoom) / 2) - wz * SH * renderZoom - camY,
-});
+const iso = (wx: number, wy: number, wz: number, camX: number, camY: number, out?: { x: number; y: number }): { x: number; y: number } => {
+    const x = renderCx + (wx - wy) * ((TW * renderZoom) / 2) - camX;
+    const y = renderCy + (wx + wy) * ((TH * renderZoom) / 2) - wz * SH * renderZoom - camY;
+    if (out) { out.x = x; out.y = y; return out; }
+    return { x, y };
+};
 
 const SceneRenderer = createSceneRenderer(ctx, iso);
 

@@ -885,6 +885,18 @@ export const initUI = () => {
         state.selectedObjectIdx = null;
         drawMap();
     });
+    safeClick('close-plane-wreck', () => {
+        state.selectedObjectIdx = null;
+        drawMap();
+    });
+    safeClick('close-sailboat-broken', () => {
+        state.selectedObjectIdx = null;
+        drawMap();
+    });
+    safeClick('close-ornithopter-wreck', () => {
+        state.selectedObjectIdx = null;
+        drawMap();
+    });
     document.getElementById('m_wt_spinning')?.addEventListener('change', () => {
         const m = getCurrentMission();
         if (!m || state.selectedObjectIdx === null) return;
@@ -915,6 +927,35 @@ export const initUI = () => {
     ['submarine_path', 'submarine_speed', 'submarine_radius', 'submarine_angle'].forEach(id =>
         document.getElementById(`m_${id}`)?.addEventListener('input', () => syncVesselFromUI('submarine'))
     );
+
+    // Wreck angle sync
+    document.getElementById('m_pw_angle')?.addEventListener('input', () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx] as any;
+        if (obj?.type !== 'plane_wreck') return;
+        obj.angle = parseInt((document.getElementById('m_pw_angle') as HTMLInputElement).value) || 0;
+        drawMap();
+        broadcastPreview();
+    });
+    document.getElementById('m_sb_angle')?.addEventListener('input', () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx] as any;
+        if (obj?.type !== 'sailboat_broken') return;
+        obj.angle = parseInt((document.getElementById('m_sb_angle') as HTMLInputElement).value) || 0;
+        drawMap();
+        broadcastPreview();
+    });
+    document.getElementById('m_ow_angle')?.addEventListener('input', () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx] as any;
+        if (obj?.type !== 'ornithopter_wreck') return;
+        obj.angle = parseInt((document.getElementById('m_ow_angle') as HTMLInputElement).value) || 0;
+        drawMap();
+        broadcastPreview();
+    });
 
     // General sync
     [

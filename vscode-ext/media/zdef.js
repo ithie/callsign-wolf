@@ -5731,10 +5731,16 @@
     draw();
   };
   new ResizeObserver(resize).observe(area);
-  var iso = (wx, wy, wz, camX, camY) => ({
-    x: renderCx + (wx - wy) * (TW * renderZoom / 2) - camX,
-    y: renderCy + (wx + wy) * (TH * renderZoom / 2) - wz * SH * renderZoom - camY
-  });
+  var iso = (wx, wy, wz, camX, camY, out) => {
+    const x = renderCx + (wx - wy) * (TW * renderZoom / 2) - camX;
+    const y = renderCy + (wx + wy) * (TH * renderZoom / 2) - wz * SH * renderZoom - camY;
+    if (out) {
+      out.x = x;
+      out.y = y;
+      return out;
+    }
+    return { x, y };
+  };
   var SceneRenderer = createSceneRenderer(ctx, iso);
   var localToScreen = (lx, ly, lz) => {
     const cosA = Math.cos(renderViewAngle), sinA = Math.sin(renderViewAngle);
