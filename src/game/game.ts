@@ -551,8 +551,8 @@ const launchMission = async (showLoader = true): Promise<void> => {
     Briefing.show({ headline: _lmd.headline, sublines: _lmd.sublines, briefing: _lmd.briefing, address }, () => {
         _briefingActive = false;
         _missionStartTime = Date.now();
-        soundHandler.play(_lmd.music || 'clike', 0.35);
 
+        try { soundHandler.play(_lmd.music || 'clike', 0.35); } catch { /* audio unavailable */ }
         setTouchVisible(true);
 
         if (_lmd.campaignType === CAMPAIGN_TYPE.TUTORIAL) {
