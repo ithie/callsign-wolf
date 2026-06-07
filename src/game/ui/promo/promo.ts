@@ -12,7 +12,7 @@ export const mount = (): void => {
         <h1>SAR:<br/>Callsign WOLF</h1>
         <canvas id="ph"></canvas>
         <div class="cs">COMING SOON</div>
-        <a class="il" href="?imprint">IMPRESSUM · DATENSCHUTZ · LEGAL</a>
+        <a class="il" href="?imprint">IMPRESSUM · DATENSCHUTZ</a>
     </div>`;
 
     const c = document.getElementById('ph') as HTMLCanvasElement;
@@ -21,9 +21,7 @@ export const mount = (): void => {
     const isoFn = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
         iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
 
-    const stub = { add: () => {}, flush: () => {} } as unknown as Parameters<
-        typeof createDrawObjects
-    >[4];
+    const stub = { add: () => {}, flush: () => {} } as unknown as Parameters<typeof createDrawObjects>[4];
     const { drawHeli } = createDrawObjects(cx, isoFn, tileW, tileH, stub);
 
     const W = Math.round(460 * CANVAS_SCALE);

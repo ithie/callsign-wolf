@@ -175,7 +175,7 @@
           const btn = document.getElementById("btn_spawn_pad");
           if (btn) btn.style.background = m.spawnObject === "pad" ? COLORS.uiHighlight : "var(--accent)";
         }
-      } else if (obj.type === "carrier" || obj.type === "boat" || obj.type === "pilot_boat" || obj.type === "salvage_tug") {
+      } else if (obj.type === "carrier" || obj.type === "boat" || obj.type === "pilot_boat" || obj.type === "sar_boat" || obj.type === "salvage_tug") {
         const isCarrier = obj.type === "carrier";
         const rad = obj.angle * Math.PI / 180;
         ctx.save();
@@ -219,26 +219,37 @@
           ctx.fill();
         } else if (obj.type === "pilot_boat") {
           ctx.fillStyle = "#ffcc00";
-          ctx.fillRect(-4 * tSize, -1.5 * tSize, 8 * tSize, 3 * tSize);
+          ctx.fillRect(-1.61 * tSize, -0.7 * tSize, 2.32 * tSize, 1.4 * tSize);
           ctx.fillStyle = "#eebb00";
           ctx.beginPath();
-          ctx.moveTo(4 * tSize, 0);
-          ctx.lineTo(2 * tSize, -1.5 * tSize);
-          ctx.lineTo(2 * tSize, 1.5 * tSize);
+          ctx.moveTo(0.71 * tSize, -0.7 * tSize);
+          ctx.lineTo(1.75 * tSize, 0);
+          ctx.lineTo(0.71 * tSize, 0.7 * tSize);
           ctx.fill();
           ctx.fillStyle = "#444";
-          ctx.fillRect(-1.5 * tSize, -1 * tSize, 3 * tSize, 2 * tSize);
+          ctx.fillRect(-0.56 * tSize, -0.42 * tSize, 0.84 * tSize, 0.84 * tSize);
+        } else if (obj.type === "sar_boat") {
+          ctx.fillStyle = "#d32f2f";
+          ctx.fillRect(-1.61 * tSize, -0.7 * tSize, 2.32 * tSize, 1.4 * tSize);
+          ctx.fillStyle = "#b71c1c";
+          ctx.beginPath();
+          ctx.moveTo(0.71 * tSize, -0.7 * tSize);
+          ctx.lineTo(1.75 * tSize, 0);
+          ctx.lineTo(0.71 * tSize, 0.7 * tSize);
+          ctx.fill();
+          ctx.fillStyle = "#e6e6e6";
+          ctx.fillRect(-0.56 * tSize, -0.28 * tSize, 0.91 * tSize, 0.56 * tSize);
         } else if (obj.type === "salvage_tug") {
           ctx.fillStyle = "#888";
-          ctx.fillRect(-7 * tSize, -2.5 * tSize, 14 * tSize, 5 * tSize);
+          ctx.fillRect(-2.5 * tSize, -1.2 * tSize, 5.7 * tSize, 2.4 * tSize);
           ctx.fillStyle = "#aaa";
           ctx.beginPath();
-          ctx.moveTo(7 * tSize, 0);
-          ctx.lineTo(4 * tSize, -2.5 * tSize);
-          ctx.lineTo(4 * tSize, 2.5 * tSize);
+          ctx.moveTo(3.2 * tSize, -1.2 * tSize);
+          ctx.lineTo(3.8 * tSize, 0);
+          ctx.lineTo(3.2 * tSize, 1.2 * tSize);
           ctx.fill();
           ctx.fillStyle = "#eee";
-          ctx.fillRect(1 * tSize, -1.5 * tSize, 4 * tSize, 3 * tSize);
+          ctx.fillRect(1 * tSize, -0.8 * tSize, 1.2 * tSize, 1.6 * tSize);
         } else {
           ctx.fillStyle = "#ddd";
           ctx.beginPath();
@@ -555,9 +566,9 @@
         ctx.translate(ox2, oy2);
         ctx.rotate(rad);
         ctx.fillStyle = "#cc2200";
-        ctx.fillRect(-2.5 * tSize, -1 * tSize, 5 * tSize, 2 * tSize);
+        ctx.fillRect(-0.85 * tSize, -0.425 * tSize, 1.785 * tSize, 0.85 * tSize);
         ctx.fillStyle = "#ff4422";
-        ctx.fillRect(-1.5 * tSize, -1.4 * tSize, 3 * tSize, 1.4 * tSize);
+        ctx.fillRect(-0.5 * tSize, -0.6 * tSize, 1 * tSize, 0.55 * tSize);
         ctx.restore();
         ctx.shadowBlur = 0;
         if (isSelected && bwcUI) {
@@ -576,18 +587,16 @@
           ctx.shadowColor = "#f44";
         }
         ctx.fillStyle = "#cc2200";
-        ctx.fillRect(ox2 - 4 * tSize, oy2 - 3 * tSize, 8 * tSize, 6 * tSize);
+        ctx.fillRect(ox2 - 2.2 * tSize, oy2 - 1.44 * tSize, 4.84 * tSize, 2.88 * tSize);
         ctx.fillStyle = "#ffffff";
-        ctx.fillRect(ox2 - 1 * tSize, oy2, 2 * tSize, 3 * tSize);
+        ctx.fillRect(ox2 - 0.5 * tSize, oy2, 1 * tSize, 1.44 * tSize);
         ctx.fillStyle = "#dd3300";
-        ctx.fillRect(ox2 - 4 * tSize, oy2 - 1.5 * tSize, 8 * tSize, 1 * tSize);
+        ctx.fillRect(ox2 - 2.2 * tSize, oy2 - 0.7 * tSize, 4.84 * tSize, 0.5 * tSize);
         ctx.shadowBlur = 0;
         if (isSelected && bwhUI) {
           bwhUI.style.display = "block";
           bwhUI.style.left = Math.min(600 - 140, Math.max(0, ox2 + 20)) + "px";
           bwhUI.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
-          const el = document.getElementById("m_bwh_angle");
-          if (el) el.value = (obj.angle ?? 0).toString();
         }
       } else if (obj.type === "baywatch_tower") {
         const bt = obj;
@@ -598,18 +607,16 @@
           ctx.shadowColor = "#f44";
         }
         ctx.fillStyle = "#d8d0b8";
-        ctx.fillRect(ox2 - 0.3 * tSize, oy2 - 5 * tSize, 0.6 * tSize, 5 * tSize);
+        ctx.fillRect(ox2 - 1.1 * tSize, oy2 - 0.9 * tSize, 3.62 * tSize, 1.8 * tSize);
         ctx.fillStyle = "#cc2200";
-        ctx.fillRect(ox2 - 2 * tSize, oy2 - 5.5 * tSize, 4 * tSize, 2 * tSize);
+        ctx.fillRect(ox2 - 0.6 * tSize, oy2 - 0.6 * tSize, 1.1 * tSize, 1.2 * tSize);
         ctx.fillStyle = "#e8e8e8";
-        ctx.fillRect(ox2 - 1.8 * tSize, oy2 - 5.3 * tSize, 3.6 * tSize, 1.6 * tSize);
+        ctx.fillRect(ox2 - 0.5 * tSize, oy2 - 0.5 * tSize, 0.9 * tSize, 1 * tSize);
         ctx.shadowBlur = 0;
         if (isSelected && bwtUI2) {
           bwtUI2.style.display = "block";
           bwtUI2.style.left = Math.min(600 - 140, Math.max(0, ox2 + 20)) + "px";
           bwtUI2.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
-          const el = document.getElementById("m_bwt_angle");
-          if (el) el.value = (obj.angle ?? 0).toString();
         }
       }
     });
@@ -678,11 +685,13 @@
         ctx.stroke();
         ctx.setLineDash([]);
       }
-      ctx.fillStyle = "#fff";
-      ctx.font = `bold ${Math.max(8, tSize * 0.55)}px monospace`;
-      ctx.textAlign = "center";
-      ctx.fillText(String(idx + 1), px, py + r * 1.5);
-      ctx.textAlign = "left";
+      if (!p.npcTarget) {
+        ctx.fillStyle = "#fff";
+        ctx.font = `bold ${Math.max(8, tSize * 0.55)}px monospace`;
+        ctx.textAlign = "center";
+        ctx.fillText(String(idx + 1), px, py + r * 1.5);
+        ctx.textAlign = "left";
+      }
     });
     const foliage = m.foliage || [];
     const treeColors = {
@@ -725,10 +734,11 @@
     ctx.shadowBlur = 0;
     if (m.windStr > 0) {
       const maxStr = 10;
-      const arrowLen = Math.min(m.windStr, maxStr) / maxStr * 24;
+      const str01 = Math.min(m.windStr, maxStr) / maxStr;
+      const arrowLen = 8 + Math.sqrt(str01) * 16;
       const tipX = 50 + Math.cos(dirRad) * arrowLen;
       const tipY = 50 + Math.sin(dirRad) * arrowLen;
-      ctx.lineWidth = 1 + m.windStr / maxStr * 2.5;
+      ctx.lineWidth = 1.5 + str01 * 2;
       ctx.beginPath();
       ctx.moveTo(50, 50);
       ctx.lineTo(tipX, tipY);
@@ -951,6 +961,7 @@
         carrier: "\u{1F6A2}",
         boat: "\u26F5",
         pilot_boat: "\u{1F6A4}",
+        sar_boat: "\u{1F6E5}",
         salvage_tug: "\u{1F6F3}",
         submarine: "\u{1F93F}",
         lighthouse: "\u{1F526}",
@@ -1032,7 +1043,7 @@
     const m = getCurrentMission();
     if (!m || state.selectedObjectIdx === null) return;
     const obj = m.objects[state.selectedObjectIdx];
-    const _boatTypes = /* @__PURE__ */ new Set(["boat", "pilot_boat", "salvage_tug"]);
+    const _boatTypes = /* @__PURE__ */ new Set(["boat", "pilot_boat", "sar_boat", "salvage_tug"]);
     if (!obj || (kind === "boat" ? !_boatTypes.has(obj.type) : obj.type !== kind)) return;
     const prefix = kind === "carrier" ? "carrier" : kind === "submarine" ? "submarine" : "boat";
     obj.path = document.getElementById(`m_${prefix}_path`)?.value ?? obj.path;
@@ -1154,7 +1165,7 @@
     let nearestIdx = -1, nearestDist = SNAP_RADIUS;
     for (let i = 0; i < m.objects.length; i++) {
       const obj = m.objects[i];
-      if (obj.type !== "carrier" && obj.type !== "boat" && obj.type !== "submarine" && obj.type !== "sailboat_broken")
+      if (obj.type !== "carrier" && obj.type !== "boat" && obj.type !== "sar_boat" && obj.type !== "submarine" && obj.type !== "sailboat_broken")
         continue;
       const d = Math.hypot(gx - obj.x, gy - obj.y);
       if (d <= nearestDist) {
@@ -1308,6 +1319,17 @@
       } else {
         m.objects.push({ type: "pilot_boat", x: gx, y: gy, angle: 0, path: "static", speed: 0, radius: 0 });
       }
+    } else if (state.currentTool === "sar_boat") {
+      if (e.shiftKey) {
+        const ni = m.objects.reduce((best, o, i) => {
+          if (o.type !== "sar_boat") return best;
+          const d = Math.hypot(o.x - gx, o.y - gy);
+          return !best || d < best.d ? { d, i } : best;
+        }, null);
+        if (ni && ni.d < 5) m.objects.splice(ni.i, 1);
+      } else {
+        m.objects.push({ type: "sar_boat", x: gx, y: gy, angle: 0, path: "static", speed: 0, radius: 0 });
+      }
     } else if (state.currentTool === "salvage_tug") {
       if (e.shiftKey) {
         const ni = m.objects.findIndex((o) => o.type === "salvage_tug");
@@ -1408,12 +1430,13 @@
           const fx = gx + Math.cos(angle) * dist;
           const fy = gy + Math.sin(angle) * dist;
           if (fx < 0 || fx >= m.gridSize || fy < 0 || fy >= m.gridSize) continue;
+          const type = document.getElementById("foliage-type")?.value || "pine";
           const h = m.terrain[Math.round(fx)]?.[Math.round(fy)] ?? -1;
-          if (h <= 0.05) continue;
+          const isBeach = type === "beach_person" || type === "beach_umbrella" || type === "beach_umbrella_tilted" || type === "beach_lounger" || type === "beach_cooler";
+          if (isBeach ? h < -3 : h <= 0.05) continue;
           const scale = parseFloat(
             document.getElementById("foliage-scale")?.value || "1.0"
           );
-          const type = document.getElementById("foliage-type")?.value || "pine";
           foliage.push({ x: Math.round(fx * 10) / 10, y: Math.round(fy * 10) / 10, s: scale, type });
         }
       }
@@ -1472,7 +1495,7 @@
       if (m.objects.some((o) => o.type === "pad")) opts.push(["pad", "Pad"]);
       if (m.objects.some((o) => o.type === "carrier")) opts.push(["carrier", "Carrier"]);
       if (m.objects.some((o) => o.type === "submarine")) opts.push(["submarine", "U-Boot"]);
-      if (m.objects.some((o) => ["boat", "pilot_boat", "salvage_tug"].includes(o.type)))
+      if (m.objects.some((o) => ["boat", "pilot_boat", "sar_boat", "salvage_tug"].includes(o.type)))
         opts.push(["boat", "Boot"]);
       opts.forEach(([val, lbl]) => {
         const opt = document.createElement("option");
@@ -1643,17 +1666,14 @@
       state.selectedObjectIdx = null;
       drawMap();
     });
-    ["m_bwc_angle", "m_bwh_angle", "m_bwt_angle"].forEach((id) => {
-      document.getElementById(id)?.addEventListener("input", () => {
-        const m = getCurrentMission();
-        if (!m || state.selectedObjectIdx === null) return;
-        const obj = m.objects[state.selectedObjectIdx];
-        const typeMap = { m_bwc_angle: "baywatch_car", m_bwh_angle: "baywatch_hq", m_bwt_angle: "baywatch_tower" };
-        if (obj?.type !== typeMap[id]) return;
-        obj.angle = parseInt(document.getElementById(id).value) || 0;
-        drawMap();
-        broadcastPreview();
-      });
+    document.getElementById("m_bwc_angle")?.addEventListener("input", () => {
+      const m = getCurrentMission();
+      if (!m || state.selectedObjectIdx === null) return;
+      const obj = m.objects[state.selectedObjectIdx];
+      if (obj?.type !== "baywatch_car") return;
+      obj.angle = parseInt(document.getElementById("m_bwc_angle").value) || 0;
+      drawMap();
+      broadcastPreview();
     });
     document.getElementById("m_wt_spinning")?.addEventListener("change", () => {
       const m = getCurrentMission();
@@ -1735,6 +1755,7 @@
       "carrier",
       "boat",
       "pilot_boat",
+      "sar_boat",
       "salvage_tug",
       "submarine",
       "lighthouse",
@@ -1935,7 +1956,7 @@
           const obj = m.objects[i];
           let hit = false;
           if (obj.type === "pad") hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
-          else if (["carrier", "boat", "pilot_boat", "salvage_tug", "submarine"].includes(obj.type))
+          else if (["carrier", "boat", "pilot_boat", "sar_boat", "salvage_tug", "submarine"].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
           else if (["lighthouse", "research_platform", "wind_turbine"].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;

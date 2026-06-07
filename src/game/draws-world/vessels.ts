@@ -4,6 +4,7 @@ import { VESSEL } from '../../shared/types';
 import { applyParts } from '../def-utils';
 import SAILBOAT_DEF from '../models/sailboat.zdef';
 import PILOT_BOAT_DEF from '../models/pilot_boat.zdef';
+import SAR_BOAT_DEF from '../models/sar_boat.zdef';
 import SALVAGE_TUG_DEF from '../models/supply_vessel.zdef';
 import SUBMARINE_DEF from '../models/submarine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
@@ -47,6 +48,9 @@ export const createVesselsDraw = (dwCtx: DrawWorldCtx) => {
         if (b.objectType === VESSEL.PILOT_BOAT) {
             const radarAngle = (Date.now() * 0.002) % (Math.PI * 2);
             SceneRenderer.add(applyParts(PILOT_BOAT_DEF as any, { radarAngle }), { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
+        } else if (b.objectType === VESSEL.SAR_BOAT) {
+            const radarAngle = (Date.now() * 0.002) % (Math.PI * 2);
+            SceneRenderer.add(applyParts(SAR_BOAT_DEF as any, { radarAngle }), { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
         } else {
             const def = b.objectType === VESSEL.SALVAGE_TUG ? SALVAGE_TUG_DEF : SAILBOAT_DEF;
             SceneRenderer.add(def, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });

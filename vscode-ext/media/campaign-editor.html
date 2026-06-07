@@ -155,14 +155,12 @@
 
                             <div id="ui_baywatch_hq" class="floating-ui">
                                 <span class="close-btn" id="close-baywatch-hq">✖</span>
-                                <strong style="color: #cc4400">🏠 BAYWATCH HQ</strong><br />
-                                Angle (°): <input type="number" id="m_bwh_angle" value="0" min="0" max="359" style="width: 45px" />
+                                <strong style="color: #cc4400">🏠 BAYWATCH HQ</strong>
                             </div>
 
                             <div id="ui_baywatch_tower" class="floating-ui">
                                 <span class="close-btn" id="close-baywatch-tower">✖</span>
-                                <strong style="color: #cc4400">🗼 WACHTURM</strong><br />
-                                Angle (°): <input type="number" id="m_bwt_angle" value="0" min="0" max="359" style="width: 45px" />
+                                <strong style="color: #cc4400">🗼 WACHTURM</strong>
                             </div>
 
                             <div id="ui_wind" class="floating-ui" style="left: 90px; top: 15px">
@@ -235,6 +233,7 @@
             <input type="radio" name="tool" value="carrier" />
             <input type="radio" name="tool" value="boat" />
             <input type="radio" name="tool" value="pilot_boat" />
+            <input type="radio" name="tool" value="sar_boat" />
             <input type="radio" name="tool" value="salvage_tug" />
             <input type="radio" name="tool" value="submarine" />
             <input type="radio" name="tool" value="research_platform" />
@@ -267,8 +266,7 @@
                 <option value="beach_umbrella_tilted">☂ Schirm (gekippt)</option>
                 <option value="beach_lounger">🏖 Liegestuhl</option>
                 <option value="beach_cooler">🧊 Kühlbox</option>
-                <option value="beach_person">🧍 Badegast</option>
-                <option value="swimmer">🏊 Schwimmer</option>
+                <option value="beach_person">🧍 Badegast / 🏊 Schwimmer</option>
             </select>
             <input type="range" id="foliage-scale" min="0.5" max="2.0" step="0.1" value="1.0" />
             <span id="foliage-scale-val">1.0</span>
@@ -530,6 +528,7 @@ Viel Glück, Pilot.</textarea>
                 { v: 'carrier', l: '🚢 Träger' },
                 { v: 'boat', l: '⛵ Boot' },
                 { v: 'pilot_boat', l: '🚤 Lotsenboot' },
+                { v: 'sar_boat', l: '🛥 SAR-Boot' },
                 { v: 'salvage_tug', l: '🛳 Schlepper' },
                 { v: 'submarine', l: '🤿 U-Boot' },
                 { v: 'research_platform', l: '🏗 Plattform' },
@@ -589,7 +588,8 @@ Viel Glück, Pilot.</textarea>
                 const controls = document.getElementById('editor-controls');
                 const ae = document.activeElement;
                 const tag = ae ? ae.tagName : '';
-                if (controls && controls.contains(ae) && (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT')) return;
+                const inputType = ae ? (ae.type || '') : '';
+                if (controls && controls.contains(ae) && (tag === 'TEXTAREA' || tag === 'SELECT' || (tag === 'INPUT' && inputType !== 'radio' && inputType !== 'checkbox'))) return;
                 if (!window.editorGetState) return;
                 edRenderPanel(window.editorGetState());
             };
@@ -644,7 +644,7 @@ Viel Glück, Pilot.</textarea>
                     + (st.tool === 'foliage' ? '<div style="margin-top:6px">'
                         + '<div class="ed-row" style="margin-bottom:4px"><label style="color:var(--text-dim)">Typ</label>'
                         + '<select style="flex:1" onchange="edDispatch(\'set-foliage-type\',{value:this.value})">'
-                        + [['pine','🌲 Nadel'],['oak','🌳 Laub'],['bush','🌿 Busch'],['dead','🪵 Kahl'],['beach_umbrella','☂ Sonnenschirm'],['beach_umbrella_tilted','☂ Schirm (gekippt)'],['beach_lounger','🏖 Liegestuhl'],['beach_cooler','🧊 Kühlbox'],['beach_person','🧍 Badegast'],['swimmer','🏊 Schwimmer']].map((e) =>
+                        + [['pine','🌲 Nadel'],['oak','🌳 Laub'],['bush','🌿 Busch'],['dead','🪵 Kahl'],['beach_umbrella','☂ Sonnenschirm'],['beach_umbrella_tilted','☂ Schirm (gek.)'],['beach_lounger','🏖 Liegestuhl'],['beach_cooler','🧊 Kühlbox'],['beach_person','🧍 Badegast / 🏊 Schwimmer']].map((e) =>
                             '<option value="' + e[0] + '"' + (st.foliageType === e[0] ? ' selected' : '') + '>' + e[1] + '</option>'
                         ).join('') + '</select></div>'
                         + '<label style="color:var(--text-dim)">Scale: ' + st.foliageScale + '</label>'

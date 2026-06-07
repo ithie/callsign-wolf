@@ -447,7 +447,7 @@
         yMin: -1,
         yMax: 1,
         zMin: 0.4,
-        zMax: 8
+        zMax: 8.5
       }
     ],
     faces: [

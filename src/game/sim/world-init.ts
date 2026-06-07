@@ -199,12 +199,13 @@ export const updateSubmarines = (SUBMARINES: any[], dt: number) => SUBMARINES.fo
 const BOAT_CFG: Record<string, { w: number; l: number; zDeck: number }> = {
     boat: { w: 1.5, l: 3.0, zDeck: 0.35 },
     pilot_boat: { w: 0.8, l: 2.0, zDeck: 0.3 },
+    sar_boat:   { w: 0.8, l: 2.0, zDeck: 0.3 },
     salvage_tug: { w: 1.2, l: 3.5, zDeck: 1.2 },
 };
 
 export const initBoatsFromMission = () => {
     const allObjects = getObjects();
-    const boatTypes = [VESSEL.BOAT, VESSEL.PILOT_BOAT, VESSEL.SALVAGE_TUG];
+    const boatTypes = [VESSEL.BOAT, VESSEL.PILOT_BOAT, VESSEL.SAR_BOAT, VESSEL.SALVAGE_TUG];
     G.BOATS = boatTypes
         .flatMap(type => getObjectsByType(type))
         .map((obj: any) => {
@@ -293,13 +294,16 @@ export const initStaticObjectsFromMission = () => {
     }));
     G.BAYWATCH_CARS = getObjectsByType(VESSEL.BAYWATCH_CAR).map((obj: any) => ({
         x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+        gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
     }));
     G.BAYWATCH_BUILDINGS = [
         ...getObjectsByType(VESSEL.BAYWATCH_HQ).map((obj: any) => ({
             type: VESSEL.BAYWATCH_HQ, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+            gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
         })),
         ...getObjectsByType(VESSEL.BAYWATCH_TOWER).map((obj: any) => ({
             type: VESSEL.BAYWATCH_TOWER, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+            gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
         })),
     ];
 };

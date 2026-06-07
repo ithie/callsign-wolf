@@ -1,5 +1,25 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.3.7 — Baywatch Scene & Collision Refactor
+
+### Added
+
+- **SAR-Boot** (`sar_boat`) — neues Wasserfahrzeug; im Kampagnen-Editor platzierbar (Palette, Rendering, Vessel-UI, Mehrfachplatzierung + Shift-Click zum Entfernen). Im Spiel mit rotem Rumpf und weißem Aufbau gerendert; Kollisionsboxen in ZDef hinterlegt.
+
+### Changed
+
+- **Baywatch-Skalierungen** — Tower ×2.0, HQ ×2.0, Car ×0.85; Pilot-Boot und SAR-Boot jeweils ×0.7 (alle Werte inkl. Kollisionsboxen in ZDef übernommen).
+- **Editor: keine Rotation für baywatch_hq / baywatch_tower** — Winkel-Input aus beiden Floating-UIs entfernt, analog zum Hangar.
+
+### Fixed
+
+- **Kollisions-Refaktor** — `collision.ts` las bisher alle Kollisionsboxen hardcodiert. `checkDef` / `drawDef` lesen jetzt zentral aus den ZDef-Dateien; kein einziger Zahlenwert mehr doppelt gepflegt. Ausnahmen bleiben hardcodiert: Carrier (deckZ-abhängig), Hangar/Pad-Tower, Fuel Truck (winkel­abhängiger Arm).
+- **ZDef-Kollisionsboxen verfeinert** — `wind_turbine`: zwei dünne Pole (±0.12) durch `pole` (±0.3, 0–7.5) + `nacelle` (-0.6/1.2, 7.5–8.5) ersetzt. `lighthouse`: Tower-`zMax` 8 → 8.5 (war inkonsistent zwischen Draw und Check). `pilot_boat` / `sar_boat`: Einzelbox → `hull` (0–0.7) + `cabin` (0.7–1.4). `supply_vessel`: Einzelbox → `hull` + `superstructure`. `baywatch_tower`: Einzelbox → `base` (0–2.2) + `cabin` (2.2–3.9).
+- **waterLevel-Offset für Sailboats und Salvage Tug** — beide Bootstypen hatten absolutes z=0 statt `waterLevel`-relativ; jetzt konsistent mit Pilot-Boot-Verhalten.
+- **Baywatch-Kollision fehlte komplett** — `BAYWATCH_CARS` und `BAYWATCH_BUILDINGS` wurden in `collision.ts` nie iteriert; Objekte waren unzerstörbar.
+
+---
+
 ## v28.3.6 — Audio Scheduler Hardening
 
 ### Fixed

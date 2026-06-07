@@ -8,6 +8,7 @@ export const VESSEL = {
     PAD:                'pad',
     LIGHTHOUSE:         'lighthouse',
     PILOT_BOAT:         'pilot_boat',
+    SAR_BOAT:           'sar_boat',
     SALVAGE_TUG:        'salvage_tug',
     RESEARCH_PLATFORM:  'research_platform',
     WIND_TURBINE:       'wind_turbine',

@@ -2,6 +2,17 @@ import type { DrawWorldCtx } from './types';
 import { G, zstate } from '../state';
 import { VESSEL, VEHICLE_STATE } from '../../shared/types';
 import { getHeliType } from '../heli-types';
+import SAILBOAT_DEF from '../models/sailboat.zdef';
+import PILOT_BOAT_DEF from '../models/pilot_boat.zdef';
+import SAR_BOAT_DEF from '../models/sar_boat.zdef';
+import SALVAGE_TUG_DEF from '../models/supply_vessel.zdef';
+import SUBMARINE_DEF from '../models/submarine.zdef';
+import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
+import WIND_TURBINE_DEF from '../models/wind_turbine.zdef';
+import LIGHTHOUSE_DEF from '../models/lighthouse.zdef';
+import BAYWATCH_CAR_DEF from '../models/baywatch_car.zdef';
+import BAYWATCH_HQ_DEF from '../models/baywatch_hq.zdef';
+import BAYWATCH_TOWER_DEF from '../models/baywatch_tower.zdef';
 
 export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, hasCarrier, hasPad, isVisible, getShowCollisionBoxes, triggerCrash } = dwCtx;
@@ -27,6 +38,16 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
         const ly = dx * sinA + dy * cosA;
         return lx >= oxMin && lx <= oxMax && ly >= oyMin && ly <= oyMax && pz >= ozMin && pz <= ozMax;
     };
+
+    const checkDef = (def: any, wx: number, wy: number, wangle: number, gz: number) =>
+        (def.collisionBoxes ?? []).some((cb: any) =>
+            checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, wx, wy, wangle,
+                cb.xMin, cb.xMax, cb.yMin, cb.yMax, gz + cb.zMin, gz + cb.zMax));
+
+    const drawDef = (def: any, wx: number, wy: number, wangle: number, gz: number, color: string) =>
+        (def.collisionBoxes ?? []).forEach((cb: any) =>
+            drawCollisionBox(wx, wy, wangle, cb.xMin, cb.xMax, cb.yMin, cb.yMax,
+                gz + cb.zMin, gz + cb.zMax, color));
 
     const drawDebugOverlay = (camX: number, camY: number) => {
         const isoP = (wx: number, wy: number, wz = 0) => isoFn(wx, wy, wz, camX, camY);
@@ -175,91 +196,51 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
         // ── Lighthouse ────────────────────────────────────────────────────────────
         const lhPos = dwCtx.getLighthouse();
         if (lhPos) {
-            if (showCB) {
-                drawCollisionBox(lhPos.x, lhPos.y, 0, -4.0, 4.0, -4.0, 4.0, 0, 0.4, 'rgba(255,220,0,0.6)');
-                drawCollisionBox(lhPos.x, lhPos.y, 0, -1.0, 1.0, -1.0, 1.0, 0.4, 8.0, 'rgba(255,80,0,0.9)');
-            }
-            if (!zstate.crashed) {
-                if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, lhPos.x, lhPos.y, 0, -1.0, 1.0, -1.0, 1.0, 0.4, 8.5))
-                    triggerCrash();
-            }
+            if (showCB) drawDef(LIGHTHOUSE_DEF, lhPos.x, lhPos.y, 0, 0, 'rgba(255,220,0,0.8)');
+            if (!zstate.crashed && checkDef(LIGHTHOUSE_DEF, lhPos.x, lhPos.y, 0, 0)) triggerCrash();
         }
 
         // ── Boats ─────────────────────────────────────────────────────────────────
         G.BOATS.forEach((b: any) => {
-            if (b.objectType === VESSEL.PILOT_BOAT) {
-                if (showCB) {
-                    drawCollisionBox(b.x, b.y, b.angle, -1.0, 1.0, -0.4, 0.4, 0, 0.3, 'rgba(0,255,100,0.8)');
-                    drawCollisionBox(b.x, b.y, b.angle, -0.3, 0.5, -0.3, 0.3, 0.3, 0.9, 'rgba(255,80,0,0.9)');
-                }
-                if (!zstate.crashed) {
-                    if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -1.0, 1.0, -0.4, 0.4, 0, 0.3) ||
-                        checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -0.3, 0.5, -0.3, 0.3, 0.3, 0.9))
-                        triggerCrash();
-                }
-            } else if (b.objectType === VESSEL.SALVAGE_TUG) {
-                if (showCB) {
-                    drawCollisionBox(b.x, b.y, b.angle, -2.5, 3.2, -1.2, 1.2, 0, 1.2, 'rgba(0,255,100,0.8)');
-                    drawCollisionBox(b.x, b.y, b.angle, 1.0, 2.2, -0.8, 0.8, 1.2, 3.2, 'rgba(255,80,0,0.9)');
-                }
-                if (!zstate.crashed) {
-                    if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -2.5, 3.2, -1.2, 1.2, 0, 1.2) ||
-                        checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, 1.0, 2.2, -0.8, 0.8, 1.2, 3.2))
-                        triggerCrash();
-                }
-            } else {
-                if (showCB) {
-                    drawCollisionBox(b.x, b.y, b.angle, -1.1, 1.3, -0.45, 0.45, 0, 0.35, 'rgba(0,255,100,0.8)');
-                    drawCollisionBox(b.x, b.y, b.angle, -0.4, -0.2, -0.1, 0.1, 0.35, 3.2, 'rgba(255,80,0,0.9)');
-                }
-                if (!zstate.crashed) {
-                    if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -1.1, 1.3, -0.45, 0.45, 0, 0.35) ||
-                        checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, b.x, b.y, b.angle, -0.4, -0.2, -0.1, 0.1, 0.35, 3.2))
-                        triggerCrash();
-                }
-            }
+            const wl = G.waterLevel;
+            const def =
+                b.objectType === VESSEL.PILOT_BOAT  ? PILOT_BOAT_DEF  :
+                b.objectType === VESSEL.SAR_BOAT     ? SAR_BOAT_DEF    :
+                b.objectType === VESSEL.SALVAGE_TUG  ? SALVAGE_TUG_DEF :
+                SAILBOAT_DEF;
+            if (showCB) drawDef(def, b.x, b.y, b.angle, wl, 'rgba(0,200,255,0.8)');
+            if (!zstate.crashed && checkDef(def, b.x, b.y, b.angle, wl)) triggerCrash();
         });
 
         // ── Submarines ────────────────────────────────────────────────────────────
         G.SUBMARINES.forEach((s: any) => {
-            if (showCB) {
-                drawCollisionBox(s.x, s.y, s.angle, -5.2, 5.6, -0.7, 0.7, 0, 0.3, 'rgba(0,180,255,0.8)');
-                drawCollisionBox(s.x, s.y, s.angle, 0.8, 2.3, -0.32, 0.32, 0.3, 2.4, 'rgba(255,80,0,0.9)');
-            }
-            if (!zstate.crashed) {
-                if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, s.x, s.y, s.angle, -5.2, 5.6, -0.7, 0.7, 0, 0.3) ||
-                    checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, s.x, s.y, s.angle, 0.8, 2.3, -0.32, 0.32, 0.3, 2.4))
-                    triggerCrash();
-            }
+            if (showCB) drawDef(SUBMARINE_DEF, s.x, s.y, s.angle, G.waterLevel, 'rgba(0,200,255,0.8)');
+            if (!zstate.crashed && checkDef(SUBMARINE_DEF, s.x, s.y, s.angle, G.waterLevel)) triggerCrash();
         });
 
         // ── Research platforms ────────────────────────────────────────────────────
         G.RESEARCH_PLATFORMS.forEach((rp: any) => {
-            const wl = G.waterLevel;
-            if (showCB) {
-                drawCollisionBox(rp.x, rp.y, 0, -0.4, 0.4, -0.4, 0.4, wl, wl + 6.0, 'rgba(0,255,100,0.8)');
-                drawCollisionBox(rp.x, rp.y, 0, -1.5, 1.5, -1.5, 1.5, wl + 6.0, wl + 6.5, 'rgba(0,255,100,0.8)');
-                drawCollisionBox(rp.x, rp.y, 0, 0.8, 1.2, -0.2, 0.2, wl + 6.5, wl + 15.0, 'rgba(255,80,0,0.9)');
-            }
-            if (!zstate.crashed) {
-                if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, rp.x, rp.y, 0, -0.4, 0.4, -0.4, 0.4, wl, wl + 6.0) ||
-                    checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, rp.x, rp.y, 0, -1.5, 1.5, -1.5, 1.5, wl + 6.0, wl + 6.5) ||
-                    checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, rp.x, rp.y, 0, 0.8, 1.2, -0.2, 0.2, wl + 6.5, wl + 15.0))
-                    triggerCrash();
-            }
+            if (showCB) drawDef(RESEARCH_PLATFORM_DEF, rp.x, rp.y, 0, G.waterLevel, 'rgba(0,200,255,0.8)');
+            if (!zstate.crashed && checkDef(RESEARCH_PLATFORM_DEF, rp.x, rp.y, 0, G.waterLevel)) triggerCrash();
         });
 
         // ── Wind turbines ─────────────────────────────────────────────────────────
         G.WIND_TURBINES.forEach((wt: any) => {
-            if (showCB) {
-                drawCollisionBox(wt.x, wt.y, 0, -0.3, 0.3, -0.3, 0.3, 0, 7.5, 'rgba(0,255,200,0.8)');
-                drawCollisionBox(wt.x, wt.y, 0, -0.6, 1.2, -0.6, 0.6, 7.5, 8.5, 'rgba(255,80,0,0.9)');
-            }
-            if (!zstate.crashed) {
-                if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, wt.x, wt.y, 0, -0.3, 0.3, -0.3, 0.3, 0, 7.5) ||
-                    checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, wt.x, wt.y, 0, -0.6, 1.2, -0.6, 0.6, 7.5, 8.5))
-                    triggerCrash();
-            }
+            if (showCB) drawDef(WIND_TURBINE_DEF, wt.x, wt.y, 0, 0, 'rgba(0,200,255,0.8)');
+            if (!zstate.crashed && checkDef(WIND_TURBINE_DEF, wt.x, wt.y, 0, 0)) triggerCrash();
+        });
+
+        // ── Baywatch objects ──────────────────────────────────────────────────────
+        G.BAYWATCH_CARS.forEach((c: any) => {
+            const gz = c.gz ?? 0;
+            if (showCB) drawDef(BAYWATCH_CAR_DEF, c.x, c.y, c.angle, gz, 'rgba(255,200,0,0.8)');
+            if (!zstate.crashed && checkDef(BAYWATCH_CAR_DEF, c.x, c.y, c.angle, gz)) triggerCrash();
+        });
+        G.BAYWATCH_BUILDINGS.forEach((b: any) => {
+            const gz = b.gz ?? 0;
+            const def = b.type === VESSEL.BAYWATCH_HQ ? BAYWATCH_HQ_DEF : BAYWATCH_TOWER_DEF;
+            if (showCB) drawDef(def, b.x, b.y, b.angle, gz, 'rgba(255,80,0,0.9)');
+            if (!zstate.crashed && checkDef(def, b.x, b.y, b.angle, gz)) triggerCrash();
         });
 
         // ── Trees ─────────────────────────────────────────────────────────────────
