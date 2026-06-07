@@ -124,7 +124,7 @@ final class GameControlOverlay: UIView {
         let dd = tutorialDimmed.contains("deliver-toggle")  ? 0.15 as CGFloat : 1.0
 
         _withDim(ld) { drawJoystick(center: leftCenter,  joy: leftJoy) }
-        _withDim(rd) { drawJoystick(center: rightCenter, joy: rightJoy) }
+        _withDim(rd) { drawJoystick(center: rightCenter, joy: rightJoy, sectorStarts: [-135, 45]) }
         _withDim(wd) { drawWinchRocker() }
         _withDim(dd) { drawDeliverToggle() }
 
@@ -143,11 +143,11 @@ final class GameControlOverlay: UIView {
     }
 
     // ── Joystick ──────────────────────────────────────────────────────────────────
-    private func drawJoystick(center: CGPoint, joy: JoyState) {
+    private func drawJoystick(center: CGPoint, joy: JoyState, sectorStarts: [CGFloat] = [-45, 135]) {
         let r    = joyRadius
         let circ = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
 
-        drawSectors(center: center, radius: r, starts: [-45, 135], span: 90, alpha: 0.10)
+        drawSectors(center: center, radius: r, starts: sectorStarts, span: 90, alpha: 0.10)
 
         cFill.setFill();   UIBezierPath(ovalIn: circ).fill()
         let ring = UIBezierPath(ovalIn: circ); ring.lineWidth = 1; cBorder.setStroke(); ring.stroke()

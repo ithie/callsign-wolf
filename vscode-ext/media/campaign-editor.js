@@ -1450,8 +1450,11 @@
       for (let dx = -rad; dx <= rad; dx++) {
         for (let dy = -rad; dy <= rad; dy++) {
           const nx = gx + dx, ny = gy + dy;
-          if (Math.hypot(dx, dy) <= state.brushRadius && nx >= 0 && nx <= m.gridSize && ny >= 0 && ny <= m.gridSize)
+          if (Math.hypot(dx, dy) <= state.brushRadius && nx >= 0 && nx <= m.gridSize && ny >= 0 && ny <= m.gridSize) {
             mSand.sand[nx][ny] = val;
+            if (val === 1 && m.terrain[nx]?.[ny] !== void 0 && m.terrain[nx][ny] > 0)
+              m.terrain[nx][ny] = m.terrain[nx][ny] <= 0.6 ? 0.4 : 0.8;
+          }
         }
       }
     }

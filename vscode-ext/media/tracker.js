@@ -59,14 +59,22 @@
     },
     init: (songList) => {
       ZsynthPlayer.songs = songList;
-      const _tryResume = () => {
-        if (ZsynthPlayer.ctx?.state === "suspended") ZsynthPlayer.ctx.resume();
+      const _ensureCtx = () => {
+        try {
+          if (!ZsynthPlayer.ctx) {
+            ZsynthPlayer.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            ZsynthPlayer.masterGain = ZsynthPlayer.ctx.createGain();
+            ZsynthPlayer.masterGain.connect(ZsynthPlayer.ctx.destination);
+          }
+          if (ZsynthPlayer.ctx.state === "suspended") ZsynthPlayer.ctx.resume();
+        } catch {
+        }
       };
-      window.__zsynthResume = _tryResume;
-      document.addEventListener("touchstart", _tryResume, { passive: true });
-      document.addEventListener("click", _tryResume, { passive: true });
+      window.__zsynthResume = _ensureCtx;
+      document.addEventListener("touchstart", _ensureCtx, { passive: true });
+      document.addEventListener("click", _ensureCtx, { passive: true });
       document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") _tryResume();
+        if (document.visibilityState === "visible") _ensureCtx();
       });
     },
     play: (key, volume = 1) => {

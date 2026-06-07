@@ -97,9 +97,22 @@
                   _scratchPts[i]
                 );
               }
+              let _fcx = 0, _fcy = 0;
+              const _fn = verts.length;
+              for (let i = 0; i < _fn; i++) {
+                _fcx += _scratchPts[i].x;
+                _fcy += _scratchPts[i].y;
+              }
+              _fcx /= _fn;
+              _fcy /= _fn;
               ctx2.beginPath();
-              ctx2.moveTo(_scratchPts[0].x, _scratchPts[0].y);
-              for (let i = 1; i < verts.length; i++) ctx2.lineTo(_scratchPts[i].x, _scratchPts[i].y);
+              for (let i = 0; i < _fn; i++) {
+                const _dx = _scratchPts[i].x - _fcx, _dy = _scratchPts[i].y - _fcy;
+                const _d = Math.hypot(_dx, _dy) || 1;
+                const _ex = _fcx + _dx * (1 + 0.5 / _d);
+                const _ey = _fcy + _dy * (1 + 0.5 / _d);
+                i === 0 ? ctx2.moveTo(_ex, _ey) : ctx2.lineTo(_ex, _ey);
+              }
               ctx2.closePath();
               ctx2.fillStyle = (inst.colors && inst.colors[face.id]) ?? face.color;
               ctx2.fill();
