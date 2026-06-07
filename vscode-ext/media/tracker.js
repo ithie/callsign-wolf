@@ -136,11 +136,14 @@
         }
         const notes = track.stepMap[sIdx] || [];
         notes.forEach(({ trackId, note }) => {
-          const config = track.data.config[trackId] || { vol: 80 };
-          if (trackId.startsWith("synth")) {
-            ZsynthPlayer.playSynth(note, track.nextNoteTime, config, track.gainNode);
-          } else {
-            ZsynthPlayer.playDrum(note, track.nextNoteTime, config.vol / 100, track.gainNode);
+          try {
+            const config = track.data.config[trackId] || { vol: 80 };
+            if (trackId.startsWith("synth")) {
+              ZsynthPlayer.playSynth(note, track.nextNoteTime, config, track.gainNode);
+            } else {
+              ZsynthPlayer.playDrum(note, track.nextNoteTime, config.vol / 100, track.gainNode);
+            }
+          } catch {
           }
         });
         track.currentStep++;
@@ -164,7 +167,7 @@
         bp.type = "bandpass";
         bp.frequency.value = 2800;
         bp.Q.value = 0.8;
-        g.gain.setValueAtTime(vol * 0.9, time);
+        g.gain.setValueAtTime(Math.max(1e-4, vol * 0.9), time);
         g.gain.exponentialRampToValueAtTime(0.01, time + 0.05);
         src.connect(bp);
         bp.connect(g);
@@ -174,7 +177,7 @@
       }
       const osc = ctx.createOscillator();
       if (type === "KICK") {
-        g.gain.setValueAtTime(vol * 0.5, time);
+        g.gain.setValueAtTime(Math.max(1e-4, vol * 0.5), time);
         osc.frequency.setValueAtTime(150, time);
         osc.frequency.exponentialRampToValueAtTime(0.01, time + 0.2);
         g.gain.exponentialRampToValueAtTime(0.01, time + 0.2);
@@ -184,7 +187,7 @@
       } else if (type === "HI-HAT") {
         osc.type = "triangle";
         osc.frequency.setValueAtTime(300, time);
-        g.gain.setValueAtTime(vol * 0.35, time);
+        g.gain.setValueAtTime(Math.max(1e-4, vol * 0.35), time);
         g.gain.exponentialRampToValueAtTime(0.01, time + 0.04);
         osc.connect(g);
         osc.start(time);
@@ -192,7 +195,7 @@
       } else {
         osc.type = "triangle";
         osc.frequency.setValueAtTime(120, time);
-        g.gain.setValueAtTime(vol * 0.5, time);
+        g.gain.setValueAtTime(Math.max(1e-4, vol * 0.5), time);
         g.gain.exponentialRampToValueAtTime(0.01, time + 0.12);
         osc.connect(g);
         osc.start(time);
@@ -208,7 +211,7 @@
       const attack = cfg.attack ?? 0.02;
       const release = cfg.release ?? 0.3;
       const detune = cfg.detune ?? 0;
-      const v = cfg.vol / 100 * 0.2;
+      const v = Math.max(1e-4, cfg.vol / 100 * 0.2);
       const g = ZsynthPlayer.ctx.createGain();
       g.gain.setValueAtTime(1e-4, time);
       g.gain.linearRampToValueAtTime(v, time + attack);
@@ -216,8 +219,6 @@
       const osc = ZsynthPlayer.ctx.createOscillator();
       osc.type = cfg.wave || "square";
       osc.frequency.setValueAtTime(freq || 220, time);
-      f.type = "lowpass";
-      f.frequency.setValueAtTime(cfg.filter || 2e3, time);
       if (detune !== 0) {
         const osc2 = ZsynthPlayer.ctx.createOscillator();
         osc2.type = cfg.wave || "square";
@@ -226,14 +227,11 @@
         osc2.start(time);
         osc2.stop(time + attack + release + 0.05);
       }
-      g.gain.setValueAtTime(1e-4, time);
-      g.gain.linearRampToValueAtTime(v, time + 0.02);
-      g.gain.exponentialRampToValueAtTime(1e-4, time + 0.3);
       osc.connect(f);
       f.connect(g);
       g.connect(target);
       osc.start(time);
-      osc.stop(time + 0.4);
+      osc.stop(time + attack + release + 0.05);
     },
     stop: () => {
       if (ZsynthPlayer.currentTrack && ZsynthPlayer.ctx) {
