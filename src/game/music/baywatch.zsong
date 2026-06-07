@@ -1,0 +1,25 @@
+bpm 118
+
+[kick]  vol=86
+0 4 8 12 16 20 24 28 32 36 40 44 48 52 56 60
+
+[snare]  vol=68
+4 12 20 28 36 44 52 60
+
+[hat]  vol=98
+2 6 10 14 18 22 26 30 34 38 42 46 50 54 58 62
+
+[clap]  vol=80
+4 12 20 28 36 44 52 60
+
+[synth1]  vol=72  wave=sawtooth  filter=550  inst=bass_gritty  attack=0.01  release=0.15  detune=5
+0:C1 4:C1 8:G1 12:G1 16:A1 20:A1 24:G1 28:G1 32:C1 36:C1 40:E2 44:D2 48:F1 52:F1 56:G1 60:G1
+
+[synth2]  vol=48  wave=sawtooth  filter=3200  inst=supersaw  attack=0.01  release=0.28  detune=16
+0:C4 2:G4 4:A4 6:G4 8:E4 10:D4 12:C4 14:D4 16:E4 18:G4 20:A4 22:B4 24:A4 26:G4 28:E4 30:C4 32:E4 34:G4 36:A4 38:G4 40:E4 42:C4 44:E4 46:G4 48:G4 50:A4 52:G4 54:E4 56:D4 58:C4 60:G3
+
+[synth3]  vol=100  wave=square  filter=2400  inst=arp_bright  attack=0.005  release=0.1  detune=0
+0:G4 4:E4 8:A4 12:G4 16:B4 20:A4 24:G4 28:E4 32:G4 36:E4 40:A4 44:G4 48:A4 52:G4 56:E4 60:C4
+
+[synth4]  vol=79  wave=triangle  filter=1600  inst=pad_warm  attack=0.18  release=1.4  detune=0
+0:C3 16:A3 32:C3 40:E3 48:F3 56:G3

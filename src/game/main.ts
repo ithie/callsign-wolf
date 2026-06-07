@@ -18,6 +18,7 @@ import Coastal from './music/coastal.zsong';
 import Ignition from './music/ignition.zsong';
 import Offshore from './music/offshore.zsong';
 import Vigil from './music/vigil.zsong';
+import Baywatch from './music/baywatch.zsong';
 import { SongData } from '@/shared/tracker-types';
 
 const soundHandler = (() => {
@@ -29,6 +30,7 @@ const soundHandler = (() => {
         ignition: Ignition,
         offshore: Offshore,
         vigil: Vigil,
+        baywatch: Baywatch,
         destroid: SoundDestroid,
         final: SoundFinal,
         maintheme: SoundMaintheme,

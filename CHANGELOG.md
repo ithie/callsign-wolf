@@ -1,5 +1,28 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.4.0 — FreeFlight Beach Mission & Editor Polish
+
+### Added
+
+- **FreeFlight: Beach Rescue (Level 3)** — new Baywatch-themed mission with shore terrain, sand layer, 9 swimmer payloads, two wrecked sailboats, SAR boat, pilot boat, five Baywatch cars, three towers, Baywatch HQ, and NPC lifeguard rescuers. Objective: rescue all.
+- **`baywatch.zsong`** — new upbeat beach track (C major, 118 BPM, supersaw lead + bass + arp + pad) registered in `main.ts`; used as the in-game music for the Beach Rescue level.
+- **Foliage brush: beach items** — beach umbrella, tilted umbrella, lounger, cooler, and beach person / swimmer added to the foliage tool in the campaign editor. A `beach_person` placed on water auto-renders as a swimmer. `CAMPAIGN_FORMAT.md` updated with all new foliage type chars (`u`, `v`, `l`, `c`, `g`).
+
+### Changed
+
+- **Rain density halved** — CSS rain overlay reduced from 23 to 12 lines per layer; less visual clutter on screen.
+- **Legacy fields removed** — `goalPersons` and `goalCrates` were never read by the game engine; both fields removed from `freeFlight.zcampaign`.
+
+### Fixed
+
+- **Campaign editor: SAR boat selectable** — `sar_boat` was missing from the mousedown hit-detection array; clicking it now selects and opens its config panel.
+- **Campaign editor: foliage brush broken** — `const type` was referenced before its declaration (TDZ), silently crashing every brush stroke. Declaration order corrected.
+- **Campaign editor: tool radio buttons blocked panel refresh** — the `edRefreshPanel` focus guard incorrectly suppressed re-renders when a radio button was active; radio and checkbox inputs now excluded from the guard.
+- **Campaign editor: NPC payload numbers hidden** — payloads with `npcTarget: true` no longer render a number label on the canvas.
+- **ZSong editor: horizontal scrolling restored** — `overflow-x: hidden` on the editor body was suppressing horizontal scroll; removed.
+
+---
+
 ## v28.3.7 — Baywatch Scene & Collision Refactor
 
 ### Added

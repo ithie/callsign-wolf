@@ -329,16 +329,23 @@ The Mission Editor writes foliage as a compact `|`-delimited string. Each token 
 <type_char><x*10>,<y*10>,<s*10>
 ```
 
-| Type char | Tree type |
-| --------- | --------- |
-| `p`       | pine      |
-| `o`       | oak       |
-| `b`       | bush      |
-| `d`       | dead      |
+| Type char | Foliage type             |
+| --------- | ------------------------ |
+| `p`       | pine                     |
+| `o`       | oak                      |
+| `b`       | bush                     |
+| `d`       | dead                     |
+| `u`       | beach_umbrella           |
+| `v`       | beach_umbrella_tilted    |
+| `l`       | beach_lounger            |
+| `c`       | beach_cooler             |
+| `g`       | beach_person / swimmer   |
 
-**Example:** `"p542,238,10|o438,517,10|b740,350,10|d401,368,10"`
+Beach items (`u`, `v`, `l`, `c`, `g`) are placed by the foliage brush just like trees. A `beach_person` placed on a water tile automatically renders as a swimmer. These are purely decorative NPC figures — not rescue targets.
 
-Decoded: a pine at (54.2, 23.8) scale 1.0, an oak at (43.8, 51.7) scale 1.0, etc.
+**Example:** `"p542,238,10|o438,517,10|u1938,1214,10|g2019,843,7"`
+
+Decoded: a pine at (54.2, 23.8) scale 1.0, an oak at (43.8, 51.7) scale 1.0, a beach umbrella at (193.8, 121.4) scale 1.0, a beach person at (201.9, 84.3) scale 0.7.
 
 ### Expanded JSON array format
 

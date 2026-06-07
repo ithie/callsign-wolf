@@ -92,7 +92,6 @@ body {
     background: var(--vscode-editor-background);
     margin: 0;
     padding: 0;
-    overflow-x: hidden;
 }
 #toolbar {
     display: flex;
@@ -175,7 +174,6 @@ button:hover { background: var(--vscode-button-hoverBackground); }
     display: flex;
     align-items: center;
     flex: 1;
-    overflow-x: auto;
     padding: 4px 4px;
     gap: 2px;
 }
