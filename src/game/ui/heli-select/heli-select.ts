@@ -5,7 +5,7 @@ import { HELI_TYPES, type HeliType } from '../../heli-types';
 import { RANKS } from '../../session';
 import { tileW, tileH, stepH, CANVAS_SCALE } from '../../render-config';
 import { zstate } from '../../state';
-import { I18N } from '../../i18n';
+import { I18N, localize } from '../../i18n';
 import { ensureEl } from '../dom-helpers';
 import { showScreenCrtEnter } from '../nav';
 import { mountScreenShell } from '../screen-shell/screen-shell';
@@ -155,7 +155,7 @@ const _buildOverlayDetail = (ht: HeliType, onSelect: (heliId: string) => void): 
     if (ht.description) {
         const textCol = document.createElement('div');
         textCol.className = 'heli-overlay-text';
-        textCol.textContent = ht.description;
+        textCol.textContent = localize(ht.description);
         wrap.appendChild(textCol);
     }
 
@@ -169,10 +169,10 @@ const _buildOverlayDetail = (ht: HeliType, onSelect: (heliId: string) => void): 
     const cap = Math.min(100, Math.round(ht.maxLoad / 20 * 100));
     const end = Math.min(100, Math.max(0, Math.round((0.012 - ht.fuelRate) / 0.012 * 90 + 10)));
 
-    statsCol.appendChild(_statBar('GESCHW.', spd));
-    statsCol.appendChild(_statBar('AGILITÄT', agi));
-    statsCol.appendChild(_statBar('KAPAZITÄT', cap));
-    statsCol.appendChild(_statBar('AUSDAUER', end));
+    statsCol.appendChild(_statBar(I18N.HELI_STAT_SPEED, spd));
+    statsCol.appendChild(_statBar(I18N.HELI_STAT_AGILITY, agi));
+    statsCol.appendChild(_statBar(I18N.HELI_STAT_CAPACITY, cap));
+    statsCol.appendChild(_statBar(I18N.HELI_STAT_ENDURANCE, end));
 
     const btn = document.createElement('button');
     btn.className = 'heli-select-btn';
@@ -207,7 +207,7 @@ export const show = (deps: HeliSelectDeps) => {
             const card = document.createElement('div');
             const lockLabel = locked
                 ? `<div class="box-sub heli-lock-label heli-card-label-sub">${I18N.HELI_LOCKED_FROM(RANKS[ht.minRankIndex].name.toUpperCase())}</div>`
-                : `<div class="box-sub heli-cap-label heli-card-label-sub">${ht.selectCap}</div>`;
+                : `<div class="box-sub heli-cap-label heli-card-label-sub">${localize(ht.selectCap)}</div>`;
             card.innerHTML = `
                 <canvas id="icon-${ht.id}" class="heli-card-canvas"></canvas>
                 <div class="heli-card-label">

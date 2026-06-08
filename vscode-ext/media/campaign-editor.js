@@ -38,7 +38,7 @@
     prevZoom: 1,
     prevPanX: 0,
     prevPanY: 0,
-    currentTool: "terrain",
+    currentTool: "move",
     brushRadius: 1.5,
     isCustomBrush: false,
     selectedUI: null,
@@ -886,16 +886,16 @@
       };
       npcLabel.append(npcCb, "NPC");
       let deliverToEl = null;
-      if (p.type === "crate") {
-        const hasPad = m.objects.some((o) => o.type === "pad");
-        const hasCarrier = m.objects.some((o) => o.type === "carrier");
-        const hasSub = m.objects.some((o) => o.type === "submarine");
+      if (p.type === "crate" || p.type === "person") {
         const sel = document.createElement("select");
         sel.style.cssText = "background:#222;color:#fa8;border:1px solid #555;font-size:10px;padding:1px 3px;cursor:pointer";
-        const opts = [["", "Ziel: \u2013"]];
-        if (hasPad) opts.push(["pad", "Ziel: Pad"]);
-        if (hasCarrier) opts.push(["carrier", "Ziel: Carrier"]);
-        if (hasSub) opts.push(["submarine", "Ziel: U-Boot"]);
+        const opts = [
+          ["", "Ziel: \u2013"],
+          ["pad", "Ziel: Pad"],
+          ["carrier", "Ziel: Carrier"],
+          ["submarine", "Ziel: U-Boot"],
+          ["boat", "Ziel: Boot"]
+        ];
         opts.forEach(([val, lbl]) => {
           const opt = document.createElement("option");
           opt.value = val;

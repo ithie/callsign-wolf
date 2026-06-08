@@ -70,20 +70,19 @@ export const renderPayloadList = () => {
         };
         npcLabel.append(npcCb, 'NPC');
 
-        // deliverTo — only for crates
+        // deliverTo — for persons and crates, always all options
         let deliverToEl: HTMLElement | null = null;
-        if (p.type === 'crate') {
-            const hasPad = m.objects.some((o: any) => o.type === 'pad');
-            const hasCarrier = m.objects.some((o: any) => o.type === 'carrier');
-            const hasSub = m.objects.some((o: any) => o.type === 'submarine');
-
+        if (p.type === 'crate' || p.type === 'person') {
             const sel = document.createElement('select');
             sel.style.cssText =
                 'background:#222;color:#fa8;border:1px solid #555;font-size:10px;padding:1px 3px;cursor:pointer';
-            const opts: Array<[string, string]> = [['', 'Ziel: –']];
-            if (hasPad) opts.push(['pad', 'Ziel: Pad']);
-            if (hasCarrier) opts.push(['carrier', 'Ziel: Carrier']);
-            if (hasSub) opts.push(['submarine', 'Ziel: U-Boot']);
+            const opts: Array<[string, string]> = [
+                ['', 'Ziel: –'],
+                ['pad', 'Ziel: Pad'],
+                ['carrier', 'Ziel: Carrier'],
+                ['submarine', 'Ziel: U-Boot'],
+                ['boat', 'Ziel: Boot'],
+            ];
             opts.forEach(([val, lbl]) => {
                 const opt = document.createElement('option');
                 opt.value = val;

@@ -39,7 +39,7 @@ export const state = {
     prevPanX: 0,
     prevPanY: 0,
 
-    currentTool: 'terrain',
+    currentTool: 'move',
     brushRadius: 1.5,
     isCustomBrush: false,
     selectedUI: null as string | null,

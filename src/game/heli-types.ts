@@ -34,9 +34,9 @@ export interface HeliType {
     canCarryCargo: boolean;
     // Select screen display
     selectLabel: string; // e.g. "DOLPHIN"
-    selectSub: string; // e.g. "Agile / Fast"
-    selectCap: string; // e.g. "Cap: 3 (Lightweight)"
-    description?: string;
+    selectSub: string | { de: string; en: string };
+    selectCap: string | { de: string; en: string };
+    description?: string | { de: string; en: string };
     // Minimum rank index required to fly this type (0=Leutnant, 1=Oberleutnant, 2=Hauptmann)
     minRankIndex: number;
     /** If true, this type is completely hidden in the selection screen when locked (instead of greyed out) */
@@ -62,10 +62,12 @@ export const HELI_TYPES: HeliType[] = [
         extraRotorDebris: false,
         canCarryCargo: false,
         selectLabel: 'DOLPHIN',
-        selectSub: 'Wendig / Schnell',
-        selectCap: 'Kap.: 3 (Leichtgewicht)',
-        description:
-            'Ein wendiger Küstenwachthubschrauber — ideal für schnelle Einsätze in schwierigem Gelände. Leicht, präzise, reaktionsschnell. Das bevorzugte Werkzeug erfahrener Piloten.',
+        selectSub: { de: 'Wendig / Schnell', en: 'Agile / Fast' },
+        selectCap: { de: 'Kap.: 3 (Leichtgewicht)', en: 'Cap.: 3 (Lightweight)' },
+        description: {
+            de: 'Ein wendiger Küstenwachthubschrauber — ideal für schnelle Einsätze in schwierigem Gelände. Leicht, präzise, reaktionsschnell. Das bevorzugte Werkzeug erfahrener Piloten.',
+            en: 'An agile coast guard helicopter — ideal for rapid deployment in difficult terrain. Light, precise, responsive. The preferred tool of experienced pilots.',
+        },
         minRankIndex: 1,
     },
     {
@@ -86,10 +88,12 @@ export const HELI_TYPES: HeliType[] = [
         extraRotorDebris: false,
         canCarryCargo: true,
         selectLabel: 'Coast-Hawk',
-        selectSub: 'Schwer / Stabil',
-        selectCap: 'Kap.: 10 (Schwerlast)',
-        description:
-            'Das Arbeitstier der Seenotrettung. Trägt schwere Lasten über weite Strecken, auch bei rauem Wetter. Einmal in Fahrt gebracht, ist er schwer aufzuhalten.',
+        selectSub: { de: 'Schwer / Stabil', en: 'Heavy / Stable' },
+        selectCap: { de: 'Kap.: 10 (Schwerlast)', en: 'Cap.: 10 (Heavy lift)' },
+        description: {
+            de: 'Das Arbeitstier der Seenotrettung. Trägt schwere Lasten über weite Strecken, auch bei rauem Wetter. Einmal in Fahrt gebracht, ist er schwer aufzuhalten.',
+            en: 'The workhorse of maritime rescue. Carries heavy loads over long distances, even in rough weather. Once up to speed, it is hard to stop.',
+        },
         minRankIndex: 0,
     },
     {
@@ -110,10 +114,12 @@ export const HELI_TYPES: HeliType[] = [
         extraRotorDebris: true,
         canCarryCargo: true,
         selectLabel: 'Atlas',
-        selectSub: 'Tandem / Extraschwer',
-        selectCap: 'Kap.: 20 (Schwerlast)',
-        description:
-            'Zwei Rotoren, keine Ausrede. Der Atlas ist für den Masseneinsatz gebaut — wenn normale Helikopter kapitulieren, fliegt der Atlas.',
+        selectSub: { de: 'Tandem / Extraschwer', en: 'Tandem / Extra-heavy' },
+        selectCap: { de: 'Kap.: 20 (Schwerlast)', en: 'Cap.: 20 (Heavy lift)' },
+        description: {
+            de: 'Zwei Rotoren, keine Ausrede. Der Atlas ist für den Masseneinsatz gebaut — wenn normale Helikopter kapitulieren, fliegt der Atlas.',
+            en: 'Two rotors, no excuses. The Atlas is built for mass operations — when ordinary helicopters give up, the Atlas flies on.',
+        },
         minRankIndex: 2,
     },
     {
@@ -134,10 +140,12 @@ export const HELI_TYPES: HeliType[] = [
         extraRotorDebris: false,
         canCarryCargo: true,
         selectLabel: 'ORNITHOPTER',
-        selectSub: 'Schläger / Wendig',
-        selectCap: 'Kap.: 2 (Schnelleinsatz)',
-        description:
-            'Ein Flügelschläger der nächsten Generation. Zwei Mann, maximale Wendigkeit. Mit Fracht überraschend schnell — kein Helikopter, kein Flugzeug, etwas dazwischen.',
+        selectSub: { de: 'Schläger / Wendig', en: 'Flapper / Agile' },
+        selectCap: { de: 'Kap.: 2 (Schnelleinsatz)', en: 'Cap.: 2 (Quick deploy)' },
+        description: {
+            de: 'Ein Flügelschläger der nächsten Generation. Zwei Mann, maximale Wendigkeit. Mit Fracht überraschend schnell — kein Helikopter, kein Flugzeug, etwas dazwischen.',
+            en: 'A next-generation ornithopter. Two crew, maximum agility. Surprisingly fast with cargo — not a helicopter, not a plane, something in between.',
+        },
         minRankIndex: 3,
         hideWhenLocked: true,
     },

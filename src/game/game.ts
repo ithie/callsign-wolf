@@ -511,7 +511,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     if (handle) await _tick();
 
     // Step 4 — ready; wait for minimum display time then fade out
-    handle?.step('Bereit.', 1.0);
+    handle?.step(I18N.LOADING_READY, 1.0);
     if (handle) await handle.done();
 
     G.heli.winch = 0;

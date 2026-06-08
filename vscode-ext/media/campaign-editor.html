@@ -225,8 +225,8 @@
 
         <!-- ── State inputs: required by the TypeScript module, not displayed ─ -->
         <div id="editor-state" hidden>
-            <input type="radio" name="tool" value="move" />
-            <input type="radio" name="tool" value="terrain" checked />
+            <input type="radio" name="tool" value="move" checked />
+            <input type="radio" name="tool" value="terrain" />
             <input type="radio" name="tool" value="flatten" />
             <input type="radio" name="tool" value="pad" />
             <input type="radio" name="tool" value="lighthouse" />
@@ -402,7 +402,7 @@ Viel Glück, Pilot.</textarea>
                         music: m.music || '',
                         objectives: (m.objectives || []).map((o, i) => Object.assign({ idx: i }, o)),
                         objects: (m.objects || []).map((o, i) => ({ idx: i, type: o.type, x: o.x, y: o.y })),
-                        payloads: (m.payloads || []).map((p, i) => ({ idx: i, type: p.type, x: p.x, y: p.y, npcTarget: !!p.npcTarget })),
+                        payloads: (m.payloads || []).map((p, i) => ({ idx: i, type: p.type, x: p.x, y: p.y, npcTarget: !!p.npcTarget, deliverTo: p.deliverTo })),
                         foliageCount: foliageArr.length, foliageSummary: foliageSummary,
                     } : null,
                 };
@@ -508,6 +508,9 @@ Viel Glück, Pilot.</textarea>
                         break;
                     case 'set-payload-npc':
                         if (m && m.payloads && m.payloads[data.idx]) m.payloads[data.idx].npcTarget = data.value;
+                        break;
+                    case 'set-payload-deliverto':
+                        if (m && m.payloads && m.payloads[data.idx]) m.payloads[data.idx].deliverTo = data.value || undefined;
                         break;
                     case 'delete-object':
                         if (m) { m.objects.splice(data.idx, 1); ed.renderObjectList(); }
@@ -732,9 +735,16 @@ Viel Glück, Pilot.</textarea>
 
                         + '<div class="ed-section"><div class="ed-section-title">Payloads</div>'
                         + (cm.payloads.length ? cm.payloads.map((p) =>
-                            '<div class="ed-list-row"><span>' + (p.type === 'person' ? '🟡' : p.type === 'rescuer' ? '🔵' : '🟠') + ' ' + p.type + ' @ (' + p.x + ', ' + p.y + ')</span>'
+                            '<div class="ed-list-row" style="flex-wrap:wrap;gap:3px">'
+                                + '<span style="flex:1;min-width:0">' + (p.type === 'person' ? '🟡' : p.type === 'rescuer' ? '🔵' : '🟠') + ' ' + p.type + ' @ (' + p.x + ', ' + p.y + ')</span>'
                                 + '<label style="font-size:10px;color:#8af;white-space:nowrap"><input type="checkbox" ' + (p.npcTarget ? 'checked' : '') + ' onchange="edDispatch(\'set-payload-npc\',{idx:' + p.idx + ',value:this.checked})"> NPC</label>'
-                                + '<button class="ed-btn-sm ed-del" onclick="edDispatch(\'delete-payload\',{idx:' + p.idx + '})">✕</button></div>'
+                                + ((p.type === 'person' || p.type === 'crate' || p.type === 'rescuer') ? '<select style="background:#222;color:#fa8;border:1px solid #555;font-size:10px;padding:1px 3px;cursor:pointer" onchange="edDispatch(\'set-payload-deliverto\',{idx:' + p.idx + ',value:this.value})">'
+                                    + ['', 'pad', 'carrier', 'submarine', 'boat'].map((v) =>
+                                        '<option value="' + v + '"' + ((p.deliverTo || '') === v ? ' selected' : '') + '>' + (v === '' ? 'Ziel: –' : 'Ziel: ' + v) + '</option>'
+                                    ).join('')
+                                    + '</select>' : '')
+                                + '<button class="ed-btn-sm ed-del" onclick="edDispatch(\'delete-payload\',{idx:' + p.idx + '})">✕</button>'
+                            + '</div>'
                         ).join('') : '<div class="ed-empty">Keine Payloads</div>')
                         + '</div>'
 

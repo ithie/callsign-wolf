@@ -1,5 +1,19 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.4.1 — Localisation & Campaign Fixes
+
+### Fixed
+
+- **Helicopter stat labels localised** — speed, agility, capacity, and endurance labels in the helicopter detail overlay were hardcoded in German; now read from `I18N`.
+- **Helicopter descriptions localised** — `description`, `selectCap`, and `selectSub` on all four helicopter types are now localised objects (`{ de, en }`); `localize()` applied at render time.
+- **Loading screen "Ready" localised** — the final loading step text was hardcoded as `'Bereit.'`; now uses `I18N.LOADING_READY`.
+- **Callsign Wolf missions 2, 3, 5 — spurious `land_at` objective removed** — "Night Flight", "Open Sea Transfer", and "Withdrawal" each carried a redundant `land_at: carrier` objective alongside `rescue_all`. Because objectives fire independently (OR), landing on the carrier without rescuing anyone was enough to complete the mission. Removed the `land_at` entries; `rescue_all` with `deliverTo: "carrier"` on each payload correctly enforces the full requirement.
+- **Mission 1 briefing corrected** — text said "four survivors" but the mission has three persons and one crate (the black box); briefing updated in DE and EN to reflect this accurately.
+- **Campaign editor: default tool on open is now Drag & Pan** — editor previously opened with the terrain brush active; now defaults to the move/pan tool.
+- **Campaign editor: `deliverTo` dropdown in payload sidebar** — each person, crate, and rescuer entry in the sidebar now shows a destination dropdown (–, pad, carrier, submarine, boat), matching the map context menu. Pre-selects the current value correctly.
+
+---
+
 ## v28.4.0 — FreeFlight Beach Mission & Editor Polish
 
 ### Added
