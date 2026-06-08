@@ -31,27 +31,25 @@ const _burst = (el: HTMLElement) => {
     setTimeout(() => wrap.remove(), 1300);
 };
 
+export const sections: { role: string; names: string[] }[] = [
+    { role: I18N.CREDITS_ROLE_DEVELOPMENT, names: ['Yarrick'] },
+    { role: I18N.CREDITS_ROLE_CAMPAIGN, names: ['Jay "G" Man'] },
+    { role: I18N.CREDITS_ROLE_CONSULTGS, names: ['DBuhn'] },
+    { role: I18N.CREDITS_ROLE_SOUND, names: ['Chris "Loud" E.'] },
+    { role: I18N.CREDITS_ROLE_LEADERTEST, names: ['Steven J. McG.'] },
+    {
+        role: I18N.CREDITS_ROLE_TEST,
+        names: ['Da Harp', 'Jay "G" Man', 'DBuhn', 'Bigwilli', 'Mrs Beer', 'deathnical'],
+    },
+    { role: I18N.CREDITS_ROLE_INSPIREDBY, names: ['Zeewolf (Binary Asylum, 1994)'] },
+];
+
 const _scheduleBursts = (el: HTMLElement, startDelay: number) => {
     [1200, 3800, 6500, 9500, 13000, 17000, 21000].forEach(t => setTimeout(() => _burst(el), startDelay + t));
 };
 
 export const show = (campaignName: string, onCreditsStart?: () => void): void => {
     if (!_el) return;
-
-    const sections: { role: string; names: string[] }[] = [
-        { role: I18N.CREDITS_ROLE_DEVELOPMENT, names: ['Yarrick'] },
-        { role: I18N.CREDITS_ROLE_CAMPAIGN, names: ['Jay "G" Man'] },
-        { role: I18N.CREDITS_ROLE_CONSULTGS, names: ['DBuhn'] },
-        { role: I18N.CREDITS_ROLE_SOUND, names: ['Chris "Loud" E.'] },
-        { role: I18N.CREDITS_ROLE_RECORDING, names: ['Yarrick'] },
-        { role: I18N.CREDITS_ROLE_VOICEARTIST, names: ['Bri B.'] },
-        { role: I18N.CREDITS_ROLE_LEADERTEST, names: ['Steven J. McG.'] },
-        {
-            role: I18N.CREDITS_ROLE_TEST,
-            names: ['Da Harp', 'Jay "G" Man', 'DBuhn', 'Gaunt', 'Bigwilli', 'Bri B.', 'Schollfried', 'SarahM'],
-        },
-        { role: I18N.CREDITS_ROLE_INSPIREDBY, names: ['Zeewolf (Binary Asylum, 1994)'] },
-    ];
 
     const blocksHtml = sections
         .map(
