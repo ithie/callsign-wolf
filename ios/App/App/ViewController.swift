@@ -112,6 +112,7 @@ class ViewController: UIViewController {
         ucc.add(HapticsHandler(),   name: "haptics")
         ucc.add(AppReviewHandler(), name: "appReview")
         ucc.add(controlsHandler,    name: "controls")
+        ucc.add(ZsynthHandler(),    name: "zsynthPlayer")
 
         webView = WKWebView(frame: view.bounds, configuration: config)
         webView.autoresizingMask           = [.flexibleWidth, .flexibleHeight]
@@ -143,7 +144,7 @@ class ViewController: UIViewController {
     // MARK: - Audio resume
 
     @objc private func _appDidBecomeActive() {
-        webView.evaluateJavaScript("window.__zsynthResume?.();", completionHandler: nil)
+        ZsynthPlayer.shared.resumeEngine()
     }
 
     // MARK: - Storage helpers

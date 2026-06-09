@@ -67,6 +67,9 @@ export default defineConfig(({ command }) => {
         resolve: {
             alias: {
                 '@': resolve(__dirname, 'src'),
+                ...(isApp
+                    ? { [resolve(__dirname, 'src/shared/ZsynthPlayer')]: resolve(__dirname, 'src/shared/ZsynthPlayer.app-stub.ts') }
+                    : {}),
                 ...(!isApp
                     ? { [resolve(__dirname, 'src/game/storage')]: storageWebStub }
                     : {}),

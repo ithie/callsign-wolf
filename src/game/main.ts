@@ -4,6 +4,7 @@ import FreeFlight from './campaigns/freeFlight.zcampaign';
 import CallsignWolf from './campaigns/callsignwolf.zcampaign';
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
+import { songToZsong } from '../shared/zsong';
 import SoundSuccess from './music/success.zsong';
 import SoundClike from './music/clike.zsong';
 import SoundDestroid from './music/destroid.zsong';
@@ -45,31 +46,51 @@ const soundHandler = (() => {
         isMuted: false,
     };
 
-    ZsynthPlayer.init(songList);
+    const _native: { postMessage: (m: object) => void } | null =
+        (window as any).webkit?.messageHandlers?.zsynthPlayer ?? null;
+
+    if (_native) {
+        const raw: Record<string, string> = {};
+        for (const [k, v] of Object.entries(songList)) raw[k] = songToZsong(v);
+        _native.postMessage({ action: 'preload', songs: raw });
+    } else {
+        ZsynthPlayer.init(songList);
+    }
+
+    let _nativeKey = '';
+
     return {
         state,
         mute: () => {
             state.isMuted = true;
-            ZsynthPlayer.stop();
+            if (_native) _native.postMessage({ action: 'stop' });
+            else ZsynthPlayer.stop();
         },
         unmute: () => {
             state.isMuted = false;
-            if (state.activeTheme) ZsynthPlayer.play(state.activeTheme);
+            if (state.activeTheme) {
+                if (_native) _native.postMessage({ action: 'play', key: state.activeTheme, volume: 1.0 });
+                else ZsynthPlayer.play(state.activeTheme);
+            }
         },
         play: (theme: string, volume: number = 1.0) => {
             if (!songList[theme]) return;
+            if (_native) {
+                const alreadyPlaying = _nativeKey === theme;
+                state.activeTheme = theme;
+                if (state.isMuted || alreadyPlaying) return;
+                _nativeKey = theme;
+                _native.postMessage({ action: 'play', key: theme, volume });
+                return;
+            }
             const alreadyPlaying = state.activeTheme === theme && ZsynthPlayer.currentTrack?.isPlaying;
             state.activeTheme = theme;
             if (state.isMuted) return;
             if (alreadyPlaying) return;
-
-            try {
-            ZsynthPlayer.play(theme, volume);
-            } catch {
-                // nothing to do here
-            }
+            try { ZsynthPlayer.play(theme, volume); } catch { /* ignore */ }
         },
         stop: () => {
+            if (_native) { _nativeKey = ''; _native.postMessage({ action: 'stop' }); return; }
             ZsynthPlayer.stop();
         },
     };

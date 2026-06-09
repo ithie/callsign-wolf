@@ -1,5 +1,28 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.5.0 — Native Audio & Night Visibility (Revision 27)
+
+### TestFlight Release Notes
+
+**Revision 27** — What's new in this build:
+
+- **Native audio engine** — Music now runs entirely in Swift via AVAudioEngine. No more audio dropouts or silent starts on iOS.
+- **Lightning illuminates the landscape** — During storms at night, every lightning strike briefly lights up the entire terrain.
+- **Night visibility** — All objects (trees, vehicles, buildings, ships, cargo) are only visible inside the searchlight cone. Everything flashes into view during lightning.
+
+### Added
+
+- **`ZsynthPlayer.swift`** — Full Swift port of the music synthesizer. Parses `.zsong` format natively, renders all drum and synth voices as PCM buffers via `AVAudioPlayerNode`, scheduled with Mach-time precision. Replaces Web Audio API on iOS entirely.
+- **Lightning terrain illumination** — When lightning fires, all terrain tiles render in a brief dim panoramic palette instead of pure black, giving a realistic flash-of-the-landscape effect.
+- **Night cone visibility for all world objects** — Trees, ZDEF structures (wind turbines, wrecks, lighthouses, hangars), vessels (boats, submarines, research platforms), carrier (hull, tractors, radar, windsock), NPC helicopters, fuel trucks, pad lights, attached deck payloads — all are now culled outside the searchlight cone at night. During lightning, everything is briefly visible.
+
+### Changed
+
+- **`ZsynthPlayer.ts` excluded from iOS app build** — The Web Audio player is replaced by a no-op stub in the `app` Vite target; the Swift engine handles all music on device.
+- **`ViewController._appDidBecomeActive`** — Now calls `ZsynthPlayer.shared.resumeEngine()` instead of the old Web Audio resume JS injection.
+
+---
+
 ## v28.4.1 — Localisation & Campaign Fixes
 
 ### Fixed

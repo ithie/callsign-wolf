@@ -92,12 +92,13 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
     // Must be called AFTER vessels are added (lines 76-83 draw-world.ts) and
     // BEFORE the heli is added (line 95) so that on a depth tie the heli wins
     // via JS stable sort insertion order.
-    const queueAttachedPayloads = () => {
+    const queueAttachedPayloads = (inCone: (x: number, y: number) => boolean) => {
         G.payloads.forEach((payload: any) => {
             if (payload.rescued && !payload.hanging) return;
             if (payload.hanging || !payload.attachTo) return;
             if (payload.type === PAYLOAD.ORNI_WRECK) return;
             if (!isVisible(payload.x, payload.y)) return;
+            if (!inCone(payload.x, payload.y)) return;
             SceneRenderer.add(null, {
                 x: 0, y: 0,
                 depth: payload.x + payload.y,
