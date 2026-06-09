@@ -141,6 +141,7 @@ export class UiPreviewProvider {
             platform: 'browser',
             format: 'iife',
             write: false,
+            loader: { '.zdef': 'json' },
             plugins: [_cssInjectPlugin, _previewStubsPlugin(this._root)],
             tsconfig: path.join(this._root, 'tsconfig.json'),
             define: {

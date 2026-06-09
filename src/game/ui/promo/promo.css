@@ -46,20 +46,18 @@ body {
     font-weight: bold;
     line-height: 1.15;
 }
-.cs {
-    font-size: clamp(13px, 2.5vw, 18px);
-    letter-spacing: 8px;
-    color: #5f5;
-    animation: pulse 2.5s ease-in-out infinite;
+.as-badge {
+    display: inline-block;
+    opacity: 0.9;
+    transition: opacity 0.2s;
 }
-@keyframes pulse {
-    0%,
-    100% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.35;
-    }
+.as-badge:hover {
+    opacity: 1;
+}
+.as-badge svg {
+    width: clamp(140px, 38vw, 180px);
+    height: auto;
+    display: block;
 }
 .il {
     font-size: 10px;
