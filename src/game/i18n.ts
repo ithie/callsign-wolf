@@ -295,6 +295,7 @@ const _EN = {
 } as const;
 
 const _lang0 = _detectLang();
+document.documentElement.lang = _lang0;
 
 export const I18N_DE: typeof _DE = _DE;
 export const I18N_EN: typeof _DE = _EN as unknown as typeof _DE;
@@ -316,6 +317,7 @@ export const setLanguage = (lang: 'de' | 'en'): void => {
     storageSet(LANG_PREF_KEY, lang);
     LANG = lang;
     I18N = (lang === 'de' ? _DE : _EN) as typeof _DE;
+    document.documentElement.lang = lang;
     _langCallbacks.forEach(cb => cb());
 };
 

@@ -21,8 +21,8 @@ export const show = (backUrl?: string): void => {
         <div class="sub sec-en">${I18N_EN.LEGAL_TITLE}</div>
         <div class="sub sec-de">${I18N_DE.LEGAL_TITLE}</div>
         <div class="lang-row">
-            <button class="lang-btn en" onclick="(function(e){e.dataset.lang='en';e.querySelector('.lang-btn.en').classList.add('active');e.querySelector('.lang-btn.de').classList.remove('active')})(document.getElementById('imprint-page'))">ENGLISH</button>
-            <button class="lang-btn de" onclick="(function(e){e.dataset.lang='de';e.querySelector('.lang-btn.de').classList.add('active');e.querySelector('.lang-btn.en').classList.remove('active')})(document.getElementById('imprint-page'))">DEUTSCH</button>
+            <button class="lang-btn en" onclick="(function(e){e.dataset.lang='en';e.querySelector('.lang-btn.en').classList.add('active');e.querySelector('.lang-btn.de').classList.remove('active');document.documentElement.lang='en'})(document.getElementById('imprint-page'))">ENGLISH</button>
+            <button class="lang-btn de" onclick="(function(e){e.dataset.lang='de';e.querySelector('.lang-btn.de').classList.add('active');e.querySelector('.lang-btn.en').classList.remove('active');document.documentElement.lang='de'})(document.getElementById('imprint-page'))">DEUTSCH</button>
         </div>
 
         <h2 class="sec-en">${I18N_EN.LEGAL_IMPRESSUM_HEADING}</h2>

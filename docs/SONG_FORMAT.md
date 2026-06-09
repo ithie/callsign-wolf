@@ -103,3 +103,5 @@ const songList: Record<string, SongData> = {
 The key you use here is the theme name passed to `soundHandler.play('mysong')`. By convention the key matches the filename stem.
 
 > **VS Code Campaign Editor** populates its song dropdowns by scanning `src/game/music/` for `.zsong` files. Any new file placed there appears immediately — no restart required. However, the game itself still requires the static import and `songList` entry above to actually play the song at runtime.
+
+> **iOS / Native audio** — On device, music is handled by `ZsynthPlayer.swift` (AVAudioEngine) instead of Web Audio. The JS side serialises each `SongData` back to `.zsong` text via `songToZsong()` and sends it to Swift on startup. No extra steps are needed when adding a new song — registering it in `songList` is sufficient.
