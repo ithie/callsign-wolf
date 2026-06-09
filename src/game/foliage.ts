@@ -1,6 +1,7 @@
 import { G } from './state';
 import { campaignHandler } from './main';
 import { getGround } from './sim/terrain';
+import { isLightningActive } from './lightning-state';
 import type { WindState } from './draw-objects';
 
 type DrawTreeFn = (
@@ -52,8 +53,9 @@ export const createFoliage = (opts: {
     tileH: number;
     drawTree: DrawTreeFn;
     sceneAdd: SceneAddFn;
+    isNight: () => boolean;
 }) => {
-    const { canvas, tileW, tileH, drawTree, sceneAdd } = opts;
+    const { canvas, tileW, tileH, drawTree, sceneAdd, isNight } = opts;
 
     const rebuildEntryCache = () => {
         G.TREES_MAP.forEach((t: any) => {
@@ -69,11 +71,27 @@ export const createFoliage = (opts: {
         const _tr = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH)) + 2;
         const xFrom = Math.floor(rx - _tr), xTo = Math.ceil(rx + _tr);
         const yFrom = Math.floor(ry - _tr), yTo = Math.ceil(ry + _tr);
+        const night = isNight();
+        const lightning = night && isLightningActive();
+        let coneWidth = 0, range2 = 0, haX = 0, haY = 0, haA = 0;
+        if (night && !lightning) {
+            const alt = G.heli.z - getGround(G.heli.x, G.heli.y);
+            coneWidth = 0.3 + alt * 0.05;
+            range2 = (10 + alt * 2.0) ** 2;
+            haX = G.heli.x; haY = G.heli.y; haA = G.heli.angle;
+        }
         for (let tx = xFrom; tx <= xTo; tx++) {
             for (let ty = yFrom; ty <= yTo; ty++) {
                 const bucket = _treeIndex.get(`${tx}_${ty}`);
                 if (!bucket) continue;
                 for (const t of bucket) {
+                    if (night && !lightning) {
+                        let diff = Math.atan2(t.y - haY, t.x - haX) - haA;
+                        while (diff < -Math.PI) diff += Math.PI * 2;
+                        while (diff > Math.PI) diff -= Math.PI * 2;
+                        const dx = t.x - haX, dy = t.y - haY;
+                        if (!(Math.abs(diff) < coneWidth && dx * dx + dy * dy < range2)) continue;
+                    }
                     sceneAdd(null, t._entry);
                 }
             }

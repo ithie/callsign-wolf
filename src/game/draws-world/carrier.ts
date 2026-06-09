@@ -101,10 +101,11 @@ export const createCarrierDraw = (dwCtx: DrawWorldCtx) => {
         ctx.stroke();
     };
 
-    const _drawNpcHelis = (cx: number, cy: number, visMargin: number, showCarrier: boolean) => {
+    const _drawNpcHelis = (cx: number, cy: number, visMargin: number, showCarrier: boolean, inCone: (x: number, y: number) => boolean) => {
         for (const npc of G.npcHelis) {
             const visible = npc.state === VEHICLE_STATE.PARKED ? showCarrier : isVisible(npc.x, npc.y, visMargin);
             if (!visible) continue;
+            if (!inCone(npc.x, npc.y)) continue;
             const groundBelow = npc.state === VEHICLE_STATE.PARKED ? npc.z : getGround(npc.x, npc.y);
             drawHeli(npc.type, npc.x, npc.y, npc.z, npc.angle, npc.tilt, npc.roll, npc.rotationPos, cx, cy, {
                 isShadow: true, scaleOverride: 1, fillColor: '#556b2f', strokeColor: '#3a4a1f',

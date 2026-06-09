@@ -108,12 +108,14 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         }});
     };
 
-    const _drawBaywatchObjects = () => {
+    const _drawBaywatchObjects = (inCone: (x: number, y: number) => boolean) => {
         G.BAYWATCH_CARS.forEach((car: any) => {
+            if (!inCone(car.x, car.y)) return;
             const gz = getGround(car.x, car.y);
             SceneRenderer.add(BAYWATCH_CAR_DEF as any, { x: car.x, y: car.y, z: gz, angle: car.angle });
         });
         G.BAYWATCH_BUILDINGS.forEach((b: any) => {
+            if (!inCone(b.x, b.y)) return;
             const gz = getGround(b.x, b.y);
             const def = b.type === 'baywatch_hq' ? BAYWATCH_HQ_DEF : BAYWATCH_TOWER_DEF;
             SceneRenderer.add(def as any, { x: b.x, y: b.y, z: gz, angle: b.angle });

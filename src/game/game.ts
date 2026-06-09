@@ -132,6 +132,7 @@ const { drawTrees, rebuildEntryCache } = createFoliage({
     tileH,
     drawTree,
     sceneAdd: (def, opts) => SceneRenderer.add(def, opts),
+    isNight: () => _missionNight,
 });
 
 HeliSelect.init(G, drawHeli);

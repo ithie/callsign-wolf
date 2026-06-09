@@ -1,5 +1,6 @@
 import { G } from './state';
 import { getGround } from './sim/terrain';
+import { isLightningActive } from './lightning-state';
 
 export interface DrawTerrainCtx {
     ctx: CanvasRenderingContext2D;
@@ -105,6 +106,14 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
         const yTo = Math.ceil(ry + _tileRange);
 
         if (isNight) {
+            if (isLightningActive()) {
+                _renderTerrainBatched(canvas.width, canvas.height, camX, camY, xFrom, xTo, yFrom, yTo, (x, y, h0) => {
+                    if (isPadTile(x, y) || isServiceTile(x, y)) return 'rgb(38,38,44)';
+                    if (h0 > G.waterLevel && (G.sandPoints[x]?.[y] ?? 0) > 0) return 'rgb(105,100,75)';
+                    return h0 > G.waterLevel ? 'rgb(38,52,38)' : 'rgb(15,25,52)';
+                });
+                return;
+            }
             const alt = G.heli.z - getGround(G.heli.x, G.heli.y, G.points, G.CARRIER);
             const coneWidth = 0.3 + alt * 0.05;
             const range = 10 + alt * 2.0;

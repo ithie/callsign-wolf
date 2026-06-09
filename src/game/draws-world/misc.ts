@@ -1,5 +1,6 @@
 import type { DrawWorldCtx } from './types';
 import { G } from '../state';
+import { setLightningActive } from '../lightning-state';
 
 export const createMiscDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, tileW, isVisible, isMissionRain } = dwCtx;
@@ -50,6 +51,7 @@ export const createMiscDraw = (dwCtx: DrawWorldCtx) => {
     const renderRain = () => {
         if (!isMissionRain()) return;
         if (Math.random() < 0.005) {
+            setLightningActive();
             const el = document.getElementById('flash-overlay')!;
             el.style.opacity = '0.8';
             setTimeout(() => (el.style.opacity = '0'), 100);
