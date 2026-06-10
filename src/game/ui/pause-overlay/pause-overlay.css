@@ -55,7 +55,7 @@
     padding: 10px 28px;
 }
 
-.pause-field {
+#pause-overlay .pause-field {
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -63,13 +63,13 @@
     gap: 6px;
 }
 
-.pause-field label {
+#pause-overlay .pause-field label {
     font: 11px monospace;
     letter-spacing: 2px;
     color: #5a5;
 }
 
-.pause-field .pause-row {
+#pause-overlay .pause-field .pause-row {
     display: flex;
     gap: 10px;
 }

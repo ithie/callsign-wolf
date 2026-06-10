@@ -113,7 +113,11 @@ export class UiPreviewProvider {
     }
 
     private async _buildStory(uiTsPath: string): Promise<string> {
+        const uiDir = path.join(this._root, 'src', 'game', 'ui');
         const wrapper = [
+            `import ${JSON.stringify(path.join(uiDir, 'base.css'))};`,
+            `import ${JSON.stringify(path.join(uiDir, 'screens.css'))};`,
+            `import ${JSON.stringify(path.join(uiDir, 'nav-screens.css'))};`,
             `import * as _s from ${JSON.stringify(uiTsPath)};`,
             `const _entries = Object.entries(_s).filter(([,v]) => typeof v === 'function');`,
             // Story-picker dropdown (only visible when >1 story)

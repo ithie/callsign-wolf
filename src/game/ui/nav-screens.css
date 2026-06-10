@@ -15,3 +15,13 @@
     z-index: 200;
     cursor: default;
 }
+
+/* ─── screen transition animations ──────────────────────────────────────── */
+.ui-screen.crt-leaving {
+    animation: crtCollapse 380ms cubic-bezier(0.4, 0, 1, 1) forwards;
+    pointer-events: none;
+}
+
+.ui-screen.crt-entering {
+    animation: crtExpand 380ms cubic-bezier(0, 0, 0.6, 1) forwards;
+}

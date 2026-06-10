@@ -1,32 +1,3 @@
-.rank-board {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    background: #050a1a;
-    border: 2px solid #cc9900;
-    border-radius: 4px;
-    padding: 14px 36px;
-    min-width: 150px;
-}
-.rank-pips {
-    font-size: 28px;
-    color: #ffcc00;
-    letter-spacing: 10px;
-    text-shadow: 0 0 10px rgba(255, 204, 0, 0.6);
-}
-.rank-board.major .rank-pips {
-    font-size: 32px;
-    color: #ffdd44;
-    letter-spacing: 4px;
-    text-shadow: 0 0 16px rgba(255, 220, 68, 0.8);
-}
-.rank-label {
-    font-size: 11px;
-    color: #887700;
-    letter-spacing: 5px;
-}
-
 #rankup-overlay {
     position: absolute;
     inset: 0;

@@ -1,0 +1,24 @@
+.settings-btn {
+    font-family: monospace;
+    font-size: 12px;
+    letter-spacing: 3px;
+    color: #5f5;
+    border: 1px solid #2a4a2a;
+    background: none;
+    cursor: pointer;
+    padding: 8px 16px;
+    transition: all 0.2s;
+}
+.settings-btn:hover {
+    border-color: #5f5;
+    box-shadow: 0 0 8px rgba(85, 255, 85, 0.2);
+}
+.settings-btn.danger {
+    background: #1a0000;
+    border-color: #500;
+    color: #c44;
+}
+.settings-btn.danger:hover {
+    border-color: #c44;
+    box-shadow: 0 0 8px rgba(204, 68, 68, 0.2);
+}

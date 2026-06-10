@@ -14,11 +14,11 @@
     height: auto;
 }
 
-.mission-done {
+#mission-select .mission-done {
     color: #5f5;
 }
 
-.mission-time {
+#mission-select .mission-time {
     color: #8af;
     font-family: monospace;
 }

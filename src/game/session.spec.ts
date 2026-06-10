@@ -2,13 +2,13 @@ import { describe, it, expect } from 'vitest';
 import {
     encodeSession,
     decodeSession,
-    getRank,
     getMissionsDone,
     getCampaignsDone,
     isCampaignUnlocked,
     isMissionUnlocked,
     type PlayerSession,
 } from './session';
+import { getRank } from './ui/rank-badge/rank-badge';
 
 const mkSession = (overrides: Partial<PlayerSession> = {}): PlayerSession => ({
     playerName: '',
@@ -63,36 +63,36 @@ describe('getCampaignsDone', () => {
 
 describe('getRank', () => {
     it('Leutnant at 0 missions', () => {
-        expect(getRank(mkSession(), 0).name).toBe('Leutnant');
+        expect(getRank(0, 0).key).toBe('leutnant');
     });
 
     it('Oberleutnant at 5 missions', () => {
-        expect(getRank(mkSession(), 5).name).toBe('Oberleutnant');
+        expect(getRank(0, 5).key).toBe('oberleutnant');
     });
 
     it('Hauptmann at 10 missions', () => {
-        expect(getRank(mkSession(), 10).name).toBe('Hauptmann');
+        expect(getRank(0, 10).key).toBe('hauptmann');
     });
 
     it('Major at 30 missions', () => {
-        expect(getRank(mkSession(), 30).name).toBe('Major');
+        expect(getRank(0, 30).key).toBe('major');
     });
 
     it('rankOverride elevates rank with 0 missions', () => {
-        expect(getRank(mkSession({ rankOverride: 3 }), 0).name).toBe('Major');
+        expect(getRank(3, 0).key).toBe('major');
     });
 
     it('rankOverride does not lower a higher earned rank', () => {
-        expect(getRank(mkSession({ rankOverride: 0 }), 30).name).toBe('Major');
+        expect(getRank(0, 30).key).toBe('major');
     });
 
-    it('uses getMissionsDone when nonTutorialMissions is omitted', () => {
+    it('counts completed missions from session', () => {
         const s = mkSession({
             campaignProgress: {
                 '0': { completed: false, missions: Array(5).fill({ completed: true, bestTimeMs: null }) },
             },
         });
-        expect(getRank(s).name).toBe('Oberleutnant');
+        expect(getRank(s.rankOverride ?? 0, getMissionsDone(s)).key).toBe('oberleutnant');
     });
 });
 

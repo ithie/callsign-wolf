@@ -17,7 +17,7 @@
 
 /* ── Firework bursts ───────────────────────────────────────── */
 
-.ced-burst {
+#campaign-end-screen .ced-burst {
     position: absolute;
     width: 0;
     height: 0;
@@ -25,7 +25,7 @@
     z-index: 1;
 }
 
-.ced-burst-spark {
+#campaign-end-screen .ced-burst-spark {
     position: absolute;
     width: 5px;
     height: 5px;
@@ -49,13 +49,13 @@
 
 /* ── Scroll container ──────────────────────────────────────── */
 
-.ced-scroll-wrap {
+#campaign-end-screen .ced-scroll-wrap {
     position: absolute;
     inset: 0;
     overflow: hidden;
 }
 
-.ced-scroll-inner {
+#campaign-end-screen .ced-scroll-inner {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -63,7 +63,7 @@
     padding: calc(50vh - 57px) 32px 55vh;
 }
 
-.ced-scroll-inner.ced-rolling {
+#campaign-end-screen .ced-scroll-inner.ced-rolling {
     animation: ced-scroll 15s linear forwards;
 }
 
@@ -78,7 +78,7 @@
 
 /* ── Phase 1 block ─────────────────────────────────────────── */
 
-.ced-phase1-block {
+#campaign-end-screen .ced-phase1-block {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -86,21 +86,21 @@
     margin-bottom: 32vh;
 }
 
-.ced-complete {
+#campaign-end-screen .ced-complete {
     font-size: 12px;
     letter-spacing: 5px;
     color: #ff6600;
     text-transform: uppercase;
 }
 
-.ced-campaign-name {
+#campaign-end-screen .ced-campaign-name {
     font-size: 26px;
     color: #fff;
     letter-spacing: 3px;
     text-transform: uppercase;
 }
 
-.ced-cleared {
+#campaign-end-screen .ced-cleared {
     font-size: 11px;
     letter-spacing: 4px;
     color: #555;
@@ -109,21 +109,21 @@
 
 /* ── Credits blocks ────────────────────────────────────────── */
 
-.ced-block {
+#campaign-end-screen .ced-block {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
 }
 
-.ced-role {
+#campaign-end-screen .ced-role {
     font-size: 9px;
     letter-spacing: 5px;
     color: #444;
     text-transform: uppercase;
 }
 
-.ced-name {
+#campaign-end-screen .ced-name {
     font-size: 20px;
     color: #ccc;
     letter-spacing: 1px;
@@ -131,7 +131,7 @@
 
 /* ── Footer — fixed center, fades in when scroll ends ─────── */
 
-.ced-footer {
+#campaign-end-screen .ced-footer {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -145,18 +145,18 @@
     transition: opacity 1.35s ease;
 }
 
-.ced-footer.ced-footer-visible {
+#campaign-end-screen .ced-footer.ced-footer-visible {
     opacity: 1;
 }
 
-.ced-made {
+#campaign-end-screen .ced-made {
     font-size: 12px;
     letter-spacing: 3px;
     color: #888;
     text-transform: uppercase;
 }
 
-.ced-heart {
+#campaign-end-screen .ced-heart {
     display: inline-block;
     color: #ff6600;
     animation: ced-pulse 1.5s ease-in-out infinite;
@@ -172,7 +172,7 @@
     }
 }
 
-.ced-copyright {
+#campaign-end-screen .ced-copyright {
     font-size: 10px;
     letter-spacing: 1px;
     color: #555;

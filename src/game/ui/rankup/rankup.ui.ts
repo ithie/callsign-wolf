@@ -2,7 +2,7 @@ import { init, mount, show } from './rankup';
 import { createDrawObjects } from '../../draw-objects';
 import { iso } from '../../render';
 import { tileW, tileH, stepH } from '../../render-config';
-import { RANKS } from '../../session';
+import { RANKS } from '../rank-badge/rank-badge';
 
 const _setup = () => {
     const c = document.createElement('canvas');

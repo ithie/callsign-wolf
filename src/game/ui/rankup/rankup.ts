@@ -3,7 +3,9 @@ import { I18N } from '../../i18n';
 import { ensureEl } from '../dom-helpers';
 import { iso } from '../../render';
 import { tileW, tileH, stepH, CANVAS_SCALE } from '../../render-config';
-import type { Rank } from '../../session';
+import { rankBadgeHtml, type Rank } from '../rank-badge/rank-badge';
+
+export { rankBadgeHtml };
 
 type DrawHeliFn = (...args: any[]) => void;
 
@@ -12,12 +14,6 @@ let _drawHeli: DrawHeliFn | null = null;
 export const init = (drawHeli: DrawHeliFn): void => {
     _drawHeli = drawHeli;
 };
-
-export const rankBadgeHtml = (rank: Rank): string =>
-    `<div class="rank-board${rank.name === 'Major' ? ' major' : ''}">` +
-    `<span class="rank-pips">${rank.pips}</span>` +
-    `<span class="rank-label">${rank.name.toUpperCase()}</span>` +
-    `</div>`;
 
 export const hide = (): void => {
     _heliId = null;

@@ -20,7 +20,7 @@ body {
     box-sizing: border-box;
 }
 
-#pw {
+#promo > div {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -29,13 +29,15 @@ body {
     max-width: 560px;
     width: 100%;
 }
-#ph {
+
+#promo canvas {
     width: min(200px, 88vw);
     height: auto;
     aspect-ratio: 460/340;
     image-rendering: pixelated;
     margin: 0;
 }
+
 #promo h1 {
     font-size: clamp(26px, 5.5vw, 52px);
     color: #ff6600;
@@ -46,27 +48,32 @@ body {
     font-weight: bold;
     line-height: 1.15;
 }
-.tagline {
+
+#promo .tagline {
     font-size: clamp(11px, 2.2vw, 14px);
     letter-spacing: 2px;
     line-height: 1.7;
     margin: 0;
     text-transform: uppercase;
 }
-.as-badge {
+
+#promo .as-badge {
     display: inline-block;
     opacity: 0.9;
     transition: opacity 0.2s;
 }
-.as-badge:hover {
+
+#promo .as-badge:hover {
     opacity: 1;
 }
-.as-badge svg {
+
+#promo .as-badge svg {
     width: clamp(140px, 38vw, 180px);
     height: auto;
     display: block;
 }
-.il {
+
+#promo .il {
     color: #888;
     font-size: 10px;
     letter-spacing: 3px;
@@ -75,6 +82,7 @@ body {
     margin-top: 8px;
     cursor: pointer;
 }
-.il:hover {
+
+#promo .il:hover {
     color: #555;
 }

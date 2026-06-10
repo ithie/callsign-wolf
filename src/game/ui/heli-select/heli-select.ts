@@ -2,7 +2,7 @@ import './heli-select.css';
 import '../nav-screens.css';
 import { iso } from '../../render';
 import { HELI_TYPES, type HeliType } from '../../heli-types';
-import { RANKS } from '../../session';
+import { RANKS } from '../rank-badge/rank-badge';
 import { tileW, tileH, stepH, CANVAS_SCALE } from '../../render-config';
 import { zstate } from '../../state';
 import { I18N, localize } from '../../i18n';
@@ -206,7 +206,7 @@ export const show = (deps: HeliSelectDeps) => {
         renderCard: (ht, locked) => {
             const card = document.createElement('div');
             const lockLabel = locked
-                ? `<div class="box-sub heli-lock-label heli-card-label-sub">${I18N.HELI_LOCKED_FROM(RANKS[ht.minRankIndex].name.toUpperCase())}</div>`
+                ? `<div class="box-sub heli-lock-label heli-card-label-sub">${I18N.HELI_LOCKED_FROM(I18N.RANK_NAME(RANKS[ht.minRankIndex].key).toUpperCase())}</div>`
                 : `<div class="box-sub heli-cap-label heli-card-label-sub">${localize(ht.selectCap)}</div>`;
             card.innerHTML = `
                 <canvas id="icon-${ht.id}" class="heli-card-canvas"></canvas>

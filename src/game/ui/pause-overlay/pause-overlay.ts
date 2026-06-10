@@ -1,6 +1,7 @@
 import './pause-overlay.css';
 import { ensureEl } from '../dom-helpers';
 import { I18N } from '../../i18n';
+import { createSettingsBtn } from '../settings-btn/settings-btn';
 
 type PauseOverlayDeps = {
     isMusicEnabled: () => boolean;
@@ -60,6 +61,18 @@ export const hide = () => {
     document.getElementById('pause-overlay')?.classList.remove('visible');
 };
 
+const _makeField = (labelText: string, ...btns: HTMLButtonElement[]): HTMLDivElement => {
+    const field = document.createElement('div');
+    field.className = 'pause-field';
+    const lbl = document.createElement('label');
+    lbl.textContent = labelText;
+    const row = document.createElement('div');
+    row.className = 'pause-row';
+    btns.forEach(b => row.appendChild(b));
+    field.append(lbl, row);
+    return field;
+};
+
 export const mount = (deps: PauseOverlayDeps) => {
     _deps = deps;
 
@@ -85,43 +98,35 @@ export const mount = (deps: PauseOverlayDeps) => {
 
     // overlay
     const overlay = ensureEl('pause-overlay');
-    overlay.innerHTML = `
-        <div id="pause-panel">
-            <div id="pause-title">${I18N.PAUSE_TITLE}</div>
-            <div class="pause-field">
-                <label>${I18N.MUSIC_HEADING}</label>
-                <div class="pause-row">
-                    <button class="settings-btn" id="pause-music-on">${I18N.AUDIO_ON}</button>
-                    <button class="settings-btn" id="pause-music-off">${I18N.AUDIO_OFF}</button>
-                </div>
-            </div>
-            <div class="pause-field">
-                <label>${I18N.SFX_HEADING}</label>
-                <div class="pause-row">
-                    <button class="settings-btn" id="pause-sfx-on">${I18N.AUDIO_ON}</button>
-                    <button class="settings-btn" id="pause-sfx-off">${I18N.AUDIO_OFF}</button>
-                </div>
-            </div>
-            <button class="settings-btn" id="pause-resume">${I18N.PAUSE_RESUME}</button>
-            <button class="settings-btn" id="pause-abort" style="background:#1a0000;border-color:#500;color:#c44">${I18N.PAUSE_ABORT}</button>
-        </div>`;
+    overlay.innerHTML = '';
 
-    document.getElementById('pause-music-on')!.onclick = () => {
-        _deps.setMusicEnabled(true);
-        _refreshButtons();
-    };
-    document.getElementById('pause-music-off')!.onclick = () => {
-        _deps.setMusicEnabled(false);
-        _refreshButtons();
-    };
-    document.getElementById('pause-sfx-on')!.onclick = () => {
-        _deps.setSfxEnabled(true);
-        _refreshButtons();
-    };
-    document.getElementById('pause-sfx-off')!.onclick = () => {
-        _deps.setSfxEnabled(false);
-        _refreshButtons();
-    };
-    document.getElementById('pause-resume')!.onclick = _hide;
-    document.getElementById('pause-abort')!.onclick = _abort;
+    const panel = document.createElement('div');
+    panel.id = 'pause-panel';
+
+    const title = document.createElement('div');
+    title.id = 'pause-title';
+    title.textContent = I18N.PAUSE_TITLE;
+
+    const musicOn  = createSettingsBtn(I18N.AUDIO_ON,  { id: 'pause-music-on' });
+    const musicOff = createSettingsBtn(I18N.AUDIO_OFF, { id: 'pause-music-off' });
+    const sfxOn    = createSettingsBtn(I18N.AUDIO_ON,  { id: 'pause-sfx-on' });
+    const sfxOff   = createSettingsBtn(I18N.AUDIO_OFF, { id: 'pause-sfx-off' });
+    const resume   = createSettingsBtn(I18N.PAUSE_RESUME, { id: 'pause-resume' });
+    const abort    = createSettingsBtn(I18N.PAUSE_ABORT,  { id: 'pause-abort', danger: true });
+
+    panel.append(
+        title,
+        _makeField(I18N.MUSIC_HEADING, musicOn, musicOff),
+        _makeField(I18N.SFX_HEADING,   sfxOn,   sfxOff),
+        resume,
+        abort,
+    );
+    overlay.appendChild(panel);
+
+    musicOn.onclick  = () => { _deps.setMusicEnabled(true);  _refreshButtons(); };
+    musicOff.onclick = () => { _deps.setMusicEnabled(false); _refreshButtons(); };
+    sfxOn.onclick    = () => { _deps.setSfxEnabled(true);    _refreshButtons(); };
+    sfxOff.onclick   = () => { _deps.setSfxEnabled(false);   _refreshButtons(); };
+    resume.onclick   = _hide;
+    abort.onclick    = _abort;
 };

@@ -2,6 +2,9 @@ export const STORAGE_KEY = 'z_session';
 
 import { storageGet, storageSet } from './storage';
 import { CAMPAIGN_TYPE } from '../shared/types';
+import { RANKS, getRank, type Rank } from './ui/rank-badge/rank-badge';
+export type { Rank };
+export { RANKS, getRank };
 
 export interface MissionProgress {
     completed: boolean;
@@ -20,18 +23,6 @@ export interface PlayerSession {
     rankOverride: number; // rank index preserved across device imports
 }
 
-export interface Rank {
-    name: string;
-    pips: string;
-    minMissions: number;
-}
-
-export const RANKS: Rank[] = [
-    { name: 'Leutnant', pips: '★', minMissions: 0 },
-    { name: 'Oberleutnant', pips: '★  ★', minMissions: 5 },
-    { name: 'Hauptmann', pips: '★ ★ ★', minMissions: 10 },
-    { name: 'Major', pips: '◆', minMissions: 30 },
-];
 
 const _default = (): PlayerSession => ({
     playerName: '',
@@ -70,17 +61,6 @@ export const getMissionsDone = (s: PlayerSession): number =>
 export const getCampaignsDone = (s: PlayerSession): number =>
     Object.values(s.campaignProgress).filter(cp => cp.completed).length;
 
-export const getRank = (s: PlayerSession, nonTutorialMissions?: number): Rank => {
-    const missions = nonTutorialMissions ?? getMissionsDone(s);
-    let derivedIdx = 0;
-    for (let i = RANKS.length - 1; i >= 0; i--) {
-        if (missions >= RANKS[i].minMissions) {
-            derivedIdx = i;
-            break;
-        }
-    }
-    return RANKS[Math.max(derivedIdx, s.rankOverride ?? 0)];
-};
 
 export const isCampaignUnlocked = (
     s: PlayerSession,
@@ -156,7 +136,7 @@ const _checksumBits = (bits: number[]): number => {
 };
 
 export const encodeSession = (s: PlayerSession, nonTutorialMissions: number): string => {
-    const rankIdx = RANKS.indexOf(getRank(s, nonTutorialMissions));
+    const rankIdx = RANKS.indexOf(getRank(s.rankOverride ?? 0, nonTutorialMissions));
     const highest = Math.min(s.highestUnlockedCampaignIndex ?? 0, 7);
     const activeEntry = Object.entries(s.campaignProgress)
         .filter(([, cp]) => cp.missions.some(m => m.completed))

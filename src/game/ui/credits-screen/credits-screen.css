@@ -32,7 +32,7 @@
     flex-direction: column;
     align-items: center;
 }
-.credits-title {
+#credits-screen .credits-title {
     font-size: 42px;
     color: #ff6600;
     font-weight: bold;
@@ -51,17 +51,17 @@
             0 0 70px rgba(255, 102, 0, 0.3);
     }
 }
-.credits-section {
+#credits-screen .credits-section {
     text-align: center;
     margin: 8px 0;
 }
-.credits-role {
+#credits-screen .credits-role {
     font-size: 10px;
     color: #666;
     letter-spacing: 4px;
     margin-bottom: 4px;
 }
-.credits-name {
+#credits-screen .credits-name {
     font-size: 19px;
     color: #3a5a3a;
     letter-spacing: 3px;
@@ -69,7 +69,7 @@
     opacity: 0;
     animation: cNameIn 1.1s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
-.credits-name {
+#credits-screen .credits-name {
     color: #5f5;
 }
 @keyframes cNameIn {
@@ -92,13 +92,13 @@
         text-shadow: none;
     }
 }
-.credits-divider {
+#credits-screen .credits-divider {
     width: 160px;
     height: 1px;
     background: linear-gradient(to right, transparent, #1a2a1a, transparent);
     margin: 14px auto;
 }
-.credits-made-with {
+#credits-screen .credits-made-with {
     font-size: 13px;
     letter-spacing: 3px;
     margin-top: 36px;
@@ -114,7 +114,7 @@
         text-shadow: 0 0 10px rgba(80, 255, 80, 0.25);
     }
 }
-.credits-copyright {
+#credits-screen .credits-copyright {
     font-size: 11px;
     color: #666;
     letter-spacing: 2px;
@@ -123,10 +123,10 @@
 /* ─── credits responsive ─────────────────────────────────────────────────── */
 @media (max-height: 520px) {
     #credits-screen .title { font-size: 26px; letter-spacing: 8px; margin-bottom: 16px; }
-    .credits-section { margin: 4px 0; }
-    .credits-role { font-size: 9px; letter-spacing: 3px; margin-bottom: 2px; }
-    .credits-name { font-size: 14px; letter-spacing: 2px; }
-    .credits-divider { margin: 8px auto; }
-    .credits-made-with { font-size: 11px; margin-top: 14px; }
+    #credits-screen .credits-section { margin: 4px 0; }
+    #credits-screen .credits-role { font-size: 9px; letter-spacing: 3px; margin-bottom: 2px; }
+    #credits-screen .credits-name { font-size: 14px; letter-spacing: 2px; }
+    #credits-screen .credits-divider { margin: 8px auto; }
+    #credits-screen .credits-made-with { font-size: 11px; margin-top: 14px; }
     #credits-screen { padding-top: 12px; }
 }

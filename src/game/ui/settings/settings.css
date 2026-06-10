@@ -31,18 +31,18 @@
     letter-spacing: 2px;
     margin-top: -8px;
 }
-.settings-field {
+#settings-screen .settings-field {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 8px;
 }
-.settings-field label {
+#settings-screen .settings-field label {
     font-size: 11px;
     color: #555;
     letter-spacing: 4px;
 }
-.settings-field input {
+#settings-screen .settings-field input {
     background: #0a0a0a;
     border: 1px solid #3a3a2a;
     color: #ffcc00;
@@ -54,7 +54,7 @@
     outline: none;
     width: 220px;
 }
-.settings-field input:focus {
+#settings-screen .settings-field input:focus {
     border-color: #cc9900;
     box-shadow: 0 0 10px rgba(204, 153, 0, 0.2);
 }
@@ -68,21 +68,7 @@
     text-shadow: 0 0 8px rgba(255, 204, 0, 0.4);
     font-family: monospace;
 }
-.settings-btn {
-    font-family: monospace;
-    font-size: 12px;
-    letter-spacing: 3px;
-    color: #5f5;
-    border: 1px solid #2a4a2a;
-    background: none;
-    cursor: pointer;
-    padding: 8px 16px;
-    transition: all 0.2s;
-}
-.settings-btn:hover {
-    border-color: #5f5;
-    box-shadow: 0 0 8px rgba(85, 255, 85, 0.2);
-}
+
 #import-code-input {
     width: 200px;
     letter-spacing: 4px;

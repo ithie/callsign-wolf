@@ -192,7 +192,7 @@ const missionComplete = () => {
     const { campaignType } = campaignHandler.getCurrentMissionData();
     const isTutorial = campaignType === CAMPAIGN_TYPE.TUTORIAL;
 
-    const prevRank = getRank(_session, _getRankMissions());
+    const prevRank = getRank(_session.rankOverride ?? 0, _getRankMissions());
 
     // Record mission progress + best time
     const elapsed = Date.now() - _missionStartTime;
@@ -235,8 +235,8 @@ const missionComplete = () => {
     // Rank check — only tutorial missions don't count
     let rankUpRank: Rank | null = null;
     if (!isTutorial) {
-        const newRank = getRank(_session, _getRankMissions());
-        if (newRank.name !== prevRank.name) rankUpRank = newRank;
+        const newRank = getRank(_session.rankOverride ?? 0, _getRankMissions());
+        if (newRank.key !== prevRank.key) rankUpRank = newRank;
     }
 
     saveSession(_session);
@@ -398,7 +398,7 @@ const selectMission = (missionIndex: number) => {
     }
 
     HeliSelect.show({
-        rankIndex: RANKS.indexOf(getRank(_session, _getRankMissions())),
+        rankIndex: RANKS.indexOf(getRank(_session.rankOverride ?? 0, _getRankMissions())),
         onSelect: startGame,
         onBack: backFromHeliSelect,
     });
@@ -423,7 +423,7 @@ const startGame = (type: string): void => {
 const _tick = (): Promise<void> => new Promise(r => setTimeout(r, 0));
 
 const _maybeSpawnOrniWreck = () => {
-    if (getRank(_session, _getRankMissions()).name === RANKS[RANKS.length - 1].name) return;
+    if (getRank(_session.rankOverride ?? 0, _getRankMissions()).key === RANKS[RANKS.length - 1].key) return;
     if (Math.random() >= 1 / 12) return;
     const gridSize = campaignHandler.getTerrain().gridSize;
     const margin = 6;
@@ -546,8 +546,8 @@ const launchMission = async (showLoader = true): Promise<void> => {
     _rafId = requestAnimationFrame(drawScene);
     PauseOverlay.show();
 
-    const rank = getRank(_session, _getRankMissions());
-    const address = I18N.BRIEFING_ADDRESS(rank.name, _session.playerName).toUpperCase();
+    const rank = getRank(_session.rankOverride ?? 0, _getRankMissions());
+    const address = I18N.BRIEFING_ADDRESS(I18N.RANK_NAME(rank.key), _session.playerName).toUpperCase();
 
     Briefing.show({ headline: _lmd.headline, sublines: _lmd.sublines, briefing: _lmd.briefing, address }, () => {
         _briefingActive = false;

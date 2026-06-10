@@ -1,4 +1,4 @@
-.heli-card-canvas {
+#heli-select .heli-card-canvas {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -7,7 +7,7 @@
     display: block;
 }
 
-.heli-card-label {
+#heli-select .heli-card-label {
     position: absolute;
     bottom: 0;
     left: 0;
@@ -18,23 +18,23 @@
     pointer-events: none;
 }
 
-.heli-lock-label {
+#heli-select .heli-lock-label {
     color: #333;
     text-shadow: none;
 }
 
-.heli-cap-label {
+#heli-select .heli-cap-label {
     color: #aaa;
     text-shadow: 0 0 6px #000, 0 0 3px #000;
 }
 
-.heli-card-label .box-label {
+#heli-select .heli-card-label .box-label {
     text-shadow: 0 0 8px #000, 0 0 4px #000;
 }
 
 /* ─── overlay: 3-column layout ───────────────────────────────────────────── */
 
-.heli-overlay-wrap {
+#heli-select .heli-overlay-wrap {
     display: flex;
     flex-direction: row;
     align-items: stretch;
@@ -44,7 +44,7 @@
 }
 
 /* Column 1: animated heli canvas — overflows into text column, sits below text */
-.heli-overlay-canvas-wrap {
+#heli-select .heli-overlay-canvas-wrap {
     flex: 0 0 38%;
     min-width: 0;
     display: flex;
@@ -56,7 +56,7 @@
     z-index: 0;
 }
 
-.heli-overlay-canvas {
+#heli-select .heli-overlay-canvas {
     width: 110%;
     max-width: 360px;
     aspect-ratio: 360 / 280;
@@ -65,7 +65,7 @@
 }
 
 /* Column 2: description text — sits above overflowing canvas */
-.heli-overlay-text {
+#heli-select .heli-overlay-text {
     flex: 0 0 30%;
     min-width: 0;
     box-sizing: border-box;
@@ -82,7 +82,7 @@
 }
 
 /* Column 3: stat bars + button */
-.heli-overlay-stats {
+#heli-select .heli-overlay-stats {
     flex: 0 0 32%;
     min-width: 0;
     background: rgba(0, 20, 8, 0.97);
@@ -99,7 +99,7 @@
     z-index: 1;
 }
 
-.heli-stat-row {
+#heli-select .heli-stat-row {
     display: flex;
     align-items: center;
     width: 100%;
@@ -108,7 +108,7 @@
     gap: 8px;
 }
 
-.heli-stat-label {
+#heli-select .heli-stat-label {
     letter-spacing: 1px;
     color: #aaa;
     width: 72px;
@@ -116,7 +116,7 @@
     text-align: left;
 }
 
-.heli-stat-bar {
+#heli-select .heli-stat-bar {
     flex: 1;
     height: 4px;
     background: #0e0e0e;
@@ -125,7 +125,7 @@
     overflow: hidden;
 }
 
-.heli-stat-fill {
+#heli-select .heli-stat-fill {
     height: 100%;
     background: linear-gradient(to right, #ff6600, #ffcc00);
     border-radius: 3px;
@@ -133,7 +133,7 @@
     width: 0%;
 }
 
-.heli-select-btn {
+#heli-select .heli-select-btn {
     margin-top: 14px;
     padding: 9px 0;
     width: 100%;
@@ -150,7 +150,7 @@
     transition: background 0.2s, color 0.2s, box-shadow 0.2s;
 }
 
-.heli-select-btn:hover {
+#heli-select .heli-select-btn:hover {
     background: #ff6600;
     color: #000;
     box-shadow: 0 0 20px rgba(255, 102, 0, 0.5);

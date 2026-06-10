@@ -42,7 +42,7 @@
     display: none;
 }
 
-.minimap-dot {
+#minimap-dom .minimap-dot {
     position: absolute;
     width: 4px;
     height: 4px;

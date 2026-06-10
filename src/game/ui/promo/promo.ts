@@ -8,11 +8,11 @@ let _rafId = 0;
 
 export const mount = (): void => {
     const el = ensureEl('promo');
-    el.innerHTML = `<div id="pw">
+    el.innerHTML = `<div>
         <h1>SAR:<br/>Callsign WOLF</h1>
-        <canvas id="ph"></canvas>
+        <canvas id="ph" aria-hidden="true"></canvas>
         <p class="tagline">No Ads. No IAP. No Tracking. No Bullshit.<br>Pay Once. Fly Offline.</p>
-        <a class="as-badge" href="#" target="_blank" rel="noopener">
+        <a class="as-badge" href="#" target="_blank" rel="noopener" aria-label="Download SAR: Callsign WOLF on the App Store">
             <svg id="livetype" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 119.66407 40">
   <title>Download on the App Store</title>
   <g><g><g>

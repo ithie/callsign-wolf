@@ -31,13 +31,13 @@
     z-index: 9999;
     opacity: 0;
 }
-.ithie-text {
+#ithie-splash .ithie-text {
     font-size: 19px;
     color: #5f5;
     letter-spacing: 3px;
     font-weight: bold;
 }
-.ithie-cursor {
+#ithie-splash .ithie-cursor {
     color: #5f5;
     font-size: 19px;
     font-weight: bold;
@@ -59,7 +59,7 @@
     justify-content: center;
     z-index: 9998;
 }
-.logo-splash-text {
+#logo-splash .logo-splash-text {
     font: italic 22px monospace;
     letter-spacing: 2px;
     color: #aaa;
@@ -96,7 +96,7 @@
     pointer-events: none;
     filter: drop-shadow(0 0 30px rgba(255, 102, 0, 0.15));
 }
-.menu-nav {
+#main-menu .menu-nav {
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -105,7 +105,7 @@
     z-index: 1;
     margin-top: 16px;
 }
-.menu-item {
+#main-menu .menu-item {
     font-size: 24px;
     font-weight: bold;
     letter-spacing: 8px;
@@ -118,7 +118,7 @@
     position: relative;
     overflow: hidden;
 }
-.menu-item::before {
+#main-menu .menu-item::before {
     content: '';
     position: absolute;
     left: -100%;
@@ -128,10 +128,10 @@
     background: linear-gradient(90deg, transparent, rgba(255, 102, 0, 0.07), transparent);
     transition: left 0.45s ease;
 }
-.menu-item:hover::before {
+#main-menu .menu-item:hover::before {
     left: 100%;
 }
-.menu-item:hover {
+#main-menu .menu-item:hover {
     color: #fff;
     border-color: #ff6600;
     text-shadow:
@@ -142,7 +142,7 @@
         inset 0 0 28px rgba(255, 102, 0, 0.04);
     transform: scaleX(1.03) translateY(-1px);
 }
-.menu-legal-link {
+#main-menu .menu-legal-link {
     font-size: 10px;
     letter-spacing: 3px;
     color: #666;
@@ -155,21 +155,21 @@
     text-align: center;
     z-index: 1;
 }
-.menu-legal-link:hover {
+#main-menu .menu-legal-link:hover {
     color: #999;
 }
 
 @media (max-height: 520px) {
-    .menu-item {
+    #main-menu .menu-item {
         font-size: 18px;
         padding: 9px 28px;
         letter-spacing: 5px;
     }
-    .menu-nav {
+    #main-menu .menu-nav {
         margin-top: 8px;
         gap: 7px;
     }
-    .menu-legal-link {
+    #main-menu .menu-legal-link {
         bottom: max(8px, env(safe-area-inset-bottom));
     }
 }

@@ -10,7 +10,10 @@ import {
     type PlayerSession,
 } from '../../session';
 import { storageRemove } from '../../storage';
-import { rankBadgeHtml } from '../rankup/rankup';
+import { rankBadgeHtml } from '../rank-badge/rank-badge';
+import { createSettingsBtn } from '../settings-btn/settings-btn';
+import { showScreen, showScreenCrtEnter } from '../nav';
+import { mountScreenShell } from '../screen-shell/screen-shell';
 
 type Deps = {
     getSession: () => PlayerSession;
@@ -29,104 +32,129 @@ export const init = (deps: Deps) => {
     _deps = deps;
 };
 
-import { showScreen, showScreenCrtEnter } from '../nav';
-import { mountScreenShell } from '../screen-shell/screen-shell';
+const _field = (labelText: string, ...children: HTMLElement[]): HTMLDivElement => {
+    const field = document.createElement('div');
+    field.className = 'settings-field';
+    const lbl = document.createElement('label');
+    lbl.textContent = labelText;
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;gap:10px;margin-top:6px';
+    children.forEach(c => row.appendChild(c));
+    field.append(lbl, row);
+    return field;
+};
 
 export const mount = () => {
     const body = mountScreenShell('settings-screen', I18N.MENU_SETTINGS, I18N.PILOT_HEADING, hide);
-    body.innerHTML = `
-        <div id="settings-badge"></div>
-        <div class="settings-field">
-            <label>${I18N.PILOT_CALLSIGN}</label>
-            <input id="player-name-input" type="text" maxlength="5" placeholder="—" />
-        </div>
-        <div id="settings-stats"></div>
-        <div class="settings-field" style="margin-top: 8px">
-            <label>${I18N.PILOT_SAVECODE}</label>
-            <div id="settings-code-display">—</div>
-        </div>
-        <div class="settings-field">
-            <label>${I18N.PILOT_IMPORT}</label>
-            <div style="display:flex; gap: 10px; align-items: center">
-                <input id="import-code-input" class="settings-field input" type="text" maxlength="10" placeholder="XXXXX-XXXX" />
-                <button class="settings-btn" id="apply-save-code-btn">${I18N.PILOT_IMPORTLOAD}</button>
-            </div>
-            <div id="import-code-msg" style="font-size: 12px; letter-spacing: 2px; min-height: 18px; margin-top: 4px"></div>
-        </div>
-        <div style="margin-top: 20px; border-top: 1px solid #1a1a2e; padding-top: 16px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px">
-            <div class="settings-field" style="width:100%">
-                <label>${I18N.MUSIC_HEADING}</label>
-                <div style="display:flex; gap:10px; margin-top:6px">
-                    <button class="settings-btn" id="music-on-btn">${I18N.AUDIO_ON}</button>
-                    <button class="settings-btn" id="music-off-btn">${I18N.AUDIO_OFF}</button>
-                </div>
-            </div>
-            <div class="settings-field" style="width:100%">
-                <label>${I18N.SFX_HEADING}</label>
-                <div style="display:flex; gap:10px; margin-top:6px">
-                    <button class="settings-btn" id="sfx-on-btn">${I18N.AUDIO_ON}</button>
-                    <button class="settings-btn" id="sfx-off-btn">${I18N.AUDIO_OFF}</button>
-                </div>
-            </div>
-            <div class="settings-field" style="width:100%">
-                <label>${I18N.LANGUAGE_HEADING}</label>
-                <div style="display:flex; gap:10px; margin-top:6px">
-                    <button class="settings-btn" id="lang-de-btn">DEUTSCH</button>
-                    <button class="settings-btn" id="lang-en-btn">ENGLISH</button>
-                </div>
-            </div>
-        </div>
-        <div style="margin-top: 20px; border-top: 1px solid #1a1a2e; padding-top: 16px; width: 100%; display: flex; flex-direction: column; align-items: center">
-            <button id="delete-session-btn" class="settings-btn" style="background: #1a0000; border-color: #500; color: #c44">${I18N.DELETE_SESSION}</button>
-            <div id="delete-session-msg" style="font-size: 12px; letter-spacing: 2px; color: #c44; min-height: 18px; margin-top: 6px"></div>
-        </div>
-        `;
 
-    document.getElementById('apply-save-code-btn')!.addEventListener('click', applySaveCode);
-    document.getElementById('delete-session-btn')!.addEventListener('click', deleteSessionData);
-    document.getElementById('music-on-btn')!.addEventListener('click', () => {
-        _deps.setMusicEnabled(true);
-        _refreshAudioButtons();
-    });
-    document.getElementById('music-off-btn')!.addEventListener('click', () => {
-        _deps.setMusicEnabled(false);
-        _refreshAudioButtons();
-    });
-    document.getElementById('sfx-on-btn')!.addEventListener('click', () => {
-        _deps.setSfxEnabled(true);
-        _refreshAudioButtons();
-    });
-    document.getElementById('sfx-off-btn')!.addEventListener('click', () => {
-        _deps.setSfxEnabled(false);
-        _refreshAudioButtons();
-    });
-    document.getElementById('lang-de-btn')!.addEventListener('click', () => {
-        setLanguage('de');
-        show();
-    });
-    document.getElementById('lang-en-btn')!.addEventListener('click', () => {
-        setLanguage('en');
-        show();
-    });
+    // Badge
+    const badge = document.createElement('div');
+    badge.id = 'settings-badge';
+
+    // Callsign
+    const nameInput = document.createElement('input');
+    nameInput.id = 'player-name-input';
+    nameInput.type = 'text';
+    nameInput.maxLength = 5;
+    nameInput.placeholder = '—';
+    const callsignField = document.createElement('div');
+    callsignField.className = 'settings-field';
+    const callsignLbl = document.createElement('label');
+    callsignLbl.textContent = I18N.PILOT_CALLSIGN;
+    callsignField.append(callsignLbl, nameInput);
+
+    // Stats
+    const stats = document.createElement('div');
+    stats.id = 'settings-stats';
+
+    // Save code
+    const codeDisplay = document.createElement('div');
+    codeDisplay.id = 'settings-code-display';
+    codeDisplay.textContent = '—';
+    const codeField = document.createElement('div');
+    codeField.className = 'settings-field';
+    codeField.style.marginTop = '8px';
+    const codeLbl = document.createElement('label');
+    codeLbl.textContent = I18N.PILOT_SAVECODE;
+    codeField.append(codeLbl, codeDisplay);
+
+    // Import
+    const importInput = document.createElement('input');
+    importInput.id = 'import-code-input';
+    importInput.type = 'text';
+    importInput.maxLength = 10;
+    importInput.placeholder = 'XXXXX-XXXX';
+    const applyBtn = createSettingsBtn(I18N.PILOT_IMPORTLOAD, { id: 'apply-save-code-btn' });
+    const importRow = document.createElement('div');
+    importRow.style.cssText = 'display:flex;gap:10px;align-items:center';
+    importRow.append(importInput, applyBtn);
+    const importMsg = document.createElement('div');
+    importMsg.id = 'import-code-msg';
+    importMsg.style.cssText = 'font-size:12px;letter-spacing:2px;min-height:18px;margin-top:4px';
+    const importField = document.createElement('div');
+    importField.className = 'settings-field';
+    const importLbl = document.createElement('label');
+    importLbl.textContent = I18N.PILOT_IMPORT;
+    importField.append(importLbl, importRow, importMsg);
+
+    // Audio + Language section
+    const audioSection = document.createElement('div');
+    audioSection.style.cssText = 'margin-top:20px;border-top:1px solid #1a1a2e;padding-top:16px;width:100%;display:flex;flex-direction:column;align-items:center;gap:10px';
+
+    const musicOn  = createSettingsBtn(I18N.AUDIO_ON,  { id: 'music-on-btn' });
+    const musicOff = createSettingsBtn(I18N.AUDIO_OFF, { id: 'music-off-btn' });
+    const sfxOn    = createSettingsBtn(I18N.AUDIO_ON,  { id: 'sfx-on-btn' });
+    const sfxOff   = createSettingsBtn(I18N.AUDIO_OFF, { id: 'sfx-off-btn' });
+    const langDe   = createSettingsBtn('DEUTSCH', { id: 'lang-de-btn' });
+    const langEn   = createSettingsBtn('ENGLISH', { id: 'lang-en-btn' });
+
+    const musicField = _field(I18N.MUSIC_HEADING, musicOn, musicOff);
+    musicField.style.width = '100%';
+    const sfxField = _field(I18N.SFX_HEADING, sfxOn, sfxOff);
+    sfxField.style.width = '100%';
+    const langField = _field(I18N.LANGUAGE_HEADING, langDe, langEn);
+    langField.style.width = '100%';
+    audioSection.append(musicField, sfxField, langField);
+
+    // Delete section
+    const deleteSection = document.createElement('div');
+    deleteSection.style.cssText = 'margin-top:20px;border-top:1px solid #1a1a2e;padding-top:16px;width:100%;display:flex;flex-direction:column;align-items:center';
+    const deleteBtn = createSettingsBtn(I18N.DELETE_SESSION, { id: 'delete-session-btn', danger: true });
+    const deleteMsg = document.createElement('div');
+    deleteMsg.id = 'delete-session-msg';
+    deleteMsg.style.cssText = 'font-size:12px;letter-spacing:2px;color:#c44;min-height:18px;margin-top:6px';
+    deleteSection.append(deleteBtn, deleteMsg);
+
+    body.append(badge, callsignField, stats, codeField, importField, audioSection, deleteSection);
+
+    // Event wiring
+    applyBtn.addEventListener('click', applySaveCode);
+    deleteBtn.addEventListener('click', deleteSessionData);
+    musicOn.addEventListener('click',  () => { _deps.setMusicEnabled(true);  _refreshAudioButtons(); });
+    musicOff.addEventListener('click', () => { _deps.setMusicEnabled(false); _refreshAudioButtons(); });
+    sfxOn.addEventListener('click',    () => { _deps.setSfxEnabled(true);    _refreshAudioButtons(); });
+    sfxOff.addEventListener('click',   () => { _deps.setSfxEnabled(false);   _refreshAudioButtons(); });
+    langDe.addEventListener('click',   () => { setLanguage('de'); show(); });
+    langEn.addEventListener('click',   () => { setLanguage('en'); show(); });
 };
 
 const HL = 'var(--accent, #4af)';
 
 const _refreshAudioButtons = () => {
-    const musicOn = document.getElementById('music-on-btn') as HTMLButtonElement;
+    const musicOn  = document.getElementById('music-on-btn')  as HTMLButtonElement;
     const musicOff = document.getElementById('music-off-btn') as HTMLButtonElement;
-    const sfxOn = document.getElementById('sfx-on-btn') as HTMLButtonElement;
-    const sfxOff = document.getElementById('sfx-off-btn') as HTMLButtonElement;
+    const sfxOn    = document.getElementById('sfx-on-btn')    as HTMLButtonElement;
+    const sfxOff   = document.getElementById('sfx-off-btn')   as HTMLButtonElement;
     const music = _deps.isMusicEnabled();
-    const sfx = _deps.isSfxEnabled();
-    musicOn.style.borderColor = music ? HL : '';
-    musicOn.style.color = music ? HL : '';
+    const sfx   = _deps.isSfxEnabled();
+    musicOn.style.borderColor  = music ? HL : '';
+    musicOn.style.color        = music ? HL : '';
     musicOff.style.borderColor = music ? '' : HL;
-    musicOff.style.color = music ? '' : HL;
-    sfxOn.style.borderColor = sfx ? HL : '';
-    sfxOn.style.color = sfx ? HL : '';
-    sfxOff.style.borderColor = sfx ? '' : HL;
-    sfxOff.style.color = sfx ? '' : HL;
+    musicOff.style.color       = music ? '' : HL;
+    sfxOn.style.borderColor    = sfx ? HL : '';
+    sfxOn.style.color          = sfx ? HL : '';
+    sfxOff.style.borderColor   = sfx ? '' : HL;
+    sfxOff.style.color         = sfx ? '' : HL;
 };
 
 const _refreshLangButtons = () => {
@@ -134,18 +162,18 @@ const _refreshLangButtons = () => {
     const en = document.getElementById('lang-en-btn') as HTMLButtonElement | null;
     if (!de || !en) return;
     de.style.borderColor = LANG === 'de' ? HL : '';
-    de.style.color = LANG === 'de' ? HL : '';
+    de.style.color       = LANG === 'de' ? HL : '';
     en.style.borderColor = LANG === 'en' ? HL : '';
-    en.style.color = LANG === 'en' ? HL : '';
+    en.style.color       = LANG === 'en' ? HL : '';
 };
 
 const _refreshSettingsScreen = () => {
     const session = _deps.getSession();
-    const rank = getRank(session, _deps.getRankMissions());
+    const rank = getRank(session.rankOverride ?? 0, _deps.getRankMissions());
     (document.getElementById('settings-badge') as HTMLElement).innerHTML = rankBadgeHtml(rank);
     (document.getElementById('settings-code-display') as HTMLElement).textContent = encodeSession(
         session,
-        _deps.getRankMissions()
+        _deps.getRankMissions(),
     );
     const statsEl = document.getElementById('settings-stats') as HTMLElement;
     statsEl.textContent = I18N.STATS(getCampaignsDone(session), getMissionsDone(session));
@@ -179,7 +207,7 @@ export const hide = () => {
 
 const applySaveCode = () => {
     const input = document.getElementById('import-code-input') as HTMLInputElement;
-    const msg = document.getElementById('import-code-msg') as HTMLElement;
+    const msg   = document.getElementById('import-code-msg')   as HTMLElement;
     const decoded = decodeSession(input.value.trim());
     if (!decoded) {
         msg.style.color = '#f44';

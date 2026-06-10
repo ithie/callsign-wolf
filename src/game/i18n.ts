@@ -84,6 +84,9 @@ const _DE = {
 
     CLICK_TO_DEPLOY: 'KLICKEN ZUM EINSATZ',
 
+    RANK_NAME: (key: string): string =>
+        ({ leutnant: 'Leutnant', oberleutnant: 'Oberleutnant', hauptmann: 'Hauptmann', major: 'Major' } as Record<string, string>)[key] ?? key,
+
     PILOT_ADDRESS: (rank: string, callsign: string) => `${rank} ${callsign || 'WOLF'}`,
     BRIEFING_ADDRESS: (rank: string, callsign: string) => `Ihre Mission, ${rank} ${callsign || 'WOLF'}`,
 
@@ -212,6 +215,9 @@ const _EN = {
     ALL_MISSIONS_CLEARED: 'ALL MISSIONS CLEARED',
 
     CLICK_TO_DEPLOY: 'CLICK TO DEPLOY',
+
+    RANK_NAME: (key: string): string =>
+        ({ leutnant: 'Lieutenant', oberleutnant: '1st Lieutenant', hauptmann: 'Captain', major: 'Major' } as Record<string, string>)[key] ?? key,
 
     PILOT_ADDRESS: (rank: string, callsign: string) => `${rank} ${callsign || 'WOLF'}`,
     BRIEFING_ADDRESS: (rank: string, callsign: string) => `Your mission, ${rank} ${callsign || 'WOLF'}`,
