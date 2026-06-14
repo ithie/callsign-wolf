@@ -1,5 +1,16 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.5.1 — Rotor Sound & UI Fixes
+
+### Changed
+
+- **Native rotor synthesis** — HeliSound runs entirely in Swift via `AVAudioSourceNode`. AM synthesis with clipped sawtooth carrier at the Nth harmonic (N=16, ~234 Hz for 4-blade helis); 80 ms spin-up smoothing; volume ramps down gracefully on engine-off instead of cutting abruptly.
+- **SFX via Swift** — `playSfx` bridged to Swift `AVAudioPlayerNode` pool (4 voices). Typewriter and all other one-shot sound effects now route through `AVAudioEngine`; no more silent SFX on cold-start.
+- **Music volume presets** — JS no longer passes a raw float volume. Instead it sends a context key (`'menu'` or `'game'`); Swift maps to 0.65 / 0.35. Eliminates the 3× loudness gap between main theme and in-mission music.
+- **Control layout** — Winch rocker (up/down) and deliver toggle swapped sides; both buttons moved 12 px higher. Tutorial highlight/dim logic is position-independent and requires no change.
+
+---
+
 ## v28.5.0 — Native Audio & Night Visibility (Revision 27)
 
 ### TestFlight Release Notes

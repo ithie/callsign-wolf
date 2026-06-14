@@ -57,7 +57,9 @@ const soundHandler = (() => {
         ZsynthPlayer.init(songList);
     }
 
+    const CTX_VOL: Record<string, number> = { menu: 0.65, game: 0.35 };
     let _nativeKey = '';
+    let _nativeCtx = 'menu';
 
     return {
         state,
@@ -69,25 +71,26 @@ const soundHandler = (() => {
         unmute: () => {
             state.isMuted = false;
             if (state.activeTheme) {
-                if (_native) _native.postMessage({ action: 'play', key: state.activeTheme, volume: 1.0 });
-                else ZsynthPlayer.play(state.activeTheme);
+                if (_native) _native.postMessage({ action: 'play', key: state.activeTheme, context: _nativeCtx });
+                else ZsynthPlayer.play(state.activeTheme, CTX_VOL[_nativeCtx] ?? 0.65);
             }
         },
-        play: (theme: string, volume: number = 1.0) => {
+        play: (theme: string, context: string = 'menu') => {
             if (!songList[theme]) return;
             if (_native) {
                 const alreadyPlaying = _nativeKey === theme;
                 state.activeTheme = theme;
                 if (state.isMuted || alreadyPlaying) return;
                 _nativeKey = theme;
-                _native.postMessage({ action: 'play', key: theme, volume });
+                _nativeCtx = context;
+                _native.postMessage({ action: 'play', key: theme, context });
                 return;
             }
             const alreadyPlaying = state.activeTheme === theme && ZsynthPlayer.currentTrack?.isPlaying;
             state.activeTheme = theme;
             if (state.isMuted) return;
             if (alreadyPlaying) return;
-            try { ZsynthPlayer.play(theme, volume); } catch { /* ignore */ }
+            try { ZsynthPlayer.play(theme, CTX_VOL[context] ?? 0.65); } catch { /* ignore */ }
         },
         stop: () => {
             if (_native) { _nativeKey = ''; _native.postMessage({ action: 'stop' }); return; }

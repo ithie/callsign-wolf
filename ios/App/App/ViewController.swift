@@ -113,6 +113,7 @@ class ViewController: UIViewController {
         ucc.add(AppReviewHandler(), name: "appReview")
         ucc.add(controlsHandler,    name: "controls")
         ucc.add(ZsynthHandler(),    name: "zsynthPlayer")
+        ucc.add(HeliSoundHandler(), name: "heliSound")
 
         webView = WKWebView(frame: view.bounds, configuration: config)
         webView.autoresizingMask           = [.flexibleWidth, .flexibleHeight]
@@ -145,6 +146,7 @@ class ViewController: UIViewController {
 
     @objc private func _appDidBecomeActive() {
         ZsynthPlayer.shared.resumeEngine()
+        HeliSoundPlayer.shared.resumeEngine()
     }
 
     // MARK: - Storage helpers

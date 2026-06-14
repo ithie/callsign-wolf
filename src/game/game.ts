@@ -553,7 +553,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
         _briefingActive = false;
         _missionStartTime = Date.now();
 
-        try { soundHandler.play(_lmd.music || 'clike', 0.35); } catch { /* audio unavailable */ }
+        try { soundHandler.play(_lmd.music || 'clike', 'game'); } catch { /* audio unavailable */ }
         setTouchVisible(true);
 
         if (_lmd.campaignType === CAMPAIGN_TYPE.TUTORIAL) {
@@ -1164,7 +1164,7 @@ const _onloadMain = () => {
             setTouchVisible(false);
         },
         onResume: () => {
-            if (!soundHandler.state.isMuted) soundHandler.play(soundHandler.state.activeTheme, 0.35);
+            if (!soundHandler.state.isMuted) soundHandler.play(soundHandler.state.activeTheme, 'game');
             initHeliSound(G.heli.type);
             _rafId = requestAnimationFrame(drawScene);
             setTouchVisible(true);

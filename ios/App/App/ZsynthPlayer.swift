@@ -28,7 +28,7 @@ private struct ParsedSong {
 final class ZsynthPlayer: NSObject {
     static let shared = ZsynthPlayer()
 
-    private let engine  = AVAudioEngine()
+    let engine  = AVAudioEngine()
     private let mixer   = AVAudioMixerNode()
     private var voices: [AVAudioPlayerNode] = []
     private var voiceIdx = 0
@@ -118,7 +118,13 @@ final class ZsynthPlayer: NSObject {
         }
     }
 
-    func play(key: String, volume: Float) {
+    private static let volumePresets: [String: Float] = [
+        "menu": 0.65,
+        "game": 0.35,
+    ]
+
+    func play(key: String, context: String) {
+        let volume = Self.volumePresets[context] ?? 0.65
         guard let song = songs[key] else { return }
         q.async { [weak self] in
             guard let self else { return }
@@ -422,8 +428,8 @@ final class ZsynthHandler: NSObject, WKScriptMessageHandler {
                 ZsynthPlayer.shared.preload(songs: songs)
             case "play":
                 guard let key = body["key"] as? String else { return }
-                let vol = (body["volume"] as? Double).map(Float.init) ?? 1.0
-                ZsynthPlayer.shared.play(key: key, volume: vol)
+                let context = body["context"] as? String ?? "menu"
+                ZsynthPlayer.shared.play(key: key, context: context)
             case "stop":
                 ZsynthPlayer.shared.stop()
             default: break
