@@ -11,7 +11,7 @@ export const buildStartZone = (): StartZone =>
     campaignHandler.getCurrentMissionData().spawnObject === 'carrier'
         ? {
               getPos: () => ({
-                  ...applyVesselOffset(G.CARRIER, -4, 0),
+                  ...applyVesselOffset(G.CARRIER, -4, -2),
                   z: G.CARRIER.zDeck + 0.1,
               }),
               getAngle: () => G.CARRIER.angle,

@@ -104,8 +104,8 @@ final class GameControlOverlay: UIView {
         leftCenter  = CGPoint(x: sl + joyRadius, y: joyY)
         rightCenter = CGPoint(x: b.width - sr - joyRadius, y: joyY)
 
-        let btnH: CGFloat = 52
-        let btnY = joyY - joyRadius - 20 - btnH
+        let btnH: CGFloat = 68
+        let btnY = joyY - joyRadius - 8 - btnH
 
         winchRockerRect = CGRect(x: leftCenter.x  - joyRadius, y: btnY,
                                  width: joyRadius * 2,          height: btnH)
