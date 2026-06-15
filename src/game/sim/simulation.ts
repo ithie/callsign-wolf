@@ -18,6 +18,12 @@ export type { PhysicsCtx };
 
 let _prevKeyR = false;
 let _prevKeyQ = false;
+
+const _objectiveDone = (type: string, ctx: PhysicsCtx) => {
+    if (!G.objectives.some((o: any) => o.type === type)) return;
+    G.completedObjectives.add(type);
+    if (G.objectives.every((o: any) => G.completedObjectives.has(o.type))) ctx.missionComplete();
+};
 let _prevKeyE = false;
 let _prevEngineOn = false;
 let _prevFuelLow = false;
@@ -116,7 +122,7 @@ const _deliveryDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface }: _Deposit
     if (inZone) {
         G.totalRescued++;
         voiceEvents.emit('delivered');
-        if (G.totalRescued >= G.goalCount) ctx.missionComplete();
+        if (G.totalRescued >= G.goalCount) _objectiveDone(OBJECTIVE_TYPE.RESCUE_ALL, ctx);
     } else {
         G.heli.onboard++;
         voiceEvents.emit('no-zone');
@@ -153,7 +159,7 @@ const _genericDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface }: _DepositS
         p.hanging = false; p.rescued = true; G.activePayload = null;
         G.totalRescued++;
         voiceEvents.emit('delivered');
-        if (G.totalRescued >= G.goalCount) ctx.missionComplete();
+        if (G.totalRescued >= G.goalCount) _objectiveDone(OBJECTIVE_TYPE.RESCUE_ALL, ctx);
     } else {
         voiceEvents.emit('drop-at-pad');
         G.heli.winch = 0.6;
@@ -242,7 +248,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
                 (landObj.target === VESSEL.CARRIER && onCarrierDeck) ||
                 (landObj.target === VESSEL.PAD && onPadSurface) ||
                 (landObj.target === VESSEL.BOAT && onPadSurface);
-            if (onTarget) ctx.missionComplete();
+            if (onTarget) _objectiveDone(OBJECTIVE_TYPE.LAND_AT, ctx);
         }
     }
     if (ctx.hasPad && onPad && !G.heli.engineOn && !G.heli.inAir && G.heli.rotorRPM < 0.05
@@ -522,7 +528,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
             p.hanging = false; p.rescued = true; G.activePayload = null;
             G.totalRescued++;
             voiceEvents.emit('delivered');
-            if (G.totalRescued >= G.goalCount) ctx.missionComplete();
+            if (G.totalRescued >= G.goalCount) _objectiveDone(OBJECTIVE_TYPE.RESCUE_ALL, ctx);
         }
     }
 
@@ -543,7 +549,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
             G.heli.onboardDeliverQueue = undelivered;
             G.heli.onboard -= countedNow;
             G.totalRescued += countedNow;
-            if (G.totalRescued >= G.goalCount) ctx.missionComplete();
+            if (G.totalRescued >= G.goalCount) _objectiveDone(OBJECTIVE_TYPE.RESCUE_ALL, ctx);
             else voiceEvents.emit('delivered');
         }
     }

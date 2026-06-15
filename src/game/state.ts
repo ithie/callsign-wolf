@@ -39,6 +39,7 @@ export const G = {
     totalRescued: 0,
     waterLevel: 0,
     objectives: [] as any[],
+    completedObjectives: new Set<string>(),
     menuHover: Object.fromEntries(HELI_TYPES.map(h => [h.id, false])),
     menuAngles: Object.fromEntries(HELI_TYPES.map(h => [h.id, -0.5])),
     points: [] as any[],

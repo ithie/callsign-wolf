@@ -361,6 +361,7 @@ export const spawnPayload = (p: any, addToGoal = true): any => {
 export const initPayloadsFromMission = () => {
     const missionData = campaignHandler.getCurrentMissionData();
     G.objectives = missionData.objectives || [];
+    G.completedObjectives = new Set<string>();
     const { payloads: missionPayloads } = missionData;
     if (!missionPayloads || !missionPayloads.length) {
         G.payloads = [];

@@ -1,5 +1,15 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.5.2 — Terrain Rendering & Night Visibility
+
+### Fixed
+
+- **Terrain depth sort** — Tile batches are now filled in diagonal order (x+y ascending) instead of column-major order. Reduces depth-sort artefacts on steep mountain slopes significantly.
+- **Night cone — vessel bounding box** — Carrier, boats, and submarines are now visible as soon as any corner of their bounding box enters the searchlight cone, not just when the cone hits their centre point.
+- **Campaign editor — water level not persisted** — `m_water_level` input was missing from the change-listener list; changes are now saved and the map redraws immediately.
+
+---
+
 ## v28.5.1 — Rotor Sound & UI Fixes
 
 ### Changed

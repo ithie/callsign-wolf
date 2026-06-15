@@ -38,8 +38,13 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
         const hw = tW / 2, hh = tH / 2;
         const htW = tileW / 2, htH = tileH / 2;
 
-        for (let x = Math.max(0, xFrom); x < Math.min(gridSize - 1, xTo); x++) {
-            for (let y = Math.max(0, yFrom); y < Math.min(gridSize - 1, yTo); y++) {
+        const dMin = xFrom + yFrom, dMax = xTo + yTo;
+        for (let d = dMin; d <= dMax; d++) {
+            const xLo = Math.max(Math.max(0, xFrom), d - Math.min(gridSize - 1, yTo) + 1);
+            const xHi = Math.min(Math.min(gridSize - 1, xTo) - 1, d - Math.max(0, yFrom));
+            for (let x = xLo; x <= xHi; x++) {
+            const y = d - x;
+            if (y < 0 || y >= gridSize - 1) continue;
                 const h0 = G.points[x][y], h1 = G.points[x + 1][y];
                 const h2 = G.points[x + 1][y + 1], h3 = G.points[x][y + 1];
                 const fill = getFill(x, y, h0);
@@ -56,8 +61,8 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
                 let batch = _terrainBatch.get(fill);
                 if (!batch) { batch = []; _terrainBatch.set(fill, batch); }
                 batch.push(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y);
-            }
-        }
+            } // end x
+        } // end d
 
         for (const [fill, coords] of _terrainBatch) {
             ctx.fillStyle = fill;

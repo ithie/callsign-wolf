@@ -66,22 +66,29 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 dy = oy - _haY;
             return Math.abs(diff) < _coneWidth && dx * dx + dy * dy < _range2;
         };
+        const _inNightConeRect = (x: number, y: number, w: number, l: number, angle: number): boolean => {
+            if (!_night || _lightning) return true;
+            const cosA = Math.cos(angle), sinA = Math.sin(angle);
+            return ([-w, w] as const).some(rx => ([-l, l] as const).some(ry =>
+                _inNightCone(x + rx * cosA - ry * sinA, y + rx * sinA + ry * cosA)
+            ));
+        };
         const showCarrier = hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, visMargin + 9);
         const showPad = hasPad() && isVisible(G.PAD.xMin + 3, G.PAD.yMin + 3, visMargin);
-        if (showCarrier && G.CARRIER.path !== 'static' && _inNightCone(G.CARRIER.x, G.CARRIER.y))
+        if (showCarrier && G.CARRIER.path !== 'static' && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle))
             _drawBowWave(G.CARRIER.x, G.CARRIER.y, G.CARRIER.angle, G.CARRIER.speedKnots, camX, camY, 9, 3);
         G.BOATS.forEach((b: any) => {
-            if (isVisible(b.x, b.y, visMargin) && b.path !== 'static' && _inNightCone(b.x, b.y))
+            if (isVisible(b.x, b.y, visMargin) && b.path !== 'static' && _inNightConeRect(b.x, b.y, b.w, b.l, b.angle))
                 _drawBowWave(b.x, b.y, b.angle, b.speedKnots, camX, camY, 2, 5);
         });
         G.SUBMARINES.forEach((s: any) => {
-            if (isVisible(s.x, s.y, visMargin) && s.path !== 'static' && _inNightCone(s.x, s.y))
+            if (isVisible(s.x, s.y, visMargin) && s.path !== 'static' && _inNightConeRect(s.x, s.y, s.w, s.l, s.angle))
                 _drawBowWave(s.x, s.y, s.angle, s.speedKnots, camX, camY, 3, 4);
         });
 
-        if (showCarrier && _inNightCone(G.CARRIER.x, G.CARRIER.y)) _drawVectorCarrier(camX, camY);
+        if (showCarrier && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle)) _drawVectorCarrier(camX, camY);
         _drawNpcHelis(camX, camY, visMargin, showCarrier, _inNightCone);
-        if (showCarrier && heliAt && !zstate.crashed && _inNightCone(G.CARRIER.x, G.CARRIER.y)) {
+        if (showCarrier && heliAt && !zstate.crashed && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle)) {
             const c = G.CARRIER;
             const cosA = Math.cos(c.angle),
                 sinA = Math.sin(c.angle);
@@ -134,10 +141,10 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
 
         // all remaining objects go into the shared final batch (depth-sorted with heli)
         G.BOATS.forEach((b: any) => {
-            if (isVisible(b.x, b.y, visMargin) && _inNightCone(b.x, b.y)) _drawBoatModel(b);
+            if (isVisible(b.x, b.y, visMargin) && _inNightConeRect(b.x, b.y, b.w, b.l, b.angle)) _drawBoatModel(b);
         });
         G.SUBMARINES.forEach((s: any) => {
-            if (isVisible(s.x, s.y, visMargin) && _inNightCone(s.x, s.y)) _drawSubmarine(s.x, s.y, s.angle);
+            if (isVisible(s.x, s.y, visMargin) && _inNightConeRect(s.x, s.y, s.w, s.l, s.angle)) _drawSubmarine(s.x, s.y, s.angle);
         });
         G.RESEARCH_PLATFORMS.forEach((rp: any) => {
             if (isVisible(rp.x, rp.y, visMargin) && _inNightCone(rp.x, rp.y)) _drawResearchPlatform(rp.x, rp.y);
@@ -171,7 +178,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         if (heliAt)
             SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt.x + heliAt.y, drawFn: (cx, cy) => heliAt.fn(cx, cy) });
         // Carrier windsock: queued before flush so it depth-sorts with the ship.
-        if (showCarrier && _inNightCone(G.CARRIER.x, G.CARRIER.y)) {
+        if (showCarrier && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle)) {
             const c = G.CARRIER;
             const cosA = Math.cos(c.angle),
                 sinA = Math.sin(c.angle);

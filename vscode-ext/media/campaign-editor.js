@@ -1738,6 +1738,7 @@
       "m_briefing_en",
       "m_rain",
       "m_night",
+      "m_water_level",
       "m_wind_dir",
       "m_wind_str",
       "m_wind_var",

@@ -313,7 +313,7 @@ The `objectives` array defines the win conditions for the mission. If omitted or
 | `rescue_all`   | —                | Complete when all non-`npcTarget` payloads have been rescued and delivered                                              |
 | `land_at`      | `target: string` | Complete when the player shuts down the engine while on the target. `target` is `"pad"`, `"carrier"`, or `"boat"` |
 
-Multiple objectives in the array are checked independently; whichever fires first completes the mission.
+Multiple objectives in the array are AND-linked: all must be fulfilled before the mission completes. Order does not matter.
 
 ---
 
