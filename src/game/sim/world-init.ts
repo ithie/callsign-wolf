@@ -306,6 +306,15 @@ export const initStaticObjectsFromMission = () => {
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
         })),
     ];
+    const missionData = campaignHandler.getCurrentMissionData() as any;
+    G.PARTICLE_EMITTERS = (missionData?.particleEmitters || []).map((e: any) => ({
+        type: e.type,
+        x: e.x,
+        y: e.y,
+        gz: getGround(e.x, e.y, G.points, G.CARRIER),
+        particles: [] as any[],
+        spawnTimer: 0,
+    }));
 };
 
 const _SURVIVOR_OUTFITS = [

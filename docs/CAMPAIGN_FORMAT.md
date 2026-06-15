@@ -109,7 +109,8 @@ Each entry in `levels` describes one playable mission.
 | `windDir`     | number          | Wind direction in degrees (0 = North, 90 = East)                            |
 | `windStr`     | number          | Wind strength (0 = calm)                                                    |
 | `windVar`     | boolean         | Randomly varying wind direction and strength                                |
-| `waterLevel`  | number          | Optional (default `0`). Tiles at or below this elevation render as water.  |
+| `waterLevel`        | number | Optional (default `0`). Tiles at or below this elevation render as water.                     |
+| `particleEmitters`  | array  | Optional. Atmospheric particle emitters placed on the map (smoke, fire — see below).         |
 
 ---
 
@@ -367,3 +368,25 @@ Foliage can also be written as a plain JSON array (useful when authoring by hand
 | `s`      | number | Scale factor (1.0 = normal size)          |
 
 Use `""` or `[]` for levels with no vegetation.
+
+---
+
+## Particle Emitters
+
+The optional `particleEmitters` array places persistent atmospheric effects on the map. Emitters depth-sort correctly with the helicopter and are affected by the mission wind.
+
+```json
+"particleEmitters": [
+  { "type": "smoke", "x": 45, "y": 32 },
+  { "type": "fire",  "x": 50, "y": 30 }
+]
+```
+
+| Field    | Type   | Description                                         |
+| -------- | ------ | --------------------------------------------------- |
+| `type`   | string | `"smoke"` — grey smoke column · `"fire"` — orange fire with smoke |
+| `x`, `y` | number | Grid position of the emitter                        |
+
+**Wind interaction:** particle velocity is offset by the mission wind vector each frame, so smoke and fire drift naturally in the current wind direction.
+
+**Depth sorting:** emitter particles are depth-sorted together with all other world objects (carrier, heli, boats etc.) so the helicopter can appear correctly in front of or behind a smoke column depending on position.

@@ -11,7 +11,7 @@ import { getGround, getCarrierLocal, isFlatTerrain } from './terrain';
 import { updateBoats, updateSubmarines, updateCarrierPos, resolveAttachTo } from './world-init';
 import { carrierCar } from './vehicles/carrier-car';
 import { fuelTruck } from './vehicles/fuel-truck';
-import { handleParticles } from './particles';
+import { handleParticles, updateParticleEmitters } from './particles';
 import { voiceEvents } from '../voice-events';
 
 export type { PhysicsCtx };
@@ -195,6 +195,8 @@ export const updateWind = (wind: any, dt: number, ctx: PhysicsCtx) => {
     wind.y = Math.sin(currentAngle) * baseStrength * gust * shelterFactor;
     wind.angle = currentAngle;
     wind.shelterFactor = shelterFactor;
+    // Unsheltered strength — used by stationary emitters that aren't behind terrain
+    wind.rawStr = baseStrength * gust;
 }
 
 export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
@@ -266,6 +268,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     G.heli.rotationPos += G.heli.rotorRPM * 0.75 * dt;
 
     handleParticles(dt, ctx);
+    updateParticleEmitters(dt);
 
     // payload physics
     if (G.activePayload) {

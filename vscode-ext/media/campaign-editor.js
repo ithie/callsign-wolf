@@ -720,6 +720,29 @@
         ctx.stroke();
       }
     });
+    (m.particleEmitters || []).forEach((e) => {
+      const ex = (e.x - state.panX) * tSize;
+      const ey = (e.y - state.panY) * tSize;
+      const r = Math.max(4, tSize * 0.5);
+      const isFire = e.type === "fire";
+      ctx.globalAlpha = 0.35;
+      ctx.fillStyle = isFire ? "#ff6600" : "#888888";
+      ctx.beginPath();
+      ctx.arc(ex, ey, r * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = isFire ? "#ff4400" : "#666666";
+      ctx.beginPath();
+      ctx.arc(ex, ey, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#fff";
+      ctx.font = `bold ${Math.max(8, tSize * 0.6)}px monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(isFire ? "\u{1F525}" : "\u{1F4A8}", ex, ey);
+      ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
+    });
     const dirRad = m.windDir * Math.PI / 180;
     if (state.selectedUI === "wind") {
       ctx.shadowBlur = 10;
@@ -764,10 +787,10 @@
     const speedEl = document.getElementById(`m_${prefix}_speed`);
     const radiusEl = document.getElementById(`m_${prefix}_radius`);
     const angleEl = document.getElementById(`m_${prefix}_angle`);
-    if (pathEl) pathEl.value = obj.path;
-    if (speedEl) speedEl.value = obj.speed.toString();
-    if (radiusEl) radiusEl.value = obj.radius.toString();
-    if (angleEl) angleEl.value = obj.angle.toString();
+    if (pathEl) pathEl.value = obj.path ?? "static";
+    if (speedEl) speedEl.value = (obj.speed ?? 0).toString();
+    if (radiusEl) radiusEl.value = (obj.radius ?? 40).toString();
+    if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
   };
 
   // ../src/shared/utils.ts
@@ -1069,9 +1092,9 @@
     getInput("m_rain").checked = m.rain;
     getInput("m_night").checked = m.night;
     getInput("m_water_level").value = (m.waterLevel ?? 0).toString();
-    getInput("m_wind_dir").value = m.windDir.toString();
-    getInput("m_wind_str").value = m.windStr.toString();
-    getInput("m_wind_var").checked = m.windVar;
+    getInput("m_wind_dir").value = (m.windDir ?? 0).toString();
+    getInput("m_wind_str").value = (m.windStr ?? 0).toString();
+    getInput("m_wind_var").checked = !!m.windVar;
     getInput("m_npc_heli_count").value = (m.npcHeliCount ?? 0).toString();
     getEl("m_npc_heli_type").value = m.npcHeliType ?? "random";
     state.selectedUI = null;
@@ -1893,6 +1916,209 @@
       }
     });
     canvas2.addEventListener("contextmenu", (e) => e.preventDefault());
+    const ctxMenu = document.getElementById("ed-ctx-menu");
+    let _ctxGx = 0, _ctxGy = 0;
+    const hideCtxMenu = () => {
+      if (ctxMenu) ctxMenu.style.display = "none";
+    };
+    const _placeItem = (type, gx, gy) => {
+      const m = getCurrentMission();
+      if (!m) return;
+      const mAny = m;
+      const _vesselBase = (t) => ({ type: t, x: gx, y: gy, angle: 0, path: "static", speed: 0, radius: 20 });
+      switch (type) {
+        case "pad": {
+          const ei = m.objects.findIndex((o) => o.type === "pad");
+          const n = { type: "pad", x: gx, y: gy };
+          if (ei >= 0) m.objects[ei] = n;
+          else m.objects.push(n);
+          break;
+        }
+        case "lighthouse": {
+          const ei = m.objects.findIndex((o) => o.type === "lighthouse");
+          const n = { type: "lighthouse", x: gx, y: gy };
+          if (ei >= 0) m.objects[ei] = n;
+          else m.objects.push(n);
+          break;
+        }
+        case "carrier": {
+          const ei = m.objects.findIndex((o) => o.type === "carrier");
+          const n = ei >= 0 ? { ...m.objects[ei], x: gx, y: gy } : { type: "carrier", x: gx, y: gy, angle: 0, path: "circle", speed: 5, radius: 40 };
+          if (ei >= 0) m.objects[ei] = n;
+          else m.objects.push(n);
+          break;
+        }
+        case "research_platform":
+          m.objects.push({ type: "research_platform", x: gx, y: gy });
+          break;
+        case "wind_turbine":
+          m.objects.push({ type: "wind_turbine", x: gx, y: gy });
+          break;
+        case "plane_wreck":
+          m.objects.push({ type: "plane_wreck", x: gx, y: gy, angle: 0 });
+          break;
+        case "sailboat_broken":
+          m.objects.push({ type: "sailboat_broken", x: gx, y: gy, angle: 0 });
+          break;
+        case "ornithopter_wreck":
+          m.objects.push({ type: "ornithopter_wreck", x: gx, y: gy, angle: 0 });
+          break;
+        case "baywatch_car":
+          m.objects.push({ type: "baywatch_car", x: gx, y: gy, angle: 0 });
+          break;
+        case "baywatch_hq":
+          m.objects.push({ type: "baywatch_hq", x: gx, y: gy });
+          break;
+        case "baywatch_tower":
+          m.objects.push({ type: "baywatch_tower", x: gx, y: gy });
+          break;
+        case "boat":
+          m.objects.push({ ..._vesselBase("boat"), speed: 3 });
+          break;
+        case "pilot_boat":
+          m.objects.push(_vesselBase("pilot_boat"));
+          break;
+        case "sar_boat":
+          m.objects.push({ ..._vesselBase("sar_boat"), speed: 3 });
+          break;
+        case "salvage_tug":
+          m.objects.push(_vesselBase("salvage_tug"));
+          break;
+        case "submarine":
+          m.objects.push(_vesselBase("submarine"));
+          break;
+        case "person":
+        case "rescuer":
+        case "crate":
+          if (!m.payloads) m.payloads = [];
+          m.payloads.push(makePayload(type, gx, gy, m));
+          renderPayloadList();
+          break;
+        case "smoke":
+        case "fire":
+          if (!mAny.particleEmitters) mAny.particleEmitters = [];
+          mAny.particleEmitters.push({ type, x: gx, y: gy });
+          break;
+      }
+      renderObjectList();
+      drawMap();
+      notifyWorkbench();
+      broadcastPreview();
+    };
+    if (ctxMenu) {
+      const _CTX_GROUPS = [
+        { cat: "Stat.", emoji: "\u{1F3D7}", items: [
+          { v: "pad", l: "\u{1F7E9} Landepad" },
+          { v: "lighthouse", l: "\u{1F526} Leuchtturm" },
+          { v: "research_platform", l: "\u{1F3D7} Plattform" }
+        ] },
+        { cat: "Fahr.", emoji: "\u{1F6A2}", items: [
+          { v: "carrier", l: "\u{1F6A2} Tr\xE4ger" },
+          { v: "boat", l: "\u26F5 Boot" },
+          { v: "pilot_boat", l: "\u{1F6A4} Lotsenboot" },
+          { v: "sar_boat", l: "\u{1F6E5} SAR-Boot" },
+          { v: "salvage_tug", l: "\u{1F6F3} Schlepper" },
+          { v: "submarine", l: "\u{1F93F} U-Boot" }
+        ] },
+        { cat: "Deko", emoji: "\u{1F300}", items: [
+          { v: "wind_turbine", l: "\u{1F300} Windrad" },
+          { v: "plane_wreck", l: "\u2708\uFE0F Wrack" },
+          { v: "sailboat_broken", l: "\u26F5 Segel (gek.)" },
+          { v: "ornithopter_wreck", l: "\u{1F6F8} Orni-Wrack" },
+          { v: "baywatch_car", l: "\u{1F697} BW-Auto" },
+          { v: "baywatch_hq", l: "\u{1F3E0} BW-HQ" },
+          { v: "baywatch_tower", l: "\u{1F5FC} Wachturm" }
+        ] },
+        { cat: "Load", emoji: "\u{1F4E6}", items: [
+          { v: "person", l: "\u{1F7E1} Person" },
+          { v: "rescuer", l: "\u{1F535} Retter" },
+          { v: "crate", l: "\u{1F7E0} Crate" }
+        ] },
+        { cat: "Ptcl", emoji: "\u2728", items: [
+          { v: "smoke", l: "\u{1F4A8} Rauch" },
+          { v: "fire", l: "\u{1F525} Feuer + Rauch" }
+        ] }
+      ];
+      let _ctxTabIdx = 0;
+      const renderCtxMenuContent = () => {
+        const tabBar = ctxMenu.querySelector(".ctx-tabs");
+        ctxMenu.innerHTML = "";
+        const tabs = document.createElement("div");
+        tabs.className = "ctx-tabs";
+        tabs.style.cssText = "display:flex;border-bottom:1px solid #3a3a3a;background:#111";
+        _CTX_GROUPS.forEach((g, gi) => {
+          const t = document.createElement("button");
+          t.textContent = g.cat;
+          const isAct = gi === _ctxTabIdx;
+          t.style.cssText = `flex:1;background:${isAct ? "#1a3a5a" : "none"};border:none;border-bottom:2px solid ${isAct ? "#4af" : "transparent"};color:${isAct ? "#4af" : "#888"};font-size:9px;padding:6px 2px 4px;cursor:pointer;font-family:inherit`;
+          t.onmouseenter = () => {
+            if (gi !== _ctxTabIdx) t.style.color = "#ccc";
+          };
+          t.onmouseleave = () => {
+            if (gi !== _ctxTabIdx) t.style.color = "#888";
+          };
+          t.onclick = (ev) => {
+            ev.stopPropagation();
+            _ctxTabIdx = gi;
+            renderCtxMenuContent();
+          };
+          tabs.appendChild(t);
+        });
+        ctxMenu.appendChild(tabs);
+        const grid = document.createElement("div");
+        grid.style.cssText = "display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:6px";
+        _CTX_GROUPS[_ctxTabIdx].items.forEach((item) => {
+          const btn = document.createElement("button");
+          btn.textContent = item.l;
+          btn.style.cssText = "background:#1e1e1e;border:1px solid #3a3a3a;color:#ccc;font-size:11px;padding:5px 4px;cursor:pointer;border-radius:3px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
+          btn.title = item.l.replace(/^.+? /, "");
+          btn.onmouseenter = () => {
+            btn.style.background = "#1a3a5a";
+            btn.style.borderColor = "#4af";
+            btn.style.color = "#fff";
+          };
+          btn.onmouseleave = () => {
+            btn.style.background = "#1e1e1e";
+            btn.style.borderColor = "#3a3a3a";
+            btn.style.color = "#ccc";
+          };
+          btn.onclick = (ev) => {
+            ev.stopPropagation();
+            _placeItem(item.v, _ctxGx, _ctxGy);
+            hideCtxMenu();
+          };
+          grid.appendChild(btn);
+        });
+        ctxMenu.appendChild(grid);
+        if (tabBar) void tabBar;
+      };
+      renderCtxMenuContent();
+      document.addEventListener("mousedown", (ev) => {
+        if (!ctxMenu.contains(ev.target)) hideCtxMenu();
+      });
+      canvas2.addEventListener("dblclick", (ev) => {
+        const m = getCurrentMission();
+        if (!m) return;
+        const rect = canvas2.getBoundingClientRect();
+        const tSize = 600 / m.gridSize * state.zoom;
+        _ctxGx = Math.floor((ev.clientX - rect.left) / tSize + state.panX);
+        _ctxGy = Math.floor((ev.clientY - rect.top) / tSize + state.panY);
+        if (_ctxGx < 0 || _ctxGx >= m.gridSize || _ctxGy < 0 || _ctxGy >= m.gridSize) return;
+        state.selectedObjectIdx = null;
+        state.selectedPayloadIdx = null;
+        state.isDraggingItem = false;
+        drawMap();
+        renderCtxMenuContent();
+        ctxMenu.style.left = ev.clientX + "px";
+        ctxMenu.style.top = ev.clientY + "px";
+        ctxMenu.style.display = "block";
+        setTimeout(() => {
+          const r = ctxMenu.getBoundingClientRect();
+          if (r.right > window.innerWidth) ctxMenu.style.left = ev.clientX - r.width + "px";
+          if (r.bottom > window.innerHeight) ctxMenu.style.top = ev.clientY - r.height + "px";
+        }, 0);
+      });
+    }
     canvas2.onmousedown = (e) => {
       const rect = canvas2.getBoundingClientRect();
       const m = getCurrentMission();
@@ -1941,8 +2167,11 @@
           if (type === "payload") {
             state.selectedPayloadIdx = idx;
             state.selectedObjectIdx = null;
-          } else {
+          } else if (type === "object") {
             state.selectedObjectIdx = idx;
+            state.selectedPayloadIdx = null;
+          } else {
+            state.selectedObjectIdx = null;
             state.selectedPayloadIdx = null;
           }
           state.selectedUI = null;
@@ -1968,6 +2197,68 @@
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
           if (hit) {
             startDrag("object", i, obj.x, obj.y);
+            return;
+          }
+        }
+        const _mAny = m;
+        if (_mAny.particleEmitters?.length) {
+          for (let i = 0; i < _mAny.particleEmitters.length; i++) {
+            const em = _mAny.particleEmitters[i];
+            if (Math.hypot(gx - em.x, gy - em.y) < 2) {
+              startDrag("emitter", i, em.x, em.y);
+              return;
+            }
+          }
+        }
+      }
+      if (e.shiftKey) {
+        const SNAP = 5;
+        const m2 = getCurrentMission();
+        let nPDist = SNAP, nPIdx = -1;
+        (m2.payloads || []).forEach((p, i) => {
+          const d = Math.hypot(gx - p.x, gy - p.y);
+          if (d < nPDist) {
+            nPDist = d;
+            nPIdx = i;
+          }
+        });
+        if (nPIdx >= 0) {
+          m2.payloads.splice(nPIdx, 1);
+          renderPayloadList();
+          drawMap();
+          notifyWorkbench();
+          return;
+        }
+        let nODist = SNAP, nOIdx = -1;
+        m2.objects.forEach((o, i) => {
+          const d = Math.hypot(gx - o.x, gy - o.y);
+          if (d < nODist) {
+            nODist = d;
+            nOIdx = i;
+          }
+        });
+        if (nOIdx >= 0) {
+          m2.objects.splice(nOIdx, 1);
+          if (state.selectedObjectIdx === nOIdx) state.selectedObjectIdx = null;
+          renderObjectList();
+          drawMap();
+          notifyWorkbench();
+          return;
+        }
+        const m2Any = m2;
+        if (m2Any.particleEmitters?.length) {
+          let nEDist = SNAP, nEIdx = -1;
+          m2Any.particleEmitters.forEach((em, i) => {
+            const d = Math.hypot(gx - em.x, gy - em.y);
+            if (d < nEDist) {
+              nEDist = d;
+              nEIdx = i;
+            }
+          });
+          if (nEIdx >= 0) {
+            m2Any.particleEmitters.splice(nEIdx, 1);
+            drawMap();
+            notifyWorkbench();
             return;
           }
         }
@@ -1999,6 +2290,10 @@
             Object.assign(m.payloads[state.dragItemIdx], { x: Math.round(gx), y: Math.round(gy) });
           else if (state.dragItemType === "object")
             Object.assign(m.objects[state.dragItemIdx], { x: Math.round(gx), y: Math.round(gy) });
+          else if (state.dragItemType === "emitter") {
+            const _em = m.particleEmitters?.[state.dragItemIdx];
+            if (_em) Object.assign(_em, { x: Math.round(gx), y: Math.round(gy) });
+          }
           canvas2.style.cursor = "grabbing";
           drawMap();
         }
@@ -2031,6 +2326,9 @@
               ...p.npcTarget ? { npcTarget: p.npcTarget } : {}
             };
             renderPayloadList();
+          } else if (state.dragItemType === "emitter") {
+            notifyWorkbench();
+            broadcastPreview();
           } else {
             renderObjectList();
           }

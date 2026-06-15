@@ -57,7 +57,7 @@ export const state = {
     lastMY: 0,
 
     isDraggingItem: false,
-    dragItemType: null as 'payload' | 'object' | null,
+    dragItemType: null as 'payload' | 'object' | 'emitter' | null,
     dragItemIdx: null as number | null,
     dragHasMoved: false,
     dragWasSelected: false,

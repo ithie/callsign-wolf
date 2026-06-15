@@ -639,6 +639,34 @@ export const drawMap = () => {
         }
     });
 
+    // ── Particle Emitters ─────────────────────────────────────────────────────
+    ((m as any).particleEmitters || []).forEach((e: any) => {
+        const ex = (e.x - state.panX) * tSize;
+        const ey = (e.y - state.panY) * tSize;
+        const r = Math.max(4, tSize * 0.5);
+        const isFire = e.type === 'fire';
+        // outer glow
+        ctx.globalAlpha = 0.35;
+        ctx.fillStyle = isFire ? '#ff6600' : '#888888';
+        ctx.beginPath();
+        ctx.arc(ex, ey, r * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        // core
+        ctx.fillStyle = isFire ? '#ff4400' : '#666666';
+        ctx.beginPath();
+        ctx.arc(ex, ey, r, 0, Math.PI * 2);
+        ctx.fill();
+        // label
+        ctx.fillStyle = '#fff';
+        ctx.font = `bold ${Math.max(8, tSize * 0.6)}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(isFire ? '🔥' : '💨', ex, ey);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+    });
+
     // ── Wind compass ───────────────────────────────────────────────────────────
     const dirRad = (m.windDir * Math.PI) / 180;
     if (state.selectedUI === 'wind') {
@@ -688,10 +716,10 @@ const syncVesselUI = (obj: any, kind: 'carrier' | 'boat' | 'submarine') => {
     const speedEl = document.getElementById(`m_${prefix}_speed`) as HTMLInputElement;
     const radiusEl = document.getElementById(`m_${prefix}_radius`) as HTMLInputElement;
     const angleEl = document.getElementById(`m_${prefix}_angle`) as HTMLInputElement;
-    if (pathEl) pathEl.value = obj.path;
-    if (speedEl) speedEl.value = obj.speed.toString();
-    if (radiusEl) radiusEl.value = obj.radius.toString();
-    if (angleEl) angleEl.value = obj.angle.toString();
+    if (pathEl) pathEl.value = obj.path ?? 'static';
+    if (speedEl) speedEl.value = (obj.speed ?? 0).toString();
+    if (radiusEl) radiusEl.value = (obj.radius ?? 40).toString();
+    if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
 };
 
 

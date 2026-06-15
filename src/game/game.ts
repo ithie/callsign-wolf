@@ -601,7 +601,7 @@ const drawScene = () => {
         _rafId = requestAnimationFrame(drawScene);
         return;
     }
-    const dt = _fpsLastTime > 0 ? Math.min((_now - _fpsLastTime) / (1000 / 60), 3.0) : 1.0;
+    const dt = _fpsLastTime > 0 ? Math.min((_now - _fpsLastTime) / (1000 / 30), 3.0) : 1.0;
     _fpsLastTime = _now;
 
     const rain = _missionRain;

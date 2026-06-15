@@ -71,6 +71,13 @@ export const OBJECTIVE_TYPE = {
 } as const;
 export type ObjectiveType = typeof OBJECTIVE_TYPE[keyof typeof OBJECTIVE_TYPE];
 
+export const PARTICLE_EMITTER_TYPE = {
+    SMOKE: 'smoke',
+    FIRE:  'fire',
+} as const;
+export type ParticleEmitterType = typeof PARTICLE_EMITTER_TYPE[keyof typeof PARTICLE_EMITTER_TYPE];
+export type ParticleEmitter = { type: ParticleEmitterType; x: number; y: number };
+
 type PadObject = { type: 'pad'; x: number; y: number };
 type CarrierObject = {
     type: 'carrier';
@@ -163,6 +170,7 @@ export interface Mission {
     waterLevel?: number;
     music?: string;
     sand?: number[][];
+    particleEmitters?: ParticleEmitter[];
 }
 
 export type MissionData = Omit<Mission, 'terrain' | 'foliage'> & {
@@ -171,6 +179,7 @@ export type MissionData = Omit<Mission, 'terrain' | 'foliage'> & {
     foliage: string | { x: number; y: number; s: number; type: string }[];
     campaignType: string;
     sand?: string;
+    particleEmitters?: ParticleEmitter[];
 };
 
 export interface CampaignExport {

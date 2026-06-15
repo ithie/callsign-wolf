@@ -172,6 +172,37 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             });
         if (showPad && _inNightCone(G.PAD.xMin + 3, G.PAD.yMin + 3)) _drawPadLights(G.PAD.z, false);
         if (queueFoliage) queueFoliage(camX, camY);
+        // Particle emitters — depth-sorted with world objects and heli
+        G.PARTICLE_EMITTERS.forEach((e: any) => {
+            if (!isVisible(e.x, e.y, visMargin) || !_inNightCone(e.x, e.y) || e.particles.length === 0) return;
+            const _ctx = dwCtx.ctx;
+            const _iso = dwCtx.isoFn;
+            const _eParticles = e.particles.slice();
+            SceneRenderer.add(null, {
+                x: 0, y: 0, depth: e.x + e.y,
+                drawFn: (cx: number, cy: number) => {
+                    _eParticles.forEach((p: any) => {
+                        const pos = _iso(p.x, p.y, Math.max(p.z, 0), cx, cy);
+                        const lifeRatio = Math.min(1, p.life / (p.maxLife ?? 2.0));
+                        const alpha = p.isSmoke
+                            ? Math.min(0.55, lifeRatio * 0.7)
+                            : Math.min(0.85, lifeRatio * 2.0);
+                        if (alpha <= 0.01) return;
+                        _ctx.globalAlpha = alpha;
+                        _ctx.fillStyle = `rgb(${p.color})`;
+                        const baseSize = p.size ?? 5;
+                        const ageRatio = 1 - lifeRatio;
+                        const radius = p.isSmoke
+                            ? baseSize * (0.5 + ageRatio * 0.8)
+                            : baseSize * Math.max(0.2, 1 - ageRatio * 0.8);
+                        _ctx.beginPath();
+                        _ctx.arc(pos.x, pos.y, Math.max(1, radius), 0, Math.PI * 2);
+                        _ctx.fill();
+                    });
+                    _ctx.globalAlpha = 1.0;
+                },
+            });
+        });
         // Vessel-deck payloads enqueued BEFORE the heli so that on an equal depth value
         // the heli wins via JS stable-sort insertion order (heli inserted after = drawn later = on top).
         if (!zstate.crashed) queueAttachedPayloads(_inNightCone);
