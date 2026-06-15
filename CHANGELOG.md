@@ -2,8 +2,21 @@
 
 ## v28.5.2 — Terrain Rendering & Night Visibility
 
+### Added
+
+- **Particle emitter system** — World objects can now emit persistent smoke or fire. Each emitter spawns particles across 5 sub-points (centre + 4 cardinal offsets) for a natural spread. Particles are depth-sorted with the rest of the scene via `SceneRenderer`.
+- **Wind-driven smoke trails** — Smoke and fire particles drift with the mission wind using exponential velocity convergence. Emitters use the unsheltered wind strength (`wind.rawStr`) so the trail is not affected by terrain shelter calculated for the helicopter. Older particles accumulate more drift, producing a realistic elongated downwind trail.
+- **Campaign editor — particle emitter tab** — New "Ptcl" category in the context-menu tab bar; places smoke or fire emitters via double-click. Emitters can be dragged to reposition.
+- **Campaign editor — tabbed sidebar** — Sidebar is now split into three tabs (Gelände / Objekte / Mission) with a sticky campaign header and mission list above.
+
+### Changed
+
+- **`src/game/sim/particles.ts` split into module folder** — Refactored into `particles/explosion.ts`, `particles/birds.ts`, `particles/emitters.ts`, und `particles/rotor.ts` mit Barrel `index.ts`. Alle bestehenden Import-Pfade funktionieren unverändert.
+- **`dt` auf 30 fps normiert** — Partikel-Lifetime und Geschwindigkeit skalieren jetzt gegen die 30-fps-Ziel-Framerate.
+
 ### Fixed
 
+- **Campaign editor — mission switching exception** — Switching missions threw when `windDir` or `windStr` were absent; guarded with `?? 0` defaults.
 - **Terrain depth sort** — Tile batches are now filled in diagonal order (x+y ascending) instead of column-major order. Reduces depth-sort artefacts on steep mountain slopes significantly.
 - **Night cone — vessel bounding box** — Carrier, boats, and submarines are now visible as soon as any corner of their bounding box enters the searchlight cone, not just when the cone hits their centre point.
 - **Campaign editor — water level not persisted** — `m_water_level` input was missing from the change-listener list; changes are now saved and the map redraws immediately.
