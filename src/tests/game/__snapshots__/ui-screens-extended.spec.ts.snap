@@ -8,22 +8,22 @@ exports[`heli-select > snapshot 1`] = `
                 <canvas id="icon-dolphin" class="heli-card-canvas"></canvas>
                 <div class="heli-card-label">
                     <div class="box-label">DOLPHIN</div>
-                    <div class="box-sub heli-cap-label heli-card-label-sub">Kap.: 3 (Leichtgewicht)</div>
+                    <div class="box-sub heli-cap-label heli-card-label-sub">Cap.: 3 (Lightweight)</div>
                 </div></div></div><div class="swipe-slot"><div class="swipe-card" data-index="1">
                 <canvas id="icon-coasthawk" class="heli-card-canvas"></canvas>
                 <div class="heli-card-label">
                     <div class="box-label">Coast-Hawk</div>
-                    <div class="box-sub heli-cap-label heli-card-label-sub">Kap.: 10 (Schwerlast)</div>
+                    <div class="box-sub heli-cap-label heli-card-label-sub">Cap.: 10 (Heavy lift)</div>
                 </div></div></div><div class="swipe-slot"><div class="swipe-card" data-index="2">
                 <canvas id="icon-atlas" class="heli-card-canvas"></canvas>
                 <div class="heli-card-label">
                     <div class="box-label">Atlas</div>
-                    <div class="box-sub heli-cap-label heli-card-label-sub">Kap.: 20 (Schwerlast)</div>
+                    <div class="box-sub heli-cap-label heli-card-label-sub">Cap.: 20 (Heavy lift)</div>
                 </div></div></div><div class="swipe-slot"><div class="swipe-card" data-index="3">
                 <canvas id="icon-ornithopter" class="heli-card-canvas"></canvas>
                 <div class="heli-card-label">
                     <div class="box-label">ORNITHOPTER</div>
-                    <div class="box-sub heli-cap-label heli-card-label-sub">Kap.: 2 (Schnelleinsatz)</div>
+                    <div class="box-sub heli-cap-label heli-card-label-sub">Cap.: 2 (Quick deploy)</div>
                 </div></div></div></div><div class="swipe-right-overlay"></div></div></div><div class="back-btn">◀ BACK</div>"
 `;
 
@@ -31,7 +31,7 @@ exports[`legal-screen > snapshot 1`] = `
 "
         <div class="title">LEGAL NOTICE</div>
         
-        <div class="screen-body"><div class="legal-content"><div class="legal-section-heading">IMPRINT</div><div class="legal-para">Information according to § 5 TMG / DDG:</div><div class="legal-spacer"></div><div class="legal-para">Michael Draws-Beer</div><div class="legal-para">Friedrichstrasse 46</div><div class="legal-para">53332 Bornheim</div><div class="legal-para">Germany</div><div class="legal-spacer"></div><div class="legal-para">Contact</div><div class="legal-para">Email: yarrick@web.de</div><div class="legal-spacer"></div><div class="legal-para">Responsible for content (§ 18 para. 2 MStV):</div><div class="legal-para">Michael Draws-Beer – address as above</div><div class="legal-section-heading">PRIVACY POLICY</div><div class="legal-para">SAR: Callsign WOLF stores the following data locally on your device:</div><div class="legal-para">▸ Callsign  ▸ Rank  ▸ Campaign progress  ▸ Language setting  ▸ Control setting</div><div class="legal-para">Data is used exclusively for game functionality and is not shared with third parties. Legal basis: Art. 6 para. 1 lit. b GDPR.</div><div class="legal-para">Stored data can be deleted at any time via Main Menu → Settings → Delete Save.</div><div class="legal-para">Privacy contact: yarrick@web.de</div></div></div><div class="back-btn">◀ BACK</div>"
+        <div class="screen-body"><div class="legal-content"><div class="legal-section-heading">IMPRINT</div><div class="legal-para">Information according to § 5 TMG / DDG:</div><div class="legal-spacer"></div><div class="legal-para">Michael Draws-Beer</div><div class="legal-para">Friedrichstrasse 46</div><div class="legal-para">53332 Bornheim</div><div class="legal-para">Germany</div><div class="legal-spacer"></div><div class="legal-para">Contact</div><div class="legal-para">Email: yarrick@web.de</div><div class="legal-spacer"></div><div class="legal-para">Responsible for content (§ 18 para. 2 MStV):</div><div class="legal-para">Michael Draws-Beer – address as above</div><div class="legal-spacer"></div><div class="legal-para">VAT ID: DE [tbd]</div><div class="legal-para">Small business owner according to § 19 of the German VAT Act (UStG) - no VAT is invoiced</div><div class="legal-section-heading">PRIVACY POLICY</div><div class="legal-para">SAR: Callsign WOLF stores the following data locally on your device:</div><div class="legal-para">▸ Callsign  ▸ Rank  ▸ Campaign progress  ▸ Language setting  ▸ Control setting</div><div class="legal-para">Data is used exclusively for game functionality and is not shared with third parties. Legal basis: Art. 6 para. 1 lit. b GDPR.</div><div class="legal-para">Stored data can be deleted at any time via Main Menu → Settings → Delete Save.</div><div class="legal-para">Privacy contact: yarrick@web.de</div></div></div><div class="back-btn">◀ BACK</div>"
 `;
 
 exports[`mission-select > showMissionSelect renders mission cards 1`] = `

@@ -11,7 +11,8 @@ import { getGround, getCarrierLocal, isFlatTerrain } from './terrain';
 import { updateBoats, updateSubmarines, updateCarrierPos, resolveAttachTo } from './world-init';
 import { carrierCar } from './vehicles/carrier-car';
 import { fuelTruck } from './vehicles/fuel-truck';
-import { handleParticles, updateParticleEmitters } from './particles';
+import { updateParticles } from './particles';
+import { getHeliType } from '../heli-types';
 import { voiceEvents } from '../voice-events';
 
 export type { PhysicsCtx };
@@ -267,8 +268,16 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
             : Math.max(0, G.heli.rotorRPM - 0.004 * dt);
     G.heli.rotationPos += G.heli.rotorRPM * 0.75 * dt;
 
-    handleParticles(dt, ctx);
-    updateParticleEmitters(dt);
+    updateParticles({
+        ctx: {
+            particles: G.particles, debris: G.debris, flocks: G.flocks,
+            emitters: G.PARTICLE_EMITTERS, heli: G.heli, wind: G.wind,
+            waterLevel: G.waterLevel, gridSize: campaignHandler.getTerrain().gridSize,
+            getGround: (x, y) => getGround(x, y, G.points, G.CARRIER),
+            getHeliType,
+        },
+        dt,
+    });
 
     // payload physics
     if (G.activePayload) {

@@ -181,24 +181,38 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             SceneRenderer.add(null, {
                 x: 0, y: 0, depth: e.x + e.y,
                 drawFn: (cx: number, cy: number) => {
-                    _eParticles.forEach((p: any) => {
-                        const pos = _iso(p.x, p.y, Math.max(p.z, 0), cx, cy);
-                        const lifeRatio = Math.min(1, p.life / (p.maxLife ?? 2.0));
-                        const alpha = p.isSmoke
-                            ? Math.min(0.55, lifeRatio * 0.7)
-                            : Math.min(0.85, lifeRatio * 2.0);
-                        if (alpha <= 0.01) return;
-                        _ctx.globalAlpha = alpha;
-                        _ctx.fillStyle = `rgb(${p.color})`;
-                        const baseSize = p.size ?? 5;
-                        const ageRatio = 1 - lifeRatio;
-                        const radius = p.isSmoke
-                            ? baseSize * (0.5 + ageRatio * 0.8)
-                            : baseSize * Math.max(0.2, 1 - ageRatio * 0.8);
-                        _ctx.beginPath();
-                        _ctx.arc(pos.x, pos.y, Math.max(1, radius), 0, Math.PI * 2);
-                        _ctx.fill();
-                    });
+                    // Two-pass batch: fire first (below smoke), then smoke.
+                    // Within each pass, group by rounded alpha to minimise fill() calls.
+                    const ALPHA_STEP = 0.05;
+                    const _drawPass = (filter: (p: any) => boolean, defaultColor: string) => {
+                        const buckets = new Map<number, { color: string; arcs: { x: number; y: number; r: number }[] }>();
+                        _eParticles.forEach((p: any) => {
+                            if (!filter(p)) return;
+                            const lifeRatio = Math.min(1, p.life / (p.maxLife ?? 2.0));
+                            const alpha = p.isSmoke
+                                ? Math.min(0.55, lifeRatio * 0.7)
+                                : Math.min(0.85, lifeRatio * 2.0);
+                            if (alpha <= 0.01) return;
+                            const key = Math.round(alpha / ALPHA_STEP) * ALPHA_STEP;
+                            const pos = _iso(p.x, p.y, Math.max(p.z, 0), cx, cy);
+                            const ageRatio = 1 - lifeRatio;
+                            const base = p.size ?? 5;
+                            const r = p.isSmoke
+                                ? base * (0.5 + ageRatio * 0.8)
+                                : base * Math.max(0.2, 1 - ageRatio * 0.8);
+                            if (!buckets.has(key)) buckets.set(key, { color: p.color ?? defaultColor, arcs: [] });
+                            buckets.get(key)!.arcs.push({ x: pos.x, y: pos.y, r: Math.max(1, r) });
+                        });
+                        buckets.forEach(({ color, arcs }, alpha) => {
+                            _ctx.globalAlpha = alpha;
+                            _ctx.fillStyle = `rgb(${color})`;
+                            _ctx.beginPath();
+                            arcs.forEach(({ x, y, r }) => _ctx.arc(x, y, r, 0, Math.PI * 2));
+                            _ctx.fill();
+                        });
+                    };
+                    _drawPass(p => p.isFire, '240,100,0');
+                    _drawPass(p => p.isSmoke, '130,125,120');
                     _ctx.globalAlpha = 1.0;
                 },
             });

@@ -1,13 +1,11 @@
-import { campaignHandler } from '../../main';
-import { G } from '../../state';
-import { getGround } from '../terrain';
+import type { Bird, Flock, ParticleSystemArgs } from './ctx';
 
-export const initBirds = () => {
-    G.flocks = [];
-    const { gridSize } = campaignHandler.getTerrain();
+export const init = ({ ctx }: ParticleSystemArgs) => {
+    ctx.flocks.splice(0);
+    const { gridSize, getGround, waterLevel } = ctx;
     const numFlocks = 2 + Math.floor(Math.random() * 2);
-    const spawnCx = G.START_POS ? G.START_POS.x : gridSize / 2;
-    const spawnCy = G.START_POS ? G.START_POS.y : gridSize / 2;
+    const spawnCx = gridSize / 2;
+    const spawnCy = gridSize / 2;
     for (let f = 0; f < numFlocks; f++) {
         let fx = 0, fy = 0, found = false;
         for (let attempt = 0; attempt < 30; attempt++) {
@@ -15,14 +13,14 @@ export const initBirds = () => {
             const dist = 5 + Math.random() * 18;
             fx = Math.max(3, Math.min(gridSize - 3, spawnCx + Math.cos(angle) * dist));
             fy = Math.max(3, Math.min(gridSize - 3, spawnCy + Math.sin(angle) * dist));
-            if (getGround(fx, fy, G.points, G.CARRIER) > G.waterLevel + 0.2) { found = true; break; }
+            if (getGround(fx, fy) > waterLevel + 0.2) { found = true; break; }
         }
         if (!found) { fx = 5 + Math.random() * (gridSize - 10); fy = 5 + Math.random() * (gridSize - 10); }
         const fz = 3 + Math.random() * 5;
         const baseAngle = Math.random() * Math.PI * 2;
         const spd = 0.012 + Math.random() * 0.008;
         const count = 4 + Math.floor(Math.random() * 6);
-        const birds = [];
+        const birds: Bird[] = [];
         for (let i = 0; i < count; i++) {
             birds.push({
                 x: fx + (Math.random() - 0.5) * 3, y: fy + (Math.random() - 0.5) * 3,
@@ -31,34 +29,34 @@ export const initBirds = () => {
                 wingPhase: Math.random() * Math.PI * 2,
             });
         }
-        G.flocks.push({ birds, fleeing: false, fleeTimer: 0 });
+        ctx.flocks.push({ birds, fleeing: false, fleeTimer: 0 } satisfies Flock);
     }
 };
 
-export const updateBirds = () => {
-    const { gridSize } = campaignHandler.getTerrain();
-    G.flocks.forEach((flock: any) => {
-        const cx = flock.birds.reduce((s: number, b: any) => s + b.x, 0) / flock.birds.length;
-        const cy = flock.birds.reduce((s: number, b: any) => s + b.y, 0) / flock.birds.length;
-        const distToHeli = Math.hypot(G.heli.x - cx, G.heli.y - cy);
-        const heliLoud = G.heli.rotorRPM > 0.3;
+export const update = ({ ctx }: ParticleSystemArgs) => {
+    const { flocks, heli, wind, gridSize, getGround } = ctx;
+    flocks.forEach(flock => {
+        const cx = flock.birds.reduce((s, b) => s + b.x, 0) / flock.birds.length;
+        const cy = flock.birds.reduce((s, b) => s + b.y, 0) / flock.birds.length;
+        const distToHeli = Math.hypot(heli.x - cx, heli.y - cy);
+        const heliLoud = heli.rotorRPM > 0.3;
         if (heliLoud && distToHeli < 8) { flock.fleeing = true; flock.fleeTimer = 180; }
         if (flock.fleeTimer > 0) flock.fleeTimer--;
         else flock.fleeing = false;
 
         const flockAngle = Math.atan2(
-            flock.birds.reduce((s: number, b: any) => s + b.vy, 0),
-            flock.birds.reduce((s: number, b: any) => s + b.vx, 0)
+            flock.birds.reduce((s, b) => s + b.vy, 0),
+            flock.birds.reduce((s, b) => s + b.vx, 0)
         );
         const baseSpd = flock.fleeing ? 0.035 : 0.014;
 
-        flock.birds.forEach((bird: any) => {
+        flock.birds.forEach(bird => {
             let targetAngle = flockAngle;
             if (flock.fleeing) {
-                const awayAngle = Math.atan2(bird.y - G.heli.y, bird.x - G.heli.x);
+                const awayAngle = Math.atan2(bird.y - heli.y, bird.x - heli.x);
                 targetAngle = awayAngle + (Math.random() - 0.5) * 0.5;
             } else {
-                targetAngle += (Math.random() - 0.5) * 0.04 + G.wind.x * 0.08;
+                targetAngle += (Math.random() - 0.5) * 0.04 + wind.x * 0.08;
             }
             const toCx = cx - bird.x, toCy = cy - bird.y;
             const cohesion = 0.0003;
@@ -66,7 +64,7 @@ export const updateBirds = () => {
             bird.vy += toCy * cohesion + Math.sin(targetAngle) * 0.001;
             const spd = Math.hypot(bird.vx, bird.vy);
             if (spd > 0.001) { bird.vx = (bird.vx / spd) * baseSpd; bird.vy = (bird.vy / spd) * baseSpd; }
-            const gz = getGround(bird.x, bird.y, G.points, G.CARRIER);
+            const gz = getGround(bird.x, bird.y);
             const targetZ = gz + 4 + Math.sin(bird.wingPhase * 0.3) * 0.5;
             bird.vz += (targetZ - bird.z) * 0.05;
             bird.vz *= 0.85;

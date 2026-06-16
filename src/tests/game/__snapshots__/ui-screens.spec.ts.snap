@@ -37,51 +37,5 @@ exports[`UI screen snapshots > settings-screen 1`] = `
 "
         <div class="title">SETTINGS</div>
         <div class="subtitle">PROFILE</div>
-        <div class="screen-body">
-        <div id="settings-badge"></div>
-        <div class="settings-field">
-            <label>CALLSIGN (MAX. 8 CHARS, A–Z)</label>
-            <input id="player-name-input" type="text" maxlength="5" placeholder="—">
-        </div>
-        <div id="settings-stats"></div>
-        <div class="settings-field" style="margin-top: 8px">
-            <label>SAVE CODE</label>
-            <div id="settings-code-display">—</div>
-        </div>
-        <div class="settings-field">
-            <label>IMPORT CODE (OVERWRITES SAVE)</label>
-            <div style="display:flex; gap: 10px; align-items: center">
-                <input id="import-code-input" class="settings-field input" type="text" maxlength="10" placeholder="XXXXX-XXXX">
-                <button class="settings-btn" id="apply-save-code-btn">LOAD</button>
-            </div>
-            <div id="import-code-msg" style="font-size: 12px; letter-spacing: 2px; min-height: 18px; margin-top: 4px"></div>
-        </div>
-        <div style="margin-top: 20px; border-top: 1px solid #1a1a2e; padding-top: 16px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px">
-            <div class="settings-field" style="width:100%">
-                <label>MUSIC</label>
-                <div style="display:flex; gap:10px; margin-top:6px">
-                    <button class="settings-btn" id="music-on-btn">ON</button>
-                    <button class="settings-btn" id="music-off-btn">OFF</button>
-                </div>
-            </div>
-            <div class="settings-field" style="width:100%">
-                <label>SOUND EFFECTS</label>
-                <div style="display:flex; gap:10px; margin-top:6px">
-                    <button class="settings-btn" id="sfx-on-btn">ON</button>
-                    <button class="settings-btn" id="sfx-off-btn">OFF</button>
-                </div>
-            </div>
-            <div class="settings-field" style="width:100%">
-                <label>LANGUAGE</label>
-                <div style="display:flex; gap:10px; margin-top:6px">
-                    <button class="settings-btn" id="lang-de-btn">DEUTSCH</button>
-                    <button class="settings-btn" id="lang-en-btn">ENGLISH</button>
-                </div>
-            </div>
-        </div>
-        <div style="margin-top: 20px; border-top: 1px solid #1a1a2e; padding-top: 16px; width: 100%; display: flex; flex-direction: column; align-items: center">
-            <button id="delete-session-btn" class="settings-btn" style="background: #1a0000; border-color: #500; color: #c44">DELETE SAVE</button>
-            <div id="delete-session-msg" style="font-size: 12px; letter-spacing: 2px; color: #c44; min-height: 18px; margin-top: 6px"></div>
-        </div>
-        </div><div class="back-btn">◀ BACK</div>"
+        <div class="screen-body"><div id="settings-badge"></div><div class="settings-field"><label>CALLSIGN (MAX. 8 CHARS, A–Z)</label><input id="player-name-input" type="text" maxlength="5" placeholder="—"></div><div id="settings-stats"></div><div class="settings-field" style="margin-top: 8px;"><label>SAVE CODE</label><div id="settings-code-display">—</div></div><div class="settings-field"><label>IMPORT CODE (OVERWRITES SAVE)</label><div style="display: flex; gap: 10px; align-items: center;"><input id="import-code-input" type="text" maxlength="10" placeholder="XXXXX-XXXX"><button class="settings-btn" id="apply-save-code-btn">LOAD</button></div><div id="import-code-msg" style="font-size: 12px; letter-spacing: 2px; min-height: 18px; margin-top: 4px;"></div></div><div style="margin-top: 20px; padding-top: 16px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 10px; border-top: 1px solid rgb(26, 26, 46);"><div class="settings-field" style="width: 100%;"><label>MUSIC</label><div style="display: flex; gap: 10px; margin-top: 6px;"><button class="settings-btn" id="music-on-btn">ON</button><button class="settings-btn" id="music-off-btn">OFF</button></div></div><div class="settings-field" style="width: 100%;"><label>SOUND EFFECTS</label><div style="display: flex; gap: 10px; margin-top: 6px;"><button class="settings-btn" id="sfx-on-btn">ON</button><button class="settings-btn" id="sfx-off-btn">OFF</button></div></div><div class="settings-field" style="width: 100%;"><label>LANGUAGE</label><div style="display: flex; gap: 10px; margin-top: 6px;"><button class="settings-btn" id="lang-de-btn">DEUTSCH</button><button class="settings-btn" id="lang-en-btn">ENGLISH</button></div></div></div><div style="margin-top: 20px; padding-top: 16px; width: 100%; display: flex; flex-direction: column; align-items: center; border-top: 1px solid rgb(26, 26, 46);"><button class="settings-btn danger" id="delete-session-btn">DELETE SAVE</button><div id="delete-session-msg" style="font-size: 12px; letter-spacing: 2px; color: rgb(204, 68, 68); min-height: 18px; margin-top: 6px;"></div></div></div><div class="back-btn">◀ BACK</div>"
 `;

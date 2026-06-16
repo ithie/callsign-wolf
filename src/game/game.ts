@@ -26,7 +26,7 @@ import {
 } from './sim/world-init';
 import { carrierCar } from './sim/vehicles/carrier-car';
 import { fuelTruck } from './sim/vehicles/fuel-truck';
-import { initBirds, updateBirds, updateDebris, spawnExplosion } from './sim/particles';
+import { initParticles, spawnExplosion, type ParticlesCtx } from './sim/particles';
 import { updatePhysics } from './sim/simulation';
 import { voiceEvents } from './voice-events';
 import { mountVoiceLine, hideVoiceLine } from './ui/voice-line/voice-line';
@@ -179,7 +179,7 @@ const triggerCrash = () => {
     voiceEvents.emit('mayday');
     stopHeliSound();
     soundHandler.play('final');
-    spawnExplosion(G.heli, G.particles, G.debris, G.points, G.CARRIER);
+    spawnExplosion({ ctx: _makePCtx(), dt: 0 });
     zstate.crashed = true;
     setTimeout(() => {
         _stopMission();
@@ -502,7 +502,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     // Step 3 — environment
     initFoliageFromMission();
     rebuildEntryCache();
-    initBirds();
+    initParticles({ ctx: _makePCtx(), dt: 0 });
     G.deliverMode = false;
     initPayloadsFromMission();
     initNpcHelisFromMission();
@@ -722,7 +722,6 @@ const drawScene = () => {
     updateNpcHelis(dt);
 
     // Vögel
-    updateBirds();
     drawBirds(camX, camY);
 
     // G.particles
@@ -760,7 +759,6 @@ const drawScene = () => {
 
     // G.debris (Heli-Trümmer)
     if (G.debris.length > 0) {
-        updateDebris();
         drawDebris(G.debris, camX, camY);
     }
 
@@ -838,6 +836,19 @@ let _lighthouseX = -1;
 let _lighthouseY = -1;
 let _missionGridSize = 28;
 
+const _makePCtx = (): ParticlesCtx => ({
+    particles: G.particles,
+    debris: G.debris,
+    flocks: G.flocks,
+    emitters: G.PARTICLE_EMITTERS,
+    heli: G.heli,
+    wind: G.wind,
+    waterLevel: G.waterLevel,
+    gridSize: _missionGridSize,
+    getGround: (x, y) => getGround(x, y, G.points, G.CARRIER),
+    getHeliType,
+});
+
 const _physicsCtx = {
     get windStr() {
         return _missionWindStr;
@@ -869,7 +880,7 @@ const _physicsCtx = {
             return () => {
                 if (zstate.crashed) return;
                 stopHeliSound();
-                spawnExplosion(G.heli, G.particles, G.debris, G.points, G.CARRIER);
+                spawnExplosion({ ctx: _makePCtx(), dt: 0 });
                 zstate.crashed = true;
                 setTimeout(() => {
                     _previewLaunch!((campaignHandler as any).getPreviewMissionData?.());

@@ -1,5 +1,6 @@
 import { HELI_TYPES } from './heli-types';
 import { VEHICLE_STATE, VehicleState, NpcHeliState } from '../shared/types';
+import type { Particle, DebrisPiece, Flock, ParticleEmitter, WindState } from './sim/particles/ctx';
 
 // ─── NPC heli ─────────────────────────────────────────────────────────────────
 export interface NpcHeli {
@@ -44,14 +45,14 @@ export const G = {
     menuAngles: Object.fromEntries(HELI_TYPES.map(h => [h.id, -0.5])),
     points: [] as any[],
     sandPoints: [] as number[][],
-    particles: [] as any[],
-    debris: [] as any[],
+    particles: [] as Particle[],
+    debris: [] as DebrisPiece[],
     CARRIER: {} as any,
     BOATS: [] as any[],
     SUBMARINES: [] as any[],
     RESEARCH_PLATFORMS: [] as any[],
     WIND_TURBINES: [] as any[],
-    PARTICLE_EMITTERS: [] as any[],
+    PARTICLE_EMITTERS: [] as ParticleEmitter[],
     LANDING_ZONES: [] as { xMin: number; xMax: number; yMin: number; yMax: number; z: number }[],
     PLANE_WRECKS: [] as any[],
     BROKEN_SAILBOATS: [] as any[],
@@ -91,9 +92,9 @@ export const G = {
         inAir: false,
         cargoResist: 1.0,
     },
-    wind: { x: 0, y: 0, phase: 0, angle: Math.random() * Math.PI * 2, varOffset: 0 } as any,
+    wind: { x: 0, y: 0, phase: 0, angle: Math.random() * Math.PI * 2, varOffset: 0, rawStr: 0 } satisfies WindState,
     keys: {} as Record<string, boolean>,
-    flocks: [] as any[],
+    flocks: [] as Flock[],
     TREES_MAP: null as any,
     PAD: null as any,
     START_POS: null as any,

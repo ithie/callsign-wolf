@@ -1,23 +1,24 @@
-import { G } from '../../state';
+import type { EmitterParticle, ParticleEmitter, ParticleSystemArgs } from './ctx';
 
-// 5 sub-emitter offsets — center + 4 cardinal points
 const FIRE_SUB_R = 0.18;
 const SMOKE_SUB_R = 0.12;
 const FIRE_SUB: [number, number][] = [[0,0],[FIRE_SUB_R,0],[-FIRE_SUB_R,0],[0,FIRE_SUB_R],[0,-FIRE_SUB_R]];
 const SMOKE_SUB: [number, number][] = [[0,0],[SMOKE_SUB_R,0],[-SMOKE_SUB_R,0],[0,SMOKE_SUB_R],[0,-SMOKE_SUB_R]];
 
-const FIRE_SPAWN_INTERVAL = 0.15;
-const SMOKE_SPAWN_INTERVAL = 0.25;
+// Intervals in dt-units (dt≈1 at 30fps): one spawn every 4–5 frames
+// Fire steady-state: ~16 fire + ~34 smoke ≈ 50 particles
+// Smoke steady-state: ~27 smoke particles
+const FIRE_SPAWN_INTERVAL = 4;
+const SMOKE_SPAWN_INTERVAL = 5;
+// Hard cap per emitter — prevents runaway at low FPS (high dt)
+const MAX_PARTICLES = 60;
 
-// Particles drift toward the wind's terminal velocity using exponential convergence.
-// G.wind.rawStr is the unsheltered wind magnitude (≈ windStr/10 * 0.0002 * gust).
-// WIND_PARTICLE_SCALE converts that to a target particle speed in world units/frame.
-// At windStr=5 (rawStr≈0.0001): target ≈ 0.02/frame → ~2 world units of drift.
+// Scale factor to convert G.wind.rawStr into visible particle drift speed
 const WIND_PARTICLE_SCALE = 200;
-// Convergence rate per frame at dt=1 — reaches ~63% of target after 1/CONV frames.
+// Exponential convergence rate per frame (reaches ~63% of target after 1/CONV frames)
 const WIND_CONV = 0.08;
 
-const _spawnFire = (e: any, ox: number, oy: number) => ({
+const _spawnFire = (e: ParticleEmitter, ox: number, oy: number): EmitterParticle => ({
     x: e.x + ox, y: e.y + oy,
     z: e.gz + 0.05,
     vx: (Math.random() - 0.5) * 0.006,
@@ -31,7 +32,7 @@ const _spawnFire = (e: any, ox: number, oy: number) => ({
     isFire: true,
 });
 
-const _spawnSmoke = (e: any, ox: number, oy: number, isFire: boolean) => ({
+const _spawnSmoke = (e: ParticleEmitter, ox: number, oy: number, isFire: boolean): EmitterParticle => ({
     x: e.x + ox, y: e.y + oy,
     z: e.gz + (isFire ? 0.5 : 0.1),
     vx: (Math.random() - 0.5) * 0.006,
@@ -46,30 +47,28 @@ const _spawnSmoke = (e: any, ox: number, oy: number, isFire: boolean) => ({
     isSmoke: true,
 });
 
-export const updateParticleEmitters = (dt: number) => {
-    // Use unsheltered wind — emitters are stationary, shelter is only relevant for the heli.
-    const rawStr = (G.wind as any).rawStr ?? 0;
-    const windAngle = (G.wind as any).angle ?? 0;
-    const targetVx = Math.cos(windAngle) * rawStr * WIND_PARTICLE_SCALE;
-    const targetVy = Math.sin(windAngle) * rawStr * WIND_PARTICLE_SCALE;
+export const update = ({ ctx, dt }: ParticleSystemArgs) => {
+    const { emitters, wind } = ctx;
+    const targetVx = Math.cos(wind.angle) * wind.rawStr * WIND_PARTICLE_SCALE;
+    const targetVy = Math.sin(wind.angle) * wind.rawStr * WIND_PARTICLE_SCALE;
     const conv = Math.min(1, WIND_CONV * dt);
 
-    G.PARTICLE_EMITTERS.forEach((e: any) => {
+    emitters.forEach((e: ParticleEmitter) => {
         e.spawnTimer += dt;
         const isFire = e.type === 'fire';
         const spawnInterval = isFire ? FIRE_SPAWN_INTERVAL : SMOKE_SPAWN_INTERVAL;
         const sub = isFire ? FIRE_SUB : SMOKE_SUB;
 
-        while (e.spawnTimer >= spawnInterval) {
+        while (e.spawnTimer >= spawnInterval && e.particles.length < MAX_PARTICLES) {
             e.spawnTimer -= spawnInterval;
             const [ox, oy] = sub[Math.floor(Math.random() * sub.length)];
             if (isFire) e.particles.push(_spawnFire(e, ox, oy));
             e.particles.push(_spawnSmoke(e, ox, oy, isFire));
         }
+        // Drain timer if cap was hit to avoid burst on uncap
+        if (e.particles.length >= MAX_PARTICLES) e.spawnTimer = 0;
 
-        // Exponential convergence toward wind terminal velocity.
-        // Older particles have drifted further — creates a natural elongated downwind trail.
-        e.particles.forEach((p: any) => {
+        e.particles.forEach(p => {
             p.vx += (targetVx - p.vx) * conv;
             p.vy += (targetVy - p.vy) * conv;
             p.x += p.vx * dt;
@@ -78,6 +77,6 @@ export const updateParticleEmitters = (dt: number) => {
             p.life -= 0.02 * dt;
         });
 
-        e.particles = e.particles.filter((p: any) => p.life > 0);
+        e.particles = e.particles.filter(p => p.life > 0);
     });
 };

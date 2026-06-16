@@ -1,13 +1,13 @@
-import { G } from '../../state';
-import { getHeliType } from '../../heli-types';
-import { getGround } from '../terrain';
+import type { Particle, DebrisPiece, ParticleSystemArgs } from './ctx';
 
-export const spawnExplosion = (heli: any, particles: any[], debris: any[], points: number[][], CARRIER: any) => {
-    const impactSpeed = Math.hypot(heli.vx, heli.vy, heli.vz || 0);
+export const init = ({ ctx }: ParticleSystemArgs) => {
+    const { particles, debris, getGround, getHeliType } = ctx;
+    const heli = ctx.heli;
+    const impactSpeed = Math.hypot(heli.vx, heli.vy, heli.vz);
     const intensity = Math.min(1.0, impactSpeed / 0.25);
     const count = Math.floor(30 + intensity * 80);
     const x = heli.x, y = heli.y;
-    const z = Math.max(heli.z, getGround(heli.x, heli.y, points, CARRIER) + 0.1);
+    const z = Math.max(heli.z, getGround(heli.x, heli.y) + 0.1);
     const fwdX = impactSpeed > 0.01 ? heli.vx / impactSpeed : 0;
     const fwdY = impactSpeed > 0.01 ? heli.vy / impactSpeed : 0;
 
@@ -31,7 +31,7 @@ export const spawnExplosion = (heli: any, particles: any[], debris: any[], point
                 ? `${220 + Math.floor(Math.random() * 35)}, ${Math.floor(Math.random() * 120)}, 0`
                 : `${80 + Math.floor(Math.random() * 60)}, ${70 + Math.floor(Math.random() * 40)}, ${60 + Math.floor(Math.random() * 40)}`,
             isSmoke: !isFire,
-        });
+        } satisfies Particle);
     }
 
     const shrapnel = Math.floor(15 + intensity * 30);
@@ -51,7 +51,7 @@ export const spawnExplosion = (heli: any, particles: any[], debris: any[], point
             maxLife: 2.0,
             color: `${180 + Math.floor(Math.random() * 60)}, ${160 + Math.floor(Math.random() * 40)}, ${100 + Math.floor(Math.random() * 50)}`,
             isMetal: true,
-        });
+        } satisfies Particle);
     }
 
     const _ht = getHeliType(heli.type);
@@ -80,7 +80,7 @@ export const spawnExplosion = (heli: any, particles: any[], debris: any[], point
             w: part.w, h: part.h, color: part.color, stroke: part.stroke,
             life: 3.0 + Math.random() * 2.0,
             bounced: false,
-        });
+        } satisfies DebrisPiece);
     });
 
     for (let i = 0; i < 8; i++) {
@@ -100,14 +100,15 @@ export const spawnExplosion = (heli: any, particles: any[], debris: any[], point
                     maxLife: 0.8,
                     color: `${60 + Math.floor(Math.random() * 40)}, ${55 + Math.floor(Math.random() * 30)}, ${50 + Math.floor(Math.random() * 30)}`,
                     isSmoke: true,
-                });
+                } satisfies Particle);
             }
         }, i * 120);
     }
 };
 
-export const updateDebris = () => {
-    G.debris.forEach(d => {
+export const update = ({ ctx }: ParticleSystemArgs) => {
+    const { debris, particles, getGround } = ctx;
+    debris.forEach(d => {
         d.x += d.vx;
         d.y += d.vy;
         d.z += d.vz;
@@ -115,7 +116,7 @@ export const updateDebris = () => {
         d.angle += d.av;
         d.av *= 0.98;
         d.life -= 0.016;
-        const gz = getGround(d.x, d.y, G.points, G.CARRIER);
+        const gz = getGround(d.x, d.y);
         if (d.z <= gz) {
             d.z = gz;
             d.vz = Math.abs(d.vz) * 0.25;
@@ -123,16 +124,17 @@ export const updateDebris = () => {
             d.vy *= 0.6;
             d.av *= 0.4;
             if (!d.bounced) {
-                G.particles.push({
+                particles.push({
                     x: d.x, y: d.y, z: gz + 0.05,
                     vx: (Math.random() - 0.5) * 0.03,
                     vy: (Math.random() - 0.5) * 0.03,
                     vz: 0.015, gravity: 0, size: 4, life: 0.3, maxLife: 0.3,
                     color: '150,130,100', isSmoke: true,
-                });
+                } satisfies Particle);
                 d.bounced = true;
             }
         }
     });
-    G.debris = G.debris.filter(d => d.life > 0);
+    for (let i = debris.length - 1; i >= 0; i--)
+        if (debris[i].life <= 0) debris.splice(i, 1);
 };
