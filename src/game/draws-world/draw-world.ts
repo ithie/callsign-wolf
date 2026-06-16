@@ -69,6 +69,8 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         const _inNightConeRect = (x: number, y: number, w: number, l: number, angle: number): boolean => {
             if (!_night || _lightning) return true;
             const cosA = Math.cos(angle), sinA = Math.sin(angle);
+            const dx = _haX - x, dy = _haY - y;
+            if (Math.abs(dx * cosA + dy * sinA) <= w && Math.abs(-dx * sinA + dy * cosA) <= l) return true;
             return ([-w, w] as const).some(rx => ([-l, l] as const).some(ry =>
                 _inNightCone(x + rx * cosA - ry * sinA, y + rx * sinA + ry * cosA)
             ));

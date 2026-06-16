@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import * as Downwash from './downwash';
 import type { ParticlesCtx, ParticleSystemArgs } from './ctx';
 

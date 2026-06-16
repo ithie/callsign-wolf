@@ -43,26 +43,25 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
             const xLo = Math.max(Math.max(0, xFrom), d - Math.min(gridSize - 1, yTo) + 1);
             const xHi = Math.min(Math.min(gridSize - 1, xTo) - 1, d - Math.max(0, yFrom));
             for (let x = xLo; x <= xHi; x++) {
-            const y = d - x;
-            if (y < 0 || y >= gridSize - 1) continue;
+                const y = d - x;
+                if (y < 0 || y >= gridSize - 1) continue;
                 const h0 = G.points[x][y], h1 = G.points[x + 1][y];
                 const h2 = G.points[x + 1][y + 1], h3 = G.points[x][y + 1];
                 const fill = getFill(x, y, h0);
-                const rh0 = h0, rh1 = h1, rh2 = h2, rh3 = h3;
                 const p0x = hw + (x - y) * htW - ccX;
-                const p0y = hh + (x + y) * htH - rh0 * stepH - ccY;
+                const p0y = hh + (x + y) * htH - h0 * stepH - ccY;
                 const p1x = hw + (x + 1 - y) * htW - ccX;
-                const p1y = hh + (x + 1 + y) * htH - rh1 * stepH - ccY;
+                const p1y = hh + (x + 1 + y) * htH - h1 * stepH - ccY;
                 const p2x = hw + (x + 1 - (y + 1)) * htW - ccX;
-                const p2y = hh + (x + 1 + (y + 1)) * htH - rh2 * stepH - ccY;
+                const p2y = hh + (x + 1 + (y + 1)) * htH - h2 * stepH - ccY;
                 const p3x = hw + (x - (y + 1)) * htW - ccX;
-                const p3y = hh + (x + (y + 1)) * htH - rh3 * stepH - ccY;
+                const p3y = hh + (x + (y + 1)) * htH - h3 * stepH - ccY;
 
                 let batch = _terrainBatch.get(fill);
                 if (!batch) { batch = []; _terrainBatch.set(fill, batch); }
                 batch.push(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y);
-            } // end x
-        } // end d
+            }
+        }
 
         for (const [fill, coords] of _terrainBatch) {
             ctx.fillStyle = fill;
