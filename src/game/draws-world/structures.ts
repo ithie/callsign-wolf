@@ -21,6 +21,28 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         SceneRenderer.add(applyParts(WIND_TURBINE_DEF as any, { rotorAngle }), { x: tX, y: tY, z: gz, angle: 0 });
     };
 
+    const _drawDefLights = (x: number, y: number, def: { lights?: typeof WIND_TURBINE_DEF['lights'] }) => {
+        const lights = def.lights;
+        if (!lights?.length) return;
+        const gz = getGround(x, y);
+        SceneRenderer.add(null, { x: 0, y: 0, depth: x + y + 0.001, drawFn: (camX, camY) => {
+            ctx.shadowBlur = 0;
+            lights.forEach(l => {
+                const on = Math.floor(Date.now() / (500 / (l.blinkHz ?? 1))) % 2 === 0;
+                if (!on) return;
+                const p = isoFn(x + l.pos[0], y + l.pos[1], gz + l.pos[2], camX, camY);
+                ctx.fillStyle = l.glowColor ?? 'rgba(255,60,0,0.25)';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, l.glowRadius ?? 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = l.color ?? '#ff2200';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, l.radius ?? 1.5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }});
+    };
+
     const _drawPlaneWreck = (wx: number, wy: number, angle: number) => {
         const gz = getGround(wx, wy);
         SceneRenderer.add(PLANE_WRECK_DEF as any, { x: wx, y: wy, z: gz, angle });
@@ -122,5 +144,5 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         });
     };
 
-    return { _drawWindTurbine, _drawPlaneWreck, _drawBrokenSailboat, _drawHangar, _drawLighthouse, _renderWindsock, _drawWindsock, _drawBaywatchObjects };
+    return { _drawWindTurbine, _drawDefLights, _drawPlaneWreck, _drawBrokenSailboat, _drawHangar, _drawLighthouse, _renderWindsock, _drawWindsock, _drawBaywatchObjects };
 };

@@ -398,6 +398,10 @@
           ctx.lineTo(wx + Math.cos(a) * 3 * tSize, wy + Math.sin(a) * 3 * tSize);
           ctx.stroke();
         }
+        ctx.fillStyle = "#ff2200";
+        ctx.beginPath();
+        ctx.arc(wx, wy - tSize * 0.35, Math.max(2, tSize * 0.18), 0, Math.PI * 2);
+        ctx.fill();
         ctx.shadowBlur = 0;
         if (isSelected && wtUI) {
           wtUI.style.display = "block";

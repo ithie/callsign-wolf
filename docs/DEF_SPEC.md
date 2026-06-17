@@ -136,6 +136,24 @@ yMin = obj.y + lz.y − lz.h,  yMax = obj.y + lz.y + lz.h
 z    = waterLevel + lz.z
 ```
 
+### `lights`
+
+Defines point lights that blink and glow at a fixed local position. Rendered as screen-space circles via `drawFn` after the geometry, depth-sorted alongside the object. Supported on any DEF; currently used on `wind_turbine.zdef`.
+
+```typescript
+interface DEFLight {
+    id: string;
+    pos: [number, number, number]; // local X, Y, Z position
+    color: string;                 // core dot colour (e.g. "#ff2200")
+    glowColor?: string;            // outer glow fill (default: "rgba(255,60,0,0.35)")
+    radius?: number;               // core dot radius in screen pixels (default: 4)
+    glowRadius?: number;           // glow circle radius in screen pixels (default: 13)
+    blinkHz?: number;              // blink frequency in Hz (default: 1.0)
+}
+```
+
+Lights are rendered via `_drawDefLights(x, y, def)` in `structures.ts` — a generic helper that works with any DEF. Unlike geometry, lights are **always visible** within the night cone regardless of `isVisible` culling. This means a wind turbine beacon can be seen even when the turbine itself is scrolled off-screen. The blink period is `500 / blinkHz` ms on / off.
+
 ---
 
 ## DEF Schema
@@ -146,6 +164,7 @@ interface DEF {
     pivot: [number, number, number]; // local origin offset (usually [0,0,0])
     faces: DEFFace[];
     collisionBoxes?: DEFCollisionBox[];
+    lights?: DEFLight[];             // blinking point lights (screen-space overlay)
     rescueZones?: DEFRescueZone[];   // gameplay pickup/dropoff regions
     landingZone?: DEFLandingZone;    // helicopter landing pad
 }

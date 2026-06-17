@@ -5157,66 +5157,6 @@
         color: "#2a4a2a"
       },
       {
-        id: "wfl",
-        normal: [
-          0,
-          -1
-        ],
-        verts: [
-          [
-            1.65,
-            -0.45,
-            0
-          ],
-          [
-            1.95,
-            -0.45,
-            0
-          ],
-          [
-            1.95,
-            -0.45,
-            0.22
-          ],
-          [
-            1.65,
-            -0.45,
-            0.22
-          ]
-        ],
-        color: "#1a2e1a"
-      },
-      {
-        id: "wfr",
-        normal: [
-          0,
-          1
-        ],
-        verts: [
-          [
-            1.65,
-            0.45,
-            0
-          ],
-          [
-            1.95,
-            0.45,
-            0
-          ],
-          [
-            1.95,
-            0.45,
-            0.22
-          ],
-          [
-            1.65,
-            0.45,
-            0.22
-          ]
-        ],
-        color: "#1a2e1a"
-      },
-      {
         id: "wrl",
         normal: [
           0,
@@ -5275,6 +5215,22 @@
           ]
         ],
         color: "#1a2e1a"
+      }
+    ],
+    parts: [
+      {
+        id: "wheel_front_L",
+        rotate: { pivot: [1.8, -0.45, 0.11], axis: [0, 0, 1], param: "steerAngle" },
+        faces: [
+          { id: "wfl", normal: [0, -1], verts: [[1.65, -0.45, 0], [1.95, -0.45, 0], [1.95, -0.45, 0.22], [1.65, -0.45, 0.22]], color: "#1a2e1a" }
+        ]
+      },
+      {
+        id: "wheel_front_R",
+        rotate: { pivot: [1.8, 0.45, 0.11], axis: [0, 0, 1], param: "steerAngle" },
+        faces: [
+          { id: "wfr", normal: [0, 1], verts: [[1.65, 0.45, 0], [1.95, 0.45, 0], [1.95, 0.45, 0.22], [1.65, 0.45, 0.22]], color: "#1a2e1a" }
+        ]
       }
     ]
   };
@@ -5652,6 +5608,68 @@
     ]
   };
 
+  // ../src/game/models/carrier_car.zdef
+  var carrier_car_default = {
+    id: "carrier_car",
+    pivot: [0, 0, 0],
+    faces: [
+      { id: "body_floor", verts: [[-0.5, -0.36, 0], [0.5, -0.36, 0], [0.5, 0.36, 0], [-0.5, 0.36, 0]], color: "#888888" },
+      { id: "body_L", normal: [-1, 0], verts: [[-0.5, 0.36, 0], [-0.5, -0.36, 0], [-0.5, -0.36, 0.15], [-0.5, 0.36, 0.15]], color: "#666666" },
+      { id: "body_back", normal: [0, -1], verts: [[-0.5, -0.36, 0], [0.5, -0.36, 0], [0.5, -0.36, 0.15], [-0.5, -0.36, 0.15]], color: "#dddddd" },
+      { id: "body_R", normal: [1, 0], verts: [[0.5, -0.36, 0], [0.5, 0.36, 0], [0.5, 0.36, 0.15], [0.5, -0.36, 0.15]], color: "#666666" },
+      { id: "body_front", normal: [0, 1], verts: [[0.5, 0.36, 0], [-0.5, 0.36, 0], [-0.5, 0.36, 0.15], [0.5, 0.36, 0.15]], color: "#dddddd" },
+      { id: "body_top", verts: [[-0.5, -0.36, 0.15], [0.5, -0.36, 0.15], [0.5, 0.36, 0.15], [-0.5, 0.36, 0.15]], color: "#dddddd" },
+      { id: "eq_floor", verts: [[0.28, -0.288, 0.15], [0.48, -0.288, 0.15], [0.48, -0.038, 0.15], [0.28, -0.038, 0.15]], color: "#aa0000" },
+      { id: "eq_back", normal: [0, -1], verts: [[0.28, -0.288, 0.15], [0.48, -0.288, 0.15], [0.48, -0.288, 0.33], [0.28, -0.288, 0.33]], color: "#ee0000" },
+      { id: "eq_R", normal: [1, 0], verts: [[0.48, -0.288, 0.15], [0.48, -0.038, 0.15], [0.48, -0.038, 0.33], [0.48, -0.288, 0.33]], color: "#880000" },
+      { id: "eq_front", normal: [0, 1], verts: [[0.48, -0.038, 0.15], [0.28, -0.038, 0.15], [0.28, -0.038, 0.33], [0.48, -0.038, 0.33]], color: "#aa0000" },
+      { id: "eq_L", normal: [-1, 0], verts: [[0.28, -0.038, 0.15], [0.28, -0.288, 0.15], [0.28, -0.288, 0.33], [0.28, -0.038, 0.33]], color: "#880000" },
+      { id: "eq_top", verts: [[0.28, -0.288, 0.33], [0.48, -0.288, 0.33], [0.48, -0.038, 0.33], [0.28, -0.038, 0.33]], color: "#cc0000" },
+      { id: "cab_floor", verts: [[-0.5, -0.36, 0.15], [0.25, -0.36, 0.15], [0.25, 0.36, 0.15], [-0.5, 0.36, 0.15]], color: "#aaaaaa" },
+      { id: "cab_L", normal: [-1, 0], verts: [[-0.5, 0.36, 0.15], [-0.5, -0.36, 0.15], [-0.5, -0.36, 0.37], [-0.5, 0.36, 0.37]], color: "#666666" },
+      { id: "cab_back", normal: [0, -1], verts: [[-0.5, -0.36, 0.15], [0.25, -0.36, 0.15], [0.25, -0.36, 0.37], [-0.5, -0.36, 0.37]], color: "#ffffff" },
+      { id: "cab_R", normal: [1, 0], verts: [[0.25, -0.36, 0.15], [0.25, 0.36, 0.15], [0.25, 0.36, 0.37], [0.25, -0.36, 0.37]], color: "#666666" },
+      { id: "cab_front", normal: [0, 1], verts: [[0.25, 0.36, 0.15], [-0.5, 0.36, 0.15], [-0.5, 0.36, 0.37], [0.25, 0.36, 0.37]], color: "#aaaaaa" },
+      { id: "cab_top", verts: [[-0.5, -0.36, 0.37], [0.25, -0.36, 0.37], [0.25, 0.36, 0.37], [-0.5, 0.36, 0.37]], color: "#eeeeee" },
+      { id: "w_front_L", normal: [0, -1], verts: [[-0.425, -0.36, 0], [-0.275, -0.36, 0], [-0.275, -0.36, 0.25], [-0.425, -0.36, 0.25]], color: "#222222" },
+      { id: "w_front_R", normal: [0, 1], verts: [[-0.275, 0.36, 0], [-0.425, 0.36, 0], [-0.425, 0.36, 0.25], [-0.275, 0.36, 0.25]], color: "#222222" }
+    ],
+    parts: [
+      {
+        id: "wheel_rear_L",
+        rotate: { pivot: [0.35, -0.36, 0.125], axis: [0, 0, 1], param: "steerAngle" },
+        faces: [
+          { id: "w_rear_L", normal: [0, -1], verts: [[0.275, -0.36, 0], [0.425, -0.36, 0], [0.425, -0.36, 0.25], [0.275, -0.36, 0.25]], color: "#222222" }
+        ]
+      },
+      {
+        id: "wheel_rear_R",
+        rotate: { pivot: [0.35, 0.36, 0.125], axis: [0, 0, 1], param: "steerAngle" },
+        faces: [
+          { id: "w_rear_R", normal: [0, 1], verts: [[0.425, 0.36, 0], [0.275, 0.36, 0], [0.275, 0.36, 0.25], [0.425, 0.36, 0.25]], color: "#222222" }
+        ]
+      }
+    ]
+  };
+
+  // ../src/game/models/carrier_deck_tractor.zdef
+  var carrier_deck_tractor_default = {
+    id: "carrier_deck_tractor",
+    pivot: [0, 0, 0],
+    faces: [
+      { id: "floor", verts: [[-0.5, -0.36, 0], [0.5, -0.36, 0], [0.5, 0.36, 0], [-0.5, 0.36, 0]], color: "#b09000" },
+      { id: "left", normal: [-1, 0], verts: [[-0.5, 0.36, 0], [-0.5, -0.36, 0], [-0.5, -0.36, 0.37], [-0.5, 0.36, 0.37]], color: "#8a6c00" },
+      { id: "back", normal: [0, -1], verts: [[-0.5, -0.36, 0], [0.5, -0.36, 0], [0.5, -0.36, 0.37], [-0.5, -0.36, 0.37]], color: "#e0b800" },
+      { id: "right", normal: [1, 0], verts: [[0.5, -0.36, 0], [0.5, 0.36, 0], [0.5, 0.36, 0.37], [0.5, -0.36, 0.37]], color: "#8a6c00" },
+      { id: "front", normal: [0, 1], verts: [[0.5, 0.36, 0], [-0.5, 0.36, 0], [-0.5, 0.36, 0.37], [0.5, 0.36, 0.37]], color: "#b09000" },
+      { id: "top", verts: [[-0.5, -0.36, 0.37], [0.5, -0.36, 0.37], [0.5, 0.36, 0.37], [-0.5, 0.36, 0.37]], color: "#caa800" },
+      { id: "wfl", normal: [0, -1], verts: [[-0.425, -0.36, 0], [-0.275, -0.36, 0], [-0.275, -0.36, 0.25], [-0.425, -0.36, 0.25]], color: "#222222" },
+      { id: "wfr", normal: [0, 1], verts: [[-0.275, 0.36, 0], [-0.425, 0.36, 0], [-0.425, 0.36, 0.25], [-0.275, 0.36, 0.25]], color: "#222222" },
+      { id: "wrl", normal: [0, -1], verts: [[0.275, -0.36, 0], [0.425, -0.36, 0], [0.425, -0.36, 0.25], [0.275, -0.36, 0.25]], color: "#222222" },
+      { id: "wrr", normal: [0, 1], verts: [[0.425, 0.36, 0], [0.275, 0.36, 0], [0.275, 0.36, 0.25], [0.425, 0.36, 0.25]], color: "#222222" }
+    ]
+  };
+
   // editor-view-entry/zdef-main.ts
   var vscode = acquireVsCodeApi();
   var notifyTimer = null;
@@ -5676,7 +5694,9 @@
     carrier_tower: { def: toDefCast(carrier_tower_default), label: "Carrier Tower", isStatic: false, movementType: "ship" },
     fuel_truck_chassis: { def: toDefCast(fuel_truck_chassis_default), label: "Fuel Truck (Chassis)", isStatic: true, movementType: "none" },
     fuel_truck_tank: { def: toDefCast(fuel_truck_tank_default), label: "Fuel Truck (Tank)", isStatic: true, movementType: "none" },
-    fuel_truck_cab: { def: toDefCast(fuel_truck_cab_default), label: "Fuel Truck (Cab)", isStatic: true, movementType: "none" }
+    fuel_truck_cab: { def: toDefCast(fuel_truck_cab_default), label: "Fuel Truck (Cab)", isStatic: true, movementType: "none" },
+    carrier_car: { def: toDefCast(carrier_car_default), label: "Carrier Car", isStatic: false, movementType: "auto" },
+    carrier_deck_tractor: { def: toDefCast(carrier_deck_tractor_default), label: "Carrier Deck Tractor", isStatic: false, movementType: "auto" }
   };
   var state = {
     def: null,
@@ -5710,9 +5730,10 @@
   var PIVOT_COLORS = ["#ff6644", "#44bbff", "#44ff88", "#ffaa44", "#cc44ff"];
   var DEG = Math.PI / 180;
   var QUAD_DEFAULT_ANGLES = [225, 315, 135, 45];
-  var quads = QUAD_DEFAULT_ANGLES.map((a) => ({
-    angle: a * DEG,
-    defaultAngle: a * DEG,
+  var GAME_VIEW_Q = 3;
+  var quads = QUAD_DEFAULT_ANGLES.map((a, i) => ({
+    angle: i === GAME_VIEW_Q ? 0 : a * DEG,
+    defaultAngle: i === GAME_VIEW_Q ? 0 : a * DEG,
     cam: { x: 0, y: 0 },
     zoom: 3
   }));
@@ -5729,10 +5750,12 @@
   var positionResetButtons = () => {
     const qw = area.clientWidth / 2, qh = area.clientHeight / 2;
     document.querySelectorAll(".quad-reset").forEach((btn, q) => {
+      btn.style.display = q === GAME_VIEW_Q ? "none" : "";
       btn.style.top = Math.floor(q / 2) * qh + 4 + "px";
       btn.style.left = q % 2 * qw + qw - 24 + "px";
     });
     document.querySelectorAll(".quad-grid-toggle").forEach((btn, q) => {
+      btn.style.display = q === GAME_VIEW_Q ? "none" : "";
       btn.style.top = Math.floor(q / 2) * qh + 4 + "px";
       btn.style.left = q % 2 * qw + qw - 48 + "px";
     });
@@ -6014,14 +6037,20 @@
       }
       drawGrid(g);
       drawGridV(gv);
-      ctx.strokeStyle = q === activeQ ? "rgba(100,180,255,0.55)" : "rgba(255,255,255,0.07)";
+      const isGameView = q === GAME_VIEW_Q;
+      const activeColor = isGameView ? "rgba(255,190,60,0.7)" : "rgba(100,180,255,0.55)";
+      ctx.strokeStyle = q === activeQ ? activeColor : isGameView ? "rgba(255,180,50,0.2)" : "rgba(255,255,255,0.07)";
       ctx.lineWidth = q === activeQ ? 2 : 1;
       ctx.strokeRect(ox + 0.5, oy + 0.5, qw - 1, qh - 1);
-      const deg = (Math.round(quads[q].angle * 180 / Math.PI) % 360 + 360) % 360;
-      ctx.fillStyle = q === activeQ ? "rgba(140,200,255,0.8)" : "rgba(255,255,255,0.2)";
+      ctx.fillStyle = q === activeQ ? isGameView ? "rgba(255,200,80,0.9)" : "rgba(140,200,255,0.8)" : isGameView ? "rgba(255,180,50,0.4)" : "rgba(255,255,255,0.2)";
       ctx.font = "10px monospace";
       ctx.textAlign = "left";
-      ctx.fillText(`${deg}\xB0`, ox + 6, oy + 14);
+      if (isGameView) {
+        ctx.fillText("SPIEL", ox + 6, oy + 14);
+      } else {
+        const deg = (Math.round(quads[q].angle * 180 / Math.PI) % 360 + 360) % 360;
+        ctx.fillText(`${deg}\xB0`, ox + 6, oy + 14);
+      }
       ctx.restore();
     }
     ctx.strokeStyle = "rgba(255,255,255,0.12)";
@@ -6609,7 +6638,7 @@
     }
     if (isDragging) {
       if (Math.abs(dsx) + Math.abs(dsy) > 3) dragMoved = true;
-      if (e.shiftKey) {
+      if (e.shiftKey && lockedQ !== GAME_VIEW_Q) {
         quads[lockedQ].angle = (quads[lockedQ].angle + dsx * 8e-3) % (Math.PI * 2);
         if (quads[lockedQ].angle < 0) quads[lockedQ].angle += Math.PI * 2;
       } else {

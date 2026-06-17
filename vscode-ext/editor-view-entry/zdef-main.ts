@@ -21,6 +21,8 @@ import CARRIER_TOWER_RAW from '../../src/game/models/carrier_tower.zdef';
 import FUEL_TRUCK_CHASSIS_RAW from '../../src/game/models/fuel_truck_chassis.zdef';
 import FUEL_TRUCK_TANK_RAW from '../../src/game/models/fuel_truck_tank.zdef';
 import FUEL_TRUCK_CAB_RAW from '../../src/game/models/fuel_truck_cab.zdef';
+import CARRIER_CAR_RAW from '../../src/game/models/carrier_car.zdef';
+import CARRIER_DECK_TRACTOR_RAW from '../../src/game/models/carrier_deck_tractor.zdef';
 
 interface RescueZone { x: number; y: number; w: number; h: number; z?: number; role: string; }
 interface LandingZone { x: number; y: number; w: number; h: number; z: number; }
@@ -51,6 +53,8 @@ const PRESETS: Record<string, { def: DEFModel; label: string; isStatic: boolean;
     fuel_truck_chassis:   { def: toDefCast(FUEL_TRUCK_CHASSIS_RAW), label: 'Fuel Truck (Chassis)', isStatic: true, movementType: 'none' },
     fuel_truck_tank:      { def: toDefCast(FUEL_TRUCK_TANK_RAW),  label: 'Fuel Truck (Tank)',    isStatic: true,  movementType: 'none' },
     fuel_truck_cab:       { def: toDefCast(FUEL_TRUCK_CAB_RAW),   label: 'Fuel Truck (Cab)',     isStatic: true,  movementType: 'none' },
+    carrier_car:          { def: toDefCast(CARRIER_CAR_RAW),      label: 'Carrier Car',          isStatic: false, movementType: 'auto' },
+    carrier_deck_tractor: { def: toDefCast(CARRIER_DECK_TRACTOR_RAW), label: 'Carrier Deck Tractor', isStatic: false, movementType: 'auto' },
 };
 
 const state: {
@@ -98,9 +102,10 @@ const getActiveFaces = (): DEFFace[] => {
 const PIVOT_COLORS = ['#ff6644', '#44bbff', '#44ff88', '#ffaa44', '#cc44ff'];
 const DEG = Math.PI / 180;
 const QUAD_DEFAULT_ANGLES = [225, 315, 135, 45];
-const quads: Quad[] = QUAD_DEFAULT_ANGLES.map(a => ({
-    angle: a * DEG,
-    defaultAngle: a * DEG,
+const GAME_VIEW_Q = 3;
+const quads: Quad[] = QUAD_DEFAULT_ANGLES.map((a, i) => ({
+    angle: i === GAME_VIEW_Q ? 0 : a * DEG,
+    defaultAngle: i === GAME_VIEW_Q ? 0 : a * DEG,
     cam: { x: 0, y: 0 },
     zoom: 3.0,
 }));
@@ -115,10 +120,12 @@ const ctx = canvas.getContext('2d')!;
 const positionResetButtons = (): void => {
     const qw = area.clientWidth / 2, qh = area.clientHeight / 2;
     document.querySelectorAll<HTMLButtonElement>('.quad-reset').forEach((btn, q) => {
+        btn.style.display = q === GAME_VIEW_Q ? 'none' : '';
         btn.style.top = Math.floor(q / 2) * qh + 4 + 'px';
         btn.style.left = (q % 2) * qw + qw - 24 + 'px';
     });
     document.querySelectorAll<HTMLButtonElement>('.quad-grid-toggle').forEach((btn, q) => {
+        btn.style.display = q === GAME_VIEW_Q ? 'none' : '';
         btn.style.top = Math.floor(q / 2) * qh + 4 + 'px';
         btn.style.left = (q % 2) * qw + qw - 48 + 'px';
     });
@@ -350,13 +357,19 @@ const draw = (): void => {
 
         drawGrid(g); drawGridV(gv);
 
-        ctx.strokeStyle = q === activeQ ? 'rgba(100,180,255,0.55)' : 'rgba(255,255,255,0.07)';
+        const isGameView = q === GAME_VIEW_Q;
+        const activeColor = isGameView ? 'rgba(255,190,60,0.7)' : 'rgba(100,180,255,0.55)';
+        ctx.strokeStyle = q === activeQ ? activeColor : (isGameView ? 'rgba(255,180,50,0.2)' : 'rgba(255,255,255,0.07)');
         ctx.lineWidth = q === activeQ ? 2 : 1;
         ctx.strokeRect(ox + 0.5, oy + 0.5, qw - 1, qh - 1);
-        const deg = ((Math.round((quads[q].angle * 180) / Math.PI) % 360) + 360) % 360;
-        ctx.fillStyle = q === activeQ ? 'rgba(140,200,255,0.8)' : 'rgba(255,255,255,0.2)';
+        ctx.fillStyle = q === activeQ ? (isGameView ? 'rgba(255,200,80,0.9)' : 'rgba(140,200,255,0.8)') : (isGameView ? 'rgba(255,180,50,0.4)' : 'rgba(255,255,255,0.2)');
         ctx.font = '10px monospace'; ctx.textAlign = 'left';
-        ctx.fillText(`${deg}°`, ox + 6, oy + 14);
+        if (isGameView) {
+            ctx.fillText('SPIEL', ox + 6, oy + 14);
+        } else {
+            const deg = ((Math.round((quads[q].angle * 180) / Math.PI) % 360) + 360) % 360;
+            ctx.fillText(`${deg}°`, ox + 6, oy + 14);
+        }
         ctx.restore();
     }
 
@@ -848,7 +861,7 @@ window.addEventListener('mousemove', e => {
 
     if (isDragging) {
         if (Math.abs(dsx) + Math.abs(dsy) > 3) dragMoved = true;
-        if (e.shiftKey) {
+        if (e.shiftKey && lockedQ !== GAME_VIEW_Q) {
             quads[lockedQ].angle = (quads[lockedQ].angle + dsx * 0.008) % (Math.PI * 2);
             if (quads[lockedQ].angle < 0) quads[lockedQ].angle += Math.PI * 2;
         } else { quads[lockedQ].cam.x -= dsx; quads[lockedQ].cam.y -= dsy; }

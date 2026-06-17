@@ -29,6 +29,15 @@ declare module '*.zdef' {
                 normal?: [number, number];
             }>;
         }>;
+        lights?: Array<{
+            id: string;
+            pos: [number, number, number];
+            color: string;
+            glowColor?: string;
+            radius?: number;
+            glowRadius?: number;
+            blinkHz?: number;
+        }>;
         rescueZones?: Array<{
             x: number;
             y: number;

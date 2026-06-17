@@ -51,6 +51,8 @@ export interface DrawFuelTruckOpts {
     armTarget?: { x: number; y: number } | null;
     /** Returns true when fueling active (triggers nozzle blink). */
     getFuelingState?: () => boolean;
+    /** Front-wheel steer angle in radians. */
+    steerAngle?: number;
 }
 
 export const createDrawObjects = (
@@ -563,7 +565,7 @@ export const createDrawObjects = (
     // ── drawFuelTruck ──────────────────────────────────────────────────────────
     // Does NOT call SceneRenderer.flush() — caller is responsible.
     const drawFuelTruck = (tX: number, tY: number, angle: number, opts: DrawFuelTruckOpts = {}) => {
-        const { z = 0, armExtend = 0, armTarget = null, getFuelingState } = opts;
+        const { z = 0, armExtend = 0, armTarget = null, getFuelingState, steerAngle = 0 } = opts;
         const cosA = Math.cos(angle),
             sinA = Math.sin(angle);
         const tkDepth = tX + tY + 0.825 * (cosA + sinA);
@@ -572,7 +574,7 @@ export const createDrawObjects = (
         const pivotWX = tX + 0.3 * cosA;
         const pivotWY = tY + 0.3 * sinA;
 
-        SceneRenderer.add(FUEL_TRUCK_CHASSIS_DEF, { x: tX, y: tY, z, angle, depth: chDepth });
+        SceneRenderer.add(applyParts(FUEL_TRUCK_CHASSIS_DEF as any, { steerAngle }), { x: tX, y: tY, z, angle, depth: chDepth });
         SceneRenderer.add(FUEL_TRUCK_TANK_DEF, { x: tX, y: tY, z, angle, depth: tkDepth });
         SceneRenderer.add(FUEL_TRUCK_CAB_DEF, {
             x: tX,

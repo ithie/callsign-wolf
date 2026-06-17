@@ -4,6 +4,7 @@ import { getGround } from '../sim/terrain';
 import { isLightningActive } from '../lightning-state';
 import ORNI_WRECK_CARRY_DEF from '../models/ornithopter_wreck_carry.zdef';
 import ORNI_WRECK_RESIDUE_DEF from '../models/ornithopter_wreck_residue.zdef';
+import WIND_TURBINE_DEF from '../models/wind_turbine.zdef';
 
 import { createCarrierDraw } from './carrier';
 import { createVesselsDraw } from './vessels';
@@ -23,6 +24,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
     const { _drawBowWave, _drawBoatModel, _drawSubmarine, _drawResearchPlatform } = createVesselsDraw(dwCtx);
     const {
         _drawWindTurbine,
+        _drawDefLights,
         _drawPlaneWreck,
         _drawBrokenSailboat,
         _drawHangar,
@@ -153,6 +155,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         });
         G.WIND_TURBINES.forEach((wt: any) => {
             if (isVisible(wt.x, wt.y, visMargin) && _inNightCone(wt.x, wt.y)) _drawWindTurbine(wt.x, wt.y, wt.spinning);
+            if (_inNightCone(wt.x, wt.y)) _drawDefLights(wt.x, wt.y, WIND_TURBINE_DEF);
         });
         G.PLANE_WRECKS.forEach((pw: any) => {
             if (isVisible(pw.x, pw.y, visMargin) && _inNightCone(pw.x, pw.y)) _drawPlaneWreck(pw.x, pw.y, pw.angle);
@@ -171,6 +174,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 armExtend: G.fuelTruck.arm,
                 armTarget: { x: G.heli.x, y: G.heli.y },
                 getFuelingState: () => G.fuelTruck.state === 'FUELING',
+                steerAngle: G.fuelTruck.steerAngle ?? 0,
             });
         if (showPad && _inNightCone(G.PAD.xMin + 3, G.PAD.yMin + 3)) _drawPadLights(G.PAD.z, false);
         if (queueFoliage) queueFoliage(camX, camY);

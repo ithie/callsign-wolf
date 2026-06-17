@@ -104,6 +104,7 @@ export const G = {
         y: 0,
         angle: 0,
         arm: 0,
+        steerAngle: 0,
         localParkX: 0,
         localParkY: 0,
         localParkAngle: 0,
@@ -121,6 +122,7 @@ export const G = {
         // car.angle = front/drive direction (like ft.angle); body = car.angle + PI
         localParkAngle: Math.PI / 2 + 0.25 + Math.PI,
         t: 0,
+        steerAngle: 0,
         wps: null as { lx: number; ly: number }[] | null,
     },
 

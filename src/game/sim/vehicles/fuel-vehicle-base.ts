@@ -14,6 +14,7 @@ export interface FuelVehicleState {
     wps: { lx: number; ly: number }[] | null;
     t: number;
     arm?: number;
+    steerAngle?: number;
     state: string;
 }
 
@@ -119,13 +120,21 @@ export const runFuelVehicle = (v: FuelVehicleState, dt: number, _ctx: PhysicsCtx
     };
 
     const setAngleFromTangent = (t: number) => {
+        const prevAngle = v.angle;
         const eps = 0.03;
         const pFwd = sampleWorld(Math.min(1, t + eps));
         const pBwd = sampleWorld(Math.max(0, t - eps));
         v.angle = Math.atan2(pFwd.y - pBwd.y, pFwd.x - pBwd.x);
+        const delta = ((v.angle - prevAngle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        const target = Math.max(-0.45, Math.min(0.45, delta * 20));
+        v.steerAngle = (v.steerAngle ?? 0) * 0.88 + target * 0.12;
     };
 
-    if (v.state === VEHICLE_STATE.PARKED) { cfg.parkSnapFn?.(); return; }
+    if (v.state === VEHICLE_STATE.PARKED) {
+        cfg.parkSnapFn?.();
+        if (v.steerAngle) v.steerAngle *= 0.85;
+        return;
+    }
 
     // Heli started engine — abort to RETURNING from current position
     if (heli.engineOn && v.state !== VEHICLE_STATE.RETURNING) {

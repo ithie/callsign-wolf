@@ -4,9 +4,11 @@ import { VEHICLE_STATE } from '../../shared/types';
 import { applyParts } from '../def-utils';
 import { getGround } from '../sim/terrain';
 import CARRIER_DEF from '../models/carrier.zdef';
+import CARRIER_CAR_DEF from '../models/carrier_car.zdef';
+import CARRIER_DECK_TRACTOR_DEF from '../models/carrier_deck_tractor.zdef';
 
 export const createCarrierDraw = (dwCtx: DrawWorldCtx) => {
-    const { ctx, isoFn, SceneRenderer, tileW, drawFns: { drawTractor, drawHeli }, isVisible } = dwCtx;
+    const { ctx, isoFn, SceneRenderer, tileW, drawFns: { drawHeli }, isVisible } = dwCtx;
 
     const _setLightsOnDeck = (lights: Array<{ x: number; y: number }>, blink: boolean, z: number) => {
         const lz = z + 0.05;
@@ -57,25 +59,15 @@ export const createCarrierDraw = (dwCtx: DrawWorldCtx) => {
         SceneRenderer.flush(cx, cy);
 
         const ix = -5.5, iy = 2.6, iw = 4.5, il = 1.5, ih = 2.5;
-        const tractorData = [
-            { tx: 0.2, ty: 2.7, ta: Math.PI / 2, bc: '#9a7a00', bs: '#c8a000', bd: '#8a6c00', cc: '#b09000', cs: '#e0b800', ct: '#caa800' },
-            { tx: 1.4, ty: 2.7, ta: Math.PI / 2, bc: '#9a7a00', bs: '#c8a000', bd: '#8a6c00', cc: '#b09000', cs: '#e0b800', ct: '#caa800' },
-        ];
-        tractorData.forEach(t => {
-            const wx = objX + (t.tx + 0.5) * cosA - (t.ty + 0.35) * sinA;
-            const wy = objY + (t.tx + 0.5) * sinA + (t.ty + 0.35) * cosA;
-            SceneRenderer.add(null, {
-                x: wx, y: wy, z: deckZ,
-                drawFn: (dcx: number, dcy: number) =>
-                    drawTractor(objX, objY, angle, deckZ, dcx, dcy, t.tx, t.ty, t.ta, t.bc, t.bs, t.bd, t.cc, t.cs, t.ct),
-            });
+        const tractorAngle = Math.PI / 2 + angle;
+        ([{ tx: 0.2, ty: 2.7 }, { tx: 1.4, ty: 2.7 }] as const).forEach(({ tx, ty }) => {
+            const cx = objX + (tx - 0.36) * cosA - (ty + 0.5) * sinA;
+            const cy = objY + (tx - 0.36) * sinA + (ty + 0.5) * cosA;
+            SceneRenderer.add(CARRIER_DECK_TRACTOR_DEF as any, { x: cx, y: cy, z: deckZ + 0.01, angle: tractorAngle });
         });
         const car = G.carrierFuelCar;
-        SceneRenderer.add(null, {
-            x: car.x, y: car.y, z: deckZ,
-            drawFn: (dcx: number, dcy: number) =>
-                drawTractor(car.x, car.y, 0, deckZ, dcx, dcy, 0, 0, car.angle + Math.PI,
-                    '#888888', '#dddddd', '#666666', '#aaaaaa', '#ffffff', '#eeeeee'),
+        SceneRenderer.add(applyParts(CARRIER_CAR_DEF as any, { steerAngle: -(car.steerAngle ?? 0) }), {
+            x: car.x, y: car.y, z: deckZ + 0.01, angle: car.angle + Math.PI,
         });
         const towerWX = objX + (ix + iw / 2) * cosA - (iy + il / 2) * sinA;
         const towerWY = objY + (ix + iw / 2) * sinA + (iy + il / 2) * cosA;
