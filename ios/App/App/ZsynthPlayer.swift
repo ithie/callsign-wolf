@@ -120,7 +120,7 @@ final class ZsynthPlayer: NSObject {
 
     private static let volumePresets: [String: Float] = [
         "menu": 0.65,
-        "game": 0.35,
+        "game": 0.20,
     ]
 
     func play(key: String, context: String) {

@@ -20,9 +20,10 @@ final class HeliSoundPlayer {
     var isOrtho:    Bool  = false
     var tLFOFreq:   Float = 1.1
     var tLFODepth:  Float = 0.45
-    var tHarmN:     Int   = 8       // harmonic multiplier: carrier = blade_freq × tHarmN
-    var rotorGain:  Float = 5.0    // output boost — raise if too quiet, lower if too loud
+    var rotorGain:  Float = 1.5    // output boost — raise if too quiet, lower if too loud
     var needsReset: Bool  = false   // main thread sets; audio thread clears
+
+    private var _blades: Int = 4
 
     // Biquad coefficients — set once on initHeli, never changed mid-playback
     private var bqB0: Float = 0, bqB2: Float = 0
@@ -30,7 +31,6 @@ final class HeliSoundPlayer {
 
     // DSP state — only touched from audio render block
     private var oscPhase:       Float = 0
-    private var harmPhase:      Float = 0   // carrier oscillator (N × blade_freq)
     private var freqSmooth:     Float = 10  // smoothed blade frequency (80ms TC)
     private var lfoPhase:       Float = 0
     private var lfoFreqSmooth:  Float = 1.1
@@ -44,12 +44,6 @@ final class HeliSoundPlayer {
 
     private let sr: Float
     private var noiseTable: [Float] = []
-
-    private static let presets: [String: (blades: Int, clip: Float, bpf: Float, bpfQ: Float, harmN: Int)] = [
-        "dolphin":   (4, 3.0, 120, 2.5, 16),
-        "coasthawk": (4, 3.0, 110, 2.5, 16),
-        "atlas":     (3, 4.0,  90, 3.0, 16),
-    ]
 
     private init() {
         let sessionSR = AVAudioSession.sharedInstance().sampleRate
@@ -90,7 +84,7 @@ final class HeliSoundPlayer {
 
             if self.needsReset {
                 self.needsReset = false
-                self.oscPhase = 0; self.harmPhase = 0; self.lfoPhase = 0
+                self.oscPhase = 0; self.lfoPhase = 0
                 self.bqX1 = 0; self.bqX2 = 0; self.bqY1 = 0; self.bqY2 = 0
                 self.windLP = 0
             }
@@ -103,7 +97,6 @@ final class HeliSoundPlayer {
             let snap_ortho  = self.isOrtho
             let snap_lfoF   = self.tLFOFreq
             let snap_lfoD   = self.tLFODepth
-            let snap_harmN  = self.tHarmN
 
             // Time constants matching JS
             let volAlpha  = Float(1.0 - exp(-1.0 / Double(self.sr) / 0.06))
@@ -135,21 +128,20 @@ final class HeliSoundPlayer {
                     rotor = y * max(0, env)
 
                 } else {
-                    // AM synthesis: carrier at N×blade_freq, AM-modulated at blade_freq
-                    // Avoids bandpass attenuation — carrier is directly at the audible harmonic
+                    // Sawtooth at blade_freq → hard clip → bandpass at bpf Hz
+                    // Multiple harmonics of blade_freq beat through the bandpass → "flap flap" character
                     self.freqSmooth += (snap_tFreq - self.freqSmooth) * freqAlpha
 
-                    // Blade-frequency oscillator — drives the chop AM envelope
                     self.oscPhase += self.freqSmooth / self.sr
                     if self.oscPhase >= 1.0 { self.oscPhase -= 1.0 }
 
-                    // Carrier at Nth harmonic (e.g. 8 × 14.67 Hz ≈ 117 Hz for dolphin)
-                    self.harmPhase += (self.freqSmooth * Float(snap_harmN)) / self.sr
-                    if self.harmPhase >= 1.0 { self.harmPhase -= 1.0 }
-
-                    let saw     = 2.0 * self.harmPhase - 1.0
-                    let clipped = max(-1.0, min(1.0, saw * snap_clipK))
-                    rotor = clipped
+                    let saw = 2.0 * self.oscPhase - 1.0
+                    let x   = max(-1.0, min(1.0, saw * snap_clipK))
+                    let y   = self.bqB0 * x          + self.bqB2 * self.bqX2
+                            - self.bqA1 * self.bqY1  - self.bqA2 * self.bqY2
+                    self.bqX2 = self.bqX1; self.bqX1 = x
+                    self.bqY2 = self.bqY1; self.bqY1 = y
+                    rotor = y
                 }
 
                 // Wind: white noise → lowpass 200 Hz
@@ -188,17 +180,16 @@ final class HeliSoundPlayer {
 
     // MARK: - Public API
 
-    func initHeli(heliType: String) {
+    func initHeli(heliType: String, blades: Int = 4, clip: Float = 3.0, bpf: Float = 120, bpfQ: Float = 2.5) {
         tVol = 0; tWind = 0
         if heliType == "ornithopter" {
             isOrtho = true
             _computeBiquad(f: 700, q: 1.8)
         } else {
             isOrtho = false
-            let p = Self.presets[heliType] ?? Self.presets["dolphin"]!
-            clipK  = 1.0 + p.clip * 8.0
-            tHarmN = p.harmN
-            _computeBiquad(f: p.bpf, q: p.bpfQ)  // kept for potential future use
+            _blades = blades
+            clipK   = 1.0 + clip * 8.0
+            _computeBiquad(f: bpf, q: bpfQ)
         }
         needsReset = true
     }
@@ -206,14 +197,12 @@ final class HeliSoundPlayer {
     func updateSound(rpm: Float, engineOn: Bool, windSpeed: Float,
                      heliType: String, flapRate: Float, sfxEnabled: Bool) {
         tWind = min(1.0, windSpeed * 2000.0) * 0.5
-        if heliType == "ornithopter" {
+        if isOrtho {
             tLFOFreq  = 1.1 * flapRate
             tLFODepth = 0.45 * max(0.1, rpm)
             tVol = sfxEnabled ? (engineOn ? 1.5 * (0.08 + 0.35 * rpm) : 0.06 * rpm) : 0
         } else {
-            let p = Self.presets[heliType] ?? Self.presets["dolphin"]!
-            tFreq = max(1.0, (rpm * 220.0 / 60.0) * Float(p.blades))
-            // No AM halving — clipped sawtooth at full amplitude; scale conservatively to avoid clip
+            tFreq = max(1.0, (rpm * 220.0 / 60.0) * Float(_blades))
             tVol  = sfxEnabled ? (engineOn ? 0.8 * (0.2 + 0.8 * rpm) : 0.5 * rpm) : 0
         }
     }
@@ -277,7 +266,11 @@ final class HeliSoundHandler: NSObject, WKScriptMessageHandler {
         switch action {
         case "init":
             let heliType = body["heliType"] as? String ?? "dolphin"
-            HeliSoundPlayer.shared.initHeli(heliType: heliType)
+            let blades   = (body["blades"]  as? Int)                    ?? 4
+            let clip     = (body["clip"]    as? Double).map(Float.init) ?? 3.0
+            let bpf      = (body["bpf"]     as? Double).map(Float.init) ?? 120.0
+            let bpfQ     = (body["bpfQ"]    as? Double).map(Float.init) ?? 2.5
+            HeliSoundPlayer.shared.initHeli(heliType: heliType, blades: blades, clip: clip, bpf: bpf, bpfQ: bpfQ)
 
         case "update":
             let rpm      = (body["rpm"]       as? Double).map(Float.init) ?? 0

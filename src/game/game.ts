@@ -541,6 +541,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
 
     _showRainOverlay(_missionRain, _lmd.windDir ?? 225, _lmd.windStr ?? 1);
     cancelAnimationFrame(_rafId);
+    try { soundHandler.play(_lmd.music || 'clike', 'game'); } catch { /* audio unavailable */ }
     initHeliSound(G.heli.type);
     _briefingActive = true;
     _rafId = requestAnimationFrame(drawScene);
@@ -549,7 +550,6 @@ const launchMission = async (showLoader = true): Promise<void> => {
     const rank = getRank(_session.rankOverride ?? 0, _getRankMissions());
     const address = I18N.BRIEFING_ADDRESS(I18N.RANK_NAME(rank.key), _session.playerName).toUpperCase();
 
-    try { soundHandler.play(_lmd.music || 'clike', 'game'); } catch { /* audio unavailable */ }
     Briefing.show({ headline: _lmd.headline, sublines: _lmd.sublines, briefing: _lmd.briefing, address }, () => {
         _briefingActive = false;
         _missionStartTime = Date.now();
@@ -1170,11 +1170,9 @@ const _onloadMain = () => {
             cancelAnimationFrame(_rafId);
             _rafId = 0;
             stopHeliSound();
-            soundHandler.stop();
             setTouchVisible(false);
         },
         onResume: () => {
-            if (!soundHandler.state.isMuted) soundHandler.play(soundHandler.state.activeTheme, 'game');
             initHeliSound(G.heli.type);
             _rafId = requestAnimationFrame(drawScene);
             setTouchVisible(true);

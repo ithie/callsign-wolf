@@ -52,6 +52,23 @@ const isApp = process.env.VITE_TARGET === 'app';
 
 const storageWebStub = resolve(__dirname, 'src/game/storage-stub.ts');
 
+const _appStubs: Record<string, string> = isApp
+    ? {
+          [resolve(__dirname, 'src/game/heli-sound')]:     resolve(__dirname, 'src/game/heli-sound.app-stub.ts'),
+          [resolve(__dirname, 'src/shared/ZsynthPlayer')]:  resolve(__dirname, 'src/shared/ZsynthPlayer.app-stub.ts'),
+      }
+    : { [resolve(__dirname, 'src/game/storage')]: storageWebStub };
+
+const stubsPlugin = (): Plugin => ({
+    name: 'stubs',
+    enforce: 'pre',
+    resolveId(id, importer) {
+        if (!importer || !id.startsWith('.')) return;
+        const abs = resolve(dirname(importer), id).replace(/\.[jt]sx?$/, '');
+        return _appStubs[abs];
+    },
+});
+
 const injectAppCsp = (): Plugin => ({
     name: 'inject-app-csp',
     transformIndexHtml: html =>
@@ -65,21 +82,10 @@ export default defineConfig(({ command }) => {
     return {
         define: { __APP_VERSION__: JSON.stringify(version) },
         resolve: {
-            alias: {
-                '@': resolve(__dirname, 'src'),
-                ...(isApp
-                    ? {
-                        [resolve(__dirname, 'src/shared/ZsynthPlayer')]: resolve(__dirname, 'src/shared/ZsynthPlayer.app-stub.ts'),
-                        [resolve(__dirname, 'src/game/heli-sound')]:      resolve(__dirname, 'src/game/heli-sound.app-stub.ts'),
-                      }
-                    : {}),
-                ...(!isApp
-                    ? { [resolve(__dirname, 'src/game/storage')]: storageWebStub }
-                    : {}),
-            },
+            alias: { '@': resolve(__dirname, 'src') },
         },
         base: isApp ? './' : command === 'build' ? '/callsign-wolf/' : '/',
-        plugins: [zsongPlugin(), zdefPlugin(), zcampaignPlugin(), makeSingleFile(), swapEntry(), bundleSizeGuard(), ...(isApp ? [injectAppCsp()] : [])],
+        plugins: [zsongPlugin(), zdefPlugin(), zcampaignPlugin(), makeSingleFile(), stubsPlugin(), swapEntry(), bundleSizeGuard(), ...(isApp ? [injectAppCsp()] : [])],
         build: {
             outDir: 'dist/',
 
