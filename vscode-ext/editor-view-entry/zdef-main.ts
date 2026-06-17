@@ -103,6 +103,8 @@ const PIVOT_COLORS = ['#ff6644', '#44bbff', '#44ff88', '#ffaa44', '#cc44ff'];
 const DEG = Math.PI / 180;
 const QUAD_DEFAULT_ANGLES = [225, 315, 135, 45];
 const GAME_VIEW_Q = 3;
+grids[GAME_VIEW_Q].visible = false;
+gridVs[GAME_VIEW_Q].visible = false;
 const quads: Quad[] = QUAD_DEFAULT_ANGLES.map((a, i) => ({
     angle: i === GAME_VIEW_Q ? 0 : a * DEG,
     defaultAngle: i === GAME_VIEW_Q ? 0 : a * DEG,

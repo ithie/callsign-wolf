@@ -6,6 +6,7 @@ import { getGround } from '../sim/terrain';
 import CARRIER_DEF from '../models/carrier.zdef';
 import CARRIER_CAR_DEF from '../models/carrier_car.zdef';
 import CARRIER_DECK_TRACTOR_DEF from '../models/carrier_deck_tractor.zdef';
+import CARRIER_DECK_CRATE_DEF from '../models/carrier_deck_crate.zdef';
 
 export const createCarrierDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, tileW, drawFns: { drawHeli }, isVisible } = dwCtx;
@@ -64,6 +65,11 @@ export const createCarrierDraw = (dwCtx: DrawWorldCtx) => {
             const cx = objX + (tx - 0.36) * cosA - (ty + 0.5) * sinA;
             const cy = objY + (tx - 0.36) * sinA + (ty + 0.5) * cosA;
             SceneRenderer.add(CARRIER_DECK_TRACTOR_DEF as any, { x: cx, y: cy, z: deckZ + 0.01, angle: tractorAngle });
+        });
+        ([{ lx: 6.5, ly: 0.4 }, { lx: 6.0, ly: -0.2 }, { lx: 7.0, ly: -0.1 }] as const).forEach(({ lx, ly }) => {
+            const cx = objX + lx * cosA - ly * sinA;
+            const cy = objY + lx * sinA + ly * cosA;
+            SceneRenderer.add(CARRIER_DECK_CRATE_DEF as any, { x: cx, y: cy, z: deckZ + 0.01, angle });
         });
         const car = G.carrierFuelCar;
         SceneRenderer.add(applyParts(CARRIER_CAR_DEF as any, { steerAngle: -(car.steerAngle ?? 0) }), {

@@ -564,7 +564,7 @@
           0.7
         ]
       ],
-      "color": "#e6e6e6"
+      "color": "#d9d9d9"
     },
     {
       "id": "cab_f_R",
@@ -594,7 +594,7 @@
           0.7
         ]
       ],
-      "color": "#e6e6e6"
+      "color": "#d9d9d9"
     },
     {
       "id": "cab_l",
@@ -684,7 +684,7 @@
           0.7
         ]
       ],
-      "color": "#cccccc"
+      "color": "#d9d9d9"
     },
     {
       "id": "door_b",
@@ -960,7 +960,23 @@
     }
   ],
   "collisionBoxes": [
-    { "id": "hull",  "xMin": -1.61, "xMax": 1.75, "yMin": -0.7,  "yMax": 0.7,  "zMin": 0,   "zMax": 0.7 },
-    { "id": "cabin", "xMin": -0.56, "xMax": 0.35, "yMin": -0.28, "yMax": 0.28, "zMin": 0.7, "zMax": 1.4 }
+    {
+      "id": "hull",
+      "xMin": -1.61,
+      "xMax": 1.75,
+      "yMin": -0.7,
+      "yMax": 0.7,
+      "zMin": 0,
+      "zMax": 0.7
+    },
+    {
+      "id": "cabin",
+      "xMin": -0.56,
+      "xMax": 0.35,
+      "yMin": -0.28,
+      "yMax": 0.28,
+      "zMin": 0.7,
+      "zMax": 1.4
+    }
   ]
 }
