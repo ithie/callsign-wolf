@@ -39,7 +39,7 @@ export const sections: { role: string; names: string[] }[] = [
     { role: I18N.CREDITS_ROLE_LEADERTEST, names: ['Steven J. McG.'] },
     {
         role: I18N.CREDITS_ROLE_TEST,
-        names: ['Da Harp', 'Jay "G" Man', 'DBuhn', 'Bigwilli', 'Mrs Beer', 'deathnical'],
+        names: ['Da Harp', 'Jay "G" Man', 'DBuhn', 'Bigwilli', 'Mrs Beer', 'deathnical', 'SkzStay15'],
     },
     { role: I18N.CREDITS_ROLE_INSPIREDBY, names: ['Zeewolf (Binary Asylum, 1994)'] },
 ];
@@ -86,7 +86,7 @@ export const show = (campaignName: string, onCreditsStart?: () => void): void =>
 
         setTimeout(() => {
             document.getElementById('ced-footer')?.classList.add('ced-footer-visible');
-        }, 13000);
+        }, 12000);
 
         _scheduleBursts(_el!, 0);
     }, 1500);
