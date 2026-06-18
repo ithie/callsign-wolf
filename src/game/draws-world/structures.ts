@@ -21,26 +21,31 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         SceneRenderer.add(applyParts(WIND_TURBINE_DEF as any, { rotorAngle }), { x: tX, y: tY, z: gz, angle: 0 });
     };
 
-    const _drawDefLights = (x: number, y: number, def: { lights?: typeof WIND_TURBINE_DEF['lights'] }) => {
+    const _drawDefLights = (x: number, y: number, def: { lights?: (typeof WIND_TURBINE_DEF)['lights'] }) => {
         const lights = def.lights;
         if (!lights?.length) return;
         const gz = getGround(x, y);
-        SceneRenderer.add(null, { x: 0, y: 0, depth: x + y + 0.001, drawFn: (camX, camY) => {
-            ctx.shadowBlur = 0;
-            lights.forEach(l => {
-                const on = Math.floor(Date.now() / (500 / (l.blinkHz ?? 1))) % 2 === 0;
-                if (!on) return;
-                const p = isoFn(x + l.pos[0], y + l.pos[1], gz + l.pos[2], camX, camY);
-                ctx.fillStyle = l.glowColor ?? 'rgba(255,60,0,0.25)';
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, l.glowRadius ?? 3, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = l.color ?? '#ff2200';
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, l.radius ?? 1.5, 0, Math.PI * 2);
-                ctx.fill();
-            });
-        }});
+        SceneRenderer.add(null, {
+            x: 0,
+            y: 0,
+            depth: x + y + 0.001,
+            drawFn: (camX, camY) => {
+                ctx.shadowBlur = 0;
+                lights.forEach(l => {
+                    const on = Math.floor(Date.now() / (500 / (l.blinkHz ?? 1))) % 2 === 0;
+                    if (!on) return;
+                    const p = isoFn(x + l.pos[0], y + l.pos[1], gz + l.pos[2], camX, camY);
+                    ctx.fillStyle = l.glowColor ?? 'rgba(255,60,0,0.25)';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, l.glowRadius ?? 3, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = l.color ?? '#ff2200';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, l.radius ?? 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            },
+        });
     };
 
     const _drawPlaneWreck = (wx: number, wy: number, angle: number) => {
@@ -58,7 +63,15 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         SceneRenderer.add(TOWER_DEF, { x: G.PAD.xMax - 0.5, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 });
     };
 
-    const _renderWindsock = (cx: number, cy: number, wx: number, wy: number, gz: number, windAngle: number, windStr: number) => {
+    const _renderWindsock = (
+        cx: number,
+        cy: number,
+        wx: number,
+        wy: number,
+        gz: number,
+        windAngle: number,
+        windStr: number
+    ) => {
         const base = isoFn(wx, wy, gz, cx, cy);
         const top = isoFn(wx, wy, gz + 1.2, cx, cy);
         ctx.strokeStyle = '#aaa';
@@ -79,7 +92,8 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
             wIsoX = (rawX / len) * 5 * windStrNorm;
             wIsoY = (rawY / len) * 5 * windStrNorm;
         }
-        const perpX = -wIsoY, perpY = wIsoX;
+        const perpX = -wIsoY,
+            perpY = wIsoX;
         const phase = Date.now() * 0.005;
         ctx.fillStyle = 'orange';
         ctx.beginPath();
@@ -104,7 +118,8 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
     };
 
     const _drawWindsock = (cx: number, cy: number) => {
-        const wx = G.PAD.xMin, wy = G.PAD.yMin + 8.8;
+        const wx = G.PAD.xMin,
+            wy = G.PAD.yMin + 8.8;
         _renderWindsock(cx, cy, wx, wy, getGround(wx, wy), G.wind.angle ?? Math.PI * 0.75, getWindStr());
     };
 
@@ -113,21 +128,24 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         if (!lh) return;
         const lhZ = getGround(lh.x, lh.y);
         SceneRenderer.add(LIGHTHOUSE_DEF, { x: lh.x, y: lh.y, z: lhZ });
-        SceneRenderer.add(null, { x: 0, y: 0, depth: lh.x + lh.y + 0.001, drawFn: (camX, camY) => {
-            const p = isoFn(lh.x, lh.y, lhZ + 8.1, camX, camY);
-            ctx.fillStyle = '#333';
-            ctx.fillRect(p.x - 2, p.y - 10, 4, 10);
-            if (Math.floor(Date.now() / 300) % 2 === 0) {
-                ctx.fillStyle = 'rgba(255,255,200,0.8)';
-                ctx.beginPath();
-                ctx.ellipse(p.x, p.y, 25, 12, 0, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#fff';
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }});
+        SceneRenderer.add(null, {
+            x: 0,
+            y: 0,
+            depth: lh.x + lh.y + 0.001,
+            drawFn: (camX, camY) => {
+                const p = isoFn(lh.x, lh.y, lhZ + 8.1, camX, camY);
+                if (Math.floor(Date.now() / 300) % 2 === 0) {
+                    ctx.fillStyle = 'rgba(255,255,200,0.8)';
+                    ctx.beginPath();
+                    ctx.ellipse(p.x, p.y, 25, 12, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#fff';
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            },
+        });
     };
 
     const _drawBaywatchObjects = (inCone: (x: number, y: number) => boolean) => {
@@ -144,5 +162,15 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         });
     };
 
-    return { _drawWindTurbine, _drawDefLights, _drawPlaneWreck, _drawBrokenSailboat, _drawHangar, _drawLighthouse, _renderWindsock, _drawWindsock, _drawBaywatchObjects };
+    return {
+        _drawWindTurbine,
+        _drawDefLights,
+        _drawPlaneWreck,
+        _drawBrokenSailboat,
+        _drawHangar,
+        _drawLighthouse,
+        _renderWindsock,
+        _drawWindsock,
+        _drawBaywatchObjects,
+    };
 };
