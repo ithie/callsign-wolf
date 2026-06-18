@@ -268,6 +268,7 @@ export const initStaticObjectsFromMission = () => {
         spinning: obj.spinning ?? false,
         rescueZones: (obj.rescueZones || []) as any[],
     }));
+    G.BUOYS = getObjectsByType(VESSEL.BUOY).map((obj: any) => ({ x: obj.x, y: obj.y }));
     G.PLANE_WRECKS = getObjectsByType(VESSEL.PLANE_WRECK).map((obj: any) => ({
         x: obj.x,
         y: obj.y,

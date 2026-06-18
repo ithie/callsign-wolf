@@ -11,6 +11,7 @@ import LIGHTHOUSE_DEF from '../models/lighthouse.zdef';
 import BAYWATCH_CAR_DEF from '../models/baywatch_car.zdef';
 import BAYWATCH_HQ_DEF from '../models/baywatch_hq.zdef';
 import BAYWATCH_TOWER_DEF from '../models/baywatch_tower.zdef';
+import BUOY_DEF from '../models/buoy.zdef';
 
 export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, tileW, tileH, getLighthouse, getWindStr } = dwCtx;
@@ -162,6 +163,16 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         });
     };
 
+    const _drawBuoys = (inCone: (x: number, y: number) => boolean) => {
+        const t = Date.now() * 0.0018;
+        G.BUOYS.forEach((b: any) => {
+            if (!inCone(b.x, b.y)) return;
+            const gz = getGround(b.x, b.y);
+            const bob = Math.sin(t + b.x * 0.61 + b.y * 0.37) * 0.07;
+            SceneRenderer.add(BUOY_DEF as any, { x: b.x, y: b.y, z: gz + bob });
+        });
+    };
+
     return {
         _drawWindTurbine,
         _drawDefLights,
@@ -172,5 +183,6 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         _renderWindsock,
         _drawWindsock,
         _drawBaywatchObjects,
+        _drawBuoys,
     };
 };

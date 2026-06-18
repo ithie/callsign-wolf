@@ -18,6 +18,7 @@ export const VESSEL = {
     BAYWATCH_CAR:       'baywatch_car',
     BAYWATCH_HQ:        'baywatch_hq',
     BAYWATCH_TOWER:     'baywatch_tower',
+    BUOY:               'buoy',
 } as const;
 
 export const PAYLOAD = {

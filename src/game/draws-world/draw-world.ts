@@ -32,6 +32,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         _renderWindsock,
         _drawWindsock,
         _drawBaywatchObjects,
+        _drawBuoys,
     } = createStructuresDraw(dwCtx);
     const { drawPayloadObjects, queueAttachedPayloads } = createPayloadsDraw(dwCtx);
     const { handleCollisionBoxes, drawDebugOverlay } = createCollisionDraw(dwCtx);
@@ -164,6 +165,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             if (isVisible(bs.x, bs.y, visMargin) && _inNightCone(bs.x, bs.y)) _drawBrokenSailboat(bs.x, bs.y, bs.angle);
         });
         _drawBaywatchObjects(_inNightCone);
+        _drawBuoys(_inNightCone);
         const lh = dwCtx.getLighthouse();
         if (lh && isVisible(lh.x, lh.y, visMargin) && _inNightCone(lh.x, lh.y)) _drawLighthouse(camX, camY);
 

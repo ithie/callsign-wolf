@@ -58,6 +58,7 @@ export const G = {
     BROKEN_SAILBOATS: [] as any[],
     BAYWATCH_CARS: [] as any[],
     BAYWATCH_BUILDINGS: [] as any[],
+    BUOYS: [] as any[],
     seaTime: 0,
     payloads: [] as any[],
     activePayload: null as any,

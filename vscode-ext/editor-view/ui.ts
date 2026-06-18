@@ -168,6 +168,7 @@ export const renderObjectList = () => {
             baywatch_car: '🚗',
             baywatch_hq: '🏠',
             baywatch_tower: '🗼',
+            buoy: '🔴',
         };
         const label = document.createElement('span');
         label.style.flex = '1';
@@ -624,6 +625,17 @@ const paint = (e: MouseEvent) => {
         } else {
             m.objects.push({ type: 'sailboat_broken' as any, x: gx, y: gy, angle: 0 });
         }
+    } else if (state.currentTool === 'buoy') {
+        if (e.shiftKey) {
+            const near = m.objects.reduce((best: any, o: any, i: number) => {
+                if (o.type !== 'buoy') return best;
+                const d = Math.hypot(o.x - gx, o.y - gy);
+                return !best || d < best.d ? { d, i } : best;
+            }, null as any);
+            if (near && near.d < 5) m.objects.splice(near.i, 1);
+        } else {
+            m.objects.push({ type: 'buoy' as any, x: gx, y: gy });
+        }
     } else if (state.currentTool === 'baywatch_car' || state.currentTool === 'baywatch_hq' || state.currentTool === 'baywatch_tower') {
         const bwType = state.currentTool;
         if (e.shiftKey) {
@@ -1035,6 +1047,7 @@ export const initUI = () => {
         'baywatch_car',
         'baywatch_hq',
         'baywatch_tower',
+        'buoy',
         'person',
         'rescuer',
         'crate',
@@ -1051,6 +1064,7 @@ export const initUI = () => {
         baywatch_car: '#cc2200',
         baywatch_hq: '#cc4400',
         baywatch_tower: '#cc4400',
+        buoy: '#dd3300',
         person: '#ffe033',
         crate: '#ff8800',
     };
@@ -1283,6 +1297,7 @@ export const initUI = () => {
                 { v: 'baywatch_car', l: '🚗 BW-Auto' },
                 { v: 'baywatch_hq', l: '🏠 BW-HQ' },
                 { v: 'baywatch_tower', l: '🗼 Wachturm' },
+                { v: 'buoy', l: '🔴 Boje' },
             ]},
             { cat: 'Load', emoji: '📦', items: [
                 { v: 'person', l: '🟡 Person' },

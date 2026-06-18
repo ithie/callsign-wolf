@@ -999,7 +999,8 @@
         ornithopter_wreck: "\u{1F6F8}",
         baywatch_car: "\u{1F697}",
         baywatch_hq: "\u{1F3E0}",
-        baywatch_tower: "\u{1F5FC}"
+        baywatch_tower: "\u{1F5FC}",
+        buoy: "\u{1F534}"
       };
       const label = document.createElement("span");
       label.style.flex = "1";
@@ -1415,6 +1416,17 @@
       } else {
         m.objects.push({ type: "sailboat_broken", x: gx, y: gy, angle: 0 });
       }
+    } else if (state.currentTool === "buoy") {
+      if (e.shiftKey) {
+        const near = m.objects.reduce((best, o, i) => {
+          if (o.type !== "buoy") return best;
+          const d = Math.hypot(o.x - gx, o.y - gy);
+          return !best || d < best.d ? { d, i } : best;
+        }, null);
+        if (near && near.d < 5) m.objects.splice(near.i, 1);
+      } else {
+        m.objects.push({ type: "buoy", x: gx, y: gy });
+      }
     } else if (state.currentTool === "baywatch_car" || state.currentTool === "baywatch_hq" || state.currentTool === "baywatch_tower") {
       const bwType = state.currentTool;
       if (e.shiftKey) {
@@ -1798,6 +1810,7 @@
       "baywatch_car",
       "baywatch_hq",
       "baywatch_tower",
+      "buoy",
       "person",
       "rescuer",
       "crate"
@@ -1814,6 +1827,7 @@
       baywatch_car: "#cc2200",
       baywatch_hq: "#cc4400",
       baywatch_tower: "#cc4400",
+      buoy: "#dd3300",
       person: "#ffe033",
       crate: "#ff8800"
     };
@@ -2031,7 +2045,8 @@
           { v: "ornithopter_wreck", l: "\u{1F6F8} Orni-Wrack" },
           { v: "baywatch_car", l: "\u{1F697} BW-Auto" },
           { v: "baywatch_hq", l: "\u{1F3E0} BW-HQ" },
-          { v: "baywatch_tower", l: "\u{1F5FC} Wachturm" }
+          { v: "baywatch_tower", l: "\u{1F5FC} Wachturm" },
+          { v: "buoy", l: "\u{1F534} Boje" }
         ] },
         { cat: "Load", emoji: "\u{1F4E6}", items: [
           { v: "person", l: "\u{1F7E1} Person" },

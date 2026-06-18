@@ -395,7 +395,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
 
             if (G.keys['KeyW']) G.heli.vz += G.heli.liftPower * mod * dt;
             else if (G.keys['KeyS']) G.heli.vz -= 0.002 * dt;
-            else G.heli.vz *= Math.pow(0.80, dt);
+            else G.heli.vz *= Math.pow(0.96, dt);
 
             if (!ctx.isTutorialFuelLocked) G.heli.fuel -= G.heli.fuelRate * mod * dt;
         } else {
