@@ -10,5 +10,35 @@
     justify-content: safe center;
     align-items: center;
     z-index: 210;
+}
+
+.failed-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-top: 40px;
+}
+
+.failed-btn {
+    border: none;
+    border-radius: 8px;
     cursor: pointer;
+    font-family: inherit;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+}
+
+.failed-btn--primary {
+    background: #cc2200;
+    color: #fff;
+    font-size: 22px;
+    padding: 16px 48px;
+}
+
+.failed-btn--secondary {
+    background: transparent;
+    color: rgba(255,255,255,0.5);
+    font-size: 14px;
+    padding: 8px 24px;
 }

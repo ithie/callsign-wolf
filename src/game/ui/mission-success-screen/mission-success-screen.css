@@ -10,5 +10,34 @@
     justify-content: safe center;
     align-items: center;
     z-index: 200;
-    cursor: pointer;
+}
+
+.success-buttons {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-top: 40px;
+}
+
+.success-btn {
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+}
+
+.success-btn--primary {
+    background: #00aa55;
+    color: #fff;
+    font-size: 22px;
+    padding: 16px 48px;
+}
+
+.success-btn--secondary {
+    background: transparent;
+    color: rgba(255,255,255,0.5);
+    font-size: 14px;
+    padding: 8px 24px;
 }

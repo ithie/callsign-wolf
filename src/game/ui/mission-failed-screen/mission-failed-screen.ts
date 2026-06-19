@@ -5,13 +5,17 @@ import { I18N } from '../../i18n';
 
 let _el: HTMLElement | null = null;
 
-export const mount = (onClick: () => void): void => {
+export const mount = (onBack: () => void, onRetry: () => void): void => {
     _el = ensureEl('mission-failed-screen');
     _el.classList.add('ui-screen');
     _el.innerHTML = `
         <div class="title" style="color:#fff">${I18N.MISSION_FAILED}</div>
-        <p class="start-hint">${I18N.ACKNOWLEDGE}</p>`;
-    _el.addEventListener('click', onClick);
+        <div class="failed-buttons">
+            <button class="failed-btn failed-btn--primary">${I18N.RETRY}</button>
+            <button class="failed-btn failed-btn--secondary">${I18N.BACK}</button>
+        </div>`;
+    _el.querySelector('.failed-btn--primary')!.addEventListener('click', e => { e.stopPropagation(); onRetry(); });
+    _el.querySelector('.failed-btn--secondary')!.addEventListener('click', e => { e.stopPropagation(); onBack(); });
 };
 
 export const show = (): void => {

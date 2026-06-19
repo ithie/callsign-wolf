@@ -214,21 +214,16 @@ const missionComplete = () => {
     const campaigns = campaignHandler.getCampaigns();
     const totalMissions = campaigns[_selectedCampaignIndex].levels.length;
     const allDone = cp.missions.filter((m, i) => i < totalMissions && m?.completed).length >= totalMissions;
-    const firstCompletion = allDone && !cp.completed;
+    // Credits only on first completion: highest hasn't passed this campaign index yet
+    const firstCompletion = allDone && !(_selectedCampaignIndex < (_session.highestUnlockedCampaignIndex ?? 0));
     if (allDone) {
         cp.completed = true;
-        // Unlock next regular campaign for cross-device import
         if (campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT) {
-            const regular = campaigns
-                .map((c, i) => ({ type: c.type, i }))
-                .filter(c => c.type !== CAMPAIGN_TYPE.TUTORIAL && c.type !== CAMPAIGN_TYPE.FREE_FLIGHT);
-            const pos = regular.findIndex(c => c.i === _selectedCampaignIndex);
-            if (pos >= 0 && pos + 1 < regular.length) {
-                _session.highestUnlockedCampaignIndex = Math.max(
-                    _session.highestUnlockedCampaignIndex ?? 0,
-                    regular[pos + 1].i
-                );
-            }
+            // Always advance highest past this campaign (sentinel), so replay is detected via < check
+            _session.highestUnlockedCampaignIndex = Math.max(
+                _session.highestUnlockedCampaignIndex ?? 0,
+                _selectedCampaignIndex + 1
+            );
         }
     }
 
@@ -242,13 +237,13 @@ const missionComplete = () => {
     saveSession(_session);
     _stopMission();
 
-    // Review triggers: any campaign completed, or promotion — Apple limits to 3×/year
-    if (allDone || rankUpRank) requestReview();
+    // Review triggers: first campaign completion, or promotion — Apple limits to 3×/year
+    if (firstCompletion || rankUpRank) requestReview();
 
-    if (allDone) {
+    if (firstCompletion) {
         const isStoryCampaign = campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT;
         soundHandler.play('success');
-        if (isStoryCampaign && firstCompletion) {
+        if (isStoryCampaign) {
             const campaignTitle = campaignHandler.getCampaigns()[_selectedCampaignIndex]?.campaignTitle;
             const name =
                 typeof campaignTitle === 'string' ? campaignTitle : (campaignTitle?.de ?? campaignTitle?.en ?? '');
@@ -261,26 +256,41 @@ const missionComplete = () => {
         return;
     }
 
-    MissionSuccessScreen.show(() => {
+    const heliType = G.heli.type;
+    const nextMissionIndex = _selectedMissionIndex + 1;
+    const hasNext = nextMissionIndex < totalMissions
+        && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT
+        && !isTutorial;
+
+    const onBack = () => {
         MissionSuccessScreen.hide();
         zstate.gameStarted = false;
         setTouchVisible(false);
         _hud.showAll(false);
-        zstate.crashed = false;
-        G.heli.fuel = 100;
-        G.heli.onboard = 0;
-        G.heli.onboardDeliverQueue = [];
-        G.heli.engineOn = false;
-        G.heli.rotorRPM = 0;
-        G.heli.vx = 0;
-        G.heli.vy = 0;
-        G.heli.vz = 0;
-        G.particles = [];
-        G.debris = [];
-        _openMissionSelect();
+        _resetHeliState();
+        if (isTutorial) _openCampaignSelect(); else _openMissionSelect();
         if (rankUpRank)
             Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
-    });
+    };
+
+    const onNext = hasNext ? () => {
+        MissionSuccessScreen.hide();
+        _stopMission();
+        zstate.gameStarted = false;
+        _resetHeliState();
+        campaignHandler.campaign.setActiveMission(nextMissionIndex);
+        const { gridSize, objects: selObjects } = campaignHandler.getCurrentMissionData();
+        const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
+        G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5 };
+        G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
+        initGrid(gridSize, G.points);
+        startGame(heliType);
+        if (rankUpRank)
+            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
+    } : null;
+
+    MissionSuccessScreen.mount(onNext, onBack, isTutorial ? I18N.TO_CAMPAIGN_SELECT : undefined);
+    MissionSuccessScreen.show();
 };
 
 const _resetHeliState = () => {
@@ -314,6 +324,21 @@ const returnToBase = () => {
         _openMissionSelect();
     }
     soundHandler.play('maintheme');
+};
+
+const retryMission = () => {
+    const heliType = G.heli.type;
+    _stopMission();
+    zstate.gameStarted = false;
+    _resetHeliState();
+    MissionFailedScreen.hide();
+    campaignHandler.campaign.setActiveMission(_selectedMissionIndex);
+    const { gridSize, objects: selObjects } = campaignHandler.getCurrentMissionData();
+    const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
+    G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5 };
+    G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
+    initGrid(gridSize, G.points);
+    startGame(heliType);
 };
 
 const returnToCampaignSelect = () => {
@@ -921,12 +946,12 @@ const _isKeyAllowed = (code: string): boolean => {
     return allowed === null || allowed.has(code);
 };
 
-if (import.meta.env.DEV) {
+if (typeof (window as any).__nativeStorage === 'undefined') {
     window.onkeydown = e => {
         if (_isKeyAllowed(e.code)) G.keys[e.code] = true;
         if ((document.activeElement as HTMLElement)?.tagName === 'INPUT') return;
     };
-    window.onkeyup = e => (G.keys[e.code] = false);
+    window.onkeyup = e => { G.keys[e.code] = false; };
 }
 document.addEventListener('selectstart', e => e.preventDefault());
 document.addEventListener('dragstart', e => e.preventDefault());
@@ -1001,8 +1026,8 @@ const mountGameScreens = () => {
     MissionSelect.mount();
     CampaignSelect.mount();
     HeliSelect.mount();
-    MissionFailedScreen.mount(returnToBase);
-    MissionSuccessScreen.mount();
+    MissionFailedScreen.mount(returnToBase, retryMission);
+    // MissionSuccessScreen is mounted per-mission in missionComplete
     CampaignCompleteScreen.mount(returnToCampaignSelect);
     CampaignEndScreen.mount(_returnFromCampaignEnd);
 };

@@ -85,7 +85,7 @@ export const isCampaignUnlocked = (
     const pos = regular.findIndex(c => c.i === index);
     if (pos <= 0) return true;
     const prev = regular[pos - 1];
-    return !!s.campaignProgress[String(prev.i)]?.completed;
+    return (s.highestUnlockedCampaignIndex ?? 0) > prev.i || !!s.campaignProgress[String(prev.i)]?.completed;
 };
 
 export const isCampaignLockedByTutorial = (
@@ -109,6 +109,7 @@ export const isMissionUnlocked = (
 ): boolean => {
     if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return true;
     if (missionIndex === 0) return true;
+    if (Number(campaignKey) < (s.highestUnlockedCampaignIndex ?? 0)) return true;
     return !!s.campaignProgress[campaignKey]?.missions[missionIndex - 1]?.completed;
 };
 
@@ -116,10 +117,14 @@ export const isMissionUnlocked = (
 // Bit layout (45 bits → 9 × 5-bit Base32 chars):
 //   [0-1]   rank index                   (2 bits, 0-3)
 //   [2-4]   highestUnlockedCampaign      (3 bits, 0-7)
-//   [5-7]   activeCampaignIndex          (3 bits, 0-7)
+//   [5-7]   active campaign              (3 bits, 0-7)
 //   [8-11]  nextMission in active camp.  (4 bits, 0-15)
 //   [12-36] callsign                     (5 × 5 bits: A-Z=0-25, null=26)
 //   [37-44] checksum                     (8 bits, XOR-fold of bits 0-36)
+//
+// highest advances past active when a campaign is fully completed (sentinel):
+//   active == highest → campaign in progress, completed = false
+//   active  < highest → campaign done, completed = true
 //
 // Alphabet: standard Base32 (RFC 4648) A-Z 2-7, case-insensitive.
 // Display format: XXXXX-XXXX
@@ -138,11 +143,7 @@ const _checksumBits = (bits: number[]): number => {
 export const encodeSession = (s: PlayerSession, nonTutorialMissions: number): string => {
     const rankIdx = RANKS.indexOf(getRank(s.rankOverride ?? 0, nonTutorialMissions));
     const highest = Math.min(s.highestUnlockedCampaignIndex ?? 0, 7);
-    const activeEntry = Object.entries(s.campaignProgress)
-        .filter(([, cp]) => cp.missions.some(m => m.completed))
-        .sort((a, b) => Number(b[0]) - Number(a[0]))[0];
-    const active = activeEntry ? Math.min(Number(activeEntry[0]), 7) : 0;
-    const activeCp = activeEntry?.[1];
+    const activeCp = s.campaignProgress[String(highest)];
     const nextMission = Math.min(activeCp ? activeCp.missions.filter(m => m.completed).length : 0, 15);
     const callsign = (s.playerName || '')
         .toUpperCase()
@@ -156,7 +157,7 @@ export const encodeSession = (s: PlayerSession, nonTutorialMissions: number): st
 
     push(rankIdx, 2);
     push(highest, 3);
-    push(active, 3);
+    push(0, 3); // bits [5-7] reserved
     push(nextMission, 4);
     for (let i = 0; i < 5; i++) {
         push(i < callsign.length ? callsign.charCodeAt(i) - 65 : 26, 5);
@@ -187,7 +188,7 @@ export const decodeSession = (input: string): Partial<PlayerSession> | null => {
 
     const rankIdx = Math.min(read(0, 2), RANKS.length - 1);
     const highestUnlockedCampaignIndex = read(2, 3);
-    const activeCampaignIndex = read(5, 3);
+    // bits [5-7] always equal [2-4], discarded
     const nextMission = read(8, 4);
 
     let playerName = '';
@@ -197,10 +198,9 @@ export const decodeSession = (input: string): Partial<PlayerSession> | null => {
         if (v < 26) playerName += String.fromCharCode(65 + v);
     }
 
-    // Reconstruct partial campaign progress for active campaign
     const campaignProgress: Record<string, CampaignProgress> = {};
     if (nextMission > 0) {
-        campaignProgress[String(activeCampaignIndex)] = {
+        campaignProgress[String(highestUnlockedCampaignIndex)] = {
             completed: false,
             missions: Array.from({ length: nextMission }, () => ({ completed: true, bestTimeMs: null })),
         };
