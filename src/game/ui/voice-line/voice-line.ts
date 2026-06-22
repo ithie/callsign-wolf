@@ -3,28 +3,31 @@ import { playSfx } from '../../heli-sound';
 import { voiceEvents, type VoiceEvent } from '../../voice-events';
 
 const VOICE_LINES: Record<VoiceEvent, string> = {
-    'liftoff':          'CABIN CLEAR. LIFTOFF!',
-    'winch-down':       'WINCH DOWN.',
-    'haul-up':          'HAULING UP.',
-    'package-secured':  'PACKAGE SECURED.',
-    'delivered':        'DELIVERED.',
-    'no-zone':          'NO DROP ZONE.',
-    'drop-at-pad':      'DROP AT LANDING PAD.',
-    'touchdown':        'TOUCHDOWN.',
-    'on-the-deck':      "YOU'RE ON THE DECK.",
-    'fuel-maxed':       'FUEL MAXED.',
-    'bingo-fuel':       "WE'RE BINGO FUEL!",
-    'mayday':           'HELI 1, DO YOU COPY? HELI 1?',
-    'deck-cleared':     'DECK CLEARED.',
+    'liftoff':           'CABIN CLEAR. LIFTOFF!',
+    'winch-down':        'WINCH DOWN.',
+    'haul-up':           'HAULING UP.',
+    'package-secured':   'PACKAGE SECURED.',
+    'delivered':         'DELIVERED.',
+    'no-zone':           'NO DROP ZONE.',
+    'drop-at-pad':       'DROP AT LANDING PAD.',
+    'touchdown':         'TOUCHDOWN.',
+    'on-the-deck':       "YOU'RE ON THE DECK.",
+    'fuel-maxed':        'FUEL MAXED.',
+    'bingo-fuel':        "WE'RE BINGO FUEL!",
+    'mayday':            'HELI 1, DO YOU COPY? HELI 1?',
+    'deck-cleared':      'DECK CLEARED.',
+    'vessel-leaving-60': '{NAME} LEAVES OPERATIONAL AREA IN 60 SECONDS.',
+    'vessel-leaving-30': '{NAME} LEAVING OPERATIONAL AREA — 30 SECONDS!',
 };
 
 let _el: HTMLElement | null = null;
 let _hideTimer: ReturnType<typeof setTimeout> | null = null;
 
-const _onVoiceEvent = (event: VoiceEvent): void => {
+const _onVoiceEvent = (event: VoiceEvent, name?: string): void => {
     if (!_el) return;
     if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
-    _el.textContent = VOICE_LINES[event];
+    const raw = VOICE_LINES[event];
+    _el.textContent = name ? raw.replace('{NAME}', name) : raw;
     _el.style.display = 'block';
     playSfx(520, 0.04, 0.05, 'square');
     _hideTimer = setTimeout(() => {

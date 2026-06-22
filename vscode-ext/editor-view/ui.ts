@@ -259,6 +259,8 @@ const syncVesselFromUI = (kind: 'carrier' | 'boat' | 'submarine') => {
     obj.speed = parseFloat((document.getElementById(`m_${prefix}_speed`) as HTMLInputElement)?.value) || 0;
     obj.radius = parseFloat((document.getElementById(`m_${prefix}_radius`) as HTMLInputElement)?.value) || 40;
     obj.angle = parseInt((document.getElementById(`m_${prefix}_angle`) as HTMLInputElement)?.value) || 0;
+    obj.vesselName = (document.getElementById(`m_${prefix}_name`) as HTMLInputElement)?.value ?? '';
+    obj.exitWarning = (document.getElementById(`m_${prefix}_exitWarning`) as HTMLInputElement)?.checked ?? false;
     drawMap();
     broadcastPreview();
 };
@@ -964,15 +966,18 @@ export const initUI = () => {
     });
 
     // Vessel sync
-    ['carrier_path', 'carrier_speed', 'carrier_radius', 'carrier_angle'].forEach(id =>
+    ['carrier_path', 'carrier_speed', 'carrier_radius', 'carrier_angle', 'carrier_name'].forEach(id =>
         document.getElementById(`m_${id}`)?.addEventListener('input', () => syncVesselFromUI('carrier'))
     );
-    ['boat_path', 'boat_speed', 'boat_radius', 'boat_angle'].forEach(id =>
+    document.getElementById('m_carrier_exitWarning')?.addEventListener('change', () => syncVesselFromUI('carrier'));
+    ['boat_path', 'boat_speed', 'boat_radius', 'boat_angle', 'boat_name'].forEach(id =>
         document.getElementById(`m_${id}`)?.addEventListener('input', () => syncVesselFromUI('boat'))
     );
-    ['submarine_path', 'submarine_speed', 'submarine_radius', 'submarine_angle'].forEach(id =>
+    document.getElementById('m_boat_exitWarning')?.addEventListener('change', () => syncVesselFromUI('boat'));
+    ['submarine_path', 'submarine_speed', 'submarine_radius', 'submarine_angle', 'submarine_name'].forEach(id =>
         document.getElementById(`m_${id}`)?.addEventListener('input', () => syncVesselFromUI('submarine'))
     );
+    document.getElementById('m_submarine_exitWarning')?.addEventListener('change', () => syncVesselFromUI('submarine'));
 
     // Wreck angle sync
     document.getElementById('m_pw_angle')?.addEventListener('input', () => {

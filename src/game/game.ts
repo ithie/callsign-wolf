@@ -243,16 +243,23 @@ const missionComplete = () => {
     if (firstCompletion) {
         const isStoryCampaign = campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT;
         soundHandler.play('success');
-        if (isStoryCampaign) {
-            const campaignTitle = campaignHandler.getCampaigns()[_selectedCampaignIndex]?.campaignTitle;
-            const name =
-                typeof campaignTitle === 'string' ? campaignTitle : (campaignTitle?.de ?? campaignTitle?.en ?? '');
-            CampaignEndScreen.show(name, () => soundHandler.play('destroid'));
+        const showEndScreen = isStoryCampaign
+            ? () => {
+                const campaignTitle = campaignHandler.getCampaigns()[_selectedCampaignIndex]?.campaignTitle;
+                const name =
+                    typeof campaignTitle === 'string' ? campaignTitle : (campaignTitle?.de ?? campaignTitle?.en ?? '');
+                CampaignEndScreen.show(name, () => soundHandler.play('destroid'));
+            }
+            : () => CampaignCompleteScreen.show('');
+        if (rankUpRank) {
+            Rankup.show(
+                rankUpRank,
+                HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id,
+                showEndScreen,
+            );
         } else {
-            CampaignCompleteScreen.show('');
+            showEndScreen();
         }
-        if (rankUpRank)
-            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
         return;
     }
 
@@ -270,14 +277,14 @@ const missionComplete = () => {
         _resetHeliState();
         if (isTutorial) _openCampaignSelect(); else _openMissionSelect();
         if (rankUpRank)
-            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
+            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id);
     };
 
     const onNext = hasNext ? () => {
         MissionSuccessScreen.hide();
-        _stopMission();
         zstate.gameStarted = false;
         _resetHeliState();
+        _selectedMissionIndex = nextMissionIndex;
         campaignHandler.campaign.setActiveMission(nextMissionIndex);
         const { gridSize, objects: selObjects } = campaignHandler.getCurrentMissionData();
         const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
@@ -286,7 +293,7 @@ const missionComplete = () => {
         initGrid(gridSize, G.points);
         startGame(heliType);
         if (rankUpRank)
-            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.selectLabel);
+            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id);
     } : null;
 
     MissionSuccessScreen.mount(onNext, onBack, isTutorial ? I18N.TO_CAMPAIGN_SELECT : undefined);
@@ -449,7 +456,7 @@ const _tick = (): Promise<void> => new Promise(r => setTimeout(r, 0));
 
 const _maybeSpawnOrniWreck = () => {
     if (getRank(_session.rankOverride ?? 0, _getRankMissions()).key === RANKS[RANKS.length - 1].key) return;
-    if (Math.random() >= 1 / 12) return;
+    if (Math.random() >= 1 / __ORNI_SPAWN_RATE__) return;
     const gridSize = campaignHandler.getTerrain().gridSize;
     const margin = 6;
     const corners = [
@@ -469,7 +476,7 @@ const _maybeSpawnOrniWreck = () => {
             z: gz,
             angle: Math.random() * Math.PI * 2,
             deliverTo: VESSEL.PAD,
-        });
+        }, false); // Easter Egg zählt nicht zum Spielziel
         return;
     }
 };
@@ -1220,6 +1227,13 @@ const _onloadMain = () => {
             _setPref('z_sfx', v);
         },
         onBack: HeliSelect.animMainMenuBg,
+        onSessionDeleted: () => {
+            _session.playerName = '';
+            _session.highestUnlockedCampaignIndex = 0;
+            _session.campaignProgress = {};
+            _session.rankOverride = 0;
+            saveSession(_session);
+        },
     });
     onLanguageChange(_mountScreens);
     setupTouchControls();

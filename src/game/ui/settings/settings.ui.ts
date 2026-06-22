@@ -25,6 +25,7 @@ export const Desktop = () => {
         isSfxEnabled: () => true,
         setSfxEnabled: (_v: boolean) => {},
         onBack: () => {},
+        onSessionDeleted: () => {},
     });
     mount();
     show();
@@ -40,6 +41,7 @@ export const TouchHeading = () => {
         isSfxEnabled: () => false,
         setSfxEnabled: (_v: boolean) => {},
         onBack: () => {},
+        onSessionDeleted: () => {},
     });
     mount();
     show();
@@ -55,6 +57,7 @@ export const NeuerSpieler = () => {
         isSfxEnabled: () => true,
         setSfxEnabled: (_v: boolean) => {},
         onBack: () => {},
+        onSessionDeleted: () => {},
     });
     mount();
     show();

@@ -11,14 +11,16 @@ export type VoiceEvent =
     | 'liftoff'
     | 'bingo-fuel'
     | 'mayday'
-    | 'deck-cleared';
+    | 'deck-cleared'
+    | 'vessel-leaving-60'
+    | 'vessel-leaving-30';
 
-type VoiceListener = (event: VoiceEvent) => void;
+type VoiceListener = (event: VoiceEvent, name?: string) => void;
 
 const _listeners = new Set<VoiceListener>();
 
 export const voiceEvents = {
-    emit: (event: VoiceEvent): void => { _listeners.forEach(fn => fn(event)); },
-    on:   (fn: VoiceListener): void  => { _listeners.add(fn); },
-    off:  (fn: VoiceListener): void  => { _listeners.delete(fn); },
+    emit:     (event: VoiceEvent, name?: string): void => { _listeners.forEach(fn => fn(event, name)); },
+    on:       (fn: VoiceListener): void  => { _listeners.add(fn); },
+    off:      (fn: VoiceListener): void  => { _listeners.delete(fn); },
 };

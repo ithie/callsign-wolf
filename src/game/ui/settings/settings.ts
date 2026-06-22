@@ -6,10 +6,8 @@ import {
     decodeSession,
     getCampaignsDone,
     getMissionsDone,
-    STORAGE_KEY,
     type PlayerSession,
 } from '../../session';
-import { storageRemove } from '../../storage';
 import { rankBadgeHtml } from '../rank-badge/rank-badge';
 import { createSettingsBtn } from '../settings-btn/settings-btn';
 import { showScreen, showScreenCrtEnter } from '../nav';
@@ -24,6 +22,7 @@ type Deps = {
     isSfxEnabled: () => boolean;
     setSfxEnabled: (v: boolean) => void;
     onBack: () => void;
+    onSessionDeleted: () => void;
 };
 
 let _deps: Deps;
@@ -195,6 +194,7 @@ export const show = () => {
     };
     (document.getElementById('import-code-input') as HTMLInputElement).value = '';
     (document.getElementById('import-code-msg') as HTMLElement).textContent = '';
+    (document.getElementById('delete-session-msg') as HTMLElement).textContent = '';
     _refreshAudioButtons();
     _refreshLangButtons();
     showScreenCrtEnter('settings-screen');
@@ -231,8 +231,13 @@ const deleteSessionData = () => {
 };
 
 const _confirmDeleteSession = () => {
+    const btn = document.getElementById('delete-session-btn') as HTMLElement;
     const msg = document.getElementById('delete-session-msg') as HTMLElement;
+    _deps.onSessionDeleted();
     msg.textContent = I18N.SESSION_DELETED;
-    storageRemove(STORAGE_KEY);
-    setTimeout(() => window.location.reload(), 1200);
+    btn.textContent = I18N.DELETE_SESSION;
+    btn.onclick = null;
+    const input = document.getElementById('player-name-input') as HTMLInputElement;
+    if (input) input.value = '';
+    _refreshSettingsScreen();
 };

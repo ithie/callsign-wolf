@@ -80,7 +80,10 @@ const injectAppCsp = (): Plugin => ({
 
 export default defineConfig(({ command }) => {
     return {
-        define: { __APP_VERSION__: JSON.stringify(version) },
+        define: {
+            __APP_VERSION__: JSON.stringify(version),
+            __ORNI_SPAWN_RATE__: command === 'serve' ? 1 : 30,
+        },
         resolve: {
             alias: { '@': resolve(__dirname, 'src') },
         },

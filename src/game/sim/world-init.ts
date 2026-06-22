@@ -46,6 +46,11 @@ const initVessel = (obj: any, vessel: any, seaTimeRef: { t: number }) => {
     vessel.zHull = obj.type === VESSEL.CARRIER ? G.waterLevel + 3.8 : G.waterLevel + 0.15;
     vessel.path = obj.path ?? VESSEL_PATH.STATIC;
     vessel.speedKnots = obj.speed ?? 0;
+    vessel.exitWarning = obj.exitWarning ?? false;
+    vessel.vesselName = (obj.vesselName as string) ?? '';
+    vessel.exitWarn60 = false;
+    vessel.exitWarn30 = false;
+    vessel._wasOutside = false;
     const knotsToUnits = 0.001663;
     if (obj.path === VESSEL_PATH.STRAIGHT) {
         vessel.speed = (obj.speed ?? 0) * knotsToUnits;

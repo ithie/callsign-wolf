@@ -1,5 +1,27 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.5.3 — Campaign Completion & Exit Warnings
+
+### Added
+
+- **Vessel exit warnings** — Ships configured with `exitWarning: true` trigger a radio callout (`vessel-leaving-60`, `vessel-leaving-30`) when they are projected to leave the map within ~60 or ~30 seconds. Extrapolation supports both straight paths and circular sea patterns. Per-vessel name substitution via `{NAME}` placeholder.
+- **Campaign editor — vessel name & exit warning** — New "Name" text field and "Exit Warning" checkbox in Carrier, Submarine, and Boat panels. Values are persisted in `.zcampaign` files.
+
+### Fixed
+
+- **Mission index after `onNext`** — `_selectedMissionIndex` was not updated when advancing to the next mission via the success screen. Caused wrong missions to restart and stale progress entries after the first completion.
+- **"Spielstand löschen" reset** — Delete session now performs a full in-memory reset (name, campaign progress, rank override) without `window.location.reload()`. Previously the reload re-injected stale data from `WKUserScript` on iOS, leaving the session intact.
+- **Rankup — helicopter area empty** — `Rankup.show` was passed the display label (e.g. `'DOLPHIN'`) instead of the heli type ID (`'dolphin'`). Canvas stayed blank because `drawHeli` looks up by ID.
+- **Campaign completion — credits ran simultaneously with rank-up screen** — `CampaignEndScreen` and `Rankup` were both shown immediately. Rankup now shows first; credits start only after the player dismisses the rank-up overlay via the new `onDismiss` callback.
+
+### Changed
+
+- **Rank thresholds** — Major promoted from 30 → 20 cumulative missions, making the rank reachable with the current campaign lineup.
+- **Session deleted message** — Text simplified to `GELÖSCHT.` / `DELETED.` (removed "Lade neu…" since no reload occurs).
+- **Callsign Wolf campaign** — Mission data updated (manual adjustments).
+
+---
+
 ## v28.5.2 — Terrain Rendering & Night Visibility
 
 ### Added

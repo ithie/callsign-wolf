@@ -46,6 +46,7 @@ const mockSettingsDeps = () => ({
     isSfxEnabled: () => true,
     setSfxEnabled: vi.fn(),
     onBack: vi.fn(),
+    onSessionDeleted: vi.fn(),
 });
 
 const noopCallbacks = {

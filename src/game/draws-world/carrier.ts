@@ -60,21 +60,6 @@ export const createCarrierDraw = (dwCtx: DrawWorldCtx) => {
         SceneRenderer.flush(cx, cy);
 
         const ix = -5.5, iy = 2.6, iw = 4.5, il = 1.5, ih = 2.5;
-        const tractorAngle = Math.PI / 2 + angle;
-        ([{ tx: 0.2, ty: 2.7 }, { tx: 1.4, ty: 2.7 }] as const).forEach(({ tx, ty }) => {
-            const cx = objX + (tx - 0.36) * cosA - (ty + 0.5) * sinA;
-            const cy = objY + (tx - 0.36) * sinA + (ty + 0.5) * cosA;
-            SceneRenderer.add(CARRIER_DECK_TRACTOR_DEF as any, { x: cx, y: cy, z: deckZ + 0.01, angle: tractorAngle });
-        });
-        ([{ lx: 6.5, ly: 0.4 }, { lx: 6.0, ly: -0.2 }, { lx: 7.0, ly: -0.1 }] as const).forEach(({ lx, ly }) => {
-            const cx = objX + lx * cosA - ly * sinA;
-            const cy = objY + lx * sinA + ly * cosA;
-            SceneRenderer.add(CARRIER_DECK_CRATE_DEF as any, { x: cx, y: cy, z: deckZ + 0.01, angle });
-        });
-        const car = G.carrierFuelCar;
-        SceneRenderer.add(applyParts(CARRIER_CAR_DEF as any, { steerAngle: -(car.steerAngle ?? 0) }), {
-            x: car.x, y: car.y, z: deckZ + 0.01, angle: car.angle + Math.PI,
-        });
         const towerWX = objX + (ix + iw / 2) * cosA - (iy + il / 2) * sinA;
         const towerWY = objY + (ix + iw / 2) * sinA + (iy + il / 2) * cosA;
         SceneRenderer.add(applyParts(CARRIER_DEF, {}, { only: ['tower'] }), {
@@ -115,5 +100,30 @@ export const createCarrierDraw = (dwCtx: DrawWorldCtx) => {
         }
     };
 
-    return { _drawPadLights, _drawVectorCarrier, _drawNpcHelis };
+    const _queueCarrierDeckObjects = (inCone: (x: number, y: number) => boolean) => {
+        const objX = G.CARRIER.x, objY = G.CARRIER.y;
+        const deckZ = G.CARRIER.zDeck;
+        const angle = G.CARRIER.angle;
+        const cosA = Math.cos(angle), sinA = Math.sin(angle);
+        const tractorAngle = Math.PI / 2 + angle;
+        ([{ tx: 0.2, ty: 2.7 }, { tx: 1.4, ty: 2.7 }] as const).forEach(({ tx, ty }) => {
+            const wx = objX + (tx - 0.36) * cosA - (ty + 0.5) * sinA;
+            const wy = objY + (tx - 0.36) * sinA + (ty + 0.5) * cosA;
+            if (!inCone(wx, wy)) return;
+            SceneRenderer.add(CARRIER_DECK_TRACTOR_DEF as any, { x: wx, y: wy, z: deckZ + 0.01, angle: tractorAngle });
+        });
+        ([{ lx: 6.5, ly: 0.4 }, { lx: 6.0, ly: -0.2 }, { lx: 7.0, ly: -0.1 }] as const).forEach(({ lx, ly }) => {
+            const wx = objX + lx * cosA - ly * sinA;
+            const wy = objY + lx * sinA + ly * cosA;
+            if (!inCone(wx, wy)) return;
+            SceneRenderer.add(CARRIER_DECK_CRATE_DEF as any, { x: wx, y: wy, z: deckZ + 0.01, angle });
+        });
+        const car = G.carrierFuelCar;
+        if (inCone(car.x, car.y))
+            SceneRenderer.add(applyParts(CARRIER_CAR_DEF as any, { steerAngle: -(car.steerAngle ?? 0) }), {
+                x: car.x, y: car.y, z: deckZ + 0.01, angle: car.angle + Math.PI,
+            });
+    };
+
+    return { _drawPadLights, _drawVectorCarrier, _drawNpcHelis, _queueCarrierDeckObjects };
 };

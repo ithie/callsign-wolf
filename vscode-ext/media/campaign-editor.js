@@ -791,10 +791,14 @@
     const speedEl = document.getElementById(`m_${prefix}_speed`);
     const radiusEl = document.getElementById(`m_${prefix}_radius`);
     const angleEl = document.getElementById(`m_${prefix}_angle`);
+    const nameEl = document.getElementById(`m_${prefix}_name`);
+    const exitEl = document.getElementById(`m_${prefix}_exitWarning`);
     if (pathEl) pathEl.value = obj.path ?? "static";
     if (speedEl) speedEl.value = (obj.speed ?? 0).toString();
     if (radiusEl) radiusEl.value = (obj.radius ?? 40).toString();
     if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
+    if (nameEl) nameEl.value = obj.vesselName ?? "";
+    if (exitEl) exitEl.checked = obj.exitWarning ?? false;
   };
 
   // ../src/shared/utils.ts
@@ -1078,6 +1082,8 @@
     obj.speed = parseFloat(document.getElementById(`m_${prefix}_speed`)?.value) || 0;
     obj.radius = parseFloat(document.getElementById(`m_${prefix}_radius`)?.value) || 40;
     obj.angle = parseInt(document.getElementById(`m_${prefix}_angle`)?.value) || 0;
+    obj.vesselName = document.getElementById(`m_${prefix}_name`)?.value ?? "";
+    obj.exitWarning = document.getElementById(`m_${prefix}_exitWarning`)?.checked ?? false;
     drawMap();
     broadcastPreview();
   };
@@ -1734,15 +1740,18 @@
       getCurrentMission().spawnObject = "carrier";
       drawMap();
     });
-    ["carrier_path", "carrier_speed", "carrier_radius", "carrier_angle"].forEach(
+    ["carrier_path", "carrier_speed", "carrier_radius", "carrier_angle", "carrier_name"].forEach(
       (id) => document.getElementById(`m_${id}`)?.addEventListener("input", () => syncVesselFromUI("carrier"))
     );
-    ["boat_path", "boat_speed", "boat_radius", "boat_angle"].forEach(
+    document.getElementById("m_carrier_exitWarning")?.addEventListener("change", () => syncVesselFromUI("carrier"));
+    ["boat_path", "boat_speed", "boat_radius", "boat_angle", "boat_name"].forEach(
       (id) => document.getElementById(`m_${id}`)?.addEventListener("input", () => syncVesselFromUI("boat"))
     );
-    ["submarine_path", "submarine_speed", "submarine_radius", "submarine_angle"].forEach(
+    document.getElementById("m_boat_exitWarning")?.addEventListener("change", () => syncVesselFromUI("boat"));
+    ["submarine_path", "submarine_speed", "submarine_radius", "submarine_angle", "submarine_name"].forEach(
       (id) => document.getElementById(`m_${id}`)?.addEventListener("input", () => syncVesselFromUI("submarine"))
     );
+    document.getElementById("m_submarine_exitWarning")?.addEventListener("change", () => syncVesselFromUI("submarine"));
     document.getElementById("m_pw_angle")?.addEventListener("input", () => {
       const m = getCurrentMission();
       if (!m || state.selectedObjectIdx === null) return;

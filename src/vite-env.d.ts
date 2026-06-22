@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 declare const __APP_VERSION__: string;
+declare const __ORNI_SPAWN_RATE__: number;
 
 interface ImportMetaEnv {
     readonly VITE_TARGET?: string;

@@ -17,7 +17,7 @@ export const RANKS: Rank[] = [
     { key: 'leutnant',     minMissions: 0  },
     { key: 'oberleutnant', minMissions: 5  },
     { key: 'hauptmann',    minMissions: 10 },
-    { key: 'major',        minMissions: 30 },
+    { key: 'major',        minMissions: 20 },
 ];
 
 export const getRank = (rankOverride: number, missions: number): Rank => {

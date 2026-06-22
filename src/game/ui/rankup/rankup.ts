@@ -19,6 +19,9 @@ export const hide = (): void => {
     _heliId = null;
     _animRunning = false;
     (document.getElementById('rankup-overlay') as HTMLElement).style.display = 'none';
+    const cb = _onDismiss;
+    _onDismiss = null;
+    cb?.();
 };
 
 export const mount = (): void => {
@@ -40,6 +43,7 @@ let _heliId: string | null = null;
 let _animAngle = 0;
 let _animRotor = 0;
 let _animRunning = false;
+let _onDismiss: (() => void) | null = null;
 
 const _animLoop = (): void => {
     const overlay = document.getElementById('rankup-overlay');
@@ -78,7 +82,8 @@ const _animLoop = (): void => {
     requestAnimationFrame(_animLoop);
 };
 
-export const show = (rank: Rank, unlockedHeli?: string): void => {
+export const show = (rank: Rank, unlockedHeli?: string, onDismiss?: () => void): void => {
+    _onDismiss = onDismiss ?? null;
     (document.getElementById('rankup-badge') as HTMLElement).innerHTML = rankBadgeHtml(rank);
     const heliEl = document.getElementById('rankup-heli') as HTMLElement;
     if (unlockedHeli) {

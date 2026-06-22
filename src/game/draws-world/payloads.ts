@@ -2,7 +2,6 @@ import type { DrawWorldCtx } from './types';
 import { G, zstate } from '../state';
 import { PAYLOAD } from '../../shared/types';
 import { getGround } from '../sim/terrain';
-import ORNI_WRECK_CARRY_DEF from '../models/ornithopter_wreck_carry.zdef';
 
 export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, tileW, drawFns: { drawPerson }, isVisible, isNight } = dwCtx;
@@ -48,7 +47,7 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
             // Vessel-deck payloads are queued into the final SceneRenderer flush via
             // queueAttachedPayloads() so they render correctly on top of their vessel.
             if (!hangingOnly && payload.attachTo) return;
-            if (payload.type === PAYLOAD.ORNI_WRECK && !payload.hanging) return;
+            if (payload.type === PAYLOAD.ORNI_WRECK) return;
             if (!payload.hanging && !isVisible(payload.x, payload.y)) return;
 
             if (night && !payload.hanging && !payload.attachTo) {
@@ -77,13 +76,6 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
 
             if (payload.hanging && G.heli.winch < 0.4) return;
 
-            if (payload.type === PAYLOAD.ORNI_WRECK) {
-                SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, {
-                    x: payload.x, y: payload.y, z: payload.z, angle: payload.angle ?? 0,
-                });
-                SceneRenderer.flush(cam.x, cam.y);
-                return;
-            }
             _drawSinglePayload(payload, cam.x, cam.y);
         });
     };

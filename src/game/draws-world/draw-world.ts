@@ -20,7 +20,7 @@ import type { DrawWorldCtx } from './types';
 export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
     const { SceneRenderer, isVisible, hasCarrier, hasPad, getWindStr } = dwCtx;
 
-    const { _drawPadLights, _drawVectorCarrier, _drawNpcHelis } = createCarrierDraw(dwCtx);
+    const { _drawPadLights, _drawVectorCarrier, _drawNpcHelis, _queueCarrierDeckObjects } = createCarrierDraw(dwCtx);
     const { _drawBowWave, _drawBoatModel, _drawSubmarine, _drawResearchPlatform } = createVesselsDraw(dwCtx);
     const {
         _drawWindTurbine,
@@ -225,9 +225,16 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 },
             });
         });
+        // Carrier deck objects (tractors, crates, car) — individual cone checks, depth-sort with world.
+        if (showCarrier) _queueCarrierDeckObjects(_inNightCone);
         // Vessel-deck payloads enqueued BEFORE the heli so that on an equal depth value
         // the heli wins via JS stable-sort insertion order (heli inserted after = drawn later = on top).
         if (!zstate.crashed) queueAttachedPayloads(_inNightCone);
+        // Hanging ORNI_WRECK queued before heliAt so it renders behind the heli (same depth → stable-sort order wins).
+        G.payloads.forEach((p: any) => {
+            if (p.type !== PAYLOAD.ORNI_WRECK || !p.hanging || p.rescued) return;
+            SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, { x: p.x, y: p.y, z: p.z, angle: p.angle ?? 0 });
+        });
         if (heliAt)
             SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt.x + heliAt.y, drawFn: (cx, cy) => heliAt.fn(cx, cy) });
         // Carrier windsock: queued before flush so it depth-sorts with the ship.

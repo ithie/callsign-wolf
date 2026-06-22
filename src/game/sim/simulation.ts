@@ -1,6 +1,6 @@
 import { campaignHandler } from '../main';
 import { G, zstate } from '../state';
-import { VESSEL, PAYLOAD, VEHICLE_STATE, RESCUE_ZONE_ROLE, OBJECTIVE_TYPE, type RescueZone } from '../../shared/types';
+import { VESSEL, PAYLOAD, VEHICLE_STATE, RESCUE_ZONE_ROLE, OBJECTIVE_TYPE, VESSEL_PATH, type RescueZone } from '../../shared/types';
 import CARRIER_DEF from '../models/carrier.zdef';
 import SUBMARINE_DEF from '../models/submarine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
@@ -200,6 +200,50 @@ export const updateWind = (wind: any, dt: number, ctx: PhysicsCtx) => {
     wind.rawStr = baseStrength * gust;
 }
 
+const _ticksToVesselExit = (v: any, seaTime: number, gridSize: number): number => {
+    if (v.path === VESSEL_PATH.STATIC || v.speed === 0) return Infinity;
+    const STEP = 60;
+    const MAX = 4200;
+    if (v.path === VESSEL_PATH.STRAIGHT) {
+        for (let t = STEP; t <= MAX; t += STEP) {
+            const prog = v.lineProgress + v.speed * t;
+            const fx = v.lineStartX + v.lineDirX * prog;
+            const fy = v.lineStartY + v.lineDirY * prog;
+            if (fx < 0 || fx > gridSize || fy < 0 || fy > gridSize) return t;
+        }
+    } else {
+        for (let t = STEP; t <= MAX; t += STEP) {
+            const st = seaTime + v.speed * t;
+            const fx = v.centerX + Math.cos(st) * v.radiusX;
+            const fy = v.centerY + Math.sin(st) * v.radiusY;
+            if (fx < 0 || fx > gridSize || fy < 0 || fy > gridSize) return t;
+        }
+    }
+    return Infinity;
+};
+
+const _checkVesselExitWarning = (v: any, seaTime: number, gridSize: number) => {
+    if (!v.exitWarning) return;
+    const isOutside = v.x < 0 || v.x > gridSize || v.y < 0 || v.y > gridSize;
+    if (isOutside) {
+        v._wasOutside = true;
+    } else if (v._wasOutside) {
+        v._wasOutside = false;
+        v.exitWarn60 = false;
+        v.exitWarn30 = false;
+    }
+    const ticks = _ticksToVesselExit(v, seaTime, gridSize);
+    const name = (v.vesselName || 'VESSEL') as string;
+    if (!v.exitWarn30 && ticks <= 1800) {
+        v.exitWarn30 = true;
+        v.exitWarn60 = true;
+        voiceEvents.emit('vessel-leaving-30', name);
+    } else if (!v.exitWarn60 && ticks <= 3600) {
+        v.exitWarn60 = true;
+        voiceEvents.emit('vessel-leaving-60', name);
+    }
+};
+
 export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     const { crashed } = zstate;
     const { gridSize } = campaignHandler.getTerrain();
@@ -233,6 +277,10 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     }
     // Updated after carrier moves so car snaps to current-frame carrier position (no 1-frame lag)
     if (ctx.hasCarrier) carrierCar.update(dt, ctx);
+
+    if (ctx.hasCarrier) _checkVesselExitWarning(G.CARRIER, G.seaTime, gridSize);
+    G.SUBMARINES.forEach((s: any) => _checkVesselExitWarning(s, s._seaTime, gridSize));
+    G.BOATS.forEach((b: any) => _checkVesselExitWarning(b, b._seaTime, gridSize));
 
     const groundH = getGround(G.heli.x, G.heli.y, G.points, G.CARRIER);
     const { onCarrierDeck, onPadSurface, onPad, effectiveGroundH } = _computeLandingState(ctx, groundH);

@@ -721,10 +721,14 @@ const syncVesselUI = (obj: any, kind: 'carrier' | 'boat' | 'submarine') => {
     const speedEl = document.getElementById(`m_${prefix}_speed`) as HTMLInputElement;
     const radiusEl = document.getElementById(`m_${prefix}_radius`) as HTMLInputElement;
     const angleEl = document.getElementById(`m_${prefix}_angle`) as HTMLInputElement;
+    const nameEl = document.getElementById(`m_${prefix}_name`) as HTMLInputElement;
+    const exitEl = document.getElementById(`m_${prefix}_exitWarning`) as HTMLInputElement;
     if (pathEl) pathEl.value = obj.path ?? 'static';
     if (speedEl) speedEl.value = (obj.speed ?? 0).toString();
     if (radiusEl) radiusEl.value = (obj.radius ?? 40).toString();
     if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
+    if (nameEl) nameEl.value = obj.vesselName ?? '';
+    if (exitEl) exitEl.checked = obj.exitWarning ?? false;
 };
 
 
