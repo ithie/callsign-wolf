@@ -279,8 +279,10 @@ export const initStaticObjectsFromMission = () => {
         y: obj.y,
         angle: obj.angle ?? 0,
     }));
+    G.ORNI_RESIDUES = [];
     getObjectsByType(VESSEL.ORNITHOPTER_WRECK).forEach((obj: any) => {
         const gz = getGround(obj.x, obj.y, G.points, G.CARRIER);
+        G.ORNI_RESIDUES.push({ x: obj.x, y: obj.y, angle: obj.angle ?? 0 });
         G.payloads.push({
             type: PAYLOAD.ORNI_WRECK,
             x: obj.x,

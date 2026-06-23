@@ -514,10 +514,10 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     const keyR = !!G.keys['KeyR'];
     if (keyR && !_prevKeyR) {
         const ap = G.activePayload as any;
-        if (ap?.type === PAYLOAD.CRATE && ap.hanging) {
-            const crateZ = G.heli.z - G.heli.winch;
+        if ((ap?.type === PAYLOAD.CRATE || ap?.type === PAYLOAD.ORNI_WRECK) && ap.hanging) {
+            const loadZ = G.heli.z - G.heli.winch;
             const groundZ = getGround(G.rescuerSwing.x, G.rescuerSwing.y);
-            if (crateZ <= groundZ + 0.4) {
+            if (loadZ <= groundZ + 0.4) {
                 ap.hanging = false;
                 ap.x = G.rescuerSwing.x; ap.y = G.rescuerSwing.y; ap.z = groundZ;
                 ap.dropCooldown = 180;

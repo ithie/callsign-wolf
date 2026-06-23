@@ -47,8 +47,11 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
             // Vessel-deck payloads are queued into the final SceneRenderer flush via
             // queueAttachedPayloads() so they render correctly on top of their vessel.
             if (!hangingOnly && payload.attachTo) return;
-            if (payload.type === PAYLOAD.ORNI_WRECK) return;
             if (!payload.hanging && !isVisible(payload.x, payload.y)) return;
+
+            // ORNI_WRECK visual rendering is handled in draw-world.ts — skip here,
+            // except for rope drawing which falls through to the shared ropeOnly block below.
+            if (payload.type === PAYLOAD.ORNI_WRECK && !ropeOnly) return;
 
             if (night && !payload.hanging && !payload.attachTo) {
                 const dx = payload.x - G.heli.x, dy = payload.y - G.heli.y;

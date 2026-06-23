@@ -16,8 +16,7 @@ const swapEntry = (): Plugin => ({
     apply: 'build',
     transformIndexHtml: {
         order: 'pre',
-        handler: html =>
-            isApp ? html : html.replace('/src/game/game.ts', '/src/game/ui/promo/promo-entry.ts'),
+        handler: html => (isApp ? html : html.replace('/src/game/game.ts', '/src/game/ui/promo/promo-entry.ts')),
     },
 });
 
@@ -43,7 +42,6 @@ const bundleSizeGuard = (): Plugin => ({
     },
 });
 
-
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const { version } = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf-8'));
@@ -54,8 +52,8 @@ const storageWebStub = resolve(__dirname, 'src/game/storage-stub.ts');
 
 const _appStubs: Record<string, string> = isApp
     ? {
-          [resolve(__dirname, 'src/game/heli-sound')]:     resolve(__dirname, 'src/game/heli-sound.app-stub.ts'),
-          [resolve(__dirname, 'src/shared/ZsynthPlayer')]:  resolve(__dirname, 'src/shared/ZsynthPlayer.app-stub.ts'),
+          [resolve(__dirname, 'src/game/heli-sound')]: resolve(__dirname, 'src/game/heli-sound.app-stub.ts'),
+          [resolve(__dirname, 'src/shared/ZsynthPlayer')]: resolve(__dirname, 'src/shared/ZsynthPlayer.app-stub.ts'),
       }
     : { [resolve(__dirname, 'src/game/storage')]: storageWebStub };
 
@@ -82,13 +80,22 @@ export default defineConfig(({ command }) => {
     return {
         define: {
             __APP_VERSION__: JSON.stringify(version),
-            __ORNI_SPAWN_RATE__: command === 'serve' ? 1 : 30,
+            __ORNI_SPAWN_RATE__: command === 'serve' ? 1 : 15,
         },
         resolve: {
             alias: { '@': resolve(__dirname, 'src') },
         },
         base: isApp ? './' : command === 'build' ? '/callsign-wolf/' : '/',
-        plugins: [zsongPlugin(), zdefPlugin(), zcampaignPlugin(), makeSingleFile(), stubsPlugin(), swapEntry(), bundleSizeGuard(), ...(isApp ? [injectAppCsp()] : [])],
+        plugins: [
+            zsongPlugin(),
+            zdefPlugin(),
+            zcampaignPlugin(),
+            makeSingleFile(),
+            stubsPlugin(),
+            swapEntry(),
+            bundleSizeGuard(),
+            ...(isApp ? [injectAppCsp()] : []),
+        ],
         build: {
             outDir: 'dist/',
 

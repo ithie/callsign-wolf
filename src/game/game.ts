@@ -469,12 +469,14 @@ const _maybeSpawnOrniWreck = () => {
     for (const c of order) {
         const gz = getGround(c.x, c.y, G.points, G.CARRIER);
         if (gz <= G.waterLevel + 0.3) continue;
+        const orniAngle = Math.random() * Math.PI * 2;
+        G.ORNI_RESIDUES.push({ x: c.x, y: c.y, angle: orniAngle });
         spawnPayload({
             type: PAYLOAD.ORNI_WRECK,
             x: c.x,
             y: c.y,
             z: gz,
-            angle: Math.random() * Math.PI * 2,
+            angle: orniAngle,
             deliverTo: VESSEL.PAD,
         }, false); // Easter Egg zählt nicht zum Spielziel
         return;

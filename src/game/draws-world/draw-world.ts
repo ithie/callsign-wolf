@@ -135,12 +135,15 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 );
             });
         }
+        G.ORNI_RESIDUES.forEach((r: any) => {
+            if (!isVisible(r.x, r.y, visMargin)) return;
+            SceneRenderer.add(ORNI_WRECK_RESIDUE_DEF as any, { x: r.x, y: r.y, z: getGround(r.x, r.y), angle: r.angle });
+            SceneRenderer.flush(camX, camY);
+        });
         G.payloads.forEach((p: any) => {
-            if (p.type !== PAYLOAD.ORNI_WRECK || !isVisible(p.x, p.y, visMargin)) return;
-            const gz = getGround(p.x, p.y);
-            SceneRenderer.add(ORNI_WRECK_RESIDUE_DEF as any, { x: p.x, y: p.y, z: gz, angle: p.angle ?? 0 });
-            if (!p.hanging && !p.rescued)
-                SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, { x: p.x, y: p.y, z: gz, angle: p.angle ?? 0 });
+            if (p.type !== PAYLOAD.ORNI_WRECK || p.hanging || p.rescued) return;
+            if (!isVisible(p.x, p.y, visMargin)) return;
+            SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, { x: p.x, y: p.y, z: getGround(p.x, p.y), angle: p.angle ?? 0 });
             SceneRenderer.flush(camX, camY);
         });
 
