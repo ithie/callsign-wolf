@@ -1134,6 +1134,16 @@ const _onloadPreview = !import.meta.env.DEV
           }
       };
 
+const _showDebugError = (msg: string) => {
+    const session = (window as any).__nativeStorage?.z_session ?? localStorage.getItem?.('z_session') ?? '(nicht lesbar)';
+    const el = document.createElement('div');
+    el.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#900;color:#fff;font:14px monospace;padding:20px;z-index:99999;overflow:auto;white-space:pre-wrap';
+    el.textContent = 'Something went wrong. Please take a screenshot of this screen and send it to the developer.\n\nERROR:\n' + msg + '\n\nSESSION:\n' + session;
+    document.body.appendChild(el);
+};
+window.addEventListener('unhandledrejection', e => _showDebugError(String(e.reason?.stack ?? e.reason)));
+window.addEventListener('error', e => _showDebugError(e.message + '\n' + e.filename + ':' + e.lineno));
+
 window.onload = () => {
     requestAnimationFrame(() => {
         void (async () => {

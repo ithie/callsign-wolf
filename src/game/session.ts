@@ -43,7 +43,13 @@ export const loadSession = (): PlayerSession => {
         delete parsed.cookieConsent;
         delete parsed.consentTimestamp;
         delete parsed.consentVersion;
-        return { ..._default(), ...parsed };
+        const merged = { ..._default(), ...parsed };
+        // Normalize missions to always be an array (old saves may have stored it differently)
+        for (const key of Object.keys(merged.campaignProgress)) {
+            const cp = merged.campaignProgress[key];
+            if (!Array.isArray(cp?.missions)) cp.missions = [];
+        }
+        return merged;
     } catch {
         return _default();
     }
@@ -56,7 +62,8 @@ export const saveSession = (s: PlayerSession): void => {
 };
 
 export const getMissionsDone = (s: PlayerSession): number =>
-    Object.values(s.campaignProgress).reduce((sum, cp) => sum + cp.missions.filter(m => m.completed).length, 0);
+    Object.values(s.campaignProgress ?? {}).reduce((sum, cp) =>
+        sum + (Array.isArray(cp?.missions) ? cp.missions.filter((m: any) => m?.completed).length : 0), 0);
 
 export const getCampaignsDone = (s: PlayerSession): number =>
     Object.values(s.campaignProgress).filter(cp => cp.completed).length;
