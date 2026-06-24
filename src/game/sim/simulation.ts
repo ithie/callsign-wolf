@@ -91,7 +91,7 @@ const _computeLandingState = (ctx: PhysicsCtx, groundH: number) => {
     for (const b of G.BOATS) {
         if (b.objectType !== VESSEL.FRIGATE) continue;
         const local = getCarrierLocal(G.heli.x, G.heli.y, b);
-        if (Math.abs(local.x) <= 6.0 && Math.abs(local.y) <= 1.8) {
+        if (Math.abs(local.x) <= 11.0 && Math.abs(local.y) <= 3.0) {
             onFrigateDeck = true;
             frigateDeckZ = b.zDeck;
             break;
@@ -270,7 +270,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     if (!crashed) {
         for (const { b, x: oldX, y: oldY, angle: oldAng } of _frigateSnap) {
             const local = getCarrierLocal(G.heli.x, G.heli.y, b);
-            if (Math.abs(local.x) <= 6.0 && Math.abs(local.y) <= 1.8 && !G.heli.inAir) {
+            if (Math.abs(local.x) <= 11.0 && Math.abs(local.y) <= 3.0 && !G.heli.inAir) {
                 const vX = b.x - oldX, vY = b.y - oldY, rot = b.angle - oldAng;
                 G.heli.x += vX; G.heli.y += vY;
                 const dx = G.heli.x - b.x, dy = G.heli.y - b.y;

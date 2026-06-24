@@ -88,8 +88,8 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             _drawBowWave(G.CARRIER.x, G.CARRIER.y, G.CARRIER.angle, G.CARRIER.speedKnots, camX, camY, 9, 3);
         G.BOATS.forEach((b: any) => {
             if (isVisible(b.x, b.y, visMargin) && b.path !== 'static' && _inNightConeRect(b.x, b.y, b.w, b.l, b.angle)) {
-                const hullOff = b.objectType === 'frigate' ? 6 : 2;
-                const nCrests = b.objectType === 'frigate' ? 7 : 5;
+                const hullOff = b.objectType === 'frigate' ? 10 : 2;
+                const nCrests = b.objectType === 'frigate' ? 9 : 5;
                 _drawBowWave(b.x, b.y, b.angle, b.speedKnots, camX, camY, hullOff, nCrests);
             }
         });
@@ -130,7 +130,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 const cosA = Math.cos(b.angle), sinA = Math.sin(b.angle);
                 const dx = G.heli.x - b.x, dy = G.heli.y - b.y;
                 const lx = dx * cosA + dy * sinA, ly = -dx * sinA + dy * cosA;
-                if (Math.abs(lx) > 7 || Math.abs(ly) > 2.5) return;
+                if (Math.abs(lx) > 14 || Math.abs(ly) > 5) return;
                 dwCtx.drawFns.drawHeli(
                     G.heli.type, G.heli.x, G.heli.y, G.heli.z,
                     G.heli.angle, G.heli.tilt, G.heli.roll, G.heli.rotationPos,

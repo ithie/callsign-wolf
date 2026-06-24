@@ -208,7 +208,7 @@ const BOAT_CFG: Record<string, { w: number; l: number; zDeck: number }> = {
     pilot_boat:  { w: 0.8, l:  2.0, zDeck: 0.3 },
     sar_boat:    { w: 0.8, l:  2.0, zDeck: 0.3 },
     salvage_tug: { w: 1.2, l:  3.5, zDeck: 1.2 },
-    frigate:     { w: 1.8, l:  6.0, zDeck: (FRIGATE_DEF as any).landingZone?.z ?? 1.2 },
+    frigate:     { w: 3.0, l: 11.0, zDeck: (FRIGATE_DEF as any).landingZone?.z ?? 2.0 },
 };
 
 export const initBoatsFromMission = () => {

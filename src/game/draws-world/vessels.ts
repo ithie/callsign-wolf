@@ -53,7 +53,9 @@ export const createVesselsDraw = (dwCtx: DrawWorldCtx) => {
             const radarAngle = (Date.now() * 0.002) % (Math.PI * 2);
             SceneRenderer.add(applyParts(SAR_BOAT_DEF as any, { radarAngle }), { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
         } else if (b.objectType === VESSEL.FRIGATE) {
-            SceneRenderer.add(FRIGATE_DEF, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
+            SceneRenderer.add(applyParts(FRIGATE_DEF as any, {}, { only: ['hull'] }), { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
+            SceneRenderer.flush(cx, cy);
+            SceneRenderer.add(applyParts(FRIGATE_DEF as any, {}, { only: ['super'] }), { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
             SceneRenderer.flush(cx, cy);
         } else {
             const def = b.objectType === VESSEL.SALVAGE_TUG ? SALVAGE_TUG_DEF : SAILBOAT_DEF;
