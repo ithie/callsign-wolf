@@ -15,7 +15,7 @@ const startDevServer = (ctx: vscode.ExtensionContext): void => {
     const root = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!root) return;
 
-    const out = vscode.window.createOutputChannel('Zeewolf Dev Server');
+    const out = vscode.window.createOutputChannel('Dev Server');
     ctx.subscriptions.push(out);
 
     devServer = spawn('npm', ['run', 'dev'], {
@@ -34,7 +34,12 @@ const startDevServer = (ctx: vscode.ExtensionContext): void => {
         devServer = null;
     });
 
-    ctx.subscriptions.push({ dispose: () => { devServer?.kill(); devServer = null; } });
+    ctx.subscriptions.push({
+        dispose: () => {
+            devServer?.kill();
+            devServer = null;
+        },
+    });
 };
 
 // Runs esbuild --watch in vscode-ext/ so ui-preview.js rebuilds automatically.
@@ -52,8 +57,15 @@ const startUiWatcher = (ctx: vscode.ExtensionContext): string | null => {
         stdio: 'ignore',
     });
 
-    uiWatcher.on('exit', () => { uiWatcher = null; });
-    ctx.subscriptions.push({ dispose: () => { uiWatcher?.kill(); uiWatcher = null; } });
+    uiWatcher.on('exit', () => {
+        uiWatcher = null;
+    });
+    ctx.subscriptions.push({
+        dispose: () => {
+            uiWatcher?.kill();
+            uiWatcher = null;
+        },
+    });
 
     return path.join(extSrc, 'media');
 };
@@ -67,32 +79,30 @@ export const activate = (ctx: vscode.ExtensionContext): void => {
     const uiPreviewProvider = new UiPreviewProvider(ctx, workspaceRoot);
 
     ctx.subscriptions.push(
-        vscode.window.registerCustomEditorProvider(
-            'zw.campaignEditor',
-            campaignProvider,
-            { webviewOptions: { retainContextWhenHidden: true } },
-        ),
+        vscode.window.registerCustomEditorProvider('zw.campaignEditor', campaignProvider, {
+            webviewOptions: { retainContextWhenHidden: true },
+        }),
         vscode.commands.registerCommand('zw.openCampaignPreview', () => {
             campaignProvider.openPreviewForActive();
         }),
         vscode.commands.registerCommand('zw.openUIPreview', () => {
             uiPreviewProvider.openForActive();
         }),
-        vscode.window.registerCustomEditorProvider(
-            'zw.zsongEditor',
-            new ZsongEditorProvider(ctx),
-            { webviewOptions: { retainContextWhenHidden: true } },
-        ),
+        vscode.window.registerCustomEditorProvider('zw.zsongEditor', new ZsongEditorProvider(ctx), {
+            webviewOptions: { retainContextWhenHidden: true },
+        }),
         vscode.window.registerCustomEditorProvider(
             'zw.zdefEditor',
-            (() => { const p = new ZdefEditorProvider(ctx); ctx.subscriptions.push(vscode.commands.registerCommand('zw.openZdefRaw', () => p.openRawForActive())); return p; })(),
-            { webviewOptions: { retainContextWhenHidden: true } },
+            (() => {
+                const p = new ZdefEditorProvider(ctx);
+                ctx.subscriptions.push(vscode.commands.registerCommand('zw.openZdefRaw', () => p.openRawForActive()));
+                return p;
+            })(),
+            { webviewOptions: { retainContextWhenHidden: true } }
         ),
-        vscode.window.registerCustomEditorProvider(
-            'zw.zsoundEditor',
-            new ZsoundEditorProvider(ctx),
-            { webviewOptions: { retainContextWhenHidden: true } },
-        ),
+        vscode.window.registerCustomEditorProvider('zw.zsoundEditor', new ZsoundEditorProvider(ctx), {
+            webviewOptions: { retainContextWhenHidden: true },
+        })
     );
 };
 

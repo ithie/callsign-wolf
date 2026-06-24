@@ -10,7 +10,7 @@ export const setOnStateChanged = (fn: (() => void) | null): void => {
 };
 
 // Notify the Electron workbench parent frame that editor state has changed
-const notifyWorkbench = () => {
+export const notifyWorkbench = () => {
     if (window.parent !== window) window.parent.postMessage({ type: 'editor-state-changed' }, '*');
     _onStateChanged?.();
 };
@@ -31,185 +31,13 @@ const getEl = <T extends HTMLElement>(id: string): T => document.getElementById(
 const getInput = (id: string) => getEl<HTMLInputElement>(id);
 
 // ── Payload-Liste ─────────────────────────────────────────────────────────────
-export const renderPayloadList = () => {
-    const m = getCurrentMission();
-    const container = getEl('payload-list');
-    if (!container || !m) {
-        notifyWorkbench();
-        return;
-    }
-    container.innerHTML = '';
-    const payloads = m.payloads || [];
-    if (payloads.length === 0) {
-        container.innerHTML = '<span style="color:#555;font-size:11px">Keine Payloads platziert</span>';
-        return;
-    }
-    payloads.forEach((p, i) => {
-        const pa = p as any;
-        const wrap = document.createElement('div');
-        wrap.style.cssText = 'margin:3px 0';
+export const renderPayloadList = () => notifyWorkbench();
 
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px';
-        const icon = p.type === 'person' ? '🟡' : p.type === 'rescuer' ? '🔵' : '🟠';
-        const typeName = p.type === 'person' ? 'Person' : p.type === 'rescuer' ? 'Retter' : 'Crate';
-        const label = document.createElement('span');
-        label.style.flex = '1';
-        const attach = pa.attachTo ? ` → ${pa.attachTo.objectType} #${pa.attachTo.objectIdx + 1}` : '';
-        label.innerText = `${i + 1}. ${icon} ${typeName} @ (${p.x}, ${p.y})${attach}`;
-
-        // NPC-Target Checkbox
-        const npcLabel = document.createElement('label');
-        npcLabel.style.cssText = 'display:flex;align-items:center;gap:2px;color:#8af;white-space:nowrap;cursor:pointer';
-        const npcCb = document.createElement('input');
-        npcCb.type = 'checkbox';
-        npcCb.checked = !!pa.npcTarget;
-        npcCb.onchange = () => {
-            pa.npcTarget = npcCb.checked;
-            drawMap();
-        };
-        npcLabel.append(npcCb, 'NPC');
-
-        // deliverTo — for persons and crates, always all options
-        let deliverToEl: HTMLElement | null = null;
-        if (p.type === 'crate' || p.type === 'person') {
-            const sel = document.createElement('select');
-            sel.style.cssText =
-                'background:#222;color:#fa8;border:1px solid #555;font-size:10px;padding:1px 3px;cursor:pointer';
-            const opts: Array<[string, string]> = [
-                ['', 'Ziel: –'],
-                ['pad', 'Ziel: Pad'],
-                ['carrier', 'Ziel: Carrier'],
-                ['submarine', 'Ziel: U-Boot'],
-                ['boat', 'Ziel: Boot'],
-            ];
-            opts.forEach(([val, lbl]) => {
-                const opt = document.createElement('option');
-                opt.value = val;
-                opt.text = lbl;
-                if ((pa.deliverTo ?? '') === val) opt.selected = true;
-                sel.appendChild(opt);
-            });
-            sel.onchange = () => {
-                pa.deliverTo = sel.value || undefined;
-                notifyWorkbench();
-            };
-            deliverToEl = sel;
-        }
-
-        const btnDel = document.createElement('button');
-        btnDel.innerText = 'X';
-        btnDel.style.cssText = 'background:#822;color:#fff;border:none;padding:2px 6px;cursor:pointer;font-size:10px';
-        btnDel.onclick = () => {
-            m.payloads.splice(i, 1);
-            renderPayloadList();
-            drawMap();
-        };
-        row.append(label, npcLabel, ...(deliverToEl ? [deliverToEl] : []), btnDel);
-        wrap.appendChild(row);
-
-        // localX / localY — only when attached to a vessel
-        if (pa.attachTo) {
-            const offsetRow = document.createElement('div');
-            offsetRow.style.cssText =
-                'display:flex;align-items:center;gap:4px;font-size:10px;color:#aaa;padding-left:12px;margin-top:2px';
-            const makeOffsetInput = (axis: 'localX' | 'localY', axisLabel: string) => {
-                const lbl = document.createElement('span');
-                lbl.innerText = axisLabel + ':';
-                const inp = document.createElement('input');
-                inp.type = 'number';
-                inp.step = '0.5';
-                inp.value = String(pa.attachTo[axis] ?? 0);
-                inp.style.cssText =
-                    'width:48px;background:#222;color:#ddd;border:1px solid #444;padding:1px 3px;font-size:10px';
-                inp.onchange = () => {
-                    pa.attachTo[axis] = parseFloat(inp.value) || 0;
-                    notifyWorkbench();
-                    drawMap();
-                };
-                return [lbl, inp];
-            };
-            offsetRow.append(
-                document.createTextNode('offset '),
-                ...makeOffsetInput('localX', 'X'),
-                ...makeOffsetInput('localY', 'Y')
-            );
-            wrap.appendChild(offsetRow);
-        }
-
-        container.appendChild(wrap);
-    });
-    notifyWorkbench();
-};
-
-// ── Object-Liste (Carrier / Boats / Lighthouse) ───────────────────────────────
-export const renderObjectList = () => {
-    const m = getCurrentMission();
-    const container = getEl('object-list');
-    if (!container || !m) return;
-    container.innerHTML = '';
-    m.objects.forEach((obj, idx) => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:6px;margin:3px 0;font-size:11px';
-        const icons: Record<string, string> = {
-            pad: '🟩',
-            carrier: '🚢',
-            boat: '⛵',
-            pilot_boat: '🚤',
-            sar_boat: '🛥',
-            salvage_tug: '🛳',
-            submarine: '🤿',
-            lighthouse: '🔦',
-            research_platform: '🏗',
-            wind_turbine: '🌀',
-            plane_wreck: '✈️',
-            sailboat_broken: '⛵',
-            ornithopter_wreck: '🛸',
-            baywatch_car: '🚗',
-            baywatch_hq: '🏠',
-            baywatch_tower: '🗼',
-            buoy: '🔴',
-        };
-        const label = document.createElement('span');
-        label.style.flex = '1';
-        label.innerText = `${icons[obj.type] || '?'} ${obj.type} @ (${obj.x}, ${obj.y})`;
-        const btnDel = document.createElement('button');
-        btnDel.innerText = 'X';
-        btnDel.style.cssText = 'background:#822;color:#fff;border:none;padding:2px 6px;cursor:pointer;font-size:10px';
-        btnDel.onclick = () => {
-            m.objects.splice(idx, 1);
-            if (state.selectedObjectIdx === idx) state.selectedObjectIdx = null;
-            renderObjectList();
-            drawMap();
-        };
-        row.append(label, btnDel);
-        container.appendChild(row);
-    });
-    notifyWorkbench();
-};
+// ── Object-Liste ──────────────────────────────────────────────────────────────
+export const renderObjectList = () => notifyWorkbench();
 
 // ── Foliage-Liste ─────────────────────────────────────────────────────────────
-export const renderFoliageList = () => {
-    const m = getCurrentMission();
-    const container = getEl('foliage-list');
-    const countEl = getEl('foliage-count');
-    if (!container || !m) return;
-    const foliage = (m as any).foliage || [];
-    if (countEl) countEl.innerText = `(${foliage.length} Objekte)`;
-    if (foliage.length === 0) {
-        container.innerHTML = '<span style="color:#555">Keine Bäume platziert</span>';
-        return;
-    }
-    const icons: Record<string, string> = { pine: '🌲', oak: '🌳', bush: '🌿', dead: '🪵' };
-    const counts: Record<string, number> = {};
-    foliage.forEach((f: any) => {
-        counts[f.type] = (counts[f.type] || 0) + 1;
-    });
-    container.innerHTML = Object.entries(counts)
-        .map(([type, n]) => `${icons[type] || '🌲'} ${type}: <strong style="color:#5f5">${n}</strong>`)
-        .join(' &nbsp;|&nbsp; ');
-    notifyWorkbench();
-};
+export const renderFoliageList = () => notifyWorkbench();
 const _lsDe = (ls: string | { de: string; en?: string } | undefined): string =>
     !ls ? '' : typeof ls === 'string' ? ls : ls.de || '';
 const _lsEn = (ls: string | { de: string; en?: string } | undefined): string =>
@@ -252,7 +80,7 @@ const syncVesselFromUI = (kind: 'carrier' | 'boat' | 'submarine') => {
     const m = getCurrentMission();
     if (!m || state.selectedObjectIdx === null) return;
     const obj = m.objects[state.selectedObjectIdx] as any;
-    const _boatTypes = new Set(['boat', 'pilot_boat', 'sar_boat', 'salvage_tug']);
+    const _boatTypes = new Set(['boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'frigate']);
     if (!obj || (kind === 'boat' ? !_boatTypes.has(obj.type) : obj.type !== kind)) return;
     const prefix = kind === 'carrier' ? 'carrier' : kind === 'submarine' ? 'submarine' : 'boat';
     obj.path = (document.getElementById(`m_${prefix}_path`) as HTMLSelectElement)?.value ?? obj.path;
@@ -261,8 +89,10 @@ const syncVesselFromUI = (kind: 'carrier' | 'boat' | 'submarine') => {
     obj.angle = parseInt((document.getElementById(`m_${prefix}_angle`) as HTMLInputElement)?.value) || 0;
     obj.vesselName = (document.getElementById(`m_${prefix}_name`) as HTMLInputElement)?.value ?? '';
     obj.exitWarning = (document.getElementById(`m_${prefix}_exitWarning`) as HTMLInputElement)?.checked ?? false;
+    obj.radioSilent = !((document.getElementById(`m_${prefix}_radioSilent`) as HTMLInputElement)?.checked ?? true);
     drawMap();
     broadcastPreview();
+    notifyWorkbench();
 };
 
 // ── Load mission into UI ───────────────────────────────────────────────────────
@@ -301,56 +131,7 @@ export const loadMission = (idx: number) => {
 };
 
 // ── Mission list UI ───────────────────────────────────────────────────────────
-const renderMissionList = () => {
-    const container = getEl('mission-list');
-    container.innerHTML = '';
-    state.campaign.forEach((m, i) => {
-        const div = document.createElement('div');
-        div.className = 'mission-item' + (i === state.curIdx ? ' active' : '');
-        const span = document.createElement('span');
-        span.innerText = `${i + 1}. ${_lsDe(m.headline).substring(0, 18)}`;
-        const controls = document.createElement('div');
-        controls.className = 'm-controls';
-        const btnUp = document.createElement('button');
-        btnUp.innerText = '↑';
-        btnUp.onclick = e => {
-            e.stopPropagation();
-            moveM(i, -1);
-        };
-        const btnDown = document.createElement('button');
-        btnDown.innerText = '↓';
-        btnDown.onclick = e => {
-            e.stopPropagation();
-            moveM(i, 1);
-        };
-        const btnDel = document.createElement('button');
-        btnDel.innerText = 'X';
-        btnDel.style.background = '#822';
-        btnDel.onclick = e => {
-            e.stopPropagation();
-            delM(i);
-        };
-        controls.append(btnUp, btnDown, btnDel);
-        div.append(span, controls);
-        div.onclick = () => loadMission(i);
-        container.appendChild(div);
-    });
-    notifyWorkbench();
-};
-
-const moveM = (i: number, dir: number) => {
-    if (i + dir < 0 || i + dir >= state.campaign.length) return;
-    [state.campaign[i], state.campaign[i + dir]] = [state.campaign[i + dir], state.campaign[i]];
-    loadMission(i + dir);
-};
-
-const delM = (i: number) => {
-    if (state.campaign.length <= 1) return;
-    if (confirm('Mission wirklich löschen?')) {
-        state.campaign.splice(i, 1);
-        loadMission(Math.max(0, i - 1));
-    }
-};
+const renderMissionList = () => notifyWorkbench();
 
 // ── Camera ────────────────────────────────────────────────────────────────────
 const clampCamera = () => {
@@ -763,7 +544,7 @@ export const initUI = () => {
         if (m.objects.some((o: any) => o.type === 'pad')) opts.push(['pad', 'Pad']);
         if (m.objects.some((o: any) => o.type === 'carrier')) opts.push(['carrier', 'Carrier']);
         if (m.objects.some((o: any) => o.type === 'submarine')) opts.push(['submarine', 'U-Boot']);
-        if (m.objects.some((o: any) => ['boat', 'pilot_boat', 'sar_boat', 'salvage_tug'].includes(o.type)))
+        if (m.objects.some((o: any) => ['boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'frigate'].includes(o.type)))
             opts.push(['boat', 'Boot']);
         opts.forEach(([val, lbl]) => {
             const opt = document.createElement('option');
@@ -798,10 +579,44 @@ export const initUI = () => {
         npcRow.appendChild(npcLabel);
         popup.appendChild(npcRow);
 
+        if (pa.type === 'person') {
+            const swimRow = document.createElement('div');
+            swimRow.style.cssText = 'margin:4px 0;display:flex;align-items:center;gap:6px';
+            const swimLabel = document.createElement('span');
+            swimLabel.style.color = '#aaa';
+            swimLabel.textContent = 'Outfit:';
+            const swimSel = document.createElement('select');
+            swimSel.style.cssText =
+                'flex:1;background:#111;color:#8fa;border:1px solid #444;font-family:monospace;font-size:11px';
+            const swimOpts: Array<[string, string]> = [
+                ['', 'auto'],
+                ['true', 'Badekleidung'],
+                ['false', 'Normalkleidung'],
+            ];
+            const curSwim = pa.swimwear === true ? 'true' : pa.swimwear === false ? 'false' : '';
+            swimOpts.forEach(([val, lbl]) => {
+                const opt = document.createElement('option');
+                opt.value = val;
+                opt.text = lbl;
+                if (curSwim === val) opt.selected = true;
+                swimSel.appendChild(opt);
+            });
+            swimSel.onchange = () => {
+                if (swimSel.value === 'true') pa.swimwear = true;
+                else if (swimSel.value === 'false') pa.swimwear = false;
+                else delete pa.swimwear;
+                renderPayloadList();
+                notifyWorkbench();
+                broadcastPreview();
+            };
+            swimRow.append(swimLabel, swimSel);
+            popup.appendChild(swimRow);
+        }
+
         const vw = window.innerWidth,
             vh = window.innerHeight;
         popup.style.left = Math.min(cx + 6, vw - 190) + 'px';
-        popup.style.top = Math.min(cy + 6, vh - 120) + 'px';
+        popup.style.top = Math.min(cy + 6, vh - 150) + 'px';
         popup.style.display = 'block';
     };
 
@@ -970,10 +785,12 @@ export const initUI = () => {
         document.getElementById(`m_${id}`)?.addEventListener('input', () => syncVesselFromUI('carrier'))
     );
     document.getElementById('m_carrier_exitWarning')?.addEventListener('change', () => syncVesselFromUI('carrier'));
+    document.getElementById('m_carrier_radioSilent')?.addEventListener('change', () => syncVesselFromUI('carrier'));
     ['boat_path', 'boat_speed', 'boat_radius', 'boat_angle', 'boat_name'].forEach(id =>
         document.getElementById(`m_${id}`)?.addEventListener('input', () => syncVesselFromUI('boat'))
     );
     document.getElementById('m_boat_exitWarning')?.addEventListener('change', () => syncVesselFromUI('boat'));
+    document.getElementById('m_boat_radioSilent')?.addEventListener('change', () => syncVesselFromUI('boat'));
     ['submarine_path', 'submarine_speed', 'submarine_radius', 'submarine_angle', 'submarine_name'].forEach(id =>
         document.getElementById(`m_${id}`)?.addEventListener('input', () => syncVesselFromUI('submarine'))
     );
@@ -1042,6 +859,7 @@ export const initUI = () => {
         'pilot_boat',
         'sar_boat',
         'salvage_tug',
+        'frigate',
         'submarine',
         'lighthouse',
         'research_platform',
@@ -1062,6 +880,7 @@ export const initUI = () => {
         carrier: '#88aaff',
         boat: '#4af',
         submarine: '#888',
+        frigate: '#6688bb',
         lighthouse: '#ffdd44',
         plane_wreck: '#aaa',
         sailboat_broken: '#b96',
@@ -1257,6 +1076,9 @@ export const initUI = () => {
             case 'salvage_tug':
                 m.objects.push(_vesselBase('salvage_tug'));
                 break;
+            case 'frigate':
+                m.objects.push({ ..._vesselBase('frigate'), speed: 3 });
+                break;
             case 'submarine':
                 m.objects.push(_vesselBase('submarine'));
                 break;
@@ -1292,6 +1114,7 @@ export const initUI = () => {
                 { v: 'pilot_boat', l: '🚤 Lotsenboot' },
                 { v: 'sar_boat', l: '🛥 SAR-Boot' },
                 { v: 'salvage_tug', l: '🛳 Schlepper' },
+                { v: 'frigate', l: '⚓ Fregatte' },
                 { v: 'submarine', l: '🤿 U-Boot' },
             ]},
             { cat: 'Deko', emoji: '🌀', items: [
@@ -1469,7 +1292,7 @@ export const initUI = () => {
                 const obj = m.objects[i] as any;
                 let hit = false;
                 if (obj.type === 'pad') hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
-                else if (['carrier', 'boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'submarine'].includes(obj.type))
+                else if (['carrier', 'boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'frigate', 'submarine'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
                 else if (['lighthouse', 'research_platform', 'wind_turbine'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
@@ -1590,6 +1413,7 @@ export const initUI = () => {
                 state.currentTool !== 'boat' &&
                 state.currentTool !== 'pilot_boat' &&
                 state.currentTool !== 'salvage_tug' &&
+                state.currentTool !== 'frigate' &&
                 state.currentTool !== 'submarine' &&
                 state.currentTool !== 'carrier' &&
                 state.currentTool !== 'pad' &&
@@ -1706,7 +1530,7 @@ export const initUI = () => {
             .value.split('\n')
             .filter(l => l.trim());
         const exportData = {
-            type: getEl<HTMLSelectElement>('c_type').value || 'ZEEWOLF_CAMPAIGN',
+            type: getEl<HTMLSelectElement>('c_type').value || 'CSW_CAMPAIGN',
             campaignTitle: { de: getInput('c_title_de').value, en: getInput('c_title_en').value },
             campaignSublines: cSubDe.map((de, i) => ({ de, en: cSubEn[i] || '' })),
             levels: data,
@@ -1744,7 +1568,7 @@ export const initUI = () => {
             getEl<HTMLTextAreaElement>('c_sublines_en').value = cs
                 .map(s => (typeof s === 'string' ? '' : s.en || ''))
                 .join('\n');
-            getEl<HTMLSelectElement>('c_type').value = parsed.type || 'ZEEWOLF_CAMPAIGN';
+            getEl<HTMLSelectElement>('c_type').value = parsed.type || 'CSW_CAMPAIGN';
             state.type = parsed.type;
             state.campaign = parsed.levels.map((m: any) => {
                 const base = {

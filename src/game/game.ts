@@ -667,8 +667,12 @@ const drawScene = () => {
     // flapRate: vertical climb + horizontal speed (braking from speed → faster flapping)
     const _flapRate = Math.max(0.5, Math.min(3.0, 1.0 + G.heli.vz * 20 + Math.hypot(G.heli.vx, G.heli.vy) * 8));
 
-    // shadow pass — before world objects so shadow appears on terrain, not over objects
-    if (!zstate.crashed) {
+    // shadow pass — before world objects so shadow appears on terrain, not over objects.
+    // Suppressed when over a research platform — deck shadow in draw-world.ts takes over.
+    const _overResearchPlatform = G.RESEARCH_PLATFORMS.some(
+        (rp: any) => Math.abs(G.heli.x - rp.x) <= 3 && Math.abs(G.heli.y - rp.y) <= 3
+    );
+    if (!zstate.crashed && !_overResearchPlatform) {
         drawHeli(
             G.heli.type,
             G.heli.x,

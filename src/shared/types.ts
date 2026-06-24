@@ -19,6 +19,7 @@ export const VESSEL = {
     BAYWATCH_HQ:        'baywatch_hq',
     BAYWATCH_TOWER:     'baywatch_tower',
     BUOY:               'buoy',
+    FRIGATE:            'frigate',
 } as const;
 
 export const PAYLOAD = {
@@ -89,6 +90,7 @@ type CarrierObject = {
     speed: number;
     radius: number;
     coordinatorHeli?: boolean;
+    radioSilent?: boolean;
 };
 type BoatObject = {
     type: 'boat';
@@ -133,12 +135,22 @@ type WindTurbineObject = { type: 'wind_turbine'; x: number; y: number; spinning?
 type PlaneWreckObject = { type: 'plane_wreck'; x: number; y: number; angle?: number };
 type SailboatBrokenObject = { type: 'sailboat_broken'; x: number; y: number; angle?: number };
 type OrnithopterWreckObject = { type: 'ornithopter_wreck'; x: number; y: number; angle?: number };
+type FrigateObject = {
+    type: 'frigate';
+    x: number;
+    y: number;
+    angle: number;
+    path: VesselPath;
+    speed: number;
+    radius: number;
+    radioSilent?: boolean;
+};
 
-type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject;
+type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject | FrigateObject;
 
 export type Objective =
     | { type: 'rescue_all' }
-    | { type: 'land_at'; target: 'pad' | 'carrier' | 'boat' };
+    | { type: 'land_at'; target: 'pad' | 'carrier' | 'frigate' };
 
 export type MissionPayload = {
     type: 'person' | 'crate' | 'rescuer' | 'orni_wreck';
@@ -148,6 +160,8 @@ export type MissionPayload = {
     npcTarget?: boolean;
     /** Crates only: restrict delivery to this vessel type. Omit = any dropzone. */
     deliverTo?: 'pad' | 'carrier' | 'submarine';
+    /** Persons only: true = beach outfit (Badehose/Badeanzug), false = always normal clothes, omit = auto. */
+    swimwear?: boolean;
 };
 
 export interface Mission {

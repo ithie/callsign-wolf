@@ -1,5 +1,41 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.7.0 — Frigate Operations & Stability
+
+### Added
+
+- **Frigate — heli carry mechanic** — helicopter now moves with the frigate when landed on deck; identical behaviour to the carrier.
+- **Frigate — deck shadow** — helicopter casts a correct shadow on the frigate deck.
+- **Mission editor — frigate as delivery target** — payloads can now be assigned `deliverTo: frigate`.
+- **Mission editor — frigate as mission objective** — `land_at: frigate` available as a mission objective.
+- **Mission editor — radio silence** — carrier and frigate can each be individually configured as radio-silent; silenced vessels transmit no voice callouts during gameplay.
+
+### Fixed
+
+- **Crash with old save data** — `getMissionsDone` could throw a `TypeError` when `campaignProgress` entries from older app versions lacked a `missions` array. Guards added at load time and at the call site.
+
+---
+
+## v28.6.0 — Research Platform & Visual Polish
+
+### Added
+
+- **Beach swimwear** — Person payloads with `"swimwear": true` in the mission data receive a random beach outfit: Badehose (skin-coloured shirt + coloured pants) or Badeanzug (one-piece, same colour for both). Assigned at world-init, stored on the payload object, not configurable in the campaign editor.
+
+### Fixed
+
+- **Research platform — heli depth rendering** — Platform was sorted with depth `rX + rY`, placing it in front of the helicopter on the landing pad (depth `rX + rY − 2.5`). Fixed by overriding platform sort depth to `rX + rY − 4`.
+- **Research platform — double shadow** — Sea-level shadow and deck shadow were both visible simultaneously. Sea-level shadow is now suppressed when the heli is within 3 units of a platform; deck shadow (at `waterLevel + 6.5`) takes over.
+- **Research platform — landing zone** — Landing zone in `research_platform.zdef` expanded to cover the full deck surface; previously only a fraction of the deck was detected, causing the helicopter to slowly sink through the platform when landing off-centre.
+- **Night visibility — long vessels** — `_inNightConeRect` previously checked only 4 corner points. Extended to 9 points (4 corners + 4 edge midpoints + centre), fixing cases where a submarine or carrier was partially in the light cone but none of its corners were.
+
+### Changed
+
+- **Atlas helicopter — uniform body colour** — All orange/red face variants (`#dd5500`, `#ff7711`, `#cc4400`) unified to `#ff6600`, eliminating colour-bleed artefacts at face overlaps.
+- **Atlas helicopter — face draw order** — Faces reordered back-to-front: bottom → sides → tail → nose → windows → pylons → tail roof → top. Top face drawn last ensures it always covers side and window faces in screen space.
+
+---
+
 ## v28.5.3 — Campaign Completion & Exit Warnings
 
 ### Added
@@ -335,7 +371,7 @@
 
 ### Changed
 
-- **Trees depth-sorted with scene objects** — trees are now added to SceneRenderer inside `drawWorldObjects` via a `queueFoliage` callback, called just before the final flush. Previously `drawTrees` ran *after* `flush()`, meaning trees always painted on top of the helicopter regardless of depth. Trees are now correctly occluded when the heli flies below them.
+- **Trees depth-sorted with scene objects** — trees are now added to SceneRenderer inside `drawWorldObjects` via a `queueFoliage` callback, called just before the final flush. Previously `drawTrees` ran _after_ `flush()`, meaning trees always painted on top of the helicopter regardless of depth. Trees are now correctly occluded when the heli flies below them.
 - **Minimap: Ziel-Objekte blau, Rettungsziele rot** — PAD, Carrier and Submarine dots are now blue; persons are red (`#ff3333`), crates orange-red (`#ff7755`); other NPC vessels (boats) are gray (`#888`).
 - **Minimap: Sichtkegel** — a semi-transparent triangle is drawn on a dedicated overlay canvas each frame, originating from the heli dot and pointing in the heli's current flight direction. Helps testers orient themselves on the map at a glance.
 
@@ -364,7 +400,7 @@
 
 ### New
 
-- **VS Code Extension: Zeewolf SAR Tools** — custom editors for `.zcampaign`, `.zsong`, `.zdef` and `.zsound` files, replacing the old Electron-based workbench. Live preview reloads automatically when source files change.
+- **VS Code Extension: SAR Tools** — custom editors for `.zcampaign`, `.zsong`, `.zdef` and `.zsound` files, replacing the old Electron-based workbench. Live preview reloads automatically when source files change.
 - **Per-component UI preview** — each UI screen can be previewed individually in VS Code via the `$(symbol-color)` button on any `*.ui.ts` file. No dev server required; bundled on-the-fly via esbuild.
 - **Rankup overlay: rotating helicopter model** — the "rank up" screen now shows the newly unlocked helicopter as an animated 3D isometric model with spinning rotors instead of just displaying the name.
 
@@ -666,7 +702,7 @@
 - Rescuer wears a white suit (John Travolta / Night Fever)
 - Trees and bushes flash in random greens, colour waves upward per height layer
 - Helipad stays grey
-- Custom music: *Stayin' Alive*-inspired ZSynth track
+- Custom music: _Stayin' Alive_-inspired ZSynth track
 - Resets on mission end (success or failure)
 
 #### Bo-105 Model

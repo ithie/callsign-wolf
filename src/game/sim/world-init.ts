@@ -2,6 +2,7 @@ import { campaignHandler } from '../main';
 import { G } from '../state';
 import { getGround } from './terrain';
 import { VESSEL, PAYLOAD, VESSEL_PATH } from '../../shared/types';
+import FRIGATE_DEF from '../models/frigate.zdef';
 
 const getObjects = () => campaignHandler.getCurrentMissionData().objects || [];
 const getObjectByType = (type: string) => getObjects().find((o: any) => o.type === type) || null;
@@ -154,6 +155,7 @@ export const initCarrierFromMission = () => {
         },
     };
     initVessel(carrierObj, G.CARRIER, seaTimeRef);
+    G.CARRIER.radioSilent = (carrierObj as any).radioSilent ?? false;
     updateCarrierPos(G.CARRIER, seaTimeRef, true);
 };
 
@@ -202,15 +204,16 @@ export const initSubmarinesFromMission = () => {
 export const updateSubmarines = (SUBMARINES: any[], dt: number) => SUBMARINES.forEach(s => updateVesselPath(s, dt));
 
 const BOAT_CFG: Record<string, { w: number; l: number; zDeck: number }> = {
-    boat: { w: 1.5, l: 3.0, zDeck: 0.35 },
-    pilot_boat: { w: 0.8, l: 2.0, zDeck: 0.3 },
-    sar_boat:   { w: 0.8, l: 2.0, zDeck: 0.3 },
-    salvage_tug: { w: 1.2, l: 3.5, zDeck: 1.2 },
+    boat:        { w: 1.5, l:  3.0, zDeck: 0.35 },
+    pilot_boat:  { w: 0.8, l:  2.0, zDeck: 0.3 },
+    sar_boat:    { w: 0.8, l:  2.0, zDeck: 0.3 },
+    salvage_tug: { w: 1.2, l:  3.5, zDeck: 1.2 },
+    frigate:     { w: 1.8, l:  6.0, zDeck: (FRIGATE_DEF as any).landingZone?.z ?? 1.2 },
 };
 
 export const initBoatsFromMission = () => {
     const allObjects = getObjects();
-    const boatTypes = [VESSEL.BOAT, VESSEL.PILOT_BOAT, VESSEL.SAR_BOAT, VESSEL.SALVAGE_TUG];
+    const boatTypes = [VESSEL.BOAT, VESSEL.PILOT_BOAT, VESSEL.SAR_BOAT, VESSEL.SALVAGE_TUG, VESSEL.FRIGATE];
     G.BOATS = boatTypes
         .flatMap(type => getObjectsByType(type))
         .map((obj: any) => {
@@ -237,6 +240,7 @@ export const initBoatsFromMission = () => {
                 lineProgress: 0,
                 _seaTime: 0,
                 _objIdx: allObjects.indexOf(obj),
+                radioSilent: (obj as any).radioSilent ?? false,
             };
             const st = {
                 get t() {
@@ -336,6 +340,19 @@ const _SURVIVOR_OUTFITS = [
     { shirt: '#c0392b', pants: '#17202a' },
 ];
 
+const _SKIN = '#f2d0a4';
+const _BEACH_COLORS = ['#e74c3c', '#3498db', '#f39c12', '#2ecc71', '#9b59b6', '#e91e63', '#ff6600', '#00bcd4'];
+// Badehose: skin shirt + coloured pants. Badeanzug: same colour for both.
+const _BEACH_OUTFITS = [
+    ..._BEACH_COLORS.map(c => ({ shirt: _SKIN, pants: c })),
+    ..._BEACH_COLORS.map(c => ({ shirt: c, pants: c })),
+];
+
+const _pickOutfit = (swimwear: boolean) => {
+    const pool = swimwear ? _BEACH_OUTFITS : _SURVIVOR_OUTFITS;
+    return pool[Math.floor(Math.random() * pool.length)];
+};
+
 export const initPayloadEntry = (p: any): any => {
     let px = p.x,
         py = p.y,
@@ -361,7 +378,7 @@ export const initPayloadEntry = (p: any): any => {
         npcTarget: p.npcTarget ?? false,
         outfitColors:
             p.type === PAYLOAD.PERSON
-                ? (p.outfitColors ?? _SURVIVOR_OUTFITS[Math.floor(Math.random() * _SURVIVOR_OUTFITS.length)])
+                ? (p.outfitColors ?? _pickOutfit(p.swimwear === true))
                 : null,
     };
 };

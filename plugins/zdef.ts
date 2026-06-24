@@ -37,7 +37,8 @@ export const zdefPlugin = (): Plugin => ({
     load: id => (id === VIRTUAL_ID ? EXPAND_SRC : null),
     transform(code: string, id: string) {
         if (!id.endsWith('.zdef')) return null;
-        const compressed = JSON.stringify(compress(JSON.parse(code)));
+        const stripped = code.replace(/\/\/[^\n]*/g, '');
+        const compressed = JSON.stringify(compress(JSON.parse(stripped)));
         return {
             code: `import{expandZdef as _e}from'virtual:zdef-expand';export default _e(${compressed});`,
             map: null,

@@ -1140,7 +1140,7 @@ const toJSON = (): string => {
 };
 
 const fromJSON = (content: string): void => {
-    const d = JSON.parse(content) as Record<string, unknown>;
+    const d = JSON.parse(content.replace(/\/\/[^\n]*/g, '')) as Record<string, unknown>;
     state.def = {
         id: d['id'] as string,
         pivot: (d['pivot'] as number[] | undefined) || [0, 0, 0],

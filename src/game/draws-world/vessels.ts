@@ -8,6 +8,7 @@ import SAR_BOAT_DEF from '../models/sar_boat.zdef';
 import SALVAGE_TUG_DEF from '../models/supply_vessel.zdef';
 import SUBMARINE_DEF from '../models/submarine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
+import FRIGATE_DEF from '../models/frigate.zdef';
 
 export const createVesselsDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, tileW } = dwCtx;
@@ -44,13 +45,16 @@ export const createVesselsDraw = (dwCtx: DrawWorldCtx) => {
         ctx.globalAlpha = 1.0;
     };
 
-    const _drawBoatModel = (b: any) => {
+    const _drawBoatModel = (b: any, cx: number, cy: number) => {
         if (b.objectType === VESSEL.PILOT_BOAT) {
             const radarAngle = (Date.now() * 0.002) % (Math.PI * 2);
             SceneRenderer.add(applyParts(PILOT_BOAT_DEF as any, { radarAngle }), { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
         } else if (b.objectType === VESSEL.SAR_BOAT) {
             const radarAngle = (Date.now() * 0.002) % (Math.PI * 2);
             SceneRenderer.add(applyParts(SAR_BOAT_DEF as any, { radarAngle }), { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
+        } else if (b.objectType === VESSEL.FRIGATE) {
+            SceneRenderer.add(FRIGATE_DEF, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
+            SceneRenderer.flush(cx, cy);
         } else {
             const def = b.objectType === VESSEL.SALVAGE_TUG ? SALVAGE_TUG_DEF : SAILBOAT_DEF;
             SceneRenderer.add(def, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
@@ -62,7 +66,9 @@ export const createVesselsDraw = (dwCtx: DrawWorldCtx) => {
     };
 
     const _drawResearchPlatform = (rX: number, rY: number) => {
-        SceneRenderer.add(RESEARCH_PLATFORM_DEF, { x: rX, y: rY, z: G.waterLevel, angle: 0 });
+        // Landing pad is at x≈-2.5 relative to center → depth rX+rY-2.5.
+        // Override to rX+rY-4 so the platform sorts before (behind) the heli.
+        SceneRenderer.add(RESEARCH_PLATFORM_DEF, { x: rX, y: rY, z: G.waterLevel, angle: 0, depth: rX + rY - 4 });
     };
 
     return { _drawBowWave, _drawBoatModel, _drawSubmarine, _drawResearchPlatform };

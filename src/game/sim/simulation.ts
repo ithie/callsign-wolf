@@ -29,6 +29,7 @@ let _prevKeyE = false;
 let _prevEngineOn = false;
 let _prevFuelLow = false;
 let _prevCarrierNear = false;
+let _prevFrigateNear = false;
 
 const DEF_RESCUE_ZONES: Partial<Record<string, RescueZone[]>> = {
     [VESSEL.CARRIER]:           (CARRIER_DEF.rescueZones           ?? []) as RescueZone[],
@@ -78,7 +79,8 @@ const _inDropzone = (wx: number, wy: number, deliverTo?: string, wz?: number): b
     });
 
 const _computeLandingState = (ctx: PhysicsCtx, groundH: number) => {
-    let onCarrierDeck = false, onPadSurface = false;
+    let onCarrierDeck = false, onPadSurface = false, onFrigateDeck = false;
+    let frigateDeckZ = 0;
     if (ctx.hasCarrier) {
         const local = getCarrierLocal(G.heli.x, G.heli.y, G.CARRIER);
         if (local.x >= -G.CARRIER.w && local.x <= G.CARRIER.w && local.y >= -G.CARRIER.l && local.y <= G.CARRIER.l)
@@ -86,16 +88,26 @@ const _computeLandingState = (ctx: PhysicsCtx, groundH: number) => {
     }
     if (ctx.hasPad && G.heli.x >= G.PAD.xMin && G.heli.x <= G.PAD.xMax && G.heli.y >= G.PAD.yMin && G.heli.y <= G.PAD.yMax)
         onPadSurface = true;
+    for (const b of G.BOATS) {
+        if (b.objectType !== VESSEL.FRIGATE) continue;
+        const local = getCarrierLocal(G.heli.x, G.heli.y, b);
+        if (Math.abs(local.x) <= 6.0 && Math.abs(local.y) <= 1.8) {
+            onFrigateDeck = true;
+            frigateDeckZ = b.zDeck;
+            break;
+        }
+    }
     const landingZone = G.LANDING_ZONES.find(lz =>
         G.heli.x >= lz.xMin && G.heli.x <= lz.xMax &&
         G.heli.y >= lz.yMin && G.heli.y <= lz.yMax
     ) ?? null;
-    const onPad = onCarrierDeck || onPadSurface || landingZone !== null;
+    const onPad = onCarrierDeck || onPadSurface || onFrigateDeck || landingZone !== null;
     const effectiveGroundH = landingZone ? landingZone.z
         : onPadSurface && G.PAD ? G.PAD.z
         : onCarrierDeck ? G.CARRIER.zDeck
+        : onFrigateDeck ? frigateDeckZ
         : groundH;
-    return { onCarrierDeck, onPadSurface, onPad, effectiveGroundH };
+    return { onCarrierDeck, onPadSurface, onFrigateDeck, onPad, effectiveGroundH };
 };
 
 // Returns the single delivery-target type if exactly one type has dropoff zones; else undefined.
@@ -110,14 +122,15 @@ const _singleDropzoneType = (): string | undefined => {
 
 // ─── deposit/winch-in handlers ────────────────────────────────────────────────
 
-interface _DepositState { ctx: PhysicsCtx; onCarrierDeck: boolean; onPadSurface: boolean; }
+interface _DepositState { ctx: PhysicsCtx; onCarrierDeck: boolean; onPadSurface: boolean; onFrigateDeck: boolean; }
 
-const _deliveryDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface }: _DepositState) => {
+const _deliveryDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface, onFrigateDeck }: _DepositState) => {
     const deliverTo = (p as any).deliverTo as string | undefined;
     const effectiveDeliverTo = deliverTo ?? _singleDropzoneType();
-    const onCarrierOk = (!deliverTo || deliverTo === VESSEL.CARRIER) && onCarrierDeck && G.heli.z < 3.0;
-    const onPadOk     = (!deliverTo || deliverTo === VESSEL.PAD)     && onPadSurface  && G.heli.z < 3.0;
-    const inZone = onCarrierOk || onPadOk || _inDropzone(p.x, p.y, effectiveDeliverTo, p.z);
+    const onCarrierOk  = (!deliverTo || deliverTo === VESSEL.CARRIER)  && onCarrierDeck  && G.heli.z < 3.0;
+    const onPadOk      = (!deliverTo || deliverTo === VESSEL.PAD)      && onPadSurface   && G.heli.z < 3.0;
+    const onFrigateOk  = (!deliverTo || deliverTo === VESSEL.FRIGATE)  && onFrigateDeck  && G.heli.z < 3.0;
+    const inZone = onCarrierOk || onPadOk || onFrigateOk || _inDropzone(p.x, p.y, effectiveDeliverTo, p.z);
     G.payloads.splice(G.payloads.indexOf(p), 1);
     p.hanging = false; p.rescued = true; G.activePayload = null;
     if (inZone) {
@@ -151,12 +164,13 @@ const _orniWreckDeposit = (p: any, { ctx, onPadSurface }: _DepositState) => {
     }
 };
 
-const _genericDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface }: _DepositState) => {
+const _genericDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface, onFrigateDeck }: _DepositState) => {
     const deliverTo = (p as any).deliverTo as string | undefined;
     const onCarrierOk = (!deliverTo || deliverTo === VESSEL.CARRIER) && onCarrierDeck && G.heli.z < 3.0;
     const onPadOk     = (!deliverTo || deliverTo === VESSEL.PAD)     && onPadSurface  && G.heli.z < 3.0;
+    const onFrigateOk = (!deliverTo || deliverTo === VESSEL.FRIGATE) && onFrigateDeck && G.heli.z < 3.0;
     const inZone = _inDropzone(p.x, p.y, deliverTo, p.z) || _inDropzone(G.heli.x, G.heli.y, deliverTo);
-    if (onCarrierOk || onPadOk || inZone) {
+    if (onCarrierOk || onPadOk || onFrigateOk || inZone) {
         p.hanging = false; p.rescued = true; G.activePayload = null;
         G.totalRescued++;
         voiceEvents.emit('delivered');
@@ -249,7 +263,24 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     const { gridSize } = campaignHandler.getTerrain();
 
     updateWind(G.wind, dt, ctx);
+    const _frigateSnap = G.BOATS
+        .filter((b: any) => b.objectType === VESSEL.FRIGATE)
+        .map((b: any) => ({ b, x: b.x, y: b.y, angle: b.angle }));
     updateBoats(G.BOATS, dt);
+    if (!crashed) {
+        for (const { b, x: oldX, y: oldY, angle: oldAng } of _frigateSnap) {
+            const local = getCarrierLocal(G.heli.x, G.heli.y, b);
+            if (Math.abs(local.x) <= 6.0 && Math.abs(local.y) <= 1.8 && !G.heli.inAir) {
+                const vX = b.x - oldX, vY = b.y - oldY, rot = b.angle - oldAng;
+                G.heli.x += vX; G.heli.y += vY;
+                const dx = G.heli.x - b.x, dy = G.heli.y - b.y;
+                G.heli.x += dx * Math.cos(rot) - dy * Math.sin(rot) - dx;
+                G.heli.y += dx * Math.sin(rot) + dy * Math.cos(rot) - dy;
+                G.heli.angle += rot;
+                G.heli.vx *= Math.pow(0.8, dt); G.heli.vy *= Math.pow(0.8, dt);
+            }
+        }
+    }
     updateSubmarines(G.SUBMARINES, dt);
 
     if (ctx.hasPad && G.fuelTruck.state !== VEHICLE_STATE.PARKED) fuelTruck.update(dt, ctx);
@@ -283,7 +314,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     G.BOATS.forEach((b: any) => _checkVesselExitWarning(b, b._seaTime, gridSize));
 
     const groundH = getGround(G.heli.x, G.heli.y, G.points, G.CARRIER);
-    const { onCarrierDeck, onPadSurface, onPad, effectiveGroundH } = _computeLandingState(ctx, groundH);
+    const { onCarrierDeck, onPadSurface, onFrigateDeck, onPad, effectiveGroundH } = _computeLandingState(ctx, groundH);
 
     // engine
     const onFlatTerrain = groundH > G.waterLevel + 0.1 && isFlatTerrain(G.heli.x, G.heli.y);
@@ -298,11 +329,11 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
             const onTarget =
                 (landObj.target === VESSEL.CARRIER && onCarrierDeck) ||
                 (landObj.target === VESSEL.PAD && onPadSurface) ||
-                (landObj.target === VESSEL.BOAT && onPadSurface);
+                (landObj.target === VESSEL.FRIGATE && onFrigateDeck);
             if (onTarget) _objectiveDone(OBJECTIVE_TYPE.LAND_AT, ctx);
         }
     }
-    if (ctx.hasPad && onPad && !G.heli.engineOn && !G.heli.inAir && G.heli.rotorRPM < 0.05
+    if (ctx.hasPad && onPadSurface && !G.heli.engineOn && !G.heli.inAir && G.heli.rotorRPM < 0.05
         && G.fuelTruck.state === VEHICLE_STATE.PARKED && G.heli.fuel < 99) {
         G.fuelTruck.state = VEHICLE_STATE.DRIVING; G.fuelTruck.t = 0;
     }
@@ -387,18 +418,27 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     const inAir = G.heli.z > effectiveGroundH + 0.15;
     if (!inAir && G.heli.inAir) {
         hapticImpact(ImpactStyle.Medium);
-        voiceEvents.emit(onCarrierDeck ? 'on-the-deck' : 'touchdown');
+        const _landFrigate = onFrigateDeck ? G.BOATS.find((b: any) => b.objectType === VESSEL.FRIGATE) : null;
+        const _deckVoice = (onCarrierDeck && !G.CARRIER.radioSilent) || (onFrigateDeck && !_landFrigate?.radioSilent);
+        voiceEvents.emit(_deckVoice ? 'on-the-deck' : 'touchdown');
     }
     G.heli.inAir = inAir;
 
     // carrier proximity — "deck cleared" on approach
     if (ctx.hasCarrier) {
         const _nearNow = inAir && Math.hypot(G.heli.x - G.CARRIER.x, G.heli.y - G.CARRIER.y) < 25;
-        if (_nearNow && !_prevCarrierNear) voiceEvents.emit('deck-cleared');
+        if (_nearNow && !_prevCarrierNear && !G.CARRIER.radioSilent) voiceEvents.emit('deck-cleared');
         _prevCarrierNear = _nearNow;
     } else {
         _prevCarrierNear = false;
     }
+    const _frigateNearNow = inAir && G.BOATS.some((b: any) =>
+        b.objectType === VESSEL.FRIGATE && Math.hypot(G.heli.x - b.x, G.heli.y - b.y) < 20);
+    if (_frigateNearNow && !_prevFrigateNear) {
+        const _nearFrigate = G.BOATS.find((b: any) => b.objectType === VESSEL.FRIGATE && Math.hypot(G.heli.x - b.x, G.heli.y - b.y) < 20);
+        if (!_nearFrigate?.radioSilent) voiceEvents.emit('deck-cleared');
+    }
+    _prevFrigateNear = _frigateNearNow;
 
     if (inAir || (G.heli.engineOn && lift > 0)) {
         const spd = Math.hypot(G.heli.vx, G.heli.vy);
@@ -580,8 +620,8 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     if (G.activePayload?.type === PAYLOAD.CRATE) {
         const p = G.activePayload;
         const deliverTo = (p as any).deliverTo as string | undefined;
-        const padTypeOk = onPad && (!deliverTo || (onCarrierDeck ? deliverTo === VESSEL.CARRIER : deliverTo === VESSEL.PAD));
-        const padSurfaceZ = onCarrierDeck ? G.CARRIER.zDeck : G.PAD?.z ?? 0;
+        const padSurfaceZ = onCarrierDeck ? G.CARRIER.zDeck : onFrigateDeck ? (G.BOATS.find((b: any) => b.objectType === VESSEL.FRIGATE)?.zDeck ?? 0) : G.PAD?.z ?? 0;
+        const padTypeOk = onPad && (!deliverTo || (onCarrierDeck ? deliverTo === VESSEL.CARRIER : onFrigateDeck ? deliverTo === VESSEL.FRIGATE : deliverTo === VESSEL.PAD));
         const atPad = padTypeOk && (p as any).z <= padSurfaceZ + 0.4;
         const inZone = _inDropzone(p.x, p.y, deliverTo, (p as any).z);
         if (atPad || inZone) {
@@ -599,8 +639,9 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
         for (const dt of G.heli.onboardDeliverQueue) {
             const eff = dt ?? _singleDropzoneType();
             const valid =
-                ((!dt || dt === VESSEL.CARRIER) && onCarrierDeck) ||
-                ((!dt || dt === VESSEL.PAD)     && onPadSurface)  ||
+                ((!dt || dt === VESSEL.CARRIER) && onCarrierDeck)  ||
+                ((!dt || dt === VESSEL.PAD)     && onPadSurface)   ||
+                ((!dt || dt === VESSEL.FRIGATE) && onFrigateDeck)  ||
                 _inDropzone(G.heli.x, G.heli.y, eff, G.heli.z);
             if (valid) countedNow++;
             else undelivered.push(dt);
@@ -619,7 +660,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
         const p = G.activePayload;
         const key = (p as any).isDelivery ? 'delivery' : p.type;
         const handler = _depositHandlers[key] ?? _genericDeposit;
-        handler(p, { ctx, onCarrierDeck, onPadSurface });
+        handler(p, { ctx, onCarrierDeck, onPadSurface, onFrigateDeck });
     }
 
     // crash detection

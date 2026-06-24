@@ -2,7 +2,7 @@
 <html lang="de">
     <head>
         <meta charset="UTF-8" />
-        <title>ZEEWOLF – Modell-Editor</title>
+        <title>Modell-Editor</title>
         <style>
             *,
             *::before,
@@ -532,7 +532,9 @@
                     <div id="landing-zone-panel"><div class="empty">–</div></div>
                     <div class="flex-row" style="margin-top: 6px">
                         <button class="btn btn-sm" id="btn-add-landing">+ Landezone</button>
-                        <button class="btn btn-sm btn-danger" id="btn-remove-landing" style="display:none">✕ Entfernen</button>
+                        <button class="btn btn-sm btn-danger" id="btn-remove-landing" style="display: none">
+                            ✕ Entfernen
+                        </button>
                     </div>
                 </div>
 
@@ -561,7 +563,6 @@
                         Klick = wählen · Shift+Ziehen = verschieben · ESC = abwählen
                     </div>
                 </div>
-
             </div>
 
             <div id="canvas-area">
@@ -725,7 +726,11 @@
             const iso = (wx, wy, wz, camX, camY, out) => {
                 const x = renderCx + (wx - wy) * ((TW * renderZoom) / 2) - camX;
                 const y = renderCy + (wx + wy) * ((TH * renderZoom) / 2) - wz * SH * renderZoom - camY;
-                if (out) { out.x = x; out.y = y; return out; }
+                if (out) {
+                    out.x = x;
+                    out.y = y;
+                    return out;
+                }
                 return { x, y };
             };
 
@@ -840,7 +845,7 @@
                 ctx.fill();
             };
 
-            const drawPivotCircles = (params) => {
+            const drawPivotCircles = params => {
                 if (!state.def?.parts) return;
                 const pivots = getTransformedPivots(state.def, params);
                 let colorIdx = 0;
@@ -1051,7 +1056,7 @@
                 ctx.moveTo(0, qh);
                 ctx.lineTo(canvas.width, qh);
                 ctx.stroke();
-            }
+            };
 
             // ── Sidebar ────────────────────────────────────────────────────────────────────
             const renderPartsList = () => {
@@ -1140,7 +1145,7 @@
                     });
                     sel.addEventListener('click', e => e.stopPropagation());
                 });
-            }
+            };
 
             const renderFaceList = () => {
                 const list = document.getElementById('face-list');
@@ -1166,7 +1171,7 @@
                 list.querySelectorAll('.face-item').forEach(el => {
                     el.addEventListener('click', () => selectFace(parseInt(el.dataset.i)));
                 });
-            }
+            };
 
             const renderFaceEditor = () => {
                 const sec = document.getElementById('face-editor');
@@ -1194,9 +1199,9 @@
                 document.getElementById('face-nx').value = hasNormal ? face.normal[0] : 0;
                 document.getElementById('face-ny').value = hasNormal ? face.normal[1] : 0;
                 renderVertList(face);
-            }
+            };
 
-            const renderVertList = (face) => {
+            const renderVertList = face => {
                 const list = document.getElementById('vert-list');
                 list.innerHTML = face.verts
                     .map(
@@ -1232,7 +1237,7 @@
                         draw();
                     });
                 });
-            }
+            };
 
             const renderCboxList = () => {
                 const list = document.getElementById('cbox-list');
@@ -1284,7 +1289,7 @@
                         draw();
                     });
                 });
-            }
+            };
 
             const renderZoneList = () => {
                 const list = document.getElementById('zone-list');
@@ -1339,7 +1344,7 @@
                         draw();
                     });
                 });
-            }
+            };
 
             const renderLandingZone = () => {
                 const panel = document.getElementById('landing-zone-panel');
@@ -1348,10 +1353,12 @@
                 const lz = state.def?.landingZone;
                 if (!lz) {
                     panel.innerHTML = '<div class="empty">–</div>';
-                    btnAdd.style.display = ''; btnRemove.style.display = 'none';
+                    btnAdd.style.display = '';
+                    btnRemove.style.display = 'none';
                     return;
                 }
-                btnAdd.style.display = 'none'; btnRemove.style.display = '';
+                btnAdd.style.display = 'none';
+                btnRemove.style.display = '';
                 panel.innerHTML = `
     <div class="cbox-block"><div class="cbox-grid">
       <label>X</label>
@@ -1366,10 +1373,11 @@
                 panel.querySelectorAll('.lzi').forEach(inp => {
                     inp.addEventListener('input', e => {
                         state.def.landingZone[e.target.dataset.f] = parseFloat(e.target.value) || 0;
-                        markDirty(); draw();
+                        markDirty();
+                        draw();
                     });
                 });
-            }
+            };
 
             const renderAll = () => {
                 renderPartsList();
@@ -1389,7 +1397,7 @@
                 draw();
             };
 
-            const loadPreset = (key) => {
+            const loadPreset = key => {
                 const p = PRESETS[key];
                 if (!p) return;
                 state.def = JSON.parse(JSON.stringify(p.def));
@@ -1402,7 +1410,7 @@
                 state.filename = null;
                 syncMetaToUI();
                 renderAll();
-            }
+            };
 
             const syncMetaToUI = () => {
                 document.getElementById('meta-id').value = state.def ? state.def.id : '';
@@ -1411,7 +1419,7 @@
                 document.getElementById('r-moving').checked = !state.meta.isStatic;
                 document.getElementById('move-type').value = state.meta.movementType;
                 document.getElementById('move-type-row').style.opacity = state.meta.isStatic ? '0.4' : '1';
-            }
+            };
 
             // ── Helpers ────────────────────────────────────────────────────────────────────
             const toColorInput = c => {
@@ -1518,7 +1526,7 @@
                     if (yi > my !== yj > my && mx < ((xj - xi) * (my - yi)) / (yj - yi) + xi) inside = !inside;
                 }
                 return inside;
-            }
+            };
             const faceCentroidDepth = face => {
                 const cosA = Math.cos(renderViewAngle),
                     sinA = Math.sin(renderViewAngle);
@@ -2015,12 +2023,16 @@
             document.getElementById('btn-add-landing').addEventListener('click', () => {
                 if (!state.def) return;
                 state.def.landingZone = { x: 0, y: 0, w: 1.5, h: 1.5, z: 0 };
-                markDirty(); renderLandingZone(); draw();
+                markDirty();
+                renderLandingZone();
+                draw();
             });
             document.getElementById('btn-remove-landing').addEventListener('click', () => {
                 if (!state.def) return;
                 delete state.def.landingZone;
-                markDirty(); renderLandingZone(); draw();
+                markDirty();
+                renderLandingZone();
+                draw();
             });
 
             // Grid UI events — all operate on the ACTIVE quadrant's grid
@@ -2098,8 +2110,8 @@
                 if (state.def.rescueZones?.length) out.rescueZones = state.def.rescueZones;
                 if (state.def.landingZone) out.landingZone = state.def.landingZone;
                 return JSON.stringify(out, null, 2);
-            }
-            const fromJSON = (content) => {
+            };
+            const fromJSON = content => {
                 const d = JSON.parse(content);
                 state.def = {
                     id: d.id,
@@ -2123,7 +2135,7 @@
                 state.dirty = false;
                 syncMetaToUI();
                 renderAll();
-            }
+            };
 
             window.modelEditorExport = () => (state.def ? toJSON() : null);
             window.modelEditorImport = content => {

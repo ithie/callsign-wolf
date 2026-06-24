@@ -175,7 +175,7 @@
           const btn = document.getElementById("btn_spawn_pad");
           if (btn) btn.style.background = m.spawnObject === "pad" ? COLORS.uiHighlight : "var(--accent)";
         }
-      } else if (obj.type === "carrier" || obj.type === "boat" || obj.type === "pilot_boat" || obj.type === "sar_boat" || obj.type === "salvage_tug") {
+      } else if (obj.type === "carrier" || obj.type === "boat" || obj.type === "pilot_boat" || obj.type === "sar_boat" || obj.type === "salvage_tug" || obj.type === "frigate") {
         const isCarrier = obj.type === "carrier";
         const rad = obj.angle * Math.PI / 180;
         ctx.save();
@@ -250,6 +250,20 @@
           ctx.fill();
           ctx.fillStyle = "#eee";
           ctx.fillRect(1 * tSize, -0.8 * tSize, 1.2 * tSize, 1.6 * tSize);
+        } else if (obj.type === "frigate") {
+          ctx.fillStyle = "#5a6673";
+          ctx.fillRect(-6 * tSize, -1.8 * tSize, 12 * tSize, 3.6 * tSize);
+          ctx.fillStyle = "#7a8899";
+          ctx.beginPath();
+          ctx.moveTo(6 * tSize, 0);
+          ctx.lineTo(4 * tSize, -1.8 * tSize);
+          ctx.lineTo(4 * tSize, 1.8 * tSize);
+          ctx.fill();
+          ctx.fillStyle = "#8899aa";
+          ctx.fillRect(0.3 * tSize, -1.4 * tSize, 2.5 * tSize, 2.8 * tSize);
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = Math.max(1, tSize * 0.15);
+          ctx.strokeRect(-5 * tSize, -1 * tSize, 2.5 * tSize, 2 * tSize);
         } else {
           ctx.fillStyle = "#ddd";
           ctx.beginPath();
@@ -793,12 +807,18 @@
     const angleEl = document.getElementById(`m_${prefix}_angle`);
     const nameEl = document.getElementById(`m_${prefix}_name`);
     const exitEl = document.getElementById(`m_${prefix}_exitWarning`);
+    const radioEl = document.getElementById(`m_${prefix}_radioSilent`);
     if (pathEl) pathEl.value = obj.path ?? "static";
     if (speedEl) speedEl.value = (obj.speed ?? 0).toString();
     if (radiusEl) radiusEl.value = (obj.radius ?? 40).toString();
     if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
     if (nameEl) nameEl.value = obj.vesselName ?? "";
     if (exitEl) exitEl.checked = obj.exitWarning ?? false;
+    if (radioEl) radioEl.checked = !(obj.radioSilent ?? false);
+    if (kind === "boat") {
+      const radioRow = document.getElementById("m_boat_radioSilent_row");
+      if (radioRow) radioRow.style.display = obj.type === "frigate" ? "" : "none";
+    }
   };
 
   // ../src/shared/utils.ts
@@ -881,167 +901,9 @@
   };
   var getEl = (id) => document.getElementById(id);
   var getInput = (id) => getEl(id);
-  var renderPayloadList = () => {
-    const m = getCurrentMission();
-    const container = getEl("payload-list");
-    if (!container || !m) {
-      notifyWorkbench();
-      return;
-    }
-    container.innerHTML = "";
-    const payloads = m.payloads || [];
-    if (payloads.length === 0) {
-      container.innerHTML = '<span style="color:#555;font-size:11px">Keine Payloads platziert</span>';
-      return;
-    }
-    payloads.forEach((p, i) => {
-      const pa = p;
-      const wrap = document.createElement("div");
-      wrap.style.cssText = "margin:3px 0";
-      const row = document.createElement("div");
-      row.style.cssText = "display:flex;align-items:center;gap:6px;font-size:11px";
-      const icon = p.type === "person" ? "\u{1F7E1}" : p.type === "rescuer" ? "\u{1F535}" : "\u{1F7E0}";
-      const typeName = p.type === "person" ? "Person" : p.type === "rescuer" ? "Retter" : "Crate";
-      const label = document.createElement("span");
-      label.style.flex = "1";
-      const attach = pa.attachTo ? ` \u2192 ${pa.attachTo.objectType} #${pa.attachTo.objectIdx + 1}` : "";
-      label.innerText = `${i + 1}. ${icon} ${typeName} @ (${p.x}, ${p.y})${attach}`;
-      const npcLabel = document.createElement("label");
-      npcLabel.style.cssText = "display:flex;align-items:center;gap:2px;color:#8af;white-space:nowrap;cursor:pointer";
-      const npcCb = document.createElement("input");
-      npcCb.type = "checkbox";
-      npcCb.checked = !!pa.npcTarget;
-      npcCb.onchange = () => {
-        pa.npcTarget = npcCb.checked;
-        drawMap();
-      };
-      npcLabel.append(npcCb, "NPC");
-      let deliverToEl = null;
-      if (p.type === "crate" || p.type === "person") {
-        const sel = document.createElement("select");
-        sel.style.cssText = "background:#222;color:#fa8;border:1px solid #555;font-size:10px;padding:1px 3px;cursor:pointer";
-        const opts = [
-          ["", "Ziel: \u2013"],
-          ["pad", "Ziel: Pad"],
-          ["carrier", "Ziel: Carrier"],
-          ["submarine", "Ziel: U-Boot"],
-          ["boat", "Ziel: Boot"]
-        ];
-        opts.forEach(([val, lbl]) => {
-          const opt = document.createElement("option");
-          opt.value = val;
-          opt.text = lbl;
-          if ((pa.deliverTo ?? "") === val) opt.selected = true;
-          sel.appendChild(opt);
-        });
-        sel.onchange = () => {
-          pa.deliverTo = sel.value || void 0;
-          notifyWorkbench();
-        };
-        deliverToEl = sel;
-      }
-      const btnDel = document.createElement("button");
-      btnDel.innerText = "X";
-      btnDel.style.cssText = "background:#822;color:#fff;border:none;padding:2px 6px;cursor:pointer;font-size:10px";
-      btnDel.onclick = () => {
-        m.payloads.splice(i, 1);
-        renderPayloadList();
-        drawMap();
-      };
-      row.append(label, npcLabel, ...deliverToEl ? [deliverToEl] : [], btnDel);
-      wrap.appendChild(row);
-      if (pa.attachTo) {
-        const offsetRow = document.createElement("div");
-        offsetRow.style.cssText = "display:flex;align-items:center;gap:4px;font-size:10px;color:#aaa;padding-left:12px;margin-top:2px";
-        const makeOffsetInput = (axis, axisLabel) => {
-          const lbl = document.createElement("span");
-          lbl.innerText = axisLabel + ":";
-          const inp = document.createElement("input");
-          inp.type = "number";
-          inp.step = "0.5";
-          inp.value = String(pa.attachTo[axis] ?? 0);
-          inp.style.cssText = "width:48px;background:#222;color:#ddd;border:1px solid #444;padding:1px 3px;font-size:10px";
-          inp.onchange = () => {
-            pa.attachTo[axis] = parseFloat(inp.value) || 0;
-            notifyWorkbench();
-            drawMap();
-          };
-          return [lbl, inp];
-        };
-        offsetRow.append(
-          document.createTextNode("offset "),
-          ...makeOffsetInput("localX", "X"),
-          ...makeOffsetInput("localY", "Y")
-        );
-        wrap.appendChild(offsetRow);
-      }
-      container.appendChild(wrap);
-    });
-    notifyWorkbench();
-  };
-  var renderObjectList = () => {
-    const m = getCurrentMission();
-    const container = getEl("object-list");
-    if (!container || !m) return;
-    container.innerHTML = "";
-    m.objects.forEach((obj, idx) => {
-      const row = document.createElement("div");
-      row.style.cssText = "display:flex;align-items:center;gap:6px;margin:3px 0;font-size:11px";
-      const icons = {
-        pad: "\u{1F7E9}",
-        carrier: "\u{1F6A2}",
-        boat: "\u26F5",
-        pilot_boat: "\u{1F6A4}",
-        sar_boat: "\u{1F6E5}",
-        salvage_tug: "\u{1F6F3}",
-        submarine: "\u{1F93F}",
-        lighthouse: "\u{1F526}",
-        research_platform: "\u{1F3D7}",
-        wind_turbine: "\u{1F300}",
-        plane_wreck: "\u2708\uFE0F",
-        sailboat_broken: "\u26F5",
-        ornithopter_wreck: "\u{1F6F8}",
-        baywatch_car: "\u{1F697}",
-        baywatch_hq: "\u{1F3E0}",
-        baywatch_tower: "\u{1F5FC}",
-        buoy: "\u{1F534}"
-      };
-      const label = document.createElement("span");
-      label.style.flex = "1";
-      label.innerText = `${icons[obj.type] || "?"} ${obj.type} @ (${obj.x}, ${obj.y})`;
-      const btnDel = document.createElement("button");
-      btnDel.innerText = "X";
-      btnDel.style.cssText = "background:#822;color:#fff;border:none;padding:2px 6px;cursor:pointer;font-size:10px";
-      btnDel.onclick = () => {
-        m.objects.splice(idx, 1);
-        if (state.selectedObjectIdx === idx) state.selectedObjectIdx = null;
-        renderObjectList();
-        drawMap();
-      };
-      row.append(label, btnDel);
-      container.appendChild(row);
-    });
-    notifyWorkbench();
-  };
-  var renderFoliageList = () => {
-    const m = getCurrentMission();
-    const container = getEl("foliage-list");
-    const countEl = getEl("foliage-count");
-    if (!container || !m) return;
-    const foliage = m.foliage || [];
-    if (countEl) countEl.innerText = `(${foliage.length} Objekte)`;
-    if (foliage.length === 0) {
-      container.innerHTML = '<span style="color:#555">Keine B\xE4ume platziert</span>';
-      return;
-    }
-    const icons = { pine: "\u{1F332}", oak: "\u{1F333}", bush: "\u{1F33F}", dead: "\u{1FAB5}" };
-    const counts = {};
-    foliage.forEach((f) => {
-      counts[f.type] = (counts[f.type] || 0) + 1;
-    });
-    container.innerHTML = Object.entries(counts).map(([type, n]) => `${icons[type] || "\u{1F332}"} ${type}: <strong style="color:#5f5">${n}</strong>`).join(" &nbsp;|&nbsp; ");
-    notifyWorkbench();
-  };
+  var renderPayloadList = () => notifyWorkbench();
+  var renderObjectList = () => notifyWorkbench();
+  var renderFoliageList = () => notifyWorkbench();
   var _lsDe = (ls) => !ls ? "" : typeof ls === "string" ? ls : ls.de || "";
   var _lsEn = (ls) => !ls ? "" : typeof ls === "string" ? "" : ls.en || "";
   var syncToData = () => {
@@ -1075,7 +937,7 @@
     const m = getCurrentMission();
     if (!m || state.selectedObjectIdx === null) return;
     const obj = m.objects[state.selectedObjectIdx];
-    const _boatTypes = /* @__PURE__ */ new Set(["boat", "pilot_boat", "sar_boat", "salvage_tug"]);
+    const _boatTypes = /* @__PURE__ */ new Set(["boat", "pilot_boat", "sar_boat", "salvage_tug", "frigate"]);
     if (!obj || (kind === "boat" ? !_boatTypes.has(obj.type) : obj.type !== kind)) return;
     const prefix = kind === "carrier" ? "carrier" : kind === "submarine" ? "submarine" : "boat";
     obj.path = document.getElementById(`m_${prefix}_path`)?.value ?? obj.path;
@@ -1084,8 +946,10 @@
     obj.angle = parseInt(document.getElementById(`m_${prefix}_angle`)?.value) || 0;
     obj.vesselName = document.getElementById(`m_${prefix}_name`)?.value ?? "";
     obj.exitWarning = document.getElementById(`m_${prefix}_exitWarning`)?.checked ?? false;
+    obj.radioSilent = !(document.getElementById(`m_${prefix}_radioSilent`)?.checked ?? true);
     drawMap();
     broadcastPreview();
+    notifyWorkbench();
   };
   var loadMission = (idx) => {
     state.curIdx = idx;
@@ -1118,54 +982,7 @@
     broadcastPreview();
     notifyWorkbench();
   };
-  var renderMissionList = () => {
-    const container = getEl("mission-list");
-    container.innerHTML = "";
-    state.campaign.forEach((m, i) => {
-      const div = document.createElement("div");
-      div.className = "mission-item" + (i === state.curIdx ? " active" : "");
-      const span = document.createElement("span");
-      span.innerText = `${i + 1}. ${_lsDe(m.headline).substring(0, 18)}`;
-      const controls = document.createElement("div");
-      controls.className = "m-controls";
-      const btnUp = document.createElement("button");
-      btnUp.innerText = "\u2191";
-      btnUp.onclick = (e) => {
-        e.stopPropagation();
-        moveM(i, -1);
-      };
-      const btnDown = document.createElement("button");
-      btnDown.innerText = "\u2193";
-      btnDown.onclick = (e) => {
-        e.stopPropagation();
-        moveM(i, 1);
-      };
-      const btnDel = document.createElement("button");
-      btnDel.innerText = "X";
-      btnDel.style.background = "#822";
-      btnDel.onclick = (e) => {
-        e.stopPropagation();
-        delM(i);
-      };
-      controls.append(btnUp, btnDown, btnDel);
-      div.append(span, controls);
-      div.onclick = () => loadMission(i);
-      container.appendChild(div);
-    });
-    notifyWorkbench();
-  };
-  var moveM = (i, dir) => {
-    if (i + dir < 0 || i + dir >= state.campaign.length) return;
-    [state.campaign[i], state.campaign[i + dir]] = [state.campaign[i + dir], state.campaign[i]];
-    loadMission(i + dir);
-  };
-  var delM = (i) => {
-    if (state.campaign.length <= 1) return;
-    if (confirm("Mission wirklich l\xF6schen?")) {
-      state.campaign.splice(i, 1);
-      loadMission(Math.max(0, i - 1));
-    }
-  };
+  var renderMissionList = () => notifyWorkbench();
   var clampCamera = () => {
     const m = getCurrentMission();
     if (!m) return;
@@ -1543,7 +1360,7 @@
       if (m.objects.some((o) => o.type === "pad")) opts.push(["pad", "Pad"]);
       if (m.objects.some((o) => o.type === "carrier")) opts.push(["carrier", "Carrier"]);
       if (m.objects.some((o) => o.type === "submarine")) opts.push(["submarine", "U-Boot"]);
-      if (m.objects.some((o) => ["boat", "pilot_boat", "sar_boat", "salvage_tug"].includes(o.type)))
+      if (m.objects.some((o) => ["boat", "pilot_boat", "sar_boat", "salvage_tug", "frigate"].includes(o.type)))
         opts.push(["boat", "Boot"]);
       opts.forEach(([val, lbl]) => {
         const opt = document.createElement("option");
@@ -1576,9 +1393,41 @@
       npcLabel.append(npcCb, "NPC-Ziel");
       npcRow.appendChild(npcLabel);
       popup.appendChild(npcRow);
+      if (pa.type === "person") {
+        const swimRow = document.createElement("div");
+        swimRow.style.cssText = "margin:4px 0;display:flex;align-items:center;gap:6px";
+        const swimLabel = document.createElement("span");
+        swimLabel.style.color = "#aaa";
+        swimLabel.textContent = "Outfit:";
+        const swimSel = document.createElement("select");
+        swimSel.style.cssText = "flex:1;background:#111;color:#8fa;border:1px solid #444;font-family:monospace;font-size:11px";
+        const swimOpts = [
+          ["", "auto"],
+          ["true", "Badekleidung"],
+          ["false", "Normalkleidung"]
+        ];
+        const curSwim = pa.swimwear === true ? "true" : pa.swimwear === false ? "false" : "";
+        swimOpts.forEach(([val, lbl]) => {
+          const opt = document.createElement("option");
+          opt.value = val;
+          opt.text = lbl;
+          if (curSwim === val) opt.selected = true;
+          swimSel.appendChild(opt);
+        });
+        swimSel.onchange = () => {
+          if (swimSel.value === "true") pa.swimwear = true;
+          else if (swimSel.value === "false") pa.swimwear = false;
+          else delete pa.swimwear;
+          renderPayloadList();
+          notifyWorkbench();
+          broadcastPreview();
+        };
+        swimRow.append(swimLabel, swimSel);
+        popup.appendChild(swimRow);
+      }
       const vw = window.innerWidth, vh = window.innerHeight;
       popup.style.left = Math.min(cx + 6, vw - 190) + "px";
-      popup.style.top = Math.min(cy + 6, vh - 120) + "px";
+      popup.style.top = Math.min(cy + 6, vh - 150) + "px";
       popup.style.display = "block";
     };
     document.addEventListener("mousedown", (e) => {
@@ -1744,10 +1593,12 @@
       (id) => document.getElementById(`m_${id}`)?.addEventListener("input", () => syncVesselFromUI("carrier"))
     );
     document.getElementById("m_carrier_exitWarning")?.addEventListener("change", () => syncVesselFromUI("carrier"));
+    document.getElementById("m_carrier_radioSilent")?.addEventListener("change", () => syncVesselFromUI("carrier"));
     ["boat_path", "boat_speed", "boat_radius", "boat_angle", "boat_name"].forEach(
       (id) => document.getElementById(`m_${id}`)?.addEventListener("input", () => syncVesselFromUI("boat"))
     );
     document.getElementById("m_boat_exitWarning")?.addEventListener("change", () => syncVesselFromUI("boat"));
+    document.getElementById("m_boat_radioSilent")?.addEventListener("change", () => syncVesselFromUI("boat"));
     ["submarine_path", "submarine_speed", "submarine_radius", "submarine_angle", "submarine_name"].forEach(
       (id) => document.getElementById(`m_${id}`)?.addEventListener("input", () => syncVesselFromUI("submarine"))
     );
@@ -1809,6 +1660,7 @@
       "pilot_boat",
       "sar_boat",
       "salvage_tug",
+      "frigate",
       "submarine",
       "lighthouse",
       "research_platform",
@@ -1829,6 +1681,7 @@
       carrier: "#88aaff",
       boat: "#4af",
       submarine: "#888",
+      frigate: "#6688bb",
       lighthouse: "#ffdd44",
       plane_wreck: "#aaa",
       sailboat_broken: "#b96",
@@ -2011,6 +1864,9 @@
         case "salvage_tug":
           m.objects.push(_vesselBase("salvage_tug"));
           break;
+        case "frigate":
+          m.objects.push({ ..._vesselBase("frigate"), speed: 3 });
+          break;
         case "submarine":
           m.objects.push(_vesselBase("submarine"));
           break;
@@ -2045,6 +1901,7 @@
           { v: "pilot_boat", l: "\u{1F6A4} Lotsenboot" },
           { v: "sar_boat", l: "\u{1F6E5} SAR-Boot" },
           { v: "salvage_tug", l: "\u{1F6F3} Schlepper" },
+          { v: "frigate", l: "\u2693 Fregatte" },
           { v: "submarine", l: "\u{1F93F} U-Boot" }
         ] },
         { cat: "Deko", emoji: "\u{1F300}", items: [
@@ -2217,7 +2074,7 @@
           const obj = m.objects[i];
           let hit = false;
           if (obj.type === "pad") hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
-          else if (["carrier", "boat", "pilot_boat", "sar_boat", "salvage_tug", "submarine"].includes(obj.type))
+          else if (["carrier", "boat", "pilot_boat", "sar_boat", "salvage_tug", "frigate", "submarine"].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
           else if (["lighthouse", "research_platform", "wind_turbine"].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
@@ -2336,7 +2193,7 @@
         clampCamera();
         drawMap();
       } else if (state.isDrawing) {
-        if (state.currentTool !== "person" && state.currentTool !== "rescuer" && state.currentTool !== "crate" && state.currentTool !== "boat" && state.currentTool !== "pilot_boat" && state.currentTool !== "salvage_tug" && state.currentTool !== "submarine" && state.currentTool !== "carrier" && state.currentTool !== "pad" && state.currentTool !== "lighthouse" && state.currentTool !== "research_platform" && state.currentTool !== "wind_turbine" && state.currentTool !== "plane_wreck" && state.currentTool !== "sailboat_broken" && state.currentTool !== "ornithopter_wreck" && state.currentTool !== "baywatch_car" && state.currentTool !== "baywatch_hq" && state.currentTool !== "baywatch_tower" && state.currentTool !== "foliage") {
+        if (state.currentTool !== "person" && state.currentTool !== "rescuer" && state.currentTool !== "crate" && state.currentTool !== "boat" && state.currentTool !== "pilot_boat" && state.currentTool !== "salvage_tug" && state.currentTool !== "frigate" && state.currentTool !== "submarine" && state.currentTool !== "carrier" && state.currentTool !== "pad" && state.currentTool !== "lighthouse" && state.currentTool !== "research_platform" && state.currentTool !== "wind_turbine" && state.currentTool !== "plane_wreck" && state.currentTool !== "sailboat_broken" && state.currentTool !== "ornithopter_wreck" && state.currentTool !== "baywatch_car" && state.currentTool !== "baywatch_hq" && state.currentTool !== "baywatch_tower" && state.currentTool !== "foliage") {
           paint(e);
         }
       }
@@ -2421,7 +2278,7 @@
       const cSubDe = getEl("c_sublines_de").value.split("\n").filter((l) => l.trim());
       const cSubEn = getEl("c_sublines_en").value.split("\n").filter((l) => l.trim());
       const exportData = {
-        type: getEl("c_type").value || "ZEEWOLF_CAMPAIGN",
+        type: getEl("c_type").value || "CSW_CAMPAIGN",
         campaignTitle: { de: getInput("c_title_de").value, en: getInput("c_title_en").value },
         campaignSublines: cSubDe.map((de, i) => ({ de, en: cSubEn[i] || "" })),
         levels: data
@@ -2450,7 +2307,7 @@
         const cs = parsed.campaignSublines || [];
         getEl("c_sublines_de").value = cs.map((s) => typeof s === "string" ? s : s.de || "").join("\n");
         getEl("c_sublines_en").value = cs.map((s) => typeof s === "string" ? "" : s.en || "").join("\n");
-        getEl("c_type").value = parsed.type || "ZEEWOLF_CAMPAIGN";
+        getEl("c_type").value = parsed.type || "CSW_CAMPAIGN";
         state.type = parsed.type;
         state.campaign = parsed.levels.map((m) => {
           const base = {

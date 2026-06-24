@@ -12,7 +12,21 @@ A declarative, renderer-agnostic way to describe 3D isometric objects as ordered
 
 ### `.zdef` File Format
 
-Model definitions are stored as `.zdef` files — plain JSON with a `.zdef` extension. The Vite `zdef` plugin transforms them at build time into ES modules (`export default <json>`), so they can be imported directly:
+Model definitions are stored as `.zdef` files — JSON with a `.zdef` extension that supports `//` single-line comments.
+
+```json
+{
+  "id": "my_vessel",
+  "faces": [
+    // --- HULL ---
+    { "id": "hull_bottom", "verts": [[...]], "color": "#5a6673" }
+  ]
+}
+```
+
+Comments are stripped before parsing. Both the Vite build plugin (`plugins/zdef.ts`) and the SAR Tools VS Code extension strip `//` comments via `/\/\/[^\n]*/g` before calling `JSON.parse()`.
+
+The Vite plugin transforms `.zdef` files at build time into ES modules (`export default <json>`), so they can be imported directly:
 
 ```typescript
 import HANGAR_DEF from './models/hangar.zdef';
@@ -175,6 +189,22 @@ interface DEF {
 Faces are drawn in **definition order** within an instance. Order them **back-to-front** for a fixed isometric camera (lower `local_x + local_y` first). For objects that rotate, order for the most common viewing angle.
 
 There is **no per-face sort within an instance** — this is intentional to preserve manually tuned face order and avoid intra-object painter's algorithm failures at certain rotation angles.
+
+**Recommended painter order for a typical fuselage/box shape:**
+
+1. Bottom face
+2. Side faces (lower panels first, upper panels after)
+3. Tail / rear side faces
+4. Nose / front face
+5. Detail faces (windows, recessed dark areas)
+6. Vertical pylons / nacelles
+7. Rear roof / tail cap
+8. **Top (lid) face — always last**
+
+**Two key rules that eliminate bleed-through artefacts:**
+
+- **Uniform colour within a colour family.** When adjacent faces share a colour family (e.g. all body panels are orange), use the exact same hex value for all of them. Different shades produce visible seams where faces overlap in screen space; identical colours make those overlaps invisible.
+- **Top face last.** The upward-facing lid is the most visible surface in an isometric top-down view. Placing it last in the array ensures it always paints over any side or detail face that bleeds into the same screen pixels — no per-face depth sort needed.
 
 ---
 

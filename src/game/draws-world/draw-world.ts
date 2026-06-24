@@ -1,5 +1,5 @@
 import { G, zstate } from '../state';
-import { PAYLOAD } from '../../shared/types';
+import { PAYLOAD, VESSEL } from '../../shared/types';
 import { getGround } from '../sim/terrain';
 import { isLightningActive } from '../lightning-state';
 import ORNI_WRECK_CARRY_DEF from '../models/ornithopter_wreck_carry.zdef';
@@ -74,17 +74,24 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             const cosA = Math.cos(angle), sinA = Math.sin(angle);
             const dx = _haX - x, dy = _haY - y;
             if (Math.abs(dx * cosA + dy * sinA) <= w && Math.abs(-dx * sinA + dy * cosA) <= l) return true;
-            return ([-w, w] as const).some(rx => ([-l, l] as const).some(ry =>
-                _inNightCone(x + rx * cosA - ry * sinA, y + rx * sinA + ry * cosA)
-            ));
+            const pt = (rx: number, ry: number) =>
+                _inNightCone(x + rx * cosA - ry * sinA, y + rx * sinA + ry * cosA);
+            // 4 corners + 4 edge midpoints + center — covers long objects where no corner
+            // is in the cone but a middle section or near end is.
+            return pt(w, l) || pt(w, -l) || pt(-w, l) || pt(-w, -l)
+                || pt(w, 0) || pt(-w, 0) || pt(0, l) || pt(0, -l)
+                || pt(0, 0);
         };
         const showCarrier = hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, visMargin + 9);
         const showPad = hasPad() && isVisible(G.PAD.xMin + 3, G.PAD.yMin + 3, visMargin);
         if (showCarrier && G.CARRIER.path !== 'static' && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle))
             _drawBowWave(G.CARRIER.x, G.CARRIER.y, G.CARRIER.angle, G.CARRIER.speedKnots, camX, camY, 9, 3);
         G.BOATS.forEach((b: any) => {
-            if (isVisible(b.x, b.y, visMargin) && b.path !== 'static' && _inNightConeRect(b.x, b.y, b.w, b.l, b.angle))
-                _drawBowWave(b.x, b.y, b.angle, b.speedKnots, camX, camY, 2, 5);
+            if (isVisible(b.x, b.y, visMargin) && b.path !== 'static' && _inNightConeRect(b.x, b.y, b.w, b.l, b.angle)) {
+                const hullOff = b.objectType === 'frigate' ? 6 : 2;
+                const nCrests = b.objectType === 'frigate' ? 7 : 5;
+                _drawBowWave(b.x, b.y, b.angle, b.speedKnots, camX, camY, hullOff, nCrests);
+            }
         });
         G.SUBMARINES.forEach((s: any) => {
             if (isVisible(s.x, s.y, visMargin) && s.path !== 'static' && _inNightConeRect(s.x, s.y, s.w, s.l, s.angle))
@@ -115,6 +122,22 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                     camY,
                     { isShadow: true, shadowGetGround: () => c.zDeck }
                 );
+        }
+        if (heliAt && !zstate.crashed) {
+            G.BOATS.forEach((b: any) => {
+                if (b.objectType !== VESSEL.FRIGATE) return;
+                if (!isVisible(b.x, b.y, visMargin)) return;
+                const cosA = Math.cos(b.angle), sinA = Math.sin(b.angle);
+                const dx = G.heli.x - b.x, dy = G.heli.y - b.y;
+                const lx = dx * cosA + dy * sinA, ly = -dx * sinA + dy * cosA;
+                if (Math.abs(lx) > 7 || Math.abs(ly) > 2.5) return;
+                dwCtx.drawFns.drawHeli(
+                    G.heli.type, G.heli.x, G.heli.y, G.heli.z,
+                    G.heli.angle, G.heli.tilt, G.heli.roll, G.heli.rotationPos,
+                    camX, camY,
+                    { isShadow: true, shadowGetGround: () => b.zDeck },
+                );
+            });
         }
         if (heliAt && !zstate.crashed) {
             G.RESEARCH_PLATFORMS.forEach((rp: any) => {
@@ -149,7 +172,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
 
         // all remaining objects go into the shared final batch (depth-sorted with heli)
         G.BOATS.forEach((b: any) => {
-            if (isVisible(b.x, b.y, visMargin) && _inNightConeRect(b.x, b.y, b.w, b.l, b.angle)) _drawBoatModel(b);
+            if (isVisible(b.x, b.y, visMargin) && _inNightConeRect(b.x, b.y, b.w, b.l, b.angle)) _drawBoatModel(b, camX, camY);
         });
         G.SUBMARINES.forEach((s: any) => {
             if (isVisible(s.x, s.y, visMargin) && _inNightConeRect(s.x, s.y, s.w, s.l, s.angle)) _drawSubmarine(s.x, s.y, s.angle);

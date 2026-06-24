@@ -123,7 +123,7 @@ export class CampaignEditorProvider implements vscode.CustomEditorProvider<Campa
 }
 
 const openPreview = (doc: CampaignDoc, missionIndex: number): void => {
-    let campaignType = 'ZEEWOLF_CAMPAIGN';
+    let campaignType = 'CSW_CAMPAIGN';
     try {
         const parsed = JSON.parse(doc.content) as { type?: string };
         if (parsed.type) campaignType = parsed.type;

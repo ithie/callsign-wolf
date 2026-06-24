@@ -80,7 +80,7 @@ export const drawMap = () => {
                 const btn = document.getElementById('btn_spawn_pad');
                 if (btn) btn.style.background = m.spawnObject === 'pad' ? COLORS.uiHighlight : 'var(--accent)';
             }
-        } else if (obj.type === 'carrier' || obj.type === 'boat' || obj.type === 'pilot_boat' || obj.type === 'sar_boat' || obj.type === 'salvage_tug') {
+        } else if (obj.type === 'carrier' || obj.type === 'boat' || obj.type === 'pilot_boat' || obj.type === 'sar_boat' || obj.type === 'salvage_tug' || obj.type === 'frigate') {
             const isCarrier = obj.type === 'carrier';
             const rad = (obj.angle * Math.PI) / 180;
 
@@ -161,9 +161,25 @@ export const drawMap = () => {
                 ctx.lineTo(3.8 * tSize, 0);
                 ctx.lineTo(3.2 * tSize, 1.2 * tSize);
                 ctx.fill();
-                // Bridge
                 ctx.fillStyle = '#eee';
                 ctx.fillRect(1.0 * tSize, -0.8 * tSize, 1.2 * tSize, 1.6 * tSize);
+            } else if (obj.type === 'frigate') {
+                // Fregatte: 12 × 3.6, Aufbau mittschiffs, Helipad achtern
+                ctx.fillStyle = '#5a6673';
+                ctx.fillRect(-6 * tSize, -1.8 * tSize, 12 * tSize, 3.6 * tSize);
+                ctx.fillStyle = '#7a8899';
+                ctx.beginPath();
+                ctx.moveTo(6 * tSize, 0);
+                ctx.lineTo(4 * tSize, -1.8 * tSize);
+                ctx.lineTo(4 * tSize, 1.8 * tSize);
+                ctx.fill();
+                // Aufbau
+                ctx.fillStyle = '#8899aa';
+                ctx.fillRect(0.3 * tSize, -1.4 * tSize, 2.5 * tSize, 2.8 * tSize);
+                // Helipad-Markierung
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = Math.max(1, tSize * 0.15);
+                ctx.strokeRect(-5.0 * tSize, -1.0 * tSize, 2.5 * tSize, 2.0 * tSize);
             } else {
                 // Sailboat: schlanker Rumpf
                 ctx.fillStyle = '#ddd';
@@ -723,12 +739,18 @@ const syncVesselUI = (obj: any, kind: 'carrier' | 'boat' | 'submarine') => {
     const angleEl = document.getElementById(`m_${prefix}_angle`) as HTMLInputElement;
     const nameEl = document.getElementById(`m_${prefix}_name`) as HTMLInputElement;
     const exitEl = document.getElementById(`m_${prefix}_exitWarning`) as HTMLInputElement;
+    const radioEl = document.getElementById(`m_${prefix}_radioSilent`) as HTMLInputElement;
     if (pathEl) pathEl.value = obj.path ?? 'static';
     if (speedEl) speedEl.value = (obj.speed ?? 0).toString();
     if (radiusEl) radiusEl.value = (obj.radius ?? 40).toString();
     if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
     if (nameEl) nameEl.value = obj.vesselName ?? '';
     if (exitEl) exitEl.checked = obj.exitWarning ?? false;
+    if (radioEl) radioEl.checked = !(obj.radioSilent ?? false);
+    if (kind === 'boat') {
+        const radioRow = document.getElementById('m_boat_radioSilent_row');
+        if (radioRow) radioRow.style.display = obj.type === 'frigate' ? '' : 'none';
+    }
 };
 
 

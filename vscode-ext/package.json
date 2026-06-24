@@ -68,7 +68,7 @@
             },
             {
                 "command": "zw.openUIPreview",
-                "title": "Zeewolf: Open UI Preview",
+                "title": "Open UI Preview",
                 "icon": "$(symbol-color)"
             },
             {
@@ -97,7 +97,7 @@
             ]
         },
         "configuration": {
-            "title": "Zeewolf SAR Tools",
+            "title": "SAR Tools",
             "properties": {
                 "zw.devServerPort": {
                     "type": "number",
