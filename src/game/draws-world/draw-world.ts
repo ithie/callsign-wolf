@@ -20,7 +20,7 @@ import type { DrawWorldCtx } from './types';
 export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
     const { SceneRenderer, isVisible, hasCarrier, hasPad, getWindStr } = dwCtx;
 
-    const { _drawPadLights, _drawVectorCarrier, _drawNpcHelis, _queueCarrierDeckObjects } = createCarrierDraw(dwCtx);
+    const { _drawPadLights, _drawVectorCarrier, _drawNpcHelis } = createCarrierDraw(dwCtx);
     const { _drawBowWave, _drawBoatModel, _drawSubmarine, _drawResearchPlatform } = createVesselsDraw(dwCtx);
     const {
         _drawWindTurbine,
@@ -85,20 +85,19 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         const showCarrier = hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, visMargin + 9);
         const showPad = hasPad() && isVisible(G.PAD.xMin + 3, G.PAD.yMin + 3, visMargin);
         if (showCarrier && G.CARRIER.path !== 'static' && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle))
-            _drawBowWave(G.CARRIER.x, G.CARRIER.y, G.CARRIER.angle, G.CARRIER.speedKnots, camX, camY, 9, 3);
+            _drawBowWave(G.CARRIER, camX, camY, 9);
         G.BOATS.forEach((b: any) => {
             if (isVisible(b.x, b.y, visMargin) && b.path !== 'static' && _inNightConeRect(b.x, b.y, b.w, b.l, b.angle)) {
                 const hullOff = b.objectType === 'frigate' ? 10 : 2;
-                const nCrests = b.objectType === 'frigate' ? 9 : 5;
-                _drawBowWave(b.x, b.y, b.angle, b.speedKnots, camX, camY, hullOff, nCrests);
+                _drawBowWave(b, camX, camY, hullOff);
             }
         });
         G.SUBMARINES.forEach((s: any) => {
             if (isVisible(s.x, s.y, visMargin) && s.path !== 'static' && _inNightConeRect(s.x, s.y, s.w, s.l, s.angle))
-                _drawBowWave(s.x, s.y, s.angle, s.speedKnots, camX, camY, 3, 4);
+                _drawBowWave(s, camX, camY, 3);
         });
 
-        if (showCarrier && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle)) _drawVectorCarrier(camX, camY);
+        if (showCarrier && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle)) _drawVectorCarrier(camX, camY, _inNightCone);
         _drawNpcHelis(camX, camY, visMargin, showCarrier, _inNightCone);
         if (showCarrier && heliAt && !zstate.crashed && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle)) {
             const c = G.CARRIER;
@@ -175,7 +174,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             if (isVisible(b.x, b.y, visMargin) && _inNightConeRect(b.x, b.y, b.w, b.l, b.angle)) _drawBoatModel(b, camX, camY);
         });
         G.SUBMARINES.forEach((s: any) => {
-            if (isVisible(s.x, s.y, visMargin) && _inNightConeRect(s.x, s.y, s.w, s.l, s.angle)) _drawSubmarine(s.x, s.y, s.angle);
+            if (isVisible(s.x, s.y, visMargin) && _inNightConeRect(s.x, s.y, s.w, s.l, s.angle)) _drawSubmarine(s);
         });
         G.RESEARCH_PLATFORMS.forEach((rp: any) => {
             if (isVisible(rp.x, rp.y, visMargin) && _inNightCone(rp.x, rp.y)) _drawResearchPlatform(rp.x, rp.y);
@@ -251,8 +250,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 },
             });
         });
-        // Carrier deck objects (tractors, crates, car) — individual cone checks, depth-sort with world.
-        if (showCarrier) _queueCarrierDeckObjects(_inNightCone);
+        // Carrier deck objects are queued inside _drawVectorCarrier between hull and tower passes.
         // Vessel-deck payloads enqueued BEFORE the heli so that on an equal depth value
         // the heli wins via JS stable-sort insertion order (heli inserted after = drawn later = on top).
         if (!zstate.crashed) queueAttachedPayloads(_inNightCone);

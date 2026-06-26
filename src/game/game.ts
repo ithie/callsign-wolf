@@ -675,11 +675,17 @@ const drawScene = () => {
     const _flapRate = Math.max(0.5, Math.min(3.0, 1.0 + G.heli.vz * 20 + Math.hypot(G.heli.vx, G.heli.vy) * 8));
 
     // shadow pass — before world objects so shadow appears on terrain, not over objects.
-    // Suppressed when over a research platform — deck shadow in draw-world.ts takes over.
+    // Suppressed when over a research platform or frigate — deck shadow in draw-world.ts takes over.
     const _overResearchPlatform = G.RESEARCH_PLATFORMS.some(
         (rp: any) => Math.abs(G.heli.x - rp.x) <= 3 && Math.abs(G.heli.y - rp.y) <= 3
     );
-    if (!zstate.crashed && !_overResearchPlatform) {
+    const _overFrigate = G.BOATS.some((b: any) => {
+        if (b.objectType !== 'frigate') return false;
+        const cosA = Math.cos(b.angle), sinA = Math.sin(b.angle);
+        const dx = G.heli.x - b.x, dy = G.heli.y - b.y;
+        return Math.abs(dx * cosA + dy * sinA) <= 14 && Math.abs(-dx * sinA + dy * cosA) <= 5;
+    });
+    if (!zstate.crashed && !_overResearchPlatform && !_overFrigate) {
         drawHeli(
             G.heli.type,
             G.heli.x,
@@ -1137,10 +1143,9 @@ const _onloadPreview = !import.meta.env.DEV
 
           // Auto-launch from URL params — no cross-origin messaging needed
           const params = new URLSearchParams(location.search);
-          const campaignType = params.get('preview') ?? '';
+          const campaignKey = params.get('preview') ?? '';
           const missionIdx = parseInt(params.get('mission') ?? '0', 10);
-          const allCampaigns = campaignHandler.getCampaigns();
-          const campaign = allCampaigns.find(c => c.type === campaignType) ?? allCampaigns[0];
+          const campaign = campaignHandler.getCampaignByKey(campaignKey) ?? campaignHandler.getCampaigns()[0];
           if (campaign && _previewLaunch) {
               const mission = campaign.levels[missionIdx] ?? campaign.levels[0];
               if (mission) _previewLaunch(mission);

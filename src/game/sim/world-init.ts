@@ -3,6 +3,7 @@ import { G } from '../state';
 import { getGround } from './terrain';
 import { VESSEL, PAYLOAD, VESSEL_PATH } from '../../shared/types';
 import FRIGATE_DEF from '../models/frigate.zdef';
+import CARRIER_DEF from '../models/carrier.zdef';
 
 const getObjects = () => campaignHandler.getCurrentMissionData().objects || [];
 const getObjectByType = (type: string) => getObjects().find((o: any) => o.type === type) || null;
@@ -41,10 +42,33 @@ export const resolveAttachTo = (attachTo: any): { x: number; y: number; z: numbe
 
 const initVessel = (obj: any, vessel: any, seaTimeRef: { t: number }) => {
     const angleRad = (obj.angle ?? 0) * (Math.PI / 180);
-    vessel.w = obj.type === VESSEL.CARRIER ? 8.0 : 1.5;
-    vessel.l = obj.type === VESSEL.CARRIER ? 3.5 : 3.0;
-    vessel.zDeck = obj.type === VESSEL.CARRIER ? G.waterLevel + 4.2 : G.waterLevel + 0.35;
-    vessel.zHull = obj.type === VESSEL.CARRIER ? G.waterLevel + 3.8 : G.waterLevel + 0.15;
+    if (obj.type === VESSEL.CARRIER) {
+        const lz = (CARRIER_DEF as any).landingZone;
+        vessel.lzX  = lz?.x  ?? 0;
+        vessel.lzY  = lz?.y  ?? 0;
+        vessel.lzHW = lz ? lz.w / 2 : 8.0;
+        vessel.lzHH = lz ? lz.h / 2 : 3.5;
+        vessel.w    = vessel.lzHW;
+        vessel.l    = vessel.lzHH;
+        vessel.zDeck = G.waterLevel + (lz?.z ?? 4.2);
+        vessel.zHull = G.waterLevel + 3.8;
+    } else if (obj.type === VESSEL.FRIGATE) {
+        const lz = (FRIGATE_DEF as any).landingZone;
+        vessel.lzX  = lz?.x  ?? -8.0;
+        vessel.lzY  = lz?.y  ?? 0;
+        vessel.lzHW = lz ? lz.w / 2 : 2.25;
+        vessel.lzHH = lz ? lz.h / 2 : 2.75;
+        vessel.w    = 3.5;
+        vessel.l    = 12.0;
+        vessel.zDeck = G.waterLevel + (lz?.z ?? 2.0);
+        vessel.zHull = G.waterLevel + 1.5;
+    } else {
+        vessel.lzX = 0; vessel.lzY = 0;
+        vessel.lzHW = 1.5; vessel.lzHH = 3.0;
+        vessel.w = 1.5; vessel.l = 3.0;
+        vessel.zDeck = G.waterLevel + 0.35;
+        vessel.zHull = G.waterLevel + 0.15;
+    }
     vessel.path = obj.path ?? VESSEL_PATH.STATIC;
     vessel.speedKnots = obj.speed ?? 0;
     vessel.exitWarning = obj.exitWarning ?? false;
@@ -203,12 +227,13 @@ export const initSubmarinesFromMission = () => {
 
 export const updateSubmarines = (SUBMARINES: any[], dt: number) => SUBMARINES.forEach(s => updateVesselPath(s, dt));
 
-const BOAT_CFG: Record<string, { w: number; l: number; zDeck: number }> = {
-    boat:        { w: 1.5, l:  3.0, zDeck: 0.35 },
-    pilot_boat:  { w: 0.8, l:  2.0, zDeck: 0.3 },
-    sar_boat:    { w: 0.8, l:  2.0, zDeck: 0.3 },
-    salvage_tug: { w: 1.2, l:  3.5, zDeck: 1.2 },
-    frigate:     { w: 3.0, l: 11.0, zDeck: (FRIGATE_DEF as any).landingZone?.z ?? 2.0 },
+const _frigateLZ = (FRIGATE_DEF as any).landingZone;
+const BOAT_CFG: Record<string, { w: number; l: number; zDeck: number; lzX: number; lzY: number; lzHW: number; lzHH: number }> = {
+    boat:        { w: 1.5, l:  3.0, zDeck: 0.35, lzX: 0, lzY: 0, lzHW:  3.0, lzHH: 1.5 },
+    pilot_boat:  { w: 0.8, l:  2.0, zDeck: 0.3,  lzX: 0, lzY: 0, lzHW:  2.0, lzHH: 0.8 },
+    sar_boat:    { w: 0.8, l:  2.0, zDeck: 0.3,  lzX: 0, lzY: 0, lzHW:  2.0, lzHH: 0.8 },
+    salvage_tug: { w: 1.2, l:  3.5, zDeck: 1.2,  lzX: 0, lzY: 0, lzHW:  3.5, lzHH: 1.2 },
+    frigate:     { w: 3.0, l: 11.0, zDeck: _frigateLZ?.z ?? 2.0, lzX: _frigateLZ?.x ?? -8.0, lzY: _frigateLZ?.y ?? 0, lzHW: _frigateLZ ? _frigateLZ.w / 2 : 2.25, lzHH: _frigateLZ ? _frigateLZ.h / 2 : 2.75 },
 };
 
 export const initBoatsFromMission = () => {
@@ -228,6 +253,10 @@ export const initBoatsFromMission = () => {
                 w: cfg.w,
                 l: cfg.l,
                 zDeck: cfg.zDeck,
+                lzX: cfg.lzX,
+                lzY: cfg.lzY,
+                lzHW: cfg.lzHW,
+                lzHH: cfg.lzHH,
                 zHull: 0.15,
                 radiusX: 0,
                 radiusY: 0,

@@ -1,6 +1,7 @@
 import { CampaignExport, MissionData } from '@/shared/types';
 import Tutorial from './campaigns/tutorial.zcampaign';
 import FreeFlight from './campaigns/freeFlight.zcampaign';
+import DemoCampaign from './campaigns/demo.zcampaign';
 import CallsignWolf from './campaigns/callsignwolf.zcampaign';
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
@@ -92,10 +93,18 @@ const soundHandler = (() => {
             state.activeTheme = theme;
             if (state.isMuted) return;
             if (alreadyPlaying) return;
-            try { ZsynthPlayer.play(theme, CTX_VOL[context] ?? 0.65); } catch { /* ignore */ }
+            try {
+                ZsynthPlayer.play(theme, CTX_VOL[context] ?? 0.65);
+            } catch {
+                /* ignore */
+            }
         },
         stop: () => {
-            if (_native) { _nativeKey = ''; _native.postMessage({ action: 'stop' }); return; }
+            if (_native) {
+                _nativeKey = '';
+                _native.postMessage({ action: 'stop' });
+                return;
+            }
             ZsynthPlayer.stop();
         },
     };
@@ -108,7 +117,12 @@ const createCampaignHandler = () => {
         Tutorial as unknown as CampaignExport,
         FreeFlight as unknown as CampaignExport,
         CallsignWolf as unknown as CampaignExport,
+        DemoCampaign as unknown as CampaignExport,
     ];
+
+    const campaignMap = new Map<string, CampaignExport>(
+        campaigns.map(c => [(c as any)._key as string, c])
+    );
 
     const campaignState = {
         activeCampaign: 0,
@@ -163,8 +177,11 @@ const createCampaignHandler = () => {
         return cachedTerrain;
     };
 
+    const getCampaignByKey = (key: string): CampaignExport | undefined => campaignMap.get(key);
+
     return {
         getCampaigns,
+        getCampaignByKey,
         campaign: {
             getNextMission,
             setActiveCampaign,
@@ -195,7 +212,9 @@ if (import.meta.env.DEV) {
                 _previewTerrain = {
                     terrain: decompressTerrain(_previewLevel.terrain as string, _previewLevel.gridSize),
                     gridSize: _previewLevel.gridSize,
-                    sand: _previewLevel.sand ? decompressTerrain(_previewLevel.sand, _previewLevel.gridSize) : undefined,
+                    sand: _previewLevel.sand
+                        ? decompressTerrain(_previewLevel.sand, _previewLevel.gridSize)
+                        : undefined,
                 };
             return _previewTerrain;
         };

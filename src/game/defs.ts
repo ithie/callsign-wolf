@@ -53,6 +53,61 @@ export interface DEF {
     rotateNodes?: DEFRotateNode[];
     /** Named sub-geometry groups; call applyParts() before passing to SceneRenderer */
     parts?: DEFPart[];
+    /** Declares render passes for multi-pass depth sorting; processed by renderPasses() */
+    passes?: DEFPass[];
+}
+
+export interface DEFPass {
+    parts: string[];
+}
+
+// ─── ZDEF2 ────────────────────────────────────────────────────────────────────
+
+export interface DEF2Face {
+    type?: 'line';
+    id?: string;
+    verts: number[][];
+    color: string;
+    normal?: [number, number];
+    lineWidth?: number;
+    /** Brightness multiplier (1.0 = unchanged). Omit to use auto-shading from face normal. */
+    shade?: number;
+}
+
+export interface DEF2Light {
+    x: number;
+    y: number;
+    z: number;
+    color: string;
+    colorOff?: string;
+    blink?: boolean;
+    radius?: number;
+}
+
+export interface DEF2Rotate {
+    pivot: [number, number, number];
+    axis: [number, number, number];
+    param?: string;
+    animate?: { type: 'spin' | 'oscillate'; speed: number; amplitude?: number };
+}
+
+export interface DEF2Node {
+    faces?: DEF2Face[];
+    lights?: DEF2Light[];
+    rotate?: DEF2Rotate;
+    depthAnchor?: [number, number];
+    children?: DEF2Node[];
+}
+
+export interface DEF2 {
+    version: 2;
+    id: string;
+    label?: string;
+    static?: boolean;
+    movementType?: string;
+    collisionBoxes?: DEFCollisionBox[];
+    landingZone?: { x: number; y: number; w: number; h: number; z: number };
+    nodes: DEF2Node[];
 }
 
 // ─── Static model exports ─────────────────────────────────────────────────────

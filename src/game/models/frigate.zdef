@@ -1,4 +1,5 @@
 {
+  "version": 2,
   "id": "frigate",
   "label": "Fregatte",
   "static": false,
@@ -11,10 +12,8 @@
     { "id": "mast",           "xMin":  1.9, "xMax":  2.1, "yMin": -0.12,"yMax":  0.12,"zMin": 5.0, "zMax": 7.5 }
   ],
   "landingZone": { "x": -5.5, "y": 0, "w": 4.5, "h": 4.5, "z": 2.0 },
-  "faces": [],
-  "parts": [
+  "nodes": [
     {
-      "id": "hull",
       "faces": [
         { "id": "hull_bottom",        "verts": [[4.5, 0, 0], [3.0, 2.5, 0], [-8.5, 2.5, 0], [-8.5, -2.5, 0], [3.0, -2.5, 0]], "color": "#5a6673" },
         { "id": "hull_stern",         "normal": [-1, 0], "verts": [[-8.5, 2.5, 0], [-8.5, -2.5, 0], [-8.5, -2.5, 2.0], [-8.5, 2.5, 2.0]], "color": "#5a6673" },
@@ -31,7 +30,6 @@
       ]
     },
     {
-      "id": "super",
       "faces": [
         { "id": "bridge_front",            "normal": [1, 0],  "verts": [[3.0, -1.8, 2.0], [3.0,  1.8, 2.0], [3.0,  1.8, 5.0], [3.0, -1.8, 5.0]], "color": "#5a6673" },
         { "id": "superstructure_starboard","normal": [0, 1],  "verts": [[3.0,  1.8, 2.0], [0.5,  1.8, 2.0], [0.5,  1.8, 5.0], [3.0,  1.8, 5.0]], "color": "#5a6673" },

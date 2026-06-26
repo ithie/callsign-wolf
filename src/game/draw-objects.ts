@@ -12,7 +12,7 @@
 
 import type { IsoFn, SceneRenderer } from './scene-renderer';
 import { getHeliType } from './heli-types';
-import { applyParts } from './def-utils';
+import { applyParts, applyNodes } from './def-utils';
 
 import FUEL_TRUCK_CHASSIS_DEF from './models/fuel_truck_chassis.zdef';
 import FUEL_TRUCK_TANK_DEF from './models/fuel_truck_tank.zdef';
@@ -1069,7 +1069,7 @@ export const createDrawObjects = (
                 z: hZ + (lz * s + ly * s * hRoll * 1.0 + lx * s * hTilt * 1.0),
             });
             const rollBias = hRoll * 0.15;
-            const baked = applyParts(getHeliType(type).def, {
+            const baked = applyNodes(getHeliType(type).def as any, {
                 wingAngle: wingAngle + rollBias,
                 wingAngleInv: -(wingAngle - rollBias),
                 wingTipAngle: wingTipAngle + rollBias * 0.5,

@@ -123,13 +123,9 @@ export class CampaignEditorProvider implements vscode.CustomEditorProvider<Campa
 }
 
 const openPreview = (doc: CampaignDoc, missionIndex: number): void => {
-    let campaignType = 'CSW_CAMPAIGN';
-    try {
-        const parsed = JSON.parse(doc.content) as { type?: string };
-        if (parsed.type) campaignType = parsed.type;
-    } catch (_) { /* ignore parse errors */ }
-
+    const filename = doc.uri.path.split('/').pop() ?? '';
+    const campaignKey = filename.replace(/\.zcampaign$/i, '');
     const port = vscode.workspace.getConfiguration('zw').get<number>('devServerPort', 5173);
-    const url = `http://localhost:${port}?preview=${encodeURIComponent(campaignType)}&mission=${missionIndex}`;
+    const url = `http://localhost:${port}?preview=${encodeURIComponent(campaignKey)}&mission=${missionIndex}`;
     vscode.commands.executeCommand('simpleBrowser.show', url);
 };

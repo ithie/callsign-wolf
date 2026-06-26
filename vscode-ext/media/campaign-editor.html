@@ -1083,16 +1083,16 @@ Viel Glück, Pilot.</textarea
 
             const edSetLang = lang => {
                 _edLang = lang;
-                if (edLastState) {
-                    edRenderTabContent(edLastState);
-                }
+                if (window.editorGetState) edRenderPanel(window.editorGetState());
+                else if (edLastState) edRenderTabContent(edLastState);
             };
             window.edSetLang = edSetLang;
 
             const edSwitchTab = tab => {
                 _edActiveTab = tab;
                 document.querySelectorAll('.ed-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
-                if (edLastState) edRenderTabContent(edLastState);
+                if (window.editorGetState) edRenderPanel(window.editorGetState());
+                else if (edLastState) edRenderTabContent(edLastState);
             };
             window.edSwitchTab = edSwitchTab;
 

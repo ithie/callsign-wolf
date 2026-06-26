@@ -2,9 +2,9 @@ export {};
 declare const acquireVsCodeApi: () => { postMessage: (msg: unknown) => void };
 const vscode = acquireVsCodeApi();
 
-import type { DEF, DEFFace, DEFCollisionBox, DEFPart } from '../../src/game/defs';
+import type { DEF, DEFFace, DEFCollisionBox, DEFPart, DEF2 } from '../../src/game/defs';
 import { createSceneRenderer } from '../../src/game/scene-renderer';
-import { applyParts, getTransformedPivots } from '../../src/game/def-utils';
+import { applyParts, getTransformedPivots, renderNodes } from '../../src/game/def-utils';
 
 import HANGAR_RAW from '../../src/game/models/hangar.zdef';
 import LIGHTHOUSE_RAW from '../../src/game/models/lighthouse.zdef';
@@ -59,6 +59,7 @@ const PRESETS: Record<string, { def: DEFModel; label: string; isStatic: boolean;
 
 const state: {
     def: DEFModel | null;
+    def2: DEF2 | null;
     meta: ZdefMeta;
     selectedFaceIdx: number;
     selectedVertIdx: number;
@@ -68,6 +69,7 @@ const state: {
     filename: string | null;
 } = {
     def: null,
+    def2: null,
     meta: { label: '', isStatic: true, movementType: 'none' },
     selectedFaceIdx: -1,
     selectedVertIdx: -1,
@@ -91,7 +93,7 @@ const grids: Grid[] = [mkGrid(), mkGrid(), mkGrid(), mkGrid()];
 const gridVs: Grid[] = [mkGrid(), mkGrid(), mkGrid(), mkGrid()];
 
 const getActiveFaces = (): DEFFace[] => {
-    if (!state.def) return [];
+    if (!state.def || state.def2) return [];
     if (state.activePart) {
         const part = state.def.parts?.find(p => p.id === state.activePart);
         return part?.faces ?? [];
@@ -260,21 +262,26 @@ const draw = (): void => {
         ctx.clip();
 
         if (state.def) {
-            const activeFaces = getActiveFaces();
-            const colors: Record<string, string> = {};
-            if (state.activePart) {
-                const ap = state.def.parts?.find(p => p.id === state.activePart);
-                if (ap) ap.faces.forEach(f => { colors[f.id] = '#2d5c88'; });
-            }
-            if (state.selectedFaceIdx >= 0 && activeFaces[state.selectedFaceIdx]) {
-                colors[activeFaces[state.selectedFaceIdx].id] = '#ffdd44';
-            }
-
             const testParams = buildTestParams();
-            const renderedDef = applyParts(state.def, testParams);
-            SceneRenderer.debugCollision = showCboxes;
-            SceneRenderer.add(renderedDef, { x: 0, y: 0, angle: renderViewAngle, colors });
-            SceneRenderer.flush(renderCam.x, renderCam.y);
+
+            if (state.def2) {
+                SceneRenderer.debugCollision = showCboxes;
+                renderNodes(state.def2, {}, { x: 0, y: 0, angle: renderViewAngle }, SceneRenderer as any, renderCam.x, renderCam.y, { ctx, isoFn: iso, tileW: TW * renderZoom } as any);
+            } else {
+                const activeFaces = getActiveFaces();
+                const colors: Record<string, string> = {};
+                if (state.activePart) {
+                    const ap = state.def.parts?.find(p => p.id === state.activePart);
+                    if (ap) ap.faces.forEach(f => { colors[f.id] = '#2d5c88'; });
+                }
+                if (state.selectedFaceIdx >= 0 && activeFaces[state.selectedFaceIdx]) {
+                    colors[activeFaces[state.selectedFaceIdx].id] = '#ffdd44';
+                }
+                const renderedDef = applyParts(state.def, testParams);
+                SceneRenderer.debugCollision = showCboxes;
+                SceneRenderer.add(renderedDef, { x: 0, y: 0, angle: renderViewAngle, colors });
+                SceneRenderer.flush(renderCam.x, renderCam.y);
+            }
 
             if (state.selectedFaceIdx >= 0) {
                 const face = activeFaces[state.selectedFaceIdx];
@@ -386,6 +393,11 @@ const draw = (): void => {
 const renderPartsList = (): void => {
     const sec = document.getElementById('parts-sec') as HTMLElement;
     const list = document.getElementById('parts-list')!;
+    if (state.def2) {
+        sec.style.display = '';
+        list.innerHTML = '<div class="empty" style="color:#aaa;font-style:italic">ZDEF2 — Nodes im JSON-Editor bearbeiten</div>';
+        return;
+    }
     if (!state.def?.parts?.length) { sec.style.display = 'none'; return; }
     sec.style.display = '';
     let colorIdx = 0;
@@ -460,6 +472,10 @@ const renderFaceList = (): void => {
     const faces = getActiveFaces();
     if (!state.def || !faces.length) {
         list.innerHTML = state.def ? '<div class="empty">Part wählen oder Fläche hinzufügen</div>' : '<div class="empty">Kein Modell geladen</div>';
+        count.textContent = ''; return;
+    }
+    if (state.def2) {
+        list.innerHTML = '<div class="empty" style="color:#aaa;font-style:italic">ZDEF2 — Faces in nodes</div>';
         count.textContent = ''; return;
     }
     count.textContent = `(${faces.length})`;
@@ -648,10 +664,10 @@ const selectFace = (i: number): void => {
 const loadPreset = (key: string): void => {
     const p = PRESETS[key];
     if (!p) return;
-    state.def = JSON.parse(JSON.stringify(p.def)) as DEFModel;
+    fromJSON(JSON.stringify(p.def));
+    // Override meta with preset's declared values (fromJSON derives them from JSON fields)
     state.meta = { label: p.label, isStatic: p.isStatic, movementType: p.movementType };
-    state.selectedFaceIdx = -1; state.selectedVertIdx = -1; state.activePart = null;
-    state.partTestAngles = {}; state.dirty = false; state.filename = null;
+    state.dirty = false; state.filename = null;
     syncMetaToUI(); renderAll();
 };
 
@@ -1123,6 +1139,19 @@ document.querySelectorAll<HTMLButtonElement>('.quad-grid-toggle').forEach(btn =>
 
 // ── Serialization ──────────────────────────────────────────────────────────────
 const toJSON = (): string => {
+    if (state.def2) {
+        // ZDEF2: preserve full node structure, update mutable metadata and cboxes from editor state
+        const out = {
+            ...state.def2,
+            label: state.meta.label,
+            static: state.meta.isStatic,
+            movementType: state.meta.movementType,
+            collisionBoxes: state.def?.collisionBoxes ?? [],
+            ...(state.def?.rescueZones?.length ? { rescueZones: state.def.rescueZones } : {}),
+            ...((state.def as DEFModel | null)?.landingZone ? { landingZone: (state.def as DEFModel).landingZone } : {}),
+        };
+        return JSON.stringify(out, null, 2);
+    }
     const d = state.def!;
     const out: Record<string, unknown> = {
         id: d.id,
@@ -1141,16 +1170,29 @@ const toJSON = (): string => {
 
 const fromJSON = (content: string): void => {
     const d = JSON.parse(content.replace(/\/\/[^\n]*/g, '')) as Record<string, unknown>;
-    state.def = {
-        id: d['id'] as string,
-        pivot: (d['pivot'] as number[] | undefined) || [0, 0, 0],
-        faces: (d['faces'] as DEFFace[]) || [],
-        collisionBoxes: (d['collisionBoxes'] as DEFCollisionBox[]) || [],
-        parts: d['parts'] as DEFPart[] | undefined,
-        rotateNodes: d['rotateNodes'] as DEF['rotateNodes'],
-        rescueZones: d['rescueZones'] as RescueZone[] | undefined,
-        landingZone: d['landingZone'] as LandingZone | undefined,
-    };
+    if ((d['version'] as number) === 2) {
+        state.def2 = d as unknown as DEF2;
+        // Minimal v1 stub so cbox/zone/landing editors still work
+        state.def = {
+            id: d['id'] as string,
+            faces: [],
+            collisionBoxes: (d['collisionBoxes'] as DEFCollisionBox[]) || [],
+            rescueZones: d['rescueZones'] as RescueZone[] | undefined,
+            landingZone: d['landingZone'] as LandingZone | undefined,
+        } as DEFModel;
+    } else {
+        state.def2 = null;
+        state.def = {
+            id: d['id'] as string,
+            pivot: (d['pivot'] as number[] | undefined) || [0, 0, 0],
+            faces: (d['faces'] as DEFFace[]) || [],
+            collisionBoxes: (d['collisionBoxes'] as DEFCollisionBox[]) || [],
+            parts: d['parts'] as DEFPart[] | undefined,
+            rotateNodes: d['rotateNodes'] as DEF['rotateNodes'],
+            rescueZones: d['rescueZones'] as RescueZone[] | undefined,
+            landingZone: d['landingZone'] as LandingZone | undefined,
+        };
+    }
     state.meta = {
         label: (d['label'] as string) || (d['id'] as string),
         isStatic: d['static'] !== false,

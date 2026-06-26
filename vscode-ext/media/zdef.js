@@ -217,6 +217,135 @@
     }
     return result;
   };
+  var _id2 = (v) => v;
+  var _LIGHT = [-0.267, 0.535, 0.802];
+  var _SHADE_AMB = 0.82;
+  var _SHADE_DIFF = 0.18;
+  var _autoShade = (verts) => {
+    if (verts.length < 3) return 1;
+    const ax = verts[1][0] - verts[0][0], ay = verts[1][1] - verts[0][1], az = verts[1][2] - verts[0][2];
+    const bx = verts[2][0] - verts[0][0], by = verts[2][1] - verts[0][1], bz = verts[2][2] - verts[0][2];
+    const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+    const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    if (len < 1e-9) return 1;
+    const dot = (nx * _LIGHT[0] + ny * _LIGHT[1] + nz * _LIGHT[2]) / len;
+    return _SHADE_AMB + _SHADE_DIFF * Math.max(0, dot);
+  };
+  var _applyShade = (hex, shade) => {
+    if (Math.abs(shade - 1) < 2e-3) return hex;
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.min(255, Math.round((n >> 16 & 255) * shade));
+    const g = Math.min(255, Math.round((n >> 8 & 255) * shade));
+    const b = Math.min(255, Math.round((n & 255) * shade));
+    return "#" + (r << 16 | g << 8 | b).toString(16).padStart(6, "0");
+  };
+  var _rotNorm = (n, rotFn) => {
+    const [[ox, oy], [nx, ny]] = rotFn([[0, 0, 0], [n[0], n[1], 0]]);
+    const dx = nx - ox, dy = ny - oy;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    return len > 1e-9 ? [dx / len, dy / len] : n;
+  };
+  var _makeRotFn2 = (node, params, parentFn) => {
+    const r = node.rotate;
+    let angle;
+    if (r.animate) {
+      const t = Date.now() * r.animate.speed;
+      angle = r.animate.type === "oscillate" ? (r.animate.amplitude ?? 1) * Math.sin(t) : t;
+    } else {
+      angle = params[r.param ?? ""] ?? 0;
+    }
+    const tPivot = parentFn([r.pivot])[0];
+    return (verts) => _rotateVerts(parentFn(verts), tPivot, r.axis, angle);
+  };
+  var _collectNode = (node, params, parentFn, outFaces, outSpecial) => {
+    const rotFn = node.rotate ? _makeRotFn2(node, params, parentFn) : parentFn;
+    for (const face of node.faces ?? []) {
+      if (face.type === "line") {
+        const [v0, v1] = rotFn([face.verts[0], face.verts[1]]);
+        outSpecial.push({ kind: "line", v0, v1, face });
+      } else {
+        const rotVerts = rotFn(face.verts);
+        const shade = face.shade ?? _autoShade(rotVerts);
+        const color = _applyShade(face.color, shade);
+        const normal = face.normal ? _rotNorm(face.normal, rotFn) : void 0;
+        outFaces.push({ ...face, verts: rotVerts, color, ...normal !== void 0 ? { normal } : {} });
+      }
+    }
+    for (const light of node.lights ?? []) {
+      const [rl] = rotFn([[light.x, light.y, light.z]]);
+      outSpecial.push({ kind: "light", lx: rl[0], ly: rl[1], lz: rl[2], light });
+    }
+    for (const child of node.children ?? []) {
+      _collectNode(child, params, rotFn, outFaces, outSpecial);
+    }
+  };
+  var renderNodes = (def, params, instanceProps, renderer, camX, camY, drawCtx, onBeforeFlush) => {
+    const { x: ix, y: iy, z: iz = 0, angle: iAngle = 0 } = instanceProps;
+    const cosA = Math.cos(iAngle), sinA = Math.sin(iAngle);
+    for (const topNode of def.nodes) {
+      const faces = [];
+      const special = [];
+      _collectNode(topNode, params, _id2, faces, special);
+      let baseDepth;
+      if (topNode.depthAnchor) {
+        const [dx, dy] = topNode.depthAnchor;
+        baseDepth = ix + dx * cosA - dy * sinA + (iy + dx * sinA + dy * cosA);
+      } else {
+        baseDepth = ix + iy;
+      }
+      for (let fi = 0; fi < faces.length; fi++) {
+        renderer.add({ id: def.id, faces: [faces[fi]] }, { ...instanceProps, depth: baseDepth + fi * 1e-7 });
+      }
+      if (drawCtx) {
+        const { ctx: ctx2, isoFn, tileW } = drawCtx;
+        for (const item of special) {
+          if (item.kind === "light") {
+            const { lx, ly, lz, light } = item;
+            const wx = ix + lx * cosA - ly * sinA;
+            const wy = iy + lx * sinA + ly * cosA;
+            const wz = iz + lz;
+            const blink = light.blink ?? false;
+            const radius = light.radius ?? 2;
+            renderer.add(null, {
+              x: wx,
+              y: wy,
+              z: wz,
+              drawFn: (cx, cy) => {
+                const isOn = !blink || Math.floor(Date.now() / 500) % 2 === 0;
+                const p = isoFn(wx, wy, wz, cx, cy);
+                ctx2.fillStyle = isOn ? light.color : light.colorOff ?? light.color;
+                ctx2.beginPath();
+                ctx2.arc(p.x, p.y, Math.max(1.2, radius * tileW / 64), 0, 7);
+                ctx2.fill();
+              }
+            });
+          } else {
+            const { v0, v1, face } = item;
+            const wx0 = ix + v0[0] * cosA - v0[1] * sinA, wy0 = iy + v0[0] * sinA + v0[1] * cosA, wz0 = iz + v0[2];
+            const wx1 = ix + v1[0] * cosA - v1[1] * sinA, wy1 = iy + v1[0] * sinA + v1[1] * cosA, wz1 = iz + v1[2];
+            renderer.add(null, {
+              x: (wx0 + wx1) / 2,
+              y: (wy0 + wy1) / 2,
+              z: (wz0 + wz1) / 2,
+              drawFn: (cx, cy) => {
+                const p0 = isoFn(wx0, wy0, wz0, cx, cy);
+                const p1 = isoFn(wx1, wy1, wz1, cx, cy);
+                ctx2.strokeStyle = face.color;
+                ctx2.lineWidth = face.lineWidth ?? 1;
+                ctx2.lineCap = "round";
+                ctx2.beginPath();
+                ctx2.moveTo(p0.x, p0.y);
+                ctx2.lineTo(p1.x, p1.y);
+                ctx2.stroke();
+              }
+            });
+          }
+        }
+      }
+      if (onBeforeFlush) onBeforeFlush(def.nodes.indexOf(topNode));
+      renderer.flush(camX, camY);
+    }
+  };
 
   // ../src/game/models/hangar.zdef
   var hangar_default = {
@@ -4159,152 +4288,68 @@
 
   // ../src/game/models/carrier.zdef
   var carrier_default = {
+    version: 2,
     id: "carrier",
-    faces: [],
     collisionBoxes: [
       { id: "hull", xMin: -8.7, xMax: 8.7, yMin: -4.2, yMax: 4.2, zMin: 0, zMax: 4.2 },
       { id: "tower", xMin: -5.5, xMax: -1, yMin: 2.6, yMax: 4.1, zMin: 4.2, zMax: 6.7 }
     ],
-    parts: [
+    landingZone: { x: 0, y: 0, w: 16, h: 7, z: 4.2 },
+    nodes: [
       {
-        id: "hull",
         faces: [
-          {
-            id: "keel",
-            verts: [[8.7, -2.52, 0], [8.7, 2.52, 0], [-8.7, 2.52, 0], [-8.7, -2.52, 0]],
-            color: "#8898a8"
-          },
-          {
-            id: "hull_bow",
-            normal: [1, 0],
-            verts: [[8.7, -2.52, 0], [8.7, 2.52, 0], [8.7, 4.2, 3.8], [8.7, -4.2, 3.8]],
-            color: "#6e7a88"
-          },
-          {
-            id: "hull_starboard",
-            normal: [0, 1],
-            verts: [[8.7, 2.52, 0], [-8.7, 2.52, 0], [-8.7, 4.2, 3.8], [8.7, 4.2, 3.8]],
-            color: "#8898a8"
-          },
-          {
-            id: "hull_stern",
-            normal: [-1, 0],
-            verts: [[-8.7, 2.52, 0], [-8.7, -2.52, 0], [-8.7, -4.2, 3.8], [-8.7, 4.2, 3.8]],
-            color: "#6e7a88"
-          },
-          {
-            id: "hull_port",
-            normal: [0, -1],
-            verts: [[-8.7, -2.52, 0], [8.7, -2.52, 0], [8.7, -4.2, 3.8], [-8.7, -4.2, 3.8]],
-            color: "#8898a8"
-          },
-          {
-            id: "deck_base",
-            verts: [[8.7, -4.2, 3.8], [8.7, 4.2, 3.8], [-8.7, 4.2, 3.8], [-8.7, -4.2, 3.8]],
-            color: "#222222"
-          },
-          {
-            id: "deck_bow",
-            normal: [1, 0],
-            verts: [[8.7, -4.2, 3.8], [8.7, 4.2, 3.8], [8.7, 4.2, 4.2], [8.7, -4.2, 4.2]],
-            color: "#222228"
-          },
-          {
-            id: "deck_starboard",
-            normal: [0, 1],
-            verts: [[8.7, 4.2, 3.8], [-8.7, 4.2, 3.8], [-8.7, 4.2, 4.2], [8.7, 4.2, 4.2]],
-            color: "#2a2a33"
-          },
-          {
-            id: "deck_stern",
-            normal: [-1, 0],
-            verts: [[-8.7, 4.2, 3.8], [-8.7, -4.2, 3.8], [-8.7, -4.2, 4.2], [-8.7, 4.2, 4.2]],
-            color: "#222228"
-          },
-          {
-            id: "deck_port",
-            normal: [0, -1],
-            verts: [[-8.7, -4.2, 3.8], [8.7, -4.2, 3.8], [8.7, -4.2, 4.2], [-8.7, -4.2, 4.2]],
-            color: "#2a2a33"
-          },
-          {
-            id: "flight_deck",
-            verts: [[8.7, -4.2, 4.2], [8.7, 4.2, 4.2], [-8.7, 4.2, 4.2], [-8.7, -4.2, 4.2]],
-            color: "#3a3a44"
-          },
-          {
-            id: "pad_bow",
-            verts: [[5.9, -3.7, 4.21], [5.9, -0.9, 4.21], [3.1, -0.9, 4.21], [3.1, -3.7, 4.21]],
-            color: "#52526a"
-          },
-          {
-            id: "pad_mid",
-            verts: [[1.4, -3.7, 4.21], [1.4, -0.9, 4.21], [-1.4, -0.9, 4.21], [-1.4, -3.7, 4.21]],
-            color: "#52526a"
-          },
-          {
-            id: "pad_stern",
-            verts: [[-3.1, -3.7, 4.21], [-3.1, -0.9, 4.21], [-5.9, -0.9, 4.21], [-5.9, -3.7, 4.21]],
-            color: "#52526a"
-          }
+          { id: "hull_bow", normal: [1, 0], verts: [[8.7, -2.52, 0], [8.7, 2.52, 0], [8.7, 4.2, 3.8], [8.7, -4.2, 3.8]], color: "#6e7a88" },
+          { id: "hull_starboard", normal: [0, 1], verts: [[8.7, 2.52, 0], [-8.7, 2.52, 0], [-8.7, 4.2, 3.8], [8.7, 4.2, 3.8]], color: "#8898a8" },
+          { id: "hull_stern", normal: [-1, 0], verts: [[-8.7, 2.52, 0], [-8.7, -2.52, 0], [-8.7, -4.2, 3.8], [-8.7, 4.2, 3.8]], color: "#6e7a88" },
+          { id: "hull_port", normal: [0, -1], verts: [[-8.7, -2.52, 0], [8.7, -2.52, 0], [8.7, -4.2, 3.8], [-8.7, -4.2, 3.8]], color: "#8898a8" },
+          { id: "deck_base", verts: [[8.7, -4.2, 3.8], [8.7, 4.2, 3.8], [-8.7, 4.2, 3.8], [-8.7, -4.2, 3.8]], color: "#222222" },
+          { id: "deck_bow", normal: [1, 0], verts: [[8.7, -4.2, 3.8], [8.7, 4.2, 3.8], [8.7, 4.2, 4.2], [8.7, -4.2, 4.2]], color: "#222228" },
+          { id: "deck_starboard", normal: [0, 1], verts: [[8.7, 4.2, 3.8], [-8.7, 4.2, 3.8], [-8.7, 4.2, 4.2], [8.7, 4.2, 4.2]], color: "#2a2a33" },
+          { id: "deck_stern", normal: [-1, 0], verts: [[-8.7, 4.2, 3.8], [-8.7, -4.2, 3.8], [-8.7, -4.2, 4.2], [-8.7, 4.2, 4.2]], color: "#222228" },
+          { id: "deck_port", normal: [0, -1], verts: [[-8.7, -4.2, 3.8], [8.7, -4.2, 3.8], [8.7, -4.2, 4.2], [-8.7, -4.2, 4.2]], color: "#2a2a33" },
+          { id: "flight_deck", verts: [[8.7, -4.2, 4.2], [8.7, 4.2, 4.2], [-8.7, 4.2, 4.2], [-8.7, -4.2, 4.2]], color: "#3a3a44" },
+          { id: "pad_bow", verts: [[5.9, -3.7, 4.21], [5.9, -0.9, 4.21], [3.1, -0.9, 4.21], [3.1, -3.7, 4.21]], color: "#52526a" },
+          { id: "pad_mid", verts: [[1.4, -3.7, 4.21], [1.4, -0.9, 4.21], [-1.4, -0.9, 4.21], [-1.4, -3.7, 4.21]], color: "#52526a" },
+          { id: "pad_stern", verts: [[-3.1, -3.7, 4.21], [-3.1, -0.9, 4.21], [-5.9, -0.9, 4.21], [-5.9, -3.7, 4.21]], color: "#52526a" }
         ]
       },
       {
-        id: "tower",
+        depthAnchor: [-3.25, 3.35],
         faces: [
+          { id: "tower_bow", normal: [1, 0], verts: [[-1, 2.6, 4.2], [-1, 4.1, 4.2], [-1, 4.1, 6.7], [-1, 2.6, 6.7]], color: "#6e7a88" },
+          { id: "tower_starboard", normal: [0, 1], verts: [[-1, 4.1, 4.2], [-5.5, 4.1, 4.2], [-5.5, 4.1, 6.7], [-1, 4.1, 6.7]], color: "#8898a8" },
+          { id: "tower_stern", normal: [-1, 0], verts: [[-5.5, 2.6, 4.2], [-5.5, 4.1, 4.2], [-5.5, 4.1, 6.7], [-5.5, 2.6, 6.7]], color: "#6e7a88" },
+          { id: "tower_port", normal: [0, -1], verts: [[-1, 2.6, 4.2], [-5.5, 2.6, 4.2], [-5.5, 2.6, 6.7], [-1, 2.6, 6.7]], color: "#8898a8" },
+          { id: "tower_roof", verts: [[-1, 2.6, 6.7], [-1, 4.1, 6.7], [-5.5, 4.1, 6.7], [-5.5, 2.6, 6.7]], color: "#222222" }
+        ],
+        lights: [
+          { x: -8.7, y: -4.2, z: 4.25, blink: true, color: "#ff0000", colorOff: "#550000", radius: 3 },
+          { x: 8.7, y: -4.2, z: 4.25, blink: true, color: "#ff0000", colorOff: "#550000", radius: 3 },
+          { x: 8.7, y: 4.2, z: 4.25, blink: true, color: "#ff0000", colorOff: "#550000", radius: 3 },
+          { x: -8.7, y: 4.2, z: 4.25, blink: true, color: "#ff0000", colorOff: "#550000", radius: 3 }
+        ],
+        children: [
           {
-            id: "tower_bow",
-            normal: [1, 0],
-            verts: [[-1, 2.6, 4.2], [-1, 4.1, 4.2], [-1, 4.1, 6.7], [-1, 2.6, 6.7]],
-            color: "#6e7a88"
+            faces: [
+              { id: "radar_mast", verts: [[-3.25, 3.335, 6.7], [-3.25, 3.365, 6.7], [-3.25, 3.365, 6.88], [-3.25, 3.335, 6.88]], color: "#888888" }
+            ],
+            children: [
+              {
+                faces: [
+                  { id: "radar_arm", verts: [[-3.245, 3.13, 6.88], [-3.245, 3.57, 6.88], [-3.255, 3.57, 6.88], [-3.255, 3.13, 6.88]], color: "#cccccc" }
+                ],
+                rotate: {
+                  pivot: [-3.25, 3.35, 6.88],
+                  axis: [0, 0, 1],
+                  animate: { type: "spin", speed: 2e-3 }
+                }
+              }
+            ]
           },
           {
-            id: "tower_starboard",
-            normal: [0, 1],
-            verts: [[-1, 4.1, 4.2], [-5.5, 4.1, 4.2], [-5.5, 4.1, 6.7], [-1, 4.1, 6.7]],
-            color: "#8898a8"
-          },
-          {
-            id: "tower_stern",
-            normal: [-1, 0],
-            verts: [[-5.5, 2.6, 4.2], [-5.5, 4.1, 4.2], [-5.5, 4.1, 6.7], [-5.5, 2.6, 6.7]],
-            color: "#6e7a88"
-          },
-          {
-            id: "tower_port",
-            normal: [0, -1],
-            verts: [[-1, 2.6, 4.2], [-5.5, 2.6, 4.2], [-5.5, 2.6, 6.7], [-1, 2.6, 6.7]],
-            color: "#8898a8"
-          },
-          {
-            id: "tower_roof",
-            verts: [[-1, 2.6, 6.7], [-1, 4.1, 6.7], [-5.5, 4.1, 6.7], [-5.5, 2.6, 6.7]],
-            color: "#222222"
-          }
-        ]
-      },
-      {
-        id: "radar_mast",
-        faces: [
-          {
-            id: "radar_mast",
-            verts: [[-3.25, 3.335, 6.7], [-3.25, 3.365, 6.7], [-3.25, 3.365, 6.88], [-3.25, 3.335, 6.88]],
-            color: "#888888"
-          }
-        ]
-      },
-      {
-        id: "radar_arm",
-        rotate: {
-          pivot: [-3.25, 3.35, 6.88],
-          axis: [0, 0, 1],
-          param: "radarAngle"
-        },
-        faces: [
-          {
-            id: "radar_arm",
-            verts: [[-3.245, 3.13, 6.88], [-3.245, 3.57, 6.88], [-3.255, 3.57, 6.88], [-3.255, 3.13, 6.88]],
-            color: "#cccccc"
+            faces: [
+              { type: "line", verts: [[-3.25, 2.975, 6.7], [-3.25, 2.975, 7.3]], color: "#aaaaaa", lineWidth: 1.5 }
+            ]
           }
         ]
       }
@@ -4313,419 +4358,100 @@
 
   // ../src/game/models/ornithopter.zdef
   var ornithopter_default = {
+    version: 2,
     id: "ornithopter_westwood_final_flat",
     label: "ornithopter_westwood_final_flat",
     static: false,
     movementType: "none",
-    pivot: [
-      0,
-      0,
-      0
-    ],
-    faces: [],
     collisionBoxes: [
-      {
-        id: "hull_core",
-        xMin: -0.8,
-        xMax: 0.9,
-        yMin: -0.35,
-        yMax: 0.35,
-        zMin: 0.1,
-        zMax: 0.55
-      },
-      {
-        id: "tail_boom",
-        xMin: -1.6,
-        xMax: -0.8,
-        yMin: -0.15,
-        yMax: 0.15,
-        zMin: 0.2,
-        zMax: 0.5
-      }
+      { id: "hull_core", xMin: -0.8, xMax: 0.9, yMin: -0.35, yMax: 0.35, zMin: 0.1, zMax: 0.55 },
+      { id: "tail_boom", xMin: -1.6, xMax: -0.8, yMin: -0.15, yMax: 0.15, zMin: 0.2, zMax: 0.5 }
     ],
-    parts: [
+    nodes: [
       {
-        id: "body",
         faces: [
           {
             id: "belly",
-            verts: [
-              [
-                0.9,
-                0,
-                0.1
-              ],
-              [
-                0.4,
-                0.35,
-                0.1
-              ],
-              [
-                -0.8,
-                0.3,
-                0.1
-              ],
-              [
-                -0.8,
-                -0.3,
-                0.1
-              ],
-              [
-                0.4,
-                -0.35,
-                0.1
-              ]
-            ],
+            verts: [[0.9, 0, 0.1], [0.4, 0.35, 0.1], [-0.8, 0.3, 0.1], [-0.8, -0.3, 0.1], [0.4, -0.35, 0.1]],
             color: "#bcbcbc"
           },
           {
             id: "side_l",
-            verts: [
-              [
-                0.9,
-                0.15,
-                0.1
-              ],
-              [
-                0.5,
-                0.2,
-                0.45
-              ],
-              [
-                -0.8,
-                0.22,
-                0.45
-              ],
-              [
-                -0.8,
-                0.3,
-                0.1
-              ],
-              [
-                0.4,
-                0.35,
-                0.1
-              ]
-            ],
+            verts: [[0.9, 0.15, 0.1], [0.5, 0.2, 0.45], [-0.8, 0.22, 0.45], [-0.8, 0.3, 0.1], [0.4, 0.35, 0.1]],
             color: "#dcdcdc"
           },
           {
             id: "side_r",
-            verts: [
-              [
-                0.9,
-                -0.15,
-                0.1
-              ],
-              [
-                0.4,
-                -0.35,
-                0.1
-              ],
-              [
-                -0.8,
-                -0.3,
-                0.1
-              ],
-              [
-                -0.8,
-                -0.22,
-                0.45
-              ],
-              [
-                0.5,
-                -0.2,
-                0.45
-              ]
-            ],
+            verts: [[0.9, -0.15, 0.1], [0.4, -0.35, 0.1], [-0.8, -0.3, 0.1], [-0.8, -0.22, 0.45], [0.5, -0.2, 0.45]],
             color: "#dcdcdc"
           },
           {
             id: "top",
-            verts: [
-              [
-                0.1,
-                0.25,
-                0.5
-              ],
-              [
-                0.1,
-                -0.25,
-                0.5
-              ],
-              [
-                -0.8,
-                -0.22,
-                0.45
-              ],
-              [
-                -0.8,
-                0.22,
-                0.45
-              ]
-            ],
+            verts: [[0.1, 0.25, 0.5], [0.1, -0.25, 0.5], [-0.8, -0.22, 0.45], [-0.8, 0.22, 0.45]],
             color: "#f2f2f2"
           },
           {
             id: "tail",
-            verts: [
-              [
-                -0.8,
-                0.15,
-                0.45
-              ],
-              [
-                -0.8,
-                -0.15,
-                0.45
-              ],
-              [
-                -1.6,
-                0,
-                0.5
-              ],
-              [
-                -1.6,
-                0,
-                0.2
-              ],
-              [
-                -0.8,
-                0,
-                0.1
-              ]
-            ],
+            verts: [[-0.8, 0.15, 0.45], [-0.8, -0.15, 0.45], [-1.6, 0, 0.5], [-1.6, 0, 0.2], [-0.8, 0, 0.1]],
             color: "#f2f2f2"
           },
           {
             id: "cockpit_f",
-            verts: [
-              [
-                0.91,
-                0.15,
-                0.1
-              ],
-              [
-                0.91,
-                -0.15,
-                0.1
-              ],
-              [
-                0.5,
-                -0.2,
-                0.45
-              ],
-              [
-                0.5,
-                0.2,
-                0.45
-              ]
-            ],
-            color: "#add8e6"
+            verts: [[0.91, 0.15, 0.1], [0.91, -0.15, 0.1], [0.5, -0.2, 0.45], [0.5, 0.2, 0.45]],
+            color: "#add8e6",
+            shade: 1
           },
           {
             id: "cockpit_t",
-            verts: [
-              [
-                0.5,
-                0.2,
-                0.45
-              ],
-              [
-                0.5,
-                -0.2,
-                0.45
-              ],
-              [
-                0.1,
-                -0.25,
-                0.5
-              ],
-              [
-                0.1,
-                0.25,
-                0.5
-              ]
-            ],
-            color: "#add8e6"
+            verts: [[0.5, 0.2, 0.45], [0.5, -0.2, 0.45], [0.1, -0.25, 0.5], [0.1, 0.25, 0.5]],
+            color: "#add8e6",
+            shade: 1
           }
-        ]
-      },
-      {
-        id: "wing_L_inner",
-        rotate: {
-          pivot: [
-            -0.2,
-            0.25,
-            0.48
-          ],
-          axis: [
-            1,
-            0,
-            0
-          ],
-          param: "wingAngle"
-        },
-        faces: [
+        ],
+        children: [
           {
-            id: "wl_in",
-            verts: [
-              [
-                0.2,
-                0.25,
-                0.48
-              ],
-              [
-                0.1,
-                2.5,
-                1.4
-              ],
-              [
-                -0.6,
-                2.5,
-                1.4
-              ],
-              [
-                -0.7,
-                0.22,
-                0.48
-              ]
+            rotate: { pivot: [-0.2, 0.25, 0.48], axis: [1, 0, 0], param: "wingAngle" },
+            faces: [
+              {
+                id: "wl_in",
+                verts: [[0.2, 0.25, 0.48], [0.1, 2.5, 1.4], [-0.6, 2.5, 1.4], [-0.7, 0.22, 0.48]],
+                color: "#ffffff"
+              }
             ],
-            color: "#ffffff"
-          }
-        ]
-      },
-      {
-        id: "wing_L_outer",
-        parent: "wing_L_inner",
-        rotate: {
-          pivot: [
-            -0.25,
-            2.5,
-            1.4
-          ],
-          axis: [
-            1,
-            0,
-            0
-          ],
-          param: "wingTipAngle"
-        },
-        faces: [
+            children: [
+              {
+                rotate: { pivot: [-0.25, 2.5, 1.4], axis: [1, 0, 0], param: "wingTipAngle" },
+                faces: [
+                  {
+                    id: "wl_out",
+                    verts: [[0.1, 2.5, 1.4], [0, 3.8, 0.4], [-0.2, 3.8, 0.4], [-0.6, 2.5, 1.4]],
+                    color: "#eeeeee"
+                  }
+                ]
+              }
+            ]
+          },
           {
-            id: "wl_out",
-            verts: [
-              [
-                0.1,
-                2.5,
-                1.4
-              ],
-              [
-                0,
-                3.8,
-                0.4
-              ],
-              [
-                -0.2,
-                3.8,
-                0.4
-              ],
-              [
-                -0.6,
-                2.5,
-                1.4
-              ]
+            rotate: { pivot: [-0.2, -0.25, 0.48], axis: [1, 0, 0], param: "wingAngleInv" },
+            faces: [
+              {
+                id: "wr_in",
+                verts: [[0.2, -0.25, 0.48], [-0.7, -0.22, 0.48], [-0.6, -2.5, 1.4], [0.1, -2.5, 1.4]],
+                color: "#ffffff"
+              }
             ],
-            color: "#eeeeee"
-          }
-        ]
-      },
-      {
-        id: "wing_R_inner",
-        rotate: {
-          pivot: [
-            -0.2,
-            -0.25,
-            0.48
-          ],
-          axis: [
-            1,
-            0,
-            0
-          ],
-          param: "wingAngleInv"
-        },
-        faces: [
-          {
-            id: "wr_in",
-            verts: [
-              [
-                0.2,
-                -0.25,
-                0.48
-              ],
-              [
-                -0.7,
-                -0.22,
-                0.48
-              ],
-              [
-                -0.6,
-                -2.5,
-                1.4
-              ],
-              [
-                0.1,
-                -2.5,
-                1.4
-              ]
-            ],
-            color: "#ffffff"
-          }
-        ]
-      },
-      {
-        id: "wing_R_outer",
-        parent: "wing_R_inner",
-        rotate: {
-          pivot: [
-            -0.25,
-            -2.5,
-            1.4
-          ],
-          axis: [
-            1,
-            0,
-            0
-          ],
-          param: "wingTipAngleInv"
-        },
-        faces: [
-          {
-            id: "wr_out",
-            verts: [
-              [
-                0.1,
-                -2.5,
-                1.4
-              ],
-              [
-                -0.6,
-                -2.5,
-                1.4
-              ],
-              [
-                -0.2,
-                -3.8,
-                0.4
-              ],
-              [
-                0,
-                -3.8,
-                0.4
-              ]
-            ],
-            color: "#eeeeee"
+            children: [
+              {
+                rotate: { pivot: [-0.25, -2.5, 1.4], axis: [1, 0, 0], param: "wingTipAngleInv" },
+                faces: [
+                  {
+                    id: "wr_out",
+                    verts: [[0.1, -2.5, 1.4], [-0.6, -2.5, 1.4], [-0.2, -3.8, 0.4], [0, -3.8, 0.4]],
+                    color: "#eeeeee"
+                  }
+                ]
+              }
+            ]
           }
         ]
       }
@@ -5690,6 +5416,7 @@
   };
   var state = {
     def: null,
+    def2: null,
     meta: { label: "", isStatic: true, movementType: "none" },
     selectedFaceIdx: -1,
     selectedVertIdx: -1,
@@ -5710,7 +5437,7 @@
   var grids = [mkGrid(), mkGrid(), mkGrid(), mkGrid()];
   var gridVs = [mkGrid(), mkGrid(), mkGrid(), mkGrid()];
   var getActiveFaces = () => {
-    if (!state.def) return [];
+    if (!state.def || state.def2) return [];
     if (state.activePart) {
       const part = state.def.parts?.find((p) => p.id === state.activePart);
       return part?.faces ?? [];
@@ -5910,22 +5637,27 @@
       ctx.rect(ox, oy, qw, qh);
       ctx.clip();
       if (state.def) {
-        const activeFaces = getActiveFaces();
-        const colors = {};
-        if (state.activePart) {
-          const ap = state.def.parts?.find((p) => p.id === state.activePart);
-          if (ap) ap.faces.forEach((f) => {
-            colors[f.id] = "#2d5c88";
-          });
-        }
-        if (state.selectedFaceIdx >= 0 && activeFaces[state.selectedFaceIdx]) {
-          colors[activeFaces[state.selectedFaceIdx].id] = "#ffdd44";
-        }
         const testParams = buildTestParams();
-        const renderedDef = applyParts(state.def, testParams);
-        SceneRenderer.debugCollision = showCboxes;
-        SceneRenderer.add(renderedDef, { x: 0, y: 0, angle: renderViewAngle, colors });
-        SceneRenderer.flush(renderCam.x, renderCam.y);
+        if (state.def2) {
+          SceneRenderer.debugCollision = showCboxes;
+          renderNodes(state.def2, {}, { x: 0, y: 0, angle: renderViewAngle }, SceneRenderer, renderCam.x, renderCam.y, { ctx, isoFn: iso, tileW: TW * renderZoom });
+        } else {
+          const activeFaces2 = getActiveFaces();
+          const colors = {};
+          if (state.activePart) {
+            const ap = state.def.parts?.find((p) => p.id === state.activePart);
+            if (ap) ap.faces.forEach((f) => {
+              colors[f.id] = "#2d5c88";
+            });
+          }
+          if (state.selectedFaceIdx >= 0 && activeFaces2[state.selectedFaceIdx]) {
+            colors[activeFaces2[state.selectedFaceIdx].id] = "#ffdd44";
+          }
+          const renderedDef = applyParts(state.def, testParams);
+          SceneRenderer.debugCollision = showCboxes;
+          SceneRenderer.add(renderedDef, { x: 0, y: 0, angle: renderViewAngle, colors });
+          SceneRenderer.flush(renderCam.x, renderCam.y);
+        }
         if (state.selectedFaceIdx >= 0) {
           const face = activeFaces[state.selectedFaceIdx];
           if (face && face.verts.length >= 2) {
@@ -6057,6 +5789,11 @@
   var renderPartsList = () => {
     const sec = document.getElementById("parts-sec");
     const list = document.getElementById("parts-list");
+    if (state.def2) {
+      sec.style.display = "";
+      list.innerHTML = '<div class="empty" style="color:#aaa;font-style:italic">ZDEF2 \u2014 Nodes im JSON-Editor bearbeiten</div>';
+      return;
+    }
     if (!state.def?.parts?.length) {
       sec.style.display = "none";
       return;
@@ -6140,6 +5877,11 @@
     const faces = getActiveFaces();
     if (!state.def || !faces.length) {
       list.innerHTML = state.def ? '<div class="empty">Part w\xE4hlen oder Fl\xE4che hinzuf\xFCgen</div>' : '<div class="empty">Kein Modell geladen</div>';
+      count.textContent = "";
+      return;
+    }
+    if (state.def2) {
+      list.innerHTML = '<div class="empty" style="color:#aaa;font-style:italic">ZDEF2 \u2014 Faces in nodes</div>';
       count.textContent = "";
       return;
     }
@@ -6365,12 +6107,8 @@
   var loadPreset = (key) => {
     const p = PRESETS[key];
     if (!p) return;
-    state.def = JSON.parse(JSON.stringify(p.def));
+    fromJSON(JSON.stringify(p.def));
     state.meta = { label: p.label, isStatic: p.isStatic, movementType: p.movementType };
-    state.selectedFaceIdx = -1;
-    state.selectedVertIdx = -1;
-    state.activePart = null;
-    state.partTestAngles = {};
     state.dirty = false;
     state.filename = null;
     syncMetaToUI();
@@ -6677,9 +6415,9 @@
     setRenderContext(lockedQ);
     const g = grids[lockedQ], gv = gridVs[lockedQ];
     if (state.def) {
-      const activeFaces = getActiveFaces();
+      const activeFaces2 = getActiveFaces();
       if (state.selectedFaceIdx >= 0) {
-        const face = activeFaces[state.selectedFaceIdx];
+        const face = activeFaces2[state.selectedFaceIdx];
         if (face) {
           for (let i = 0; i < face.verts.length; i++) {
             const pt = localToScreen(face.verts[i][0], face.verts[i][1], face.verts[i][2]);
@@ -6692,10 +6430,10 @@
           }
         }
       }
-      if (activeFaces.length) {
-        const order = activeFaces.map((_, i) => i).sort((a, b) => faceCentroidDepth(activeFaces[b]) - faceCentroidDepth(activeFaces[a]));
+      if (activeFaces2.length) {
+        const order = activeFaces2.map((_, i) => i).sort((a, b) => faceCentroidDepth(activeFaces2[b]) - faceCentroidDepth(activeFaces2[a]));
         for (const i of order) {
-          const f = activeFaces[i];
+          const f = activeFaces2[i];
           if (f.normal) {
             const [nx, ny] = f.normal, cosA = Math.cos(renderViewAngle), sinA = Math.sin(renderViewAngle);
             if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;
@@ -6980,6 +6718,18 @@
     });
   });
   var toJSON = () => {
+    if (state.def2) {
+      const out2 = {
+        ...state.def2,
+        label: state.meta.label,
+        static: state.meta.isStatic,
+        movementType: state.meta.movementType,
+        collisionBoxes: state.def?.collisionBoxes ?? [],
+        ...state.def?.rescueZones?.length ? { rescueZones: state.def.rescueZones } : {},
+        ...state.def?.landingZone ? { landingZone: state.def.landingZone } : {}
+      };
+      return JSON.stringify(out2, null, 2);
+    }
     const d = state.def;
     const out = {
       id: d.id,
@@ -6997,16 +6747,28 @@
   };
   var fromJSON = (content) => {
     const d = JSON.parse(content.replace(/\/\/[^\n]*/g, ""));
-    state.def = {
-      id: d["id"],
-      pivot: d["pivot"] || [0, 0, 0],
-      faces: d["faces"] || [],
-      collisionBoxes: d["collisionBoxes"] || [],
-      parts: d["parts"],
-      rotateNodes: d["rotateNodes"],
-      rescueZones: d["rescueZones"],
-      landingZone: d["landingZone"]
-    };
+    if (d["version"] === 2) {
+      state.def2 = d;
+      state.def = {
+        id: d["id"],
+        faces: [],
+        collisionBoxes: d["collisionBoxes"] || [],
+        rescueZones: d["rescueZones"],
+        landingZone: d["landingZone"]
+      };
+    } else {
+      state.def2 = null;
+      state.def = {
+        id: d["id"],
+        pivot: d["pivot"] || [0, 0, 0],
+        faces: d["faces"] || [],
+        collisionBoxes: d["collisionBoxes"] || [],
+        parts: d["parts"],
+        rotateNodes: d["rotateNodes"],
+        rescueZones: d["rescueZones"],
+        landingZone: d["landingZone"]
+      };
+    }
     state.meta = {
       label: d["label"] || d["id"],
       isStatic: d["static"] !== false,
