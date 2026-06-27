@@ -78,7 +78,8 @@ private final class ControlsHandler: NSObject, WKScriptMessageHandler {
         case "deliverToggle":
             overlay.setDeliverOn((body["on"] as? Bool) == true)
         case "tutorialHighlight":
-            overlay.setTutorialHighlight(body["control"] as? String)
+            overlay.setTutorialHighlight(body["control"] as? String,
+                                         direction: body["direction"] as? String)
         case "tutorialDim":
             overlay.setTutorialDim(Set(body["controls"] as? [String] ?? []))
         default: break

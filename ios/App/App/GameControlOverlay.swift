@@ -26,6 +26,7 @@ final class GameControlOverlay: UIView {
 
     // ── Tutorial state ────────────────────────────────────────────────────────────
     private var tutorialHighlight: String?     = nil
+    private var tutorialDirection: String?     = nil
     private var tutorialDimmed:    Set<String> = []
     private var pulsePhase:        CGFloat     = 0
 
@@ -76,8 +77,9 @@ final class GameControlOverlay: UIView {
         }
     }
 
-    func setTutorialHighlight(_ control: String?) {
+    func setTutorialHighlight(_ control: String?, direction: String? = nil) {
         tutorialHighlight = control
+        tutorialDirection = direction
         if control == nil { pulsePhase = 0 }
     }
 
@@ -363,6 +365,9 @@ final class GameControlOverlay: UIView {
             UIColor(white: 1, alpha: ringA).setStroke()
             path.stroke()
             ctx.restoreGState()
+            if let dir = tutorialDirection {
+                _drawDirectionSweep(center: center, radius: joyRadius, direction: dir)
+            }
 
         case "pitch-wheel":
             _drawRectPulse(winchRockerRect, ringW: ringW, ringA: ringA, blurR: blurR, glowA: glowA)
@@ -370,6 +375,28 @@ final class GameControlOverlay: UIView {
             _drawRectPulse(deliverRect,     ringW: ringW, ringA: ringA, blurR: blurR, glowA: glowA)
         default: break
         }
+    }
+
+    private func _drawDirectionSweep(center: CGPoint, radius: CGFloat, direction: String) {
+        let dirX: CGFloat = direction == "right" ? 1 : direction == "left" ? -1 : 0
+        let dirY: CGFloat = direction == "down"  ? 1 : direction == "up"   ? -1 : 0
+        guard dirX != 0 || dirY != 0 else { return }
+
+        let phase  = pulsePhase
+        let clamp  = radius * 0.55
+        let kR:    CGFloat = 28
+        let gPhase = min(phase * 2.2, 1.0)
+        let ghostX = center.x + dirX * clamp * gPhase
+        let ghostY = center.y + dirY * clamp * gPhase
+        let ghostA: CGFloat = 0.60 * (1 - gPhase)
+
+        let ghostRect = CGRect(x: ghostX - kR, y: ghostY - kR, width: kR * 2, height: kR * 2)
+        UIColor(red: 1, green: 0.45, blue: 0.1, alpha: ghostA * 0.45).setFill()
+        UIBezierPath(ovalIn: ghostRect).fill()
+        let ghostRing = UIBezierPath(ovalIn: ghostRect)
+        ghostRing.lineWidth = 1.5
+        UIColor(red: 1, green: 0.45, blue: 0.1, alpha: ghostA).setStroke()
+        ghostRing.stroke()
     }
 
     private func _drawRectPulse(_ rect: CGRect, ringW: CGFloat, ringA: CGFloat,

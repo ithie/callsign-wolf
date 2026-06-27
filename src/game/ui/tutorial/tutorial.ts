@@ -5,10 +5,12 @@ import type { GameState } from '../../state';
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type ControlHint = 'joystick-left' | 'joystick-right' | 'pitch-wheel' | 'deliver-toggle' | null;
+type Direction = 'up' | 'down' | 'left' | 'right';
 
 interface TutorialStep {
     getText: () => string;
     control: ControlHint;
+    direction?: Direction;
     dimControls: NonNullable<ControlHint>[];
     allowedKeys: Set<string> | null;
     condition: (g: GameState) => boolean;
@@ -20,7 +22,7 @@ interface TutorialStep {
 const _CLIMB_METERS = 10; // (z - groundZ) * 10 = 100m HUD
 const _STEP_DIST = 5; // ≈50m horizontal
 const _TURN_ANGLE = Math.PI / 2; // 90°
-const _FUEL_LOCK_LAST = 8; // steps 0–8: no fuel consumption
+const _FUEL_LOCK_LAST = 9; // steps 0–9: no fuel consumption
 
 const _KEYS_CLIMB = new Set(['KeyW']);
 const _KEYS_TURN_L = new Set(['ArrowLeft']);
@@ -66,7 +68,7 @@ const _STEPS: readonly TutorialStep[] = [
     // 0: Climb to 100m
     {
         getText: () => I18N.TUT_TAKEOFF_M,
-        control: 'joystick-left',
+        control: 'joystick-left', direction: 'up',
         dimControls: ['joystick-right', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_CLIMB,
         condition: g => g.heli.z >= _padGroundZ + _CLIMB_METERS,
@@ -74,7 +76,7 @@ const _STEPS: readonly TutorialStep[] = [
     // 1: Turn Left 90°
     {
         getText: () => I18N.TUT_TURN_L_M,
-        control: 'joystick-left',
+        control: 'joystick-left', direction: 'left',
         dimControls: ['joystick-right', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_TURN_L,
         condition: g => _angleDiff(g.heli.angle, _stepStartAngle) <= -_TURN_ANGLE,
@@ -82,7 +84,7 @@ const _STEPS: readonly TutorialStep[] = [
     // 2: Turn Right 90° — back to original heading
     {
         getText: () => I18N.TUT_TURN_R_M,
-        control: 'joystick-left',
+        control: 'joystick-left', direction: 'right',
         dimControls: ['joystick-right', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_TURN_R,
         condition: g => _angleDiff(g.heli.angle, _stepStartAngle) >= _TURN_ANGLE,
@@ -90,7 +92,7 @@ const _STEPS: readonly TutorialStep[] = [
     // 3: Strafe Left
     {
         getText: () => I18N.TUT_STRAFE_L_M,
-        control: 'joystick-right',
+        control: 'joystick-right', direction: 'left',
         dimControls: ['joystick-left', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_LEFT,
         condition: g => Math.hypot(g.heli.x - _stepStartX, g.heli.y - _stepStartY) >= _STEP_DIST,
@@ -98,7 +100,7 @@ const _STEPS: readonly TutorialStep[] = [
     // 4: Strafe Right — back over pad
     {
         getText: () => I18N.TUT_STRAFE_R_M,
-        control: 'joystick-right',
+        control: 'joystick-right', direction: 'right',
         dimControls: ['joystick-left', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_RIGHT,
         condition: g => Math.hypot(g.heli.x - _stepStartX, g.heli.y - _stepStartY) >= _STEP_DIST,
@@ -106,7 +108,7 @@ const _STEPS: readonly TutorialStep[] = [
     // 5: Forward
     {
         getText: () => I18N.TUT_FORWARD_M,
-        control: 'joystick-right',
+        control: 'joystick-right', direction: 'up',
         dimControls: ['joystick-left', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_FORWARD,
         condition: g => Math.hypot(g.heli.x - _stepStartX, g.heli.y - _stepStartY) >= _STEP_DIST,
@@ -114,7 +116,7 @@ const _STEPS: readonly TutorialStep[] = [
     // 6: Backward — back over pad; drops fuel to 15% on complete
     {
         getText: () => I18N.TUT_BACKWARD_M,
-        control: 'joystick-right',
+        control: 'joystick-right', direction: 'down',
         dimControls: ['joystick-left', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_BACKWARD,
         condition: g => Math.hypot(g.heli.x - _stepStartX, g.heli.y - _stepStartY) >= _STEP_DIST,
@@ -125,17 +127,25 @@ const _STEPS: readonly TutorialStep[] = [
     // 7: Land — S only; x/y stays locked over pad from step 6
     {
         getText: () => I18N.TUT_LAND_M,
-        control: 'joystick-left',
+        control: 'joystick-left', direction: 'down',
         dimControls: ['joystick-right', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_LAND,
         condition: g => !g.heli.inAir && g.heli.z < 1.5,
     },
-    // 8: Refuel
+    // 8: Engine off — same gesture (stick down) while on ground stops engine
+    {
+        getText: () => I18N.TUT_ENGINE_STOP,
+        control: 'joystick-left', direction: 'down',
+        dimControls: ['joystick-right', 'pitch-wheel', 'deliver-toggle'],
+        allowedKeys: _KEYS_LAND,
+        condition: g => !g.heli.engineOn,
+    },
+    // 9: Refuel — all controls locked, player just waits
     {
         getText: () => I18N.TUT_REFUEL,
         control: null,
-        dimControls: ['pitch-wheel', 'deliver-toggle'],
-        allowedKeys: null,
+        dimControls: ['joystick-left', 'joystick-right', 'pitch-wheel', 'deliver-toggle'],
+        allowedKeys: _KEYS_NONE,
         condition: g => g.heli.fuel >= 90,
     },
     // 9: Locate crate
@@ -204,10 +214,11 @@ const _STEPS: readonly TutorialStep[] = [
 
 // ── DOM helpers ────────────────────────────────────────────────────────────────
 
-const _setHighlight = (control: ControlHint): void => {
+const _setHighlight = (control: ControlHint, direction?: Direction): void => {
     window.webkit?.messageHandlers?.controls?.postMessage({
         type: 'tutorialHighlight',
         control: control ?? null,
+        direction: direction ?? null,
     });
 };
 
@@ -218,11 +229,17 @@ const _setDim = (dimList: NonNullable<ControlHint>[]): void => {
     });
 };
 
+const _setOverlay = (visible: boolean): void => {
+    const el = document.getElementById('tutorial-overlay');
+    if (el) el.style.opacity = visible ? '1' : '0';
+};
+
 const _renderStep = (step: TutorialStep): void => {
     const el = document.getElementById('tutorial-step-text');
     if (el) el.textContent = step.getText();
-    _setHighlight(step.control);
+    _setHighlight(step.control, step.direction);
     _setDim(step.dimControls);
+    _setOverlay(true);
 };
 
 const _flashOk = (next: TutorialStep | null): void => {
@@ -301,6 +318,11 @@ export const initTutorial = (
     // Person payloads spawn later via onSpawnPerson (step 11 onComplete)
     (g as any).payloads = (g.payloads as any[]).filter((p: any) => p.type !== 'person');
 
+    if (!document.getElementById('tutorial-overlay')) {
+        const overlay = document.createElement('div');
+        overlay.id = 'tutorial-overlay';
+        document.body.appendChild(overlay);
+    }
     if (!document.getElementById('tutorial-hud')) {
         const hud = document.createElement('div');
         hud.id = 'tutorial-hud';
@@ -393,6 +415,10 @@ export const tutorialTick = (g: GameState): void => {
     _flashOk(_STEPS[_stepIndex] ?? null);
 };
 
+export const notifyTutorialInput = (): void => {
+    if (_active) _setOverlay(false);
+};
+
 export const destroyTutorial = (): void => {
     _active = false;
     _flashing = false;
@@ -405,5 +431,6 @@ export const destroyTutorial = (): void => {
     }
     _setHighlight(null);
     _setDim([]);
+    document.getElementById('tutorial-overlay')?.remove();
     document.getElementById('tutorial-hud')?.remove();
 };

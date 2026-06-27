@@ -64,6 +64,7 @@ import {
     isTutorialRunning,
     getAllowedKeys,
     isTutorialFuelLocked,
+    notifyTutorialInput,
 } from './ui/tutorial/tutorial';
 import { requestReview } from './reviewRequest';
 import { VESSEL, PAYLOAD, CAMPAIGN_TYPE } from '../shared/types';
@@ -1005,6 +1006,8 @@ const _RIGHT_KEYS = ['ArrowUp', 'ArrowDown', 'KeyA', 'KeyD'] as const;
     (G.keys as Record<string, boolean>)['KeyQ'] = input.pitchWheel.active && input.pitchWheel.dy < -6;
     (G.keys as Record<string, boolean>)['KeyE'] = input.pitchWheel.active && input.pitchWheel.dy > 6;
     (G.keys as Record<string, boolean>)['KeyR'] = input.deliverBtn;
+    if (isTutorialRunning() && (input.leftKey || input.rightKey || input.pitchWheel.active || input.deliverBtn))
+        notifyTutorialInput();
 };
 
 const setupTouchControls = () => {

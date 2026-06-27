@@ -1,5 +1,22 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.7.1 — Tutorial Improvements & Depth Sorting Fix
+
+### Added
+
+- **Tutorial — direction ghost knob** — Joystick highlight now shows an animated ghost knob that travels from centre toward the required direction, making the required gesture immediately clear.
+- **Tutorial — background overlay** — Game world dims when a tutorial step is waiting for input; overlay fades as soon as the player starts interacting.
+- **Tutorial — engine-off step** — New step between "Land" and "Refuel" instructs the player to stop the engine (left stick down again); controls are fully locked during the subsequent refuel wait.
+- **Tutorial — i18n** — `TUT_ENGINE_STOP` added in German and English.
+
+### Fixed
+
+- **Depth sorting — carrier tower vs. deck vehicles** — Deck objects (tractors, crates, fuel car) are now queued inside the carrier's tower flush via `onBeforeFlush`, so they depth-sort correctly against the tower at all carrier angles.
+- **Depth sorting — depthAnchor restored** — `depthAnchor` is now applied per node as the base depth for all faces in that node; fixes tower faces incorrectly claiming the carrier centre as their sort origin.
+- **Depth sorting — per-face depth** — Each face is now queued individually with `baseDepth + faceIndex × 1e-7`, preserving face array order as a stable tiebreaker within a node.
+
+---
+
 ## v28.7.0 — Frigate Operations & Stability
 
 ### Added
