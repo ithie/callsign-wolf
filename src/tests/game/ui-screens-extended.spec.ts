@@ -357,8 +357,8 @@ describe('mission-select', () => {
                     '1': {
                         completed: false,
                         missions: [
-                            { completed: true, bestTimeMs: 12345 },
-                            { completed: false, bestTimeMs: null },
+                            { completed: true, bestTimeMs: 12345, count: 1 },
+                            { completed: false, bestTimeMs: null, count: 0 },
                         ],
                     },
                 },

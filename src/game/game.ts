@@ -203,10 +203,11 @@ const missionComplete = () => {
     }
     const cp = _session.campaignProgress[campaignKey];
     if (!cp.missions[_selectedMissionIndex]) {
-        cp.missions[_selectedMissionIndex] = { completed: false, bestTimeMs: null };
+        cp.missions[_selectedMissionIndex] = { completed: false, bestTimeMs: null, count: 0 };
     }
     const mp = cp.missions[_selectedMissionIndex];
     mp.completed = true;
+    mp.count = (mp.count ?? 0) + 1;
     if (_missionStartTime > 0 && (mp.bestTimeMs === null || elapsed < mp.bestTimeMs)) {
         mp.bestTimeMs = elapsed;
     }
@@ -947,7 +948,7 @@ const _getRankMissions = (): number => {
     );
     return Object.entries(_session.campaignProgress)
         .filter(([key]) => !tutorialKeys.has(key))
-        .reduce((sum, [, cp]) => sum + cp.missions.filter(m => m.completed).length, 0);
+        .reduce((sum, [, cp]) => sum + cp.missions.reduce((s, m) => s + (m?.count ?? 0), 0), 0);
 };
 
 let _selectedCampaignIndex = 0;

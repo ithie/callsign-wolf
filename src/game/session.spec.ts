@@ -32,11 +32,11 @@ describe('getMissionsDone', () => {
                 '0': {
                     completed: true,
                     missions: [
-                        { completed: true, bestTimeMs: 1000 },
-                        { completed: false, bestTimeMs: null },
+                        { completed: true, bestTimeMs: 1000, count: 1 },
+                        { completed: false, bestTimeMs: null, count: 0 },
                     ],
                 },
-                '1': { completed: false, missions: [{ completed: true, bestTimeMs: 500 }] },
+                '1': { completed: false, missions: [{ completed: true, bestTimeMs: 500, count: 1 }] },
             },
         });
         expect(getMissionsDone(s)).toBe(2);
@@ -90,7 +90,7 @@ describe('getRank', () => {
     it('counts completed missions from session', () => {
         const s = mkSession({
             campaignProgress: {
-                '0': { completed: false, missions: Array(5).fill({ completed: true, bestTimeMs: null }) },
+                '0': { completed: false, missions: Array(5).fill({ completed: true, bestTimeMs: null, count: 1 }) },
             },
         });
         expect(getRank(s.rankOverride ?? 0, getMissionsDone(s)).key).toBe('oberleutnant');
@@ -111,7 +111,7 @@ describe('isMissionUnlocked', () => {
     it('subsequent mission unlocked when previous is complete', () => {
         const s = mkSession({
             campaignProgress: {
-                '0': { completed: false, missions: [{ completed: true, bestTimeMs: null }] },
+                '0': { completed: false, missions: [{ completed: true, bestTimeMs: null, count: 1 }] },
             },
         });
         expect(isMissionUnlocked(s, '0', 1, 'regular')).toBe(true);
@@ -203,8 +203,8 @@ describe('encodeSession / decodeSession', () => {
                 '1': {
                     completed: false,
                     missions: [
-                        { completed: true, bestTimeMs: null },
-                        { completed: true, bestTimeMs: null },
+                        { completed: true, bestTimeMs: null, count: 1 },
+                        { completed: true, bestTimeMs: null, count: 1 },
                     ],
                 },
             },

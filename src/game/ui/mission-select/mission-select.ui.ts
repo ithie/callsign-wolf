@@ -38,8 +38,8 @@ export const TeilweiseFertig = () => {
                 '1': {
                     completed: false,
                     missions: [
-                        { completed: true, bestTimeMs: 243000 },
-                        { completed: true, bestTimeMs: 318000 },
+                        { completed: true, bestTimeMs: 243000, count: 1 },
+                        { completed: true, bestTimeMs: 318000, count: 1 },
                         null as any, null as any, null as any,
                     ],
                 },
@@ -60,11 +60,11 @@ export const AlleGeschafft = () => {
                 '1': {
                     completed: true,
                     missions: [
-                        { completed: true, bestTimeMs: 243000 },
-                        { completed: true, bestTimeMs: 318000 },
-                        { completed: true, bestTimeMs: 195000 },
-                        { completed: true, bestTimeMs: 402000 },
-                        { completed: true, bestTimeMs: 287000 },
+                        { completed: true, bestTimeMs: 243000, count: 1 },
+                        { completed: true, bestTimeMs: 318000, count: 1 },
+                        { completed: true, bestTimeMs: 195000, count: 1 },
+                        { completed: true, bestTimeMs: 402000, count: 1 },
+                        { completed: true, bestTimeMs: 287000, count: 1 },
                     ],
                 },
             },

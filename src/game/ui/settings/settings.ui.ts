@@ -5,10 +5,10 @@ const _session = (overrides: Partial<PlayerSession> = {}): PlayerSession => ({
     playerName: 'WOLF',
     highestUnlockedCampaignIndex: 2,
     campaignProgress: {
-        '0': { completed: true, missions: [{ completed: true, bestTimeMs: 180000 }] },
+        '0': { completed: true, missions: [{ completed: true, bestTimeMs: 180000, count: 1 }] },
         '1': {
             completed: true,
-            missions: Array.from({ length: 5 }, () => ({ completed: true, bestTimeMs: 260000 })),
+            missions: Array.from({ length: 5 }, () => ({ completed: true, bestTimeMs: 260000, count: 1 })),
         },
     },
     rankOverride: 0,

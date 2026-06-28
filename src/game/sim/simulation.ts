@@ -91,7 +91,7 @@ const _computeLandingState = (ctx: PhysicsCtx, groundH: number) => {
     for (const b of G.BOATS) {
         if (b.objectType !== VESSEL.FRIGATE) continue;
         const local = getCarrierLocal(G.heli.x, G.heli.y, b);
-        if (Math.abs(local.x) <= 11.0 && Math.abs(local.y) <= 3.0) {
+        if (local.x >= -8.5 && local.x <= 4.5 && Math.abs(local.y) <= 2.5) {
             onFrigateDeck = true;
             frigateDeckZ = b.zDeck;
             break;
@@ -270,7 +270,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     if (!crashed) {
         for (const { b, x: oldX, y: oldY, angle: oldAng } of _frigateSnap) {
             const local = getCarrierLocal(G.heli.x, G.heli.y, b);
-            if (Math.abs(local.x) <= 11.0 && Math.abs(local.y) <= 3.0 && !G.heli.inAir) {
+            if (local.x >= -8.5 && local.x <= 4.5 && Math.abs(local.y) <= 2.5 && !G.heli.inAir) {
                 const vX = b.x - oldX, vY = b.y - oldY, rot = b.angle - oldAng;
                 G.heli.x += vX; G.heli.y += vY;
                 const dx = G.heli.x - b.x, dy = G.heli.y - b.y;
@@ -433,9 +433,9 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
         _prevCarrierNear = false;
     }
     const _frigateNearNow = inAir && G.BOATS.some((b: any) =>
-        b.objectType === VESSEL.FRIGATE && Math.hypot(G.heli.x - b.x, G.heli.y - b.y) < 20);
+        b.objectType === VESSEL.FRIGATE && Math.hypot(G.heli.x - b.x, G.heli.y - b.y) < 15);
     if (_frigateNearNow && !_prevFrigateNear) {
-        const _nearFrigate = G.BOATS.find((b: any) => b.objectType === VESSEL.FRIGATE && Math.hypot(G.heli.x - b.x, G.heli.y - b.y) < 20);
+        const _nearFrigate = G.BOATS.find((b: any) => b.objectType === VESSEL.FRIGATE && Math.hypot(G.heli.x - b.x, G.heli.y - b.y) < 15);
         if (!_nearFrigate?.radioSilent) voiceEvents.emit('deck-cleared');
     }
     _prevFrigateNear = _frigateNearNow;
@@ -443,7 +443,8 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     if (inAir || (G.heli.engineOn && lift > 0)) {
         const spd = Math.hypot(G.heli.vx, G.heli.vy);
         const aero = Math.max(0.3, 1.0 - spd * 8.0);
-        const mod = G.heli.rotorRPM * (1.0 - G.heli.onboard * 0.03);
+        const winchPenalty = 1.0 - Math.min(G.heli.winch / 5.0, 1.0) * 0.22;
+        const mod = G.heli.rotorRPM * (1.0 - G.heli.onboard * 0.03) * winchPenalty;
 
         if (G.heli.fuel > 0 && lift > 0) {
             const dX = Math.cos(G.heli.angle), dY = Math.sin(G.heli.angle);

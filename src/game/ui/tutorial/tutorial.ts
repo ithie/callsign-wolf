@@ -151,7 +151,7 @@ const _STEPS: readonly TutorialStep[] = [
     // 9: Locate crate
     {
         getText: () => I18N.TUT_LOCATE_CRATE,
-        control: 'joystick-right',
+        control: null,
         dimControls: ['deliver-toggle'],
         allowedKeys: null,
         condition: g =>
@@ -181,7 +181,7 @@ const _STEPS: readonly TutorialStep[] = [
     // 12: Locate person
     {
         getText: () => I18N.TUT_LOCATE_PERSON,
-        control: 'joystick-right',
+        control: null,
         dimControls: [],
         allowedKeys: null,
         condition: g =>

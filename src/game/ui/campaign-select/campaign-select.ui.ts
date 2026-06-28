@@ -51,7 +51,7 @@ export const TutorialDone = () => {
         session: {
             ..._baseSession(),
             campaignProgress: {
-                '0': { completed: true, missions: [{ completed: true, bestTimeMs: 180000 }] },
+                '0': { completed: true, missions: [{ completed: true, bestTimeMs: 180000, count: 1 }] },
             },
             highestUnlockedCampaignIndex: 1,
         },
@@ -68,12 +68,12 @@ export const InProgress = () => {
         session: {
             ..._baseSession(),
             campaignProgress: {
-                '0': { completed: true, missions: [{ completed: true, bestTimeMs: 180000 }] },
+                '0': { completed: true, missions: [{ completed: true, bestTimeMs: 180000, count: 1 }] },
                 '1': {
                     completed: false,
                     missions: [
-                        { completed: true, bestTimeMs: 240000 },
-                        { completed: true, bestTimeMs: 310000 },
+                        { completed: true, bestTimeMs: 240000, count: 1 },
+                        { completed: true, bestTimeMs: 310000, count: 1 },
                         null as any, null as any, null as any,
                     ],
                 },
@@ -94,7 +94,7 @@ export const AllUnlocked = () => {
             ..._baseSession(),
             highestUnlockedCampaignIndex: 3,
             campaignProgress: Object.fromEntries(
-                _campaigns.map((c, i) => [String(i), { completed: true, missions: c.levels.map(() => ({ completed: true, bestTimeMs: null })) }])
+                _campaigns.map((c, i) => [String(i), { completed: true, missions: c.levels.map(() => ({ completed: true, bestTimeMs: null, count: 1 })) }])
             ),
         },
         campaigns: _campaigns,

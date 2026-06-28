@@ -101,8 +101,6 @@ class ViewController: UIViewController {
         try? AVAudioSession.sharedInstance().setActive(true)
         NotificationCenter.default.addObserver(self, selector: #selector(_appDidBecomeActive),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
-        migrateCapacitorStorage()
-
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
@@ -154,19 +152,34 @@ class ViewController: UIViewController {
 
     private let storageKeys = ["z_session", "z_lang", "z_music", "z_sfx"]
 
-    private func migrateCapacitorStorage() {
-        let prefix = "CapacitorStorage."
-        for key in storageKeys {
-            guard UserDefaults.standard.string(forKey: key) == nil,
-                  let old = UserDefaults.standard.string(forKey: prefix + key) else { continue }
-            UserDefaults.standard.set(old, forKey: key)
+    private func migrateSession(_ raw: String) -> String {
+        guard var session = (try? JSONSerialization.jsonObject(with: Data(raw.utf8))) as? [String: Any],
+              var progress = session["campaignProgress"] as? [String: Any] else { return raw }
+        var changed = false
+        for (key, value) in progress {
+            guard var cp = value as? [String: Any],
+                  var missions = cp["missions"] as? [[String: Any]?] else { continue }
+            for i in missions.indices {
+                guard var m = missions[i], m["count"] == nil else { continue }
+                m["count"] = (m["completed"] as? Bool == true) ? 1 : 0
+                missions[i] = m
+                changed = true
+            }
+            cp["missions"] = missions
+            progress[key] = cp
         }
+        guard changed else { return raw }
+        session["campaignProgress"] = progress
+        return (try? JSONSerialization.data(withJSONObject: session))
+            .flatMap { String(data: $0, encoding: .utf8) } ?? raw
     }
 
     private func injectNativeStorage(into config: WKWebViewConfiguration) {
         var dict: [String: String] = [:]
         for key in storageKeys {
-            if let v = UserDefaults.standard.string(forKey: key) { dict[key] = v }
+            if let v = UserDefaults.standard.string(forKey: key) {
+                dict[key] = key == "z_session" ? migrateSession(v) : v
+            }
         }
         let json = (try? JSONSerialization.data(withJSONObject: dict))
             .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"

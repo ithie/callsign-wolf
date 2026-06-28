@@ -9,6 +9,7 @@ export { RANKS, getRank };
 export interface MissionProgress {
     completed: boolean;
     bestTimeMs: number | null;
+    count: number;
 }
 
 export interface CampaignProgress {
@@ -44,7 +45,6 @@ export const loadSession = (): PlayerSession => {
         delete parsed.consentTimestamp;
         delete parsed.consentVersion;
         const merged = { ..._default(), ...parsed };
-        // Normalize missions to always be an array (old saves may have stored it differently)
         for (const key of Object.keys(merged.campaignProgress)) {
             const cp = merged.campaignProgress[key];
             if (!Array.isArray(cp?.missions)) cp.missions = [];
@@ -151,7 +151,7 @@ export const encodeSession = (s: PlayerSession, nonTutorialMissions: number): st
     const rankIdx = RANKS.indexOf(getRank(s.rankOverride ?? 0, nonTutorialMissions));
     const highest = Math.min(s.highestUnlockedCampaignIndex ?? 0, 7);
     const activeCp = s.campaignProgress[String(highest)];
-    const nextMission = Math.min(activeCp ? activeCp.missions.filter(m => m.completed).length : 0, 15);
+    const nextMission = Math.min(activeCp ? activeCp.missions.filter(m => m?.completed).length : 0, 15);
     const callsign = (s.playerName || '')
         .toUpperCase()
         .replace(/[^A-Z]/g, '')
@@ -209,7 +209,7 @@ export const decodeSession = (input: string): Partial<PlayerSession> | null => {
     if (nextMission > 0) {
         campaignProgress[String(highestUnlockedCampaignIndex)] = {
             completed: false,
-            missions: Array.from({ length: nextMission }, () => ({ completed: true, bestTimeMs: null })),
+            missions: Array.from({ length: nextMission }, () => ({ completed: true, bestTimeMs: null, count: 1 })),
         };
     }
 

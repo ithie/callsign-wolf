@@ -1,5 +1,24 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.7.2 — Rank System & Frigate Rework
+
+### Added
+
+- **Rang — jede Completion zählt** — `MissionProgress.count` zählt jeden Missionsabschluss einzeln (inkl. Wiederholungen). `_getRankMissions` summiert `count` statt nur unique Completions zu zählen.
+- **Swift — Session-Migration** — `migrateSession()` in `ViewController.swift` ergänzt beim App-Start fehlende `count`-Felder in alten Saves (abgeleitet aus `completed`).
+
+### Changed
+
+- **Fregatte — Größe reduziert** — Rumpf von 24 auf 13 Einheiten Länge (x=-8.5 bis x=+4.5), Breite ±2.5 statt ±3.0. Landedeck (4.5×4.5) und Landing-Zone bleiben unverändert.
+- **Fregatte — Geschützturm entfernt** — Bug-Part aus `frigate.zdef` entfernt.
+- **simulation.ts — Fregatte Kollision** — Bounds-Check an neue Abmessungen angepasst (xMin -8.5, xMax +4.5, yMax ±2.5), Proximity-Radius 15 statt 20.
+
+### Fixed
+
+- **Crash — Null-Missions im Rank** — `_getRankMissions` und `encodeSession` crashten, wenn FreeFlight-Szenarien sparse gespeichert waren (Index 2 gespielt ohne 0/1 → JSON `[null, null, {...}]`). Guard `m?.completed` behebt den Fehler.
+
+---
+
 ## v28.7.1 — Tutorial Improvements & Depth Sorting Fix
 
 ### Added
@@ -8,6 +27,10 @@
 - **Tutorial — background overlay** — Game world dims when a tutorial step is waiting for input; overlay fades as soon as the player starts interacting.
 - **Tutorial — engine-off step** — New step between "Land" and "Refuel" instructs the player to stop the engine (left stick down again); controls are fully locked during the subsequent refuel wait.
 - **Tutorial — i18n** — `TUT_ENGINE_STOP` added in German and English.
+
+### Changed
+
+- **Winch speed penalty** — extending the winch reduces helicopter acceleration by up to 22% at full extension; transition is smooth as the winch naturally extends/retracts gradually.
 
 ### Fixed
 
