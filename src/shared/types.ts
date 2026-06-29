@@ -20,6 +20,19 @@ export const VESSEL = {
     BAYWATCH_TOWER:     'baywatch_tower',
     BUOY:               'buoy',
     FRIGATE:            'frigate',
+    SUPPLY_VESSEL:      'supply_vessel',
+    CONCERT_STAGE:             'concert_stage',
+    FESTIVAL_TENT:             'festival_tent',
+    FESTIVAL_TENT_RED:         'festival_tent_red',
+    FESTIVAL_TENT_GREEN:       'festival_tent_green',
+    FESTIVAL_TENT_BROKEN:      'festival_tent_broken',
+    FESTIVAL_TENT_BROKEN_RED:  'festival_tent_broken_red',
+    FESTIVAL_TENT_BROKEN_GREEN:'festival_tent_broken_green',
+    FESTIVAL_CAR_RED:   'festival_car_red',
+    FESTIVAL_CAR_BLUE:  'festival_car_blue',
+    FESTIVAL_CAR_SILVER:'festival_car_silver',
+    FESTIVAL_CAR_BLACK: 'festival_car_black',
+    FESTIVAL_CAR_YELLOW:'festival_car_yellow',
 } as const;
 
 export const PAYLOAD = {
@@ -131,7 +144,16 @@ type SalvageTugObject = {
     radius: number;
 };
 type ResearchPlatformObject = { type: 'research_platform'; x: number; y: number };
-type WindTurbineObject = { type: 'wind_turbine'; x: number; y: number; spinning?: boolean; rescueZones?: RescueZone[] };
+type WindTurbineObject = { type: 'wind_turbine'; x: number; y: number; spinning?: boolean; onFire?: boolean; onSmoke?: boolean; rescueZones?: RescueZone[] };
+type SupplyVesselObject = {
+    type: 'supply_vessel';
+    x: number;
+    y: number;
+    angle: number;
+    path: VesselPath;
+    speed: number;
+    radius: number;
+};
 type PlaneWreckObject = { type: 'plane_wreck'; x: number; y: number; angle?: number };
 type SailboatBrokenObject = { type: 'sailboat_broken'; x: number; y: number; angle?: number };
 type OrnithopterWreckObject = { type: 'ornithopter_wreck'; x: number; y: number; angle?: number };
@@ -146,7 +168,7 @@ type FrigateObject = {
     radioSilent?: boolean;
 };
 
-type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject | FrigateObject;
+type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | SupplyVesselObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject | FrigateObject;
 
 export type Objective =
     | { type: 'rescue_all' }
@@ -156,10 +178,10 @@ export type MissionPayload = {
     type: 'person' | 'crate' | 'rescuer' | 'orni_wreck';
     x: number;
     y: number;
-    attachTo?: { objectType: 'carrier' | 'boat' | 'submarine' | 'sailboat_broken'; objectIdx: number; localX?: number; localY?: number };
+    attachTo?: { objectType: 'carrier' | 'boat' | 'submarine' | 'sailboat_broken' | 'wind_turbine' | 'supply_vessel'; objectIdx: number; localX?: number; localY?: number };
     npcTarget?: boolean;
     /** Crates only: restrict delivery to this vessel type. Omit = any dropzone. */
-    deliverTo?: 'pad' | 'carrier' | 'submarine';
+    deliverTo?: 'pad' | 'carrier' | 'submarine' | 'wind_turbine';
     /** Persons only: true = beach outfit (Badehose/Badeanzug), false = always normal clothes, omit = auto. */
     swimwear?: boolean;
 };

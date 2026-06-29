@@ -87,10 +87,13 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
                 const wl = G.waterLevel;
                 const c = 35 + Math.floor(h0 * 15);
                 const isSand = !isPadTile(x, y) && !isServiceTile(x, y) && h0 > wl && (G.sandPoints[x]?.[y] ?? 0) > 0;
+                const isPavement = !isPadTile(x, y) && !isServiceTile(x, y) && h0 > wl && (G.pavementPoints[x]?.[y] ?? 0) > 0;
                 _tileColors[x][y] = isPadTile(x, y)
                     ? '#444'
                     : isServiceTile(x, y)
                     ? '#444'
+                    : isPavement
+                    ? `rgb(${c + 40},${c + 40},${c + 45})`
                     : isSand
                     ? `rgb(${Math.min(240, c + 160)},${Math.min(215, c + 135)},${Math.min(140, c + 55)})`
                     : h0 > wl
@@ -113,6 +116,7 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
             if (isLightningActive()) {
                 _renderTerrainBatched(canvas.width, canvas.height, camX, camY, xFrom, xTo, yFrom, yTo, (x, y, h0) => {
                     if (isPadTile(x, y) || isServiceTile(x, y)) return 'rgb(38,38,44)';
+                    if (h0 > G.waterLevel && (G.pavementPoints[x]?.[y] ?? 0) > 0) return 'rgb(50,50,56)';
                     if (h0 > G.waterLevel && (G.sandPoints[x]?.[y] ?? 0) > 0) return 'rgb(105,100,75)';
                     return h0 > G.waterLevel ? 'rgb(38,52,38)' : 'rgb(15,25,52)';
                 });
@@ -135,6 +139,8 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
                 if (!inLight) return '#020205';
                 if (_isPad) return `rgb(${intensity - 30},${intensity - 30},${intensity - 30})`;
                 if (_isSvc) return `rgb(${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)})`;
+                if (h0 > G.waterLevel && (G.pavementPoints[x]?.[y] ?? 0) > 0)
+                    return `rgb(${Math.floor(intensity * 0.6)},${Math.floor(intensity * 0.6)},${Math.floor(intensity * 0.65)})`;
                 if (h0 > G.waterLevel && (G.sandPoints[x]?.[y] ?? 0) > 0)
                     return `rgb(${Math.floor(intensity * 1.05)},${Math.floor(intensity * 0.88)},${Math.floor(intensity * 0.45)})`;
                 return h0 > G.waterLevel

@@ -12,6 +12,19 @@ import BAYWATCH_CAR_DEF from '../models/baywatch_car.zdef';
 import BAYWATCH_HQ_DEF from '../models/baywatch_hq.zdef';
 import BAYWATCH_TOWER_DEF from '../models/baywatch_tower.zdef';
 import BUOY_DEF from '../models/buoy.zdef';
+import CONCERT_STAGE_DEF from '../models/concert_stage.zdef';
+import FESTIVAL_TENT_DEF from '../models/festival_tent.zdef';
+import FESTIVAL_TENT_RED_DEF from '../models/festival_tent_red.zdef';
+import FESTIVAL_TENT_GREEN_DEF from '../models/festival_tent_green.zdef';
+import FESTIVAL_TENT_BROKEN_DEF from '../models/festival_tent_broken.zdef';
+import FESTIVAL_TENT_BROKEN_RED_DEF from '../models/festival_tent_broken_red.zdef';
+import FESTIVAL_TENT_BROKEN_GREEN_DEF from '../models/festival_tent_broken_green.zdef';
+import FESTIVAL_CAR_RED_DEF from '../models/festival_car_red.zdef';
+import FESTIVAL_CAR_BLUE_DEF from '../models/festival_car_blue.zdef';
+import FESTIVAL_CAR_SILVER_DEF from '../models/festival_car_silver.zdef';
+import FESTIVAL_CAR_BLACK_DEF from '../models/festival_car_black.zdef';
+import FESTIVAL_CAR_YELLOW_DEF from '../models/festival_car_yellow.zdef';
+import { VESSEL } from '../../shared/types';
 
 export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, tileW, tileH, getLighthouse, getWindStr } = dwCtx;
@@ -81,7 +94,7 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         ctx.moveTo(base.x, base.y);
         ctx.lineTo(top.x, top.y);
         ctx.stroke();
-        const windStrNorm = Math.min(1, windStr / 5);
+        const windStrNorm = Math.min(1, Math.pow(windStr / 3.0, 0.55));
         let wIsoX: number, wIsoY: number;
         if (windStrNorm < 0.01) {
             wIsoX = 0;
@@ -173,6 +186,39 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         });
     };
 
+    const _FESTIVAL_CAR_DEFS: Record<string, unknown> = {
+        [VESSEL.FESTIVAL_CAR_RED]:    FESTIVAL_CAR_RED_DEF,
+        [VESSEL.FESTIVAL_CAR_BLUE]:   FESTIVAL_CAR_BLUE_DEF,
+        [VESSEL.FESTIVAL_CAR_SILVER]: FESTIVAL_CAR_SILVER_DEF,
+        [VESSEL.FESTIVAL_CAR_BLACK]:  FESTIVAL_CAR_BLACK_DEF,
+        [VESSEL.FESTIVAL_CAR_YELLOW]: FESTIVAL_CAR_YELLOW_DEF,
+    };
+
+    const _drawFestivalObjects = (inCone: (x: number, y: number) => boolean) => {
+        G.CONCERT_STAGES.forEach((s: any) => {
+            if (!inCone(s.x, s.y)) return;
+            SceneRenderer.add(CONCERT_STAGE_DEF as any, { x: s.x, y: s.y, z: s.gz, angle: s.angle });
+        });
+        const _TENT_DEFS: Record<string, unknown> = {
+            [VESSEL.FESTIVAL_TENT]:             FESTIVAL_TENT_DEF,
+            [VESSEL.FESTIVAL_TENT_RED]:         FESTIVAL_TENT_RED_DEF,
+            [VESSEL.FESTIVAL_TENT_GREEN]:       FESTIVAL_TENT_GREEN_DEF,
+            [VESSEL.FESTIVAL_TENT_BROKEN]:      FESTIVAL_TENT_BROKEN_DEF,
+            [VESSEL.FESTIVAL_TENT_BROKEN_RED]:  FESTIVAL_TENT_BROKEN_RED_DEF,
+            [VESSEL.FESTIVAL_TENT_BROKEN_GREEN]:FESTIVAL_TENT_BROKEN_GREEN_DEF,
+        };
+        G.FESTIVAL_TENTS.forEach((t: any) => {
+            if (!inCone(t.x, t.y)) return;
+            const def = _TENT_DEFS[t.type] ?? FESTIVAL_TENT_DEF;
+            SceneRenderer.add(def as any, { x: t.x, y: t.y, z: t.gz, angle: t.angle });
+        });
+        G.FESTIVAL_CARS.forEach((c: any) => {
+            if (!inCone(c.x, c.y)) return;
+            const def = _FESTIVAL_CAR_DEFS[c.type] ?? FESTIVAL_CAR_SILVER_DEF;
+            SceneRenderer.add(def as any, { x: c.x, y: c.y, z: c.gz, angle: c.angle });
+        });
+    };
+
     return {
         _drawWindTurbine,
         _drawDefLights,
@@ -184,5 +230,6 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         _drawWindsock,
         _drawBaywatchObjects,
         _drawBuoys,
+        _drawFestivalObjects,
     };
 };

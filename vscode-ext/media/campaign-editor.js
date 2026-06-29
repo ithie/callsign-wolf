@@ -124,6 +124,10 @@
     const bwcUI = document.getElementById("ui_baywatch_car");
     const bwhUI = document.getElementById("ui_baywatch_hq");
     const bwtUI2 = document.getElementById("ui_baywatch_tower");
+    const csUI = document.getElementById("ui_concert_stage");
+    const ftUI = document.getElementById("ui_festival_tent");
+    const ftbUI = document.getElementById("ui_festival_tent_broken");
+    const fcUI = document.getElementById("ui_festival_car");
     if (pUI) pUI.style.display = "none";
     if (cUI) cUI.style.display = "none";
     if (bUI) bUI.style.display = "none";
@@ -136,12 +140,17 @@
     if (bwcUI) bwcUI.style.display = "none";
     if (bwhUI) bwhUI.style.display = "none";
     if (bwtUI2) bwtUI2.style.display = "none";
+    if (csUI) csUI.style.display = "none";
+    if (ftUI) ftUI.style.display = "none";
+    if (ftbUI) ftbUI.style.display = "none";
+    if (fcUI) fcUI.style.display = "none";
     const wl = m.waterLevel ?? 0;
     for (let x = Math.floor(state.panX); x < Math.min(m.gridSize, state.panX + 600 / tSize + 1); x++) {
       for (let y = Math.floor(state.panY); y < Math.min(m.gridSize, state.panY + 600 / tSize + 1); y++) {
         const h = m.terrain[x][y];
         const isSand = h > wl && (m.sand?.[x]?.[y] ?? 0) > 0;
-        ctx.fillStyle = h <= wl ? COLORS.water : isSand ? getSandColor(h) : getLandColor(h, false);
+        const isPavement = h > wl && (m.pavement?.[x]?.[y] ?? 0) > 0;
+        ctx.fillStyle = h <= wl ? COLORS.water : isPavement ? "#808088" : isSand ? getSandColor(h) : getLandColor(h, false);
         ctx.fillRect((x - state.panX) * tSize, (y - state.panY) * tSize, tSize + 1.5, tSize + 1.5);
       }
     }
@@ -636,6 +645,84 @@
           bwtUI2.style.left = Math.min(600 - 140, Math.max(0, ox2 + 20)) + "px";
           bwtUI2.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
         }
+      } else if (obj.type === "concert_stage") {
+        ctx.fillStyle = "#7a2aee";
+        ctx.fillRect(ox - 2 * tSize, oy - 2.5 * tSize, 4 * tSize, 5 * tSize);
+        ctx.fillStyle = "#2a1040";
+        ctx.fillRect(ox - 1.5 * tSize, oy - 2 * tSize, 3 * tSize, 4 * tSize);
+        ctx.shadowBlur = 0;
+        if (isSelected && csUI) {
+          csUI.style.display = "block";
+          csUI.style.left = Math.min(600 - 140, Math.max(0, ox + 20)) + "px";
+          csUI.style.top = Math.min(600 - 60, Math.max(0, oy)) + "px";
+        }
+      } else if (["festival_tent", "festival_tent_red", "festival_tent_green"].includes(obj.type)) {
+        const tentColors = {
+          festival_tent: "#2266cc",
+          festival_tent_red: "#bb3018",
+          festival_tent_green: "#2a8030"
+        };
+        ctx.fillStyle = tentColors[obj.type] ?? "#2266cc";
+        ctx.beginPath();
+        ctx.moveTo(ox, oy - 0.7 * tSize);
+        ctx.lineTo(ox - 0.55 * tSize, oy + 0.55 * tSize);
+        ctx.lineTo(ox + 0.55 * tSize, oy + 0.55 * tSize);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        if (isSelected && ftUI) {
+          const colorSel = document.getElementById("m_tent_color");
+          if (colorSel) colorSel.value = obj.type;
+          const angEl = document.getElementById("m_tent_angle");
+          if (angEl) angEl.value = String(obj.angle ?? 0);
+          ftUI.style.display = "block";
+          ftUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + "px";
+          ftUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + "px";
+        }
+      } else if (["festival_tent_broken", "festival_tent_broken_red", "festival_tent_broken_green"].includes(obj.type)) {
+        const tentBrokenColors = {
+          festival_tent_broken: "#6688aa",
+          festival_tent_broken_red: "#884422",
+          festival_tent_broken_green: "#335533"
+        };
+        ctx.fillStyle = tentBrokenColors[obj.type] ?? "#6688aa";
+        ctx.beginPath();
+        ctx.moveTo(ox - 0.7 * tSize, oy);
+        ctx.lineTo(ox, oy - 0.25 * tSize);
+        ctx.lineTo(ox + 0.7 * tSize, oy);
+        ctx.lineTo(ox, oy + 0.15 * tSize);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        if (isSelected && ftbUI) {
+          const colorSel = document.getElementById("m_tent_broken_color");
+          if (colorSel) colorSel.value = obj.type;
+          const angEl = document.getElementById("m_tent_broken_angle");
+          if (angEl) angEl.value = String(obj.angle ?? 0);
+          ftbUI.style.display = "block";
+          ftbUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + "px";
+          ftbUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + "px";
+        }
+      } else if (obj.type.startsWith("festival_car_")) {
+        const carColors = {
+          festival_car_red: "#cc2020",
+          festival_car_blue: "#204499",
+          festival_car_silver: "#9aabb5",
+          festival_car_black: "#333",
+          festival_car_yellow: "#cc9900"
+        };
+        ctx.fillStyle = carColors[obj.type] ?? "#888";
+        ctx.fillRect(ox - 0.9 * tSize, oy - 0.5 * tSize, 1.8 * tSize, tSize);
+        ctx.shadowBlur = 0;
+        if (isSelected && fcUI) {
+          const colorSel = document.getElementById("m_fcar_color");
+          if (colorSel) colorSel.value = obj.type;
+          const angleEl = document.getElementById("m_fcar_angle");
+          if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
+          fcUI.style.display = "block";
+          fcUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + "px";
+          fcUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + "px";
+        }
       }
     });
     const payloads = m.payloads || [];
@@ -1079,7 +1166,8 @@
       const rad = Math.ceil(state.brushRadius);
       for (let dx = -rad; dx <= rad; dx++) {
         for (let dy = -rad; dy <= rad; dy++) {
-          if (Math.hypot(dx, dy) <= state.brushRadius && m.terrain[gx + dx]) m.terrain[gx + dx][gy + dy] = h;
+          const nx = gx + dx, ny = gy + dy;
+          if (Math.hypot(dx, dy) <= state.brushRadius && m.terrain[nx] && ny >= 0 && ny <= m.gridSize) m.terrain[nx][ny] = h;
         }
       }
       if (e.shiftKey || h <= 0.1) {
@@ -1277,6 +1365,32 @@
         m.payloads.push(makePayload("crate", gx, gy, m));
       }
       renderPayloadList();
+    } else if (state.currentTool === "festival_tent" || state.currentTool === "festival_tent_broken") {
+      const isBroken = state.currentTool === "festival_tent_broken";
+      const TENT_COLORS = isBroken ? ["festival_tent_broken", "festival_tent_broken_red", "festival_tent_broken_green"] : ["festival_tent", "festival_tent_red", "festival_tent_green"];
+      const colorSel = document.getElementById(isBroken ? "m_tent_broken_color" : "m_tent_color");
+      const rad = Math.max(0.5, state.brushRadius);
+      const count = Math.max(1, Math.round(rad * 0.5));
+      if (e.shiftKey) {
+        m.objects = m.objects.filter((o) => {
+          const isTentType = TENT_COLORS.includes(o.type);
+          return !isTentType || Math.hypot(o.x - gx, o.y - gy) > rad;
+        });
+      } else {
+        for (let i = 0; i < count; i++) {
+          const a = Math.random() * Math.PI * 2;
+          const d = Math.random() * rad;
+          const fx = Math.round(gx + Math.cos(a) * d);
+          const fy = Math.round(gy + Math.sin(a) * d);
+          if (fx < 0 || fx >= m.gridSize || fy < 0 || fy >= m.gridSize) continue;
+          if ((m.terrain[fx]?.[fy] ?? -1) <= 0.05) continue;
+          const selColor = colorSel?.value;
+          const type = selColor && selColor !== "random" ? selColor : TENT_COLORS[Math.floor(Math.random() * TENT_COLORS.length)];
+          const angle = Math.round(Math.random() * 360);
+          m.objects.push({ type, x: fx, y: fy, angle });
+        }
+      }
+      notifyWorkbench();
     } else if (state.currentTool === "foliage") {
       if (!m.foliage) m.foliage = [];
       const foliage = m.foliage;
@@ -1314,6 +1428,22 @@
           const nx = gx + dx, ny = gy + dy;
           if (Math.hypot(dx, dy) <= state.brushRadius && nx >= 0 && nx <= m.gridSize && ny >= 0 && ny <= m.gridSize) {
             mSand.sand[nx][ny] = val;
+            if (val === 1 && m.terrain[nx]?.[ny] !== void 0 && m.terrain[nx][ny] > 0)
+              m.terrain[nx][ny] = m.terrain[nx][ny] <= 0.6 ? 0.4 : 0.8;
+          }
+        }
+      }
+    } else if (state.currentTool === "pavement") {
+      const mPav = m;
+      if (!mPav.pavement)
+        mPav.pavement = Array.from({ length: m.gridSize + 1 }, () => new Array(m.gridSize + 1).fill(0));
+      const val = e.shiftKey ? 0 : 1;
+      const rad = Math.ceil(state.brushRadius);
+      for (let dx = -rad; dx <= rad; dx++) {
+        for (let dy = -rad; dy <= rad; dy++) {
+          const nx = gx + dx, ny = gy + dy;
+          if (nx >= 0 && nx <= m.gridSize && ny >= 0 && ny <= m.gridSize) {
+            mPav.pavement[nx][ny] = val;
             if (val === 1 && m.terrain[nx]?.[ny] !== void 0 && m.terrain[nx][ny] > 0)
               m.terrain[nx][ny] = m.terrain[nx][ny] <= 0.6 ? 0.4 : 0.8;
           }
@@ -1563,6 +1693,22 @@
       state.selectedObjectIdx = null;
       drawMap();
     });
+    safeClick("close-concert-stage", () => {
+      state.selectedObjectIdx = null;
+      drawMap();
+    });
+    safeClick("close-festival-tent", () => {
+      state.selectedObjectIdx = null;
+      drawMap();
+    });
+    safeClick("close-festival-tent-broken", () => {
+      state.selectedObjectIdx = null;
+      drawMap();
+    });
+    safeClick("close-festival-car", () => {
+      state.selectedObjectIdx = null;
+      drawMap();
+    });
     document.getElementById("m_bwc_angle")?.addEventListener("input", () => {
       const m = getCurrentMission();
       if (!m || state.selectedObjectIdx === null) return;
@@ -1571,6 +1717,69 @@
       obj.angle = parseInt(document.getElementById("m_bwc_angle").value) || 0;
       drawMap();
       broadcastPreview();
+      notifyWorkbench();
+    });
+    document.getElementById("m_tent_color")?.addEventListener("change", () => {
+      const m = getCurrentMission();
+      if (!m || state.selectedObjectIdx === null) return;
+      const obj = m.objects[state.selectedObjectIdx];
+      if (!["festival_tent", "festival_tent_red", "festival_tent_green"].includes(obj?.type)) return;
+      const v = document.getElementById("m_tent_color").value;
+      if (v !== "random") obj.type = v;
+      drawMap();
+      broadcastPreview();
+      notifyWorkbench();
+    });
+    document.getElementById("m_tent_angle")?.addEventListener("input", () => {
+      const m = getCurrentMission();
+      if (!m || state.selectedObjectIdx === null) return;
+      const obj = m.objects[state.selectedObjectIdx];
+      if (!["festival_tent", "festival_tent_red", "festival_tent_green"].includes(obj?.type)) return;
+      obj.angle = parseInt(document.getElementById("m_tent_angle").value) || 0;
+      drawMap();
+      broadcastPreview();
+      notifyWorkbench();
+    });
+    document.getElementById("m_tent_broken_color")?.addEventListener("change", () => {
+      const m = getCurrentMission();
+      if (!m || state.selectedObjectIdx === null) return;
+      const obj = m.objects[state.selectedObjectIdx];
+      if (!["festival_tent_broken", "festival_tent_broken_red", "festival_tent_broken_green"].includes(obj?.type)) return;
+      const v = document.getElementById("m_tent_broken_color").value;
+      if (v !== "random") obj.type = v;
+      drawMap();
+      broadcastPreview();
+      notifyWorkbench();
+    });
+    document.getElementById("m_tent_broken_angle")?.addEventListener("input", () => {
+      const m = getCurrentMission();
+      if (!m || state.selectedObjectIdx === null) return;
+      const obj = m.objects[state.selectedObjectIdx];
+      if (!["festival_tent_broken", "festival_tent_broken_red", "festival_tent_broken_green"].includes(obj?.type)) return;
+      obj.angle = parseInt(document.getElementById("m_tent_broken_angle").value) || 0;
+      drawMap();
+      broadcastPreview();
+      notifyWorkbench();
+    });
+    document.getElementById("m_fcar_color")?.addEventListener("change", () => {
+      const m = getCurrentMission();
+      if (!m || state.selectedObjectIdx === null) return;
+      const obj = m.objects[state.selectedObjectIdx];
+      if (!obj?.type?.startsWith("festival_car_")) return;
+      obj.type = document.getElementById("m_fcar_color").value;
+      drawMap();
+      broadcastPreview();
+      notifyWorkbench();
+    });
+    document.getElementById("m_fcar_angle")?.addEventListener("input", () => {
+      const m = getCurrentMission();
+      if (!m || state.selectedObjectIdx === null) return;
+      const obj = m.objects[state.selectedObjectIdx];
+      if (!obj?.type?.startsWith("festival_car_")) return;
+      obj.angle = parseInt(document.getElementById("m_fcar_angle").value) || 0;
+      drawMap();
+      broadcastPreview();
+      notifyWorkbench();
     });
     document.getElementById("m_wt_spinning")?.addEventListener("change", () => {
       const m = getCurrentMission();
@@ -1611,6 +1820,7 @@
       obj.angle = parseInt(document.getElementById("m_pw_angle").value) || 0;
       drawMap();
       broadcastPreview();
+      notifyWorkbench();
     });
     document.getElementById("m_sb_angle")?.addEventListener("input", () => {
       const m = getCurrentMission();
@@ -1620,6 +1830,7 @@
       obj.angle = parseInt(document.getElementById("m_sb_angle").value) || 0;
       drawMap();
       broadcastPreview();
+      notifyWorkbench();
     });
     document.getElementById("m_ow_angle")?.addEventListener("input", () => {
       const m = getCurrentMission();
@@ -1629,6 +1840,7 @@
       obj.angle = parseInt(document.getElementById("m_ow_angle").value) || 0;
       drawMap();
       broadcastPreview();
+      notifyWorkbench();
     });
     [
       "m_headline_de",
@@ -1652,7 +1864,7 @@
     cursorEl.style.cssText = "position:fixed;pointer-events:none;z-index:9999;display:none;";
     document.body.appendChild(cursorEl);
     const cursorCtx = cursorEl.getContext("2d");
-    const PAINT_TOOLS = /* @__PURE__ */ new Set(["terrain", "flatten", "foliage", "sand"]);
+    const PAINT_TOOLS = /* @__PURE__ */ new Set(["terrain", "flatten", "foliage", "sand", "pavement"]);
     const POINT_TOOLS = /* @__PURE__ */ new Set([
       "pad",
       "carrier",
@@ -1671,6 +1883,18 @@
       "baywatch_car",
       "baywatch_hq",
       "baywatch_tower",
+      "concert_stage",
+      "festival_tent",
+      "festival_tent_red",
+      "festival_tent_green",
+      "festival_tent_broken",
+      "festival_tent_broken_red",
+      "festival_tent_broken_green",
+      "festival_car_red",
+      "festival_car_blue",
+      "festival_car_silver",
+      "festival_car_black",
+      "festival_car_yellow",
       "buoy",
       "person",
       "rescuer",
@@ -1689,6 +1913,18 @@
       baywatch_car: "#cc2200",
       baywatch_hq: "#cc4400",
       baywatch_tower: "#cc4400",
+      concert_stage: "#aa44ff",
+      festival_tent: "#2266cc",
+      festival_tent_red: "#bb3018",
+      festival_tent_green: "#2a8030",
+      festival_tent_broken: "#6688aa",
+      festival_tent_broken_red: "#884422",
+      festival_tent_broken_green: "#335533",
+      festival_car_red: "#cc2020",
+      festival_car_blue: "#204499",
+      festival_car_silver: "#9aabb5",
+      festival_car_black: "#444444",
+      festival_car_yellow: "#cc9900",
       buoy: "#dd3300",
       person: "#ffe033",
       crate: "#ff8800"
@@ -1722,7 +1958,7 @@
         cursorCtx.fill();
         cursorCtx.beginPath();
         cursorCtx.arc(size / 2, size / 2, radiusPx, 0, Math.PI * 2);
-        cursorCtx.fillStyle = tool === "flatten" ? "rgba(100,200,255,0.08)" : tool === "foliage" ? "rgba(50,200,50,0.1)" : tool === "sand" ? "rgba(212,180,80,0.12)" : "rgba(255,160,0,0.08)";
+        cursorCtx.fillStyle = tool === "flatten" ? "rgba(100,200,255,0.08)" : tool === "foliage" ? "rgba(50,200,50,0.1)" : tool === "sand" ? "rgba(212,180,80,0.12)" : tool === "pavement" ? "rgba(130,130,145,0.18)" : "rgba(255,160,0,0.08)";
         cursorCtx.fill();
       } else if (POINT_TOOLS.has(tool)) {
         const size = 32;
@@ -1852,6 +2088,29 @@
         case "baywatch_tower":
           m.objects.push({ type: "baywatch_tower", x: gx, y: gy });
           break;
+        case "concert_stage":
+          m.objects.push({ type: "concert_stage", x: gx, y: gy });
+          break;
+        case "festival_tent": {
+          const _tentColors = ["festival_tent", "festival_tent_red", "festival_tent_green"];
+          const _tcs = document.getElementById("m_tent_color")?.value;
+          const _tt = _tcs && _tcs !== "random" ? _tcs : _tentColors[Math.floor(Math.random() * _tentColors.length)];
+          m.objects.push({ type: _tt, x: gx, y: gy, angle: 0 });
+          break;
+        }
+        case "festival_tent_broken": {
+          const _tbColors = ["festival_tent_broken", "festival_tent_broken_red", "festival_tent_broken_green"];
+          const _tbcs = document.getElementById("m_tent_broken_color")?.value;
+          const _tbt = _tbcs && _tbcs !== "random" ? _tbcs : _tbColors[Math.floor(Math.random() * _tbColors.length)];
+          m.objects.push({ type: _tbt, x: gx, y: gy, angle: 0 });
+          break;
+        }
+        case "festival_car": {
+          const colorSel = document.getElementById("m_fcar_color");
+          const carType = colorSel?.value || "festival_car_silver";
+          m.objects.push({ type: carType, x: gx, y: gy, angle: 0 });
+          break;
+        }
         case "boat":
           m.objects.push({ ..._vesselBase("boat"), speed: 3 });
           break;
@@ -1912,7 +2171,11 @@
           { v: "baywatch_car", l: "\u{1F697} BW-Auto" },
           { v: "baywatch_hq", l: "\u{1F3E0} BW-HQ" },
           { v: "baywatch_tower", l: "\u{1F5FC} Wachturm" },
-          { v: "buoy", l: "\u{1F534} Boje" }
+          { v: "buoy", l: "\u{1F534} Boje" },
+          { v: "concert_stage", l: "\u{1F3B8} B\xFChne" },
+          { v: "festival_tent", l: "\u{1F3AA} Zelt" },
+          { v: "festival_tent_broken", l: "\u{1F3AA} Zelt (kap.)" },
+          { v: "festival_car", l: "\u{1F699} Festival-Auto" }
         ] },
         { cat: "Load", emoji: "\u{1F4E6}", items: [
           { v: "person", l: "\u{1F7E1} Person" },
@@ -2078,7 +2341,26 @@
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
           else if (["lighthouse", "research_platform", "wind_turbine"].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
-          else if (["plane_wreck", "sailboat_broken", "ornithopter_wreck", "baywatch_car", "baywatch_hq", "baywatch_tower"].includes(obj.type))
+          else if ([
+            "plane_wreck",
+            "sailboat_broken",
+            "ornithopter_wreck",
+            "baywatch_car",
+            "baywatch_hq",
+            "baywatch_tower",
+            "concert_stage",
+            "festival_tent",
+            "festival_tent_red",
+            "festival_tent_green",
+            "festival_tent_broken",
+            "festival_tent_broken_red",
+            "festival_tent_broken_green",
+            "festival_car_red",
+            "festival_car_blue",
+            "festival_car_silver",
+            "festival_car_black",
+            "festival_car_yellow"
+          ].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
           if (hit) {
             startDrag("object", i, obj.x, obj.y);
@@ -2193,7 +2475,7 @@
         clampCamera();
         drawMap();
       } else if (state.isDrawing) {
-        if (state.currentTool !== "person" && state.currentTool !== "rescuer" && state.currentTool !== "crate" && state.currentTool !== "boat" && state.currentTool !== "pilot_boat" && state.currentTool !== "salvage_tug" && state.currentTool !== "frigate" && state.currentTool !== "submarine" && state.currentTool !== "carrier" && state.currentTool !== "pad" && state.currentTool !== "lighthouse" && state.currentTool !== "research_platform" && state.currentTool !== "wind_turbine" && state.currentTool !== "plane_wreck" && state.currentTool !== "sailboat_broken" && state.currentTool !== "ornithopter_wreck" && state.currentTool !== "baywatch_car" && state.currentTool !== "baywatch_hq" && state.currentTool !== "baywatch_tower" && state.currentTool !== "foliage") {
+        if (state.currentTool !== "person" && state.currentTool !== "rescuer" && state.currentTool !== "crate" && state.currentTool !== "boat" && state.currentTool !== "pilot_boat" && state.currentTool !== "salvage_tug" && state.currentTool !== "frigate" && state.currentTool !== "submarine" && state.currentTool !== "carrier" && state.currentTool !== "pad" && state.currentTool !== "lighthouse" && state.currentTool !== "research_platform" && state.currentTool !== "wind_turbine" && state.currentTool !== "plane_wreck" && state.currentTool !== "sailboat_broken" && state.currentTool !== "ornithopter_wreck" && state.currentTool !== "baywatch_car" && state.currentTool !== "baywatch_hq" && state.currentTool !== "baywatch_tower" && state.currentTool !== "concert_stage" && state.currentTool !== "festival_car" && state.currentTool !== "foliage") {
           paint(e);
         }
       }
@@ -2271,7 +2553,8 @@
           foliage: compressFoliage(
             typeof mAny.foliage === "string" ? decompressFoliage(mAny.foliage) : mAny.foliage || []
           ),
-          ...mAny.sand ? { sand: compressTerrain(mAny.sand) } : {}
+          ...mAny.sand ? { sand: compressTerrain(mAny.sand) } : {},
+          ...mAny.pavement ? { pavement: compressTerrain(mAny.pavement) } : {}
         };
       });
       state.curIdx = savedIdx;
@@ -2314,7 +2597,8 @@
             ...m,
             terrain: typeof m.terrain === "string" ? decompressTerrain(m.terrain, m.gridSize) : m.terrain,
             foliage: typeof m.foliage === "string" ? decompressFoliage(m.foliage) : m.foliage || [],
-            ...m.sand ? { sand: decompressTerrain(m.sand, m.gridSize) } : {}
+            ...m.sand ? { sand: decompressTerrain(m.sand, m.gridSize) } : {},
+            ...m.pavement ? { pavement: decompressTerrain(m.pavement, m.gridSize) } : {}
           };
           delete base.previewBase64;
           return base;

@@ -33,6 +33,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         _drawWindsock,
         _drawBaywatchObjects,
         _drawBuoys,
+        _drawFestivalObjects,
     } = createStructuresDraw(dwCtx);
     const { drawPayloadObjects, queueAttachedPayloads } = createPayloadsDraw(dwCtx);
     const { handleCollisionBoxes, drawDebugOverlay } = createCollisionDraw(dwCtx);
@@ -170,8 +171,22 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         });
 
         // all remaining objects go into the shared final batch (depth-sorted with heli)
+        let _heliQueuedInFrigate = false;
         G.BOATS.forEach((b: any) => {
-            if (isVisible(b.x, b.y, visMargin) && _inNightConeRect(b.x, b.y, b.w, b.l, b.angle)) _drawBoatModel(b, camX, camY);
+            if (!isVisible(b.x, b.y, visMargin) || !_inNightConeRect(b.x, b.y, b.w, b.l, b.angle)) return;
+            if (heliAt && !zstate.crashed && b.objectType === VESSEL.FRIGATE) {
+                const cosA = Math.cos(b.angle), sinA = Math.sin(b.angle);
+                const dx = G.heli.x - b.x, dy = G.heli.y - b.y;
+                const lx = dx * cosA + dy * sinA, ly = -dx * sinA + dy * cosA;
+                if (Math.abs(lx) <= 14 && Math.abs(ly) <= 5) {
+                    _heliQueuedInFrigate = true;
+                    _drawBoatModel(b, camX, camY, (ni) => {
+                        if (ni === 1) SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt.x + heliAt.y, drawFn: (cx, cy) => heliAt.fn(cx, cy) });
+                    });
+                    return;
+                }
+            }
+            _drawBoatModel(b, camX, camY);
         });
         G.SUBMARINES.forEach((s: any) => {
             if (isVisible(s.x, s.y, visMargin) && _inNightConeRect(s.x, s.y, s.w, s.l, s.angle)) _drawSubmarine(s);
@@ -191,6 +206,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         });
         _drawBaywatchObjects(_inNightCone);
         _drawBuoys(_inNightCone);
+        _drawFestivalObjects(_inNightCone);
         const lh = dwCtx.getLighthouse();
         if (lh && isVisible(lh.x, lh.y, visMargin) && _inNightCone(lh.x, lh.y)) _drawLighthouse(camX, camY);
 
@@ -259,7 +275,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             if (p.type !== PAYLOAD.ORNI_WRECK || !p.hanging || p.rescued) return;
             SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, { x: p.x, y: p.y, z: p.z, angle: p.angle ?? 0 });
         });
-        if (heliAt)
+        if (heliAt && !_heliQueuedInFrigate)
             SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt.x + heliAt.y, drawFn: (cx, cy) => heliAt.fn(cx, cy) });
         // Carrier windsock: queued before flush so it depth-sorts with the ship.
         if (showCarrier && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle)) {

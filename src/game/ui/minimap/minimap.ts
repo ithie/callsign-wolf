@@ -107,6 +107,8 @@ export type MinimapData = {
     vessels: Array<{ x: number; y: number; type: string }>;
     heli: { x: number; y: number; angle: number };
     payloads: Array<{ x: number; y: number; type: string; rescued: boolean; npcTarget: boolean; hanging: boolean }>;
+    windBft: number;
+    windAngle: number;
 };
 
 export const updateMinimap = (data: MinimapData): void => {
@@ -136,10 +138,12 @@ export const updateMinimap = (data: MinimapData): void => {
         _carrier.style.display = 'none';
     }
 
-    // vision cone
+    // vision cone + wind indicator
     if (_overlayCtx) {
         const octx = _overlayCtx;
         octx.clearRect(0, 0, MM_SIZE, MM_SIZE);
+
+        // vision cone
         const hx = data.heli.x * sc;
         const hy = data.heli.y * sc;
         const a = data.heli.angle;
@@ -153,6 +157,30 @@ export const updateMinimap = (data: MinimapData): void => {
         octx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
         octx.lineWidth = 0.5;
         octx.stroke();
+
+        // wind arrow + Bft label (bottom-left corner)
+        if (data.windBft > 0) {
+            const arrowLen = 6 + data.windBft * 3.2; // Bft 1=9px … Bft 5=22px
+            const ax = 10, ay = MM_SIZE - 10;
+            const wa = data.windAngle;
+            const ex = ax + Math.cos(wa) * arrowLen;
+            const ey = ay + Math.sin(wa) * arrowLen;
+            const headLen = arrowLen * 0.35;
+            const headAngle = 0.45;
+            octx.strokeStyle = 'rgba(180,220,255,0.85)';
+            octx.lineWidth = 1.5;
+            octx.beginPath();
+            octx.moveTo(ax, ay);
+            octx.lineTo(ex, ey);
+            octx.lineTo(ex - headLen * Math.cos(wa - headAngle), ey - headLen * Math.sin(wa - headAngle));
+            octx.moveTo(ex, ey);
+            octx.lineTo(ex - headLen * Math.cos(wa + headAngle), ey - headLen * Math.sin(wa + headAngle));
+            octx.stroke();
+            octx.fillStyle = 'rgba(180,220,255,0.9)';
+            octx.font = 'bold 9px system-ui';
+            octx.textAlign = 'left';
+            octx.fillText(`Bft ${data.windBft}`, 18, MM_SIZE - 3);
+        }
     }
 
     _heli.style.left = `${data.heli.x * sc}px`;
@@ -161,15 +189,24 @@ export const updateMinimap = (data: MinimapData): void => {
 
     let dotIdx = 0;
 
-    // Ziel-Objekte: Submarines + Carrier weiß (8px); andere Vessels (Boote) grau (6px)
+    // Vessels: submarine/carrier weiß (8px); wind_turbine cyan (5px); research_platform gelb (6px); Boote grau (6px)
     data.vessels.forEach(v => {
         const dot = _getDot(dotIdx++);
         dot.style.left = `${v.x * sc}px`;
         dot.style.top = `${v.y * sc}px`;
-        const isTarget = v.type === 'submarine' || v.type === 'carrier';
-        dot.style.background = isTarget ? '#fff' : '#888';
-        dot.style.width = isTarget ? '8px' : '6px';
-        dot.style.height = isTarget ? '8px' : '6px';
+        if (v.type === 'submarine' || v.type === 'carrier') {
+            dot.style.background = '#fff';
+            dot.style.width = dot.style.height = '8px';
+        } else if (v.type === 'wind_turbine') {
+            dot.style.background = '#4af';
+            dot.style.width = dot.style.height = '5px';
+        } else if (v.type === 'research_platform') {
+            dot.style.background = '#ff0';
+            dot.style.width = dot.style.height = '6px';
+        } else {
+            dot.style.background = '#888';
+            dot.style.width = dot.style.height = '6px';
+        }
         dot.style.display = 'block';
     });
 

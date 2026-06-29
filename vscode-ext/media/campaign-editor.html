@@ -454,6 +454,50 @@
                                 <span class="close-btn" id="close-baywatch-tower">✖</span>
                                 <strong style="color: #cc4400">🗼 WACHTURM</strong>
                             </div>
+                            <div id="ui_concert_stage" class="floating-ui">
+                                <span class="close-btn" id="close-concert-stage">✖</span>
+                                <strong style="color: #aa44ff">🎸 KONZERT-BÜHNE</strong>
+                            </div>
+                            <div id="ui_festival_tent" class="floating-ui">
+                                <span class="close-btn" id="close-festival-tent">✖</span>
+                                <strong style="color: #2266cc">🎪 ZELT</strong><br />
+                                Farbe:
+                                <select id="m_tent_color">
+                                    <option value="random">Zufällig</option>
+                                    <option value="festival_tent">Blau</option>
+                                    <option value="festival_tent_red">Rot</option>
+                                    <option value="festival_tent_green">Grün</option>
+                                </select><br />
+                                Angle (°):
+                                <input type="number" id="m_tent_angle" value="0" min="0" max="359" style="width: 45px" />
+                            </div>
+                            <div id="ui_festival_tent_broken" class="floating-ui">
+                                <span class="close-btn" id="close-festival-tent-broken">✖</span>
+                                <strong style="color: #6688aa">🎪 ZELT (KAPUTT)</strong><br />
+                                Farbe:
+                                <select id="m_tent_broken_color">
+                                    <option value="random">Zufällig</option>
+                                    <option value="festival_tent_broken">Blau</option>
+                                    <option value="festival_tent_broken_red">Rot</option>
+                                    <option value="festival_tent_broken_green">Grün</option>
+                                </select><br />
+                                Angle (°):
+                                <input type="number" id="m_tent_broken_angle" value="0" min="0" max="359" style="width: 45px" />
+                            </div>
+                            <div id="ui_festival_car" class="floating-ui">
+                                <span class="close-btn" id="close-festival-car">✖</span>
+                                <strong style="color: #888844">🚙 FESTIVAL AUTO</strong><br />
+                                Farbe:
+                                <select id="m_fcar_color">
+                                    <option value="festival_car_silver">Silber</option>
+                                    <option value="festival_car_red">Rot</option>
+                                    <option value="festival_car_blue">Blau</option>
+                                    <option value="festival_car_black">Schwarz</option>
+                                    <option value="festival_car_yellow">Gelb</option>
+                                </select><br />
+                                Angle (°):
+                                <input type="number" id="m_fcar_angle" value="0" min="0" max="359" style="width: 45px" />
+                            </div>
                             <div id="ui_wind" class="floating-ui" style="left: 90px; top: 15px">
                                 <span class="close-btn" id="close-wind">✖</span>
                                 <strong style="color: cyan">💨 WIND VECTOR</strong><br />
@@ -650,11 +694,16 @@
             <input type="radio" name="tool" value="baywatch_car" />
             <input type="radio" name="tool" value="baywatch_hq" />
             <input type="radio" name="tool" value="baywatch_tower" />
+            <input type="radio" name="tool" value="concert_stage" />
+            <input type="radio" name="tool" value="festival_tent" />
+            <input type="radio" name="tool" value="festival_tent_broken" />
+            <input type="radio" name="tool" value="festival_car" />
             <input type="radio" name="tool" value="person" />
             <input type="radio" name="tool" value="rescuer" />
             <input type="radio" name="tool" value="crate" />
             <input type="radio" name="tool" value="foliage" />
             <input type="radio" name="tool" value="sand" />
+            <input type="radio" name="tool" value="pavement" />
 
             <input type="radio" name="brush" value="0" />
             <input type="radio" name="brush" value="1.5" checked />
@@ -1068,6 +1117,14 @@ Viel Glück, Pilot.</textarea
                 baywatch_car: '🚗',
                 baywatch_hq: '🏠',
                 baywatch_tower: '🗼',
+                concert_stage: '🎸',
+                festival_tent: '🎪',
+                festival_tent_broken: '🎪',
+                festival_car_red: '🚙',
+                festival_car_blue: '🚙',
+                festival_car_silver: '🚙',
+                festival_car_black: '🚙',
+                festival_car_yellow: '🚙',
             };
             let SONG_KEYS = [''];
             let _edLang = 'de';
@@ -1234,7 +1291,7 @@ Viel Glück, Pilot.</textarea
             const edRenderBrush = st => {
                 const panel = document.getElementById('ed-brush-panel');
                 if (!panel || !st) return;
-                const paintTools = new Set(['terrain', 'flatten', 'foliage', 'sand']);
+                const paintTools = new Set(['terrain', 'flatten', 'foliage', 'sand', 'pavement']);
                 const isPaint = paintTools.has(st.tool);
                 panel.innerHTML =
                     '<div style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);margin-bottom:5px">Pinsel</div>' +
@@ -1295,7 +1352,7 @@ Viel Glück, Pilot.</textarea
                 const cm = st.currentMission;
 
                 if (_edActiveTab === 'terrain') {
-                    const paintTools = ['terrain', 'flatten', 'sand', 'foliage'];
+                    const paintTools = ['terrain', 'flatten', 'sand', 'pavement', 'foliage'];
                     el.innerHTML =
                         '<div class="ed-section">' +
                         '<div class="ed-section-title">Geländetools</div>' +
@@ -1303,6 +1360,7 @@ Viel Glück, Pilot.</textarea
                             { v: 'terrain', l: '⛰️ Berge aufwerfen' },
                             { v: 'flatten', l: '🧽 Einebnen / Wasser' },
                             { v: 'sand', l: '🏖️ Sand' },
+                            { v: 'pavement', l: '🛣️ Pavement' },
                         ]
                             .map(
                                 t =>

@@ -3,6 +3,7 @@ import Tutorial from './campaigns/tutorial.zcampaign';
 import FreeFlight from './campaigns/freeFlight.zcampaign';
 import DemoCampaign from './campaigns/demo.zcampaign';
 import CallsignWolf from './campaigns/callsignwolf.zcampaign';
+import Zephyr from './campaigns/zephyr.zcampaign';
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
 import { songToZsong } from '../shared/zsong';
@@ -22,6 +23,7 @@ import Offshore from './music/offshore.zsong';
 import Vigil from './music/vigil.zsong';
 import Baywatch from './music/baywatch.zsong';
 import Fanfare from './music/fanfare.zsong';
+import Metalstorm from './music/metalstorm.zsong';
 import { SongData } from '@/shared/tracker-types';
 
 const soundHandler = (() => {
@@ -42,6 +44,7 @@ const soundHandler = (() => {
         spocktribute: SoundSpocktribute,
         thunderscene: ThunderScene,
         fanfare: Fanfare,
+        metalstorm: Metalstorm,
     };
 
     const state: { activeTheme: string; isMuted: boolean } = {
@@ -111,18 +114,18 @@ const soundHandler = (() => {
 })();
 
 const createCampaignHandler = () => {
-    let cachedTerrain: { terrain: number[][]; gridSize: number; sand?: number[][] } | null = null;
+    let cachedTerrain: { terrain: number[][]; gridSize: number; sand?: number[][]; pavement?: number[][] } | null =
+        null;
 
     const campaigns: CampaignExport[] = [
         Tutorial as unknown as CampaignExport,
         FreeFlight as unknown as CampaignExport,
         CallsignWolf as unknown as CampaignExport,
+        Zephyr as unknown as CampaignExport,
         DemoCampaign as unknown as CampaignExport,
     ];
 
-    const campaignMap = new Map<string, CampaignExport>(
-        campaigns.map(c => [(c as any)._key as string, c])
-    );
+    const campaignMap = new Map<string, CampaignExport>(campaigns.map(c => [(c as any)._key as string, c]));
 
     const campaignState = {
         activeCampaign: 0,
@@ -171,6 +174,7 @@ const createCampaignHandler = () => {
                 terrain: decompressTerrain(terrain, gridSize),
                 gridSize,
                 sand: (level as any).sand ? decompressTerrain((level as any).sand, gridSize) : undefined,
+                pavement: (level as any).pavement ? decompressTerrain((level as any).pavement, gridSize) : undefined,
             };
         }
 
@@ -197,7 +201,8 @@ export const campaignHandler = createCampaignHandler();
 // ─── Preview mode — DEV only, stripped from production bundle ─────────────────
 if (import.meta.env.DEV) {
     let _previewLevel: MissionData | null = null;
-    let _previewTerrain: { terrain: number[][]; gridSize: number; sand?: number[][] } | null = null;
+    let _previewTerrain: { terrain: number[][]; gridSize: number; sand?: number[][]; pavement?: number[][] } | null =
+        null;
 
     const _origGetMission = campaignHandler.getCurrentMissionData.bind(campaignHandler);
     const _origGetTerrain = campaignHandler.getTerrain.bind(campaignHandler);
@@ -214,6 +219,9 @@ if (import.meta.env.DEV) {
                     gridSize: _previewLevel.gridSize,
                     sand: _previewLevel.sand
                         ? decompressTerrain(_previewLevel.sand, _previewLevel.gridSize)
+                        : undefined,
+                    pavement: (_previewLevel as any).pavement
+                        ? decompressTerrain((_previewLevel as any).pavement, _previewLevel.gridSize)
                         : undefined,
                 };
             return _previewTerrain;

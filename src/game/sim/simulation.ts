@@ -1,6 +1,7 @@
 import { campaignHandler } from '../main';
 import { G, zstate } from '../state';
 import { VESSEL, PAYLOAD, VEHICLE_STATE, RESCUE_ZONE_ROLE, OBJECTIVE_TYPE, VESSEL_PATH, type RescueZone } from '../../shared/types';
+import WIND_TURBINE_DEF from '../models/wind_turbine.zdef';
 import CARRIER_DEF from '../models/carrier.zdef';
 import SUBMARINE_DEF from '../models/submarine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
@@ -35,6 +36,7 @@ const DEF_RESCUE_ZONES: Partial<Record<string, RescueZone[]>> = {
     [VESSEL.CARRIER]:           (CARRIER_DEF.rescueZones           ?? []) as RescueZone[],
     [VESSEL.SUBMARINE]:         (SUBMARINE_DEF.rescueZones         ?? []) as RescueZone[],
     [VESSEL.RESEARCH_PLATFORM]: (RESEARCH_PLATFORM_DEF.rescueZones ?? []) as RescueZone[],
+    [VESSEL.WIND_TURBINE]:      ((WIND_TURBINE_DEF as any).rescueZones ?? []) as RescueZone[],
 };
 
 const _zonesFor = (vessel: any, type: string | null): RescueZone[] =>
@@ -67,7 +69,7 @@ const _dropzoneVessels = (): Array<{ vessel: any; type: string | null }> => [
     ...G.BOATS.map(v => ({ vessel: v, type: VESSEL.BOAT as string | null })),
     ...G.SUBMARINES.map(v => ({ vessel: v, type: VESSEL.SUBMARINE as string | null })),
     ...G.RESEARCH_PLATFORMS.map(v => ({ vessel: v, type: VESSEL.RESEARCH_PLATFORM as string | null })),
-    ...G.WIND_TURBINES.map(v => ({ vessel: v, type: null })),
+    ...G.WIND_TURBINES.map(v => ({ vessel: v, type: VESSEL.WIND_TURBINE as string | null })),
 ];
 
 const _inDropzone = (wx: number, wy: number, deliverTo?: string, wz?: number): boolean =>
@@ -434,9 +436,9 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
         _prevCarrierNear = false;
     }
     const _frigateNearNow = inAir && G.BOATS.some((b: any) =>
-        b.objectType === VESSEL.FRIGATE && Math.hypot(G.heli.x - b.x, G.heli.y - b.y) < 15);
+        b.objectType === VESSEL.FRIGATE && Math.hypot(G.heli.x - b.x, G.heli.y - b.y) < 20);
     if (_frigateNearNow && !_prevFrigateNear) {
-        const _nearFrigate = G.BOATS.find((b: any) => b.objectType === VESSEL.FRIGATE && Math.hypot(G.heli.x - b.x, G.heli.y - b.y) < 15);
+        const _nearFrigate = G.BOATS.find((b: any) => b.objectType === VESSEL.FRIGATE && Math.hypot(G.heli.x - b.x, G.heli.y - b.y) < 20);
         if (!_nearFrigate?.radioSilent) voiceEvents.emit('deck-cleared');
     }
     _prevFrigateNear = _frigateNearNow;

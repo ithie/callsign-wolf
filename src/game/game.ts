@@ -12,6 +12,7 @@ import { initHeliSound, updateHeliSound, stopHeliSound, setSfxEnabled, isSfxEnab
 
 import { createDrawWorld } from './draws-world/draw-world';
 import RESEARCH_PLATFORM_DEF from './models/research_platform.zdef';
+import WIND_TURBINE_DEF from './models/wind_turbine.zdef';
 import { createSceneRenderer } from './scene-renderer';
 import { getHeliType, HELI_TYPES } from './heli-types';
 import { G } from './state';
@@ -499,7 +500,8 @@ const launchMission = async (showLoader = true): Promise<void> => {
     _missionHasLighthouse = !!_lmdObjs.find((o: any) => o.type === VESSEL.LIGHTHOUSE);
     _missionRain = !!_lmd.rain;
     _missionNight = !!_lmd.night;
-    _missionWindStr = _lmd.windStr ?? 1;
+    _missionWindBft = _lmd.windStr ?? 0;
+    _missionWindStr = _missionWindBft * 0.6; // Beaufort 0-5 → internal 0-3
     _missionWindDir = _lmd.windDir ?? 0;
     _missionWindVar = !!_lmd.windVar;
     G.waterLevel = _lmd.waterLevel ?? 0;
@@ -513,6 +515,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     // Step 1 — terrain
     generateTerrain(G.points, _missionHasPad ? { ...G.PAD, yMin: G.PAD.yMin - 3 } : null);
     G.sandPoints = campaignHandler.getTerrain().sand ?? [];
+    G.pavementPoints = campaignHandler.getTerrain().pavement ?? [];
     initMinimapTerrain(G.points, _missionGridSize, G.waterLevel);
     precomputeDayColors(_missionRain);
     handle?.step('Gelände…', 0.25);
@@ -536,6 +539,16 @@ const launchMission = async (showLoader = true): Promise<void> => {
                 z: G.waterLevel + lz.z,
             });
         }
+    });
+    const _wtLz = (WIND_TURBINE_DEF as any).landingZone;
+    G.WIND_TURBINES.forEach((wt: any) => {
+        if (_wtLz) G.LANDING_ZONES.push({
+            xMin: wt.x + _wtLz.x - _wtLz.w,
+            xMax: wt.x + _wtLz.x + _wtLz.w,
+            yMin: wt.y + _wtLz.y - _wtLz.h,
+            yMax: wt.y + _wtLz.y + _wtLz.h,
+            z: wt.gz + _wtLz.z,
+        });
     });
     handle?.step('Objekte…', 0.5);
     if (handle) await _tick();
@@ -834,10 +847,14 @@ const drawScene = () => {
             carrier: hasCarrier() ? G.CARRIER : null,
             vessels: [
                 ...G.SUBMARINES.map((s: any) => ({ x: s.x, y: s.y, type: VESSEL.SUBMARINE })),
-                ...G.BOATS.map((b: any) => ({ x: b.x, y: b.y, type: VESSEL.BOAT })),
+                ...G.BOATS.map((b: any) => ({ x: b.x, y: b.y, type: b.objectType ?? VESSEL.BOAT })),
+                ...G.WIND_TURBINES.map((wt: any) => ({ x: wt.x, y: wt.y, type: VESSEL.WIND_TURBINE })),
+                ...G.RESEARCH_PLATFORMS.map((rp: any) => ({ x: rp.x, y: rp.y, type: VESSEL.RESEARCH_PLATFORM })),
             ],
             heli: G.heli,
             payloads: G.payloads,
+            windBft: _missionWindBft,
+            windAngle: _missionWindDir * (Math.PI / 180),
         },
     });
 
@@ -882,6 +899,7 @@ let _missionNight = false;
 let _missionWindStr = 1;
 let _missionWindDir = 0;
 let _missionWindVar = false;
+let _missionWindBft = 0;
 let _lighthouseX = -1;
 let _lighthouseY = -1;
 let _missionGridSize = 28;

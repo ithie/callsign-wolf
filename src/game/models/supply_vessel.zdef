@@ -21,6 +21,9 @@
       "zMax": 3.2
     }
   ],
+  "rescueZones": [
+    { "x": -0.7, "y": 0, "w": 1.8, "h": 1.0, "role": "pickup" }
+  ],
   "nodes": [
     {
       "faces": [

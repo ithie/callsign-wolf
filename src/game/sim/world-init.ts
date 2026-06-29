@@ -4,6 +4,7 @@ import { getGround } from './terrain';
 import { VESSEL, PAYLOAD, VESSEL_PATH } from '../../shared/types';
 import FRIGATE_DEF from '../models/frigate.zdef';
 import CARRIER_DEF from '../models/carrier.zdef';
+import WIND_TURBINE_DEF from '../models/wind_turbine.zdef';
 
 const getObjects = () => campaignHandler.getCurrentMissionData().objects || [];
 const getObjectByType = (type: string) => getObjects().find((o: any) => o.type === type) || null;
@@ -22,10 +23,6 @@ export const resolveAttachTo = (attachTo: any): { x: number; y: number; z: numbe
         case VESSEL.CARRIER:
             if (!G.CARRIER || G.CARRIER.x === undefined) return null;
             return { ...applyVesselOffset(G.CARRIER, lx, ly), z: G.CARRIER.zDeck };
-        case VESSEL.BOAT: {
-            const b = G.BOATS.find((b: any) => b._objIdx === attachTo.objectIdx);
-            return b ? { ...applyVesselOffset(b, lx, ly), z: b.zDeck } : null;
-        }
         case VESSEL.SUBMARINE: {
             const s = G.SUBMARINES.find((s: any) => s._objIdx === attachTo.objectIdx);
             return s ? { ...applyVesselOffset(s, lx, ly), z: s.zDeck } : null;
@@ -33,6 +30,17 @@ export const resolveAttachTo = (attachTo: any): { x: number; y: number; z: numbe
         case VESSEL.SAILBOAT_BROKEN: {
             const sb = G.BROKEN_SAILBOATS.find((s: any) => s._objIdx === attachTo.objectIdx);
             return sb ? { x: sb.x, y: sb.y, z: G.waterLevel + 0.35 } : null;
+        }
+        case VESSEL.WIND_TURBINE: {
+            const wt = G.WIND_TURBINES.find((w: any) => w._objIdx === attachTo.objectIdx);
+            if (!wt) return null;
+            const lzZ = (WIND_TURBINE_DEF as any).landingZone?.z ?? 12.3;
+            return { x: wt.x + lx, y: wt.y + ly, z: wt.gz + lzZ };
+        }
+        case VESSEL.SUPPLY_VESSEL:
+        case VESSEL.BOAT: {
+            const b = G.BOATS.find((b: any) => b._objIdx === attachTo.objectIdx);
+            return b ? { ...applyVesselOffset(b, lx, ly), z: b.zDeck } : null;
         }
     }
     return null;
@@ -232,13 +240,14 @@ const BOAT_CFG: Record<string, { w: number; l: number; zDeck: number; lzX: numbe
     boat:        { w: 1.5, l:  3.0, zDeck: 0.35, lzX: 0, lzY: 0, lzHW:  3.0, lzHH: 1.5 },
     pilot_boat:  { w: 0.8, l:  2.0, zDeck: 0.3,  lzX: 0, lzY: 0, lzHW:  2.0, lzHH: 0.8 },
     sar_boat:    { w: 0.8, l:  2.0, zDeck: 0.3,  lzX: 0, lzY: 0, lzHW:  2.0, lzHH: 0.8 },
-    salvage_tug: { w: 1.2, l:  3.5, zDeck: 1.2,  lzX: 0, lzY: 0, lzHW:  3.5, lzHH: 1.2 },
+    salvage_tug:    { w: 1.2, l:  3.5, zDeck: 1.2,  lzX: 0, lzY: 0, lzHW:  3.5, lzHH: 1.2 },
+    supply_vessel:  { w: 1.2, l:  5.7, zDeck: 1.2,  lzX: -0.7, lzY: 0, lzHW: 1.8, lzHH: 1.0 },
     frigate:     { w: 3.0, l: 11.0, zDeck: _frigateLZ?.z ?? 2.0, lzX: _frigateLZ?.x ?? -8.0, lzY: _frigateLZ?.y ?? 0, lzHW: _frigateLZ ? _frigateLZ.w / 2 : 2.25, lzHH: _frigateLZ ? _frigateLZ.h / 2 : 2.75 },
 };
 
 export const initBoatsFromMission = () => {
     const allObjects = getObjects();
-    const boatTypes = [VESSEL.BOAT, VESSEL.PILOT_BOAT, VESSEL.SAR_BOAT, VESSEL.SALVAGE_TUG, VESSEL.FRIGATE];
+    const boatTypes = [VESSEL.BOAT, VESSEL.PILOT_BOAT, VESSEL.SAR_BOAT, VESSEL.SALVAGE_TUG, VESSEL.SUPPLY_VESSEL, VESSEL.FRIGATE];
     G.BOATS = boatTypes
         .flatMap(type => getObjectsByType(type))
         .map((obj: any) => {
@@ -304,7 +313,11 @@ export const initStaticObjectsFromMission = () => {
         y: obj.y,
         angle: 0,
         spinning: obj.spinning ?? false,
+        onFire: obj.onFire ?? false,
+        onSmoke: obj.onSmoke ?? false,
         rescueZones: (obj.rescueZones || []) as any[],
+        gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+        _objIdx: allObjects.indexOf(obj),
     }));
     G.BUOYS = getObjectsByType(VESSEL.BUOY).map((obj: any) => ({ x: obj.x, y: obj.y }));
     G.PLANE_WRECKS = getObjectsByType(VESSEL.PLANE_WRECK).map((obj: any) => ({
@@ -347,15 +360,44 @@ export const initStaticObjectsFromMission = () => {
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
         })),
     ];
+    G.CONCERT_STAGES = getObjectsByType(VESSEL.CONCERT_STAGE).map((obj: any) => ({
+        x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+        gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+    }));
+    const _FESTIVAL_TENT_TYPES = [
+        VESSEL.FESTIVAL_TENT, VESSEL.FESTIVAL_TENT_RED, VESSEL.FESTIVAL_TENT_GREEN,
+        VESSEL.FESTIVAL_TENT_BROKEN, VESSEL.FESTIVAL_TENT_BROKEN_RED, VESSEL.FESTIVAL_TENT_BROKEN_GREEN,
+    ] as const;
+    G.FESTIVAL_TENTS = _FESTIVAL_TENT_TYPES.flatMap(tt =>
+        getObjectsByType(tt).map((obj: any) => ({
+            type: tt, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+            gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+        }))
+    );
+    const _FESTIVAL_CAR_TYPES = [
+        VESSEL.FESTIVAL_CAR_RED, VESSEL.FESTIVAL_CAR_BLUE, VESSEL.FESTIVAL_CAR_SILVER,
+        VESSEL.FESTIVAL_CAR_BLACK, VESSEL.FESTIVAL_CAR_YELLOW,
+    ] as const;
+    G.FESTIVAL_CARS = _FESTIVAL_CAR_TYPES.flatMap(ct =>
+        getObjectsByType(ct).map((obj: any) => ({
+            type: ct, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+            gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+        }))
+    );
     const missionData = campaignHandler.getCurrentMissionData() as any;
     G.PARTICLE_EMITTERS = (missionData?.particleEmitters || []).map((e: any) => ({
         type: e.type,
         x: e.x,
         y: e.y,
-        gz: getGround(e.x, e.y, G.points, G.CARRIER),
+        gz: getGround(e.x, e.y, G.points, G.CARRIER) + (e.zOffset ?? 0),
         particles: [] as any[],
         spawnTimer: 0,
     }));
+    const _gondolaLzZ = (WIND_TURBINE_DEF as any).landingZone?.z ?? 12.3;
+    G.WIND_TURBINES.forEach((wt: any) => {
+        if (wt.onFire) G.PARTICLE_EMITTERS.push({ type: 'fire',  x: wt.x + 0.1, y: wt.y, gz: wt.gz + _gondolaLzZ, particles: [], spawnTimer: 0 });
+        if (wt.onFire || wt.onSmoke) G.PARTICLE_EMITTERS.push({ type: 'smoke', x: wt.x + 0.1, y: wt.y, gz: wt.gz + _gondolaLzZ, particles: [], spawnTimer: 0 });
+    });
 };
 
 const _SURVIVOR_OUTFITS = [

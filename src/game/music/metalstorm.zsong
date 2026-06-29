@@ -1,0 +1,31 @@
+bpm 170
+
+# Metalstorm – Thrash-Gewitter, E-Moll
+
+[kick]  vol=100
+0 2 4 8 10 12 16 18 20 24 26 28 32 34 36 40 42 44 48 50 52 56 58 60
+
+[snare]  vol=94
+8 24 40 56
+
+[hat]  vol=28
+0 4 8 12 16 20 24 28 32 36 40 44 48 52 56 60
+
+[clap]  vol=20
+10 26 42 58
+
+# Rhythm guitar – Palm-Mute Chugs, dark & tight
+[synth1]  vol=96  wave=sawtooth  filter=650  attack=0.002  release=0.06  inst=custom
+0:E2 2:E2 4:E2 6:E2 8:D2 10:D2 12:C2 14:B1 16:E2 18:E2 20:G2 22:G2 24:A2 26:A2 28:G2 30:E2 32:E2 34:E2 36:D2 38:D2 40:C2 42:B1 44:A1 46:A1 48:E2 50:G2 52:A2 54:B2 56:C3 58:B2 60:A2 62:G2
+
+# Lead guitar – power-metal Melodielinie
+[synth2]  vol=72  wave=sawtooth  filter=3500  attack=0.005  release=0.15  inst=lead_saw
+0:E4 4:D4 8:C4 12:B3 16:A3 20:B3 24:C4 28:D4 32:E4 34:G4 36:A4 38:B4 40:C4 42:A3 44:B3 46:G3 48:A3 52:E3 56:G3 58:A3 60:B3 62:E4
+
+# Second guitar – Power-Chord-Wand, detuned für Dicke
+[synth3]  vol=80  wave=sawtooth  filter=1200  attack=0.003  release=0.65  detune=8  inst=custom
+0:E3 4:E3 8:D3 12:C3 16:E3 20:G3 24:A3 28:G3 32:E3 36:D3 40:C3 44:B2 48:E3 52:A3 56:C4 60:B3
+
+# Sub-Bass – folgt dem Riff, tief und drückend
+[synth4]  vol=92  wave=sawtooth  filter=450  attack=0.003  release=0.09  inst=custom
+0:E1 4:E1 8:D1 12:C1 16:E1 20:G1 24:A1 28:E1 32:E1 36:D1 40:C1 44:A1 48:E1 52:A1 56:C2 60:B1

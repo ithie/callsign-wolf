@@ -180,6 +180,8 @@ const mkMinimapData = (): MinimapData => ({
     vessels: [],
     heli: { x: 5, y: 5, angle: 0 },
     payloads: [],
+    windBft: 0,
+    windAngle: 0,
 });
 
 // ─── legal-screen ─────────────────────────────────────────────────────────────

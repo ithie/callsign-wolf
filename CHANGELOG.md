@@ -1,5 +1,29 @@
 # SAR: Callsign WOLF — Changelog
 
+## v29.0.0 — Projekt Zephyr
+
+### Added
+
+- **Kampagne — Projekt: Zephyr** — 5-Missions-Offshore-Kampagne auf einer gemeinsamen Küstenkarte. Dramaturgischer Bogen von ruhiger Morgenschicht bis zum Maximalsturm.
+- **Windrad-Gondel — Landing Zone** — Helikopter kann auf der Gondel (z≈12.3) landen, auftanken und Payloads absetzen. Collision Boxes korrigiert (Mast 0–12.0, Gondel 12.0–12.35, Rotor 8.2–16.2).
+- **Windrad-Gondel — Rescue Zone** — Personen und Crates können auf der Gondel aufgenommen und abgesetzt werden (z-geprüft, Toleranz ±2.0).
+- **`onFire` / `onSmoke`** — Neue Props auf `WindTurbineObject`. Generieren automatisch Feuer- bzw. Rauchpartikel auf Gondelhöhe ohne manuelle Emitter-Positionierung. Brennende Turbinen stoppen ihren Rotor.
+- **`attachTo: wind_turbine`** — Personen und Crates können direkt auf der Gondel gespawnt werden (`objectType: 'wind_turbine'`, `localX/Y` relativ zur Gondelmitte).
+- **`deliverTo: wind_turbine`** — Payload-Targeting auf Windrad-Gondeln.
+- **Supply Vessel** — Neuer Schiffstyp `supply_vessel` (Offshore-Versorgungsschiff). Cargo-Deck am Heck als Rescue Zone (Pickup). Rendering über bestehendes `supply_vessel.zdef`.
+- **Beaufort-Windsystem** — `windStr` in `.zcampaign`-Dateien ist jetzt Beaufort 0–5. Physik-Konvertierung bei Mission-Init (`internal = bft × 0.6`). Alle Kampagnen migriert.
+- **Windsocke — Potenz-Kurve** — Windsocken-Ausschlag folgt `(str/3)^0.55` statt linearer Normierung. Bft 3 zeigt bereits 73 % Ausschlag.
+- **Minimap — Windfeil** — Kleiner Richtungspfeil + `Bft X`-Label in der Minimap-Ecke; Pfeillänge skaliert mit Beaufort.
+- **Minimap — Windräder & Forschungsplattform** — Windräder erscheinen als cyan (5 px), Forschungsplattformen als gelb (6 px).
+- **Editor — Pavement-Tool** — `🛣️ Pavement`-Pinsel war in der Sidebar nicht erreichbar; Button hinzugefügt.
+
+### Changed
+
+- **Windsocke** — Normierung von `windStr / 5` auf `(windStr / 3)^0.55` für bessere Sichtbarkeit bei mittlerem Wind.
+- **Kampagnen — Beach-Foliage** — Sonnenschirme, Liegestühle und Badegäste werden in Schlechtwetter- und Nachtmissionen automatisch ausgeblendet (Zephyr M2–M5).
+
+---
+
 ## v28.8.0 — Rankup Screen & Fanfare
 
 ### Added

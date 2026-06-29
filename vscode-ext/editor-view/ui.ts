@@ -242,7 +242,8 @@ const paint = (e: MouseEvent) => {
         const rad = Math.ceil(state.brushRadius);
         for (let dx = -rad; dx <= rad; dx++) {
             for (let dy = -rad; dy <= rad; dy++) {
-                if (Math.hypot(dx, dy) <= state.brushRadius && m.terrain[gx + dx]) m.terrain[gx + dx][gy + dy] = h;
+                const nx = gx + dx, ny = gy + dy;
+                if (Math.hypot(dx, dy) <= state.brushRadius && m.terrain[nx] && ny >= 0 && ny <= m.gridSize) m.terrain[nx][ny] = h;
             }
         }
         // Bäume im Radius löschen wenn Wasser (shift) oder sehr flach
@@ -446,6 +447,36 @@ const paint = (e: MouseEvent) => {
             m.payloads.push(makePayload('crate', gx, gy, m));
         }
         renderPayloadList();
+    } else if (state.currentTool === 'festival_tent' || state.currentTool === 'festival_tent_broken') {
+        const isBroken = state.currentTool === 'festival_tent_broken';
+        const TENT_COLORS = isBroken
+            ? ['festival_tent_broken', 'festival_tent_broken_red', 'festival_tent_broken_green']
+            : ['festival_tent', 'festival_tent_red', 'festival_tent_green'];
+        const colorSel = document.getElementById(isBroken ? 'm_tent_broken_color' : 'm_tent_color') as HTMLSelectElement;
+        const rad = Math.max(0.5, state.brushRadius);
+        const count = Math.max(1, Math.round(rad * 0.5));
+        if (e.shiftKey) {
+            m.objects = m.objects.filter((o: any) => {
+                const isTentType = TENT_COLORS.includes(o.type);
+                return !isTentType || Math.hypot(o.x - gx, o.y - gy) > rad;
+            });
+        } else {
+            for (let i = 0; i < count; i++) {
+                const a = Math.random() * Math.PI * 2;
+                const d = Math.random() * rad;
+                const fx = Math.round(gx + Math.cos(a) * d);
+                const fy = Math.round(gy + Math.sin(a) * d);
+                if (fx < 0 || fx >= m.gridSize || fy < 0 || fy >= m.gridSize) continue;
+                if ((m.terrain[fx]?.[fy] ?? -1) <= 0.05) continue;
+                const selColor = colorSel?.value;
+                const type = selColor && selColor !== 'random'
+                    ? selColor
+                    : TENT_COLORS[Math.floor(Math.random() * TENT_COLORS.length)];
+                const angle = Math.round(Math.random() * 360);
+                m.objects.push({ type: type as any, x: fx, y: fy, angle });
+            }
+        }
+        notifyWorkbench();
     } else if (state.currentTool === 'foliage') {
         if (!(m as any).foliage) (m as any).foliage = [];
         const foliage = (m as any).foliage;
@@ -485,6 +516,22 @@ const paint = (e: MouseEvent) => {
                 const nx = gx + dx, ny = gy + dy;
                 if (Math.hypot(dx, dy) <= state.brushRadius && nx >= 0 && nx <= m.gridSize && ny >= 0 && ny <= m.gridSize) {
                     mSand.sand[nx][ny] = val;
+                    if (val === 1 && m.terrain[nx]?.[ny] !== undefined && m.terrain[nx][ny] > 0)
+                        m.terrain[nx][ny] = m.terrain[nx][ny] <= 0.6 ? 0.4 : 0.8;
+                }
+            }
+        }
+    } else if (state.currentTool === 'pavement') {
+        const mPav = m as any;
+        if (!mPav.pavement)
+            mPav.pavement = Array.from({ length: m.gridSize + 1 }, () => new Array(m.gridSize + 1).fill(0));
+        const val = e.shiftKey ? 0 : 1;
+        const rad = Math.ceil(state.brushRadius);
+        for (let dx = -rad; dx <= rad; dx++) {
+            for (let dy = -rad; dy <= rad; dy++) {
+                const nx = gx + dx, ny = gy + dy;
+                if (nx >= 0 && nx <= m.gridSize && ny >= 0 && ny <= m.gridSize) {
+                    mPav.pavement[nx][ny] = val;
                     if (val === 1 && m.terrain[nx]?.[ny] !== undefined && m.terrain[nx][ny] > 0)
                         m.terrain[nx][ny] = m.terrain[nx][ny] <= 0.6 ? 0.4 : 0.8;
                 }
@@ -751,14 +798,67 @@ export const initUI = () => {
     safeClick('close-baywatch-car', () => { state.selectedObjectIdx = null; drawMap(); });
     safeClick('close-baywatch-hq', () => { state.selectedObjectIdx = null; drawMap(); });
     safeClick('close-baywatch-tower', () => { state.selectedObjectIdx = null; drawMap(); });
+    safeClick('close-concert-stage', () => { state.selectedObjectIdx = null; drawMap(); });
+    safeClick('close-festival-tent', () => { state.selectedObjectIdx = null; drawMap(); });
+    safeClick('close-festival-tent-broken', () => { state.selectedObjectIdx = null; drawMap(); });
+    safeClick('close-festival-car', () => { state.selectedObjectIdx = null; drawMap(); });
     document.getElementById('m_bwc_angle')?.addEventListener('input', () => {
         const m = getCurrentMission();
         if (!m || state.selectedObjectIdx === null) return;
         const obj = m.objects[state.selectedObjectIdx] as any;
         if (obj?.type !== 'baywatch_car') return;
         obj.angle = parseInt((document.getElementById('m_bwc_angle') as HTMLInputElement).value) || 0;
-        drawMap();
-        broadcastPreview();
+        drawMap(); broadcastPreview(); notifyWorkbench();
+    });
+    document.getElementById('m_tent_color')?.addEventListener('change', () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx] as any;
+        if (!['festival_tent','festival_tent_red','festival_tent_green'].includes(obj?.type)) return;
+        const v = (document.getElementById('m_tent_color') as HTMLSelectElement).value;
+        if (v !== 'random') obj.type = v;
+        drawMap(); broadcastPreview(); notifyWorkbench();
+    });
+    document.getElementById('m_tent_angle')?.addEventListener('input', () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx] as any;
+        if (!['festival_tent','festival_tent_red','festival_tent_green'].includes(obj?.type)) return;
+        obj.angle = parseInt((document.getElementById('m_tent_angle') as HTMLInputElement).value) || 0;
+        drawMap(); broadcastPreview(); notifyWorkbench();
+    });
+    document.getElementById('m_tent_broken_color')?.addEventListener('change', () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx] as any;
+        if (!['festival_tent_broken','festival_tent_broken_red','festival_tent_broken_green'].includes(obj?.type)) return;
+        const v = (document.getElementById('m_tent_broken_color') as HTMLSelectElement).value;
+        if (v !== 'random') obj.type = v;
+        drawMap(); broadcastPreview(); notifyWorkbench();
+    });
+    document.getElementById('m_tent_broken_angle')?.addEventListener('input', () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx] as any;
+        if (!['festival_tent_broken','festival_tent_broken_red','festival_tent_broken_green'].includes(obj?.type)) return;
+        obj.angle = parseInt((document.getElementById('m_tent_broken_angle') as HTMLInputElement).value) || 0;
+        drawMap(); broadcastPreview(); notifyWorkbench();
+    });
+    document.getElementById('m_fcar_color')?.addEventListener('change', () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx] as any;
+        if (!obj?.type?.startsWith('festival_car_')) return;
+        obj.type = (document.getElementById('m_fcar_color') as HTMLSelectElement).value;
+        drawMap(); broadcastPreview(); notifyWorkbench();
+    });
+    document.getElementById('m_fcar_angle')?.addEventListener('input', () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx] as any;
+        if (!obj?.type?.startsWith('festival_car_')) return;
+        obj.angle = parseInt((document.getElementById('m_fcar_angle') as HTMLInputElement).value) || 0;
+        drawMap(); broadcastPreview(); notifyWorkbench();
     });
     document.getElementById('m_wt_spinning')?.addEventListener('change', () => {
         const m = getCurrentMission();
@@ -803,8 +903,7 @@ export const initUI = () => {
         const obj = m.objects[state.selectedObjectIdx] as any;
         if (obj?.type !== 'plane_wreck') return;
         obj.angle = parseInt((document.getElementById('m_pw_angle') as HTMLInputElement).value) || 0;
-        drawMap();
-        broadcastPreview();
+        drawMap(); broadcastPreview(); notifyWorkbench();
     });
     document.getElementById('m_sb_angle')?.addEventListener('input', () => {
         const m = getCurrentMission();
@@ -812,8 +911,7 @@ export const initUI = () => {
         const obj = m.objects[state.selectedObjectIdx] as any;
         if (obj?.type !== 'sailboat_broken') return;
         obj.angle = parseInt((document.getElementById('m_sb_angle') as HTMLInputElement).value) || 0;
-        drawMap();
-        broadcastPreview();
+        drawMap(); broadcastPreview(); notifyWorkbench();
     });
     document.getElementById('m_ow_angle')?.addEventListener('input', () => {
         const m = getCurrentMission();
@@ -821,8 +919,7 @@ export const initUI = () => {
         const obj = m.objects[state.selectedObjectIdx] as any;
         if (obj?.type !== 'ornithopter_wreck') return;
         obj.angle = parseInt((document.getElementById('m_ow_angle') as HTMLInputElement).value) || 0;
-        drawMap();
-        broadcastPreview();
+        drawMap(); broadcastPreview(); notifyWorkbench();
     });
 
     // General sync
@@ -851,7 +948,7 @@ export const initUI = () => {
     cursorEl.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;display:none;';
     document.body.appendChild(cursorEl);
     const cursorCtx = cursorEl.getContext('2d')!;
-    const PAINT_TOOLS = new Set(['terrain', 'flatten', 'foliage', 'sand']);
+    const PAINT_TOOLS = new Set(['terrain', 'flatten', 'foliage', 'sand', 'pavement']);
     const POINT_TOOLS = new Set([
         'pad',
         'carrier',
@@ -870,6 +967,18 @@ export const initUI = () => {
         'baywatch_car',
         'baywatch_hq',
         'baywatch_tower',
+        'concert_stage',
+        'festival_tent',
+        'festival_tent_red',
+        'festival_tent_green',
+        'festival_tent_broken',
+        'festival_tent_broken_red',
+        'festival_tent_broken_green',
+        'festival_car_red',
+        'festival_car_blue',
+        'festival_car_silver',
+        'festival_car_black',
+        'festival_car_yellow',
         'buoy',
         'person',
         'rescuer',
@@ -888,6 +997,18 @@ export const initUI = () => {
         baywatch_car: '#cc2200',
         baywatch_hq: '#cc4400',
         baywatch_tower: '#cc4400',
+        concert_stage: '#aa44ff',
+        festival_tent: '#2266cc',
+        festival_tent_red: '#bb3018',
+        festival_tent_green: '#2a8030',
+        festival_tent_broken: '#6688aa',
+        festival_tent_broken_red: '#884422',
+        festival_tent_broken_green: '#335533',
+        festival_car_red: '#cc2020',
+        festival_car_blue: '#204499',
+        festival_car_silver: '#9aabb5',
+        festival_car_black: '#444444',
+        festival_car_yellow: '#cc9900',
         buoy: '#dd3300',
         person: '#ffe033',
         crate: '#ff8800',
@@ -929,7 +1050,9 @@ export const initUI = () => {
                       ? 'rgba(50,200,50,0.1)'
                       : tool === 'sand'
                         ? 'rgba(212,180,80,0.12)'
-                        : 'rgba(255,160,0,0.08)';
+                        : tool === 'pavement'
+                          ? 'rgba(130,130,145,0.18)'
+                          : 'rgba(255,160,0,0.08)';
             cursorCtx.fill();
         } else if (POINT_TOOLS.has(tool)) {
             const size = 32;
@@ -1064,6 +1187,29 @@ export const initUI = () => {
             case 'baywatch_tower':
                 m.objects.push({ type: 'baywatch_tower' as any, x: gx, y: gy });
                 break;
+            case 'concert_stage':
+                m.objects.push({ type: 'concert_stage' as any, x: gx, y: gy });
+                break;
+            case 'festival_tent': {
+                const _tentColors = ['festival_tent', 'festival_tent_red', 'festival_tent_green'];
+                const _tcs = (document.getElementById('m_tent_color') as HTMLSelectElement)?.value;
+                const _tt = (_tcs && _tcs !== 'random') ? _tcs : _tentColors[Math.floor(Math.random() * _tentColors.length)];
+                m.objects.push({ type: _tt as any, x: gx, y: gy, angle: 0 });
+                break;
+            }
+            case 'festival_tent_broken': {
+                const _tbColors = ['festival_tent_broken', 'festival_tent_broken_red', 'festival_tent_broken_green'];
+                const _tbcs = (document.getElementById('m_tent_broken_color') as HTMLSelectElement)?.value;
+                const _tbt = (_tbcs && _tbcs !== 'random') ? _tbcs : _tbColors[Math.floor(Math.random() * _tbColors.length)];
+                m.objects.push({ type: _tbt as any, x: gx, y: gy, angle: 0 });
+                break;
+            }
+            case 'festival_car': {
+                const colorSel = document.getElementById('m_fcar_color') as HTMLSelectElement;
+                const carType = colorSel?.value || 'festival_car_silver';
+                m.objects.push({ type: carType as any, x: gx, y: gy, angle: 0 });
+                break;
+            }
             case 'boat':
                 m.objects.push({ ..._vesselBase('boat'), speed: 3 });
                 break;
@@ -1126,6 +1272,10 @@ export const initUI = () => {
                 { v: 'baywatch_hq', l: '🏠 BW-HQ' },
                 { v: 'baywatch_tower', l: '🗼 Wachturm' },
                 { v: 'buoy', l: '🔴 Boje' },
+                { v: 'concert_stage', l: '🎸 Bühne' },
+                { v: 'festival_tent', l: '🎪 Zelt' },
+                { v: 'festival_tent_broken', l: '🎪 Zelt (kap.)' },
+                { v: 'festival_car', l: '🚙 Festival-Auto' },
             ]},
             { cat: 'Load', emoji: '📦', items: [
                 { v: 'person', l: '🟡 Person' },
@@ -1296,7 +1446,11 @@ export const initUI = () => {
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
                 else if (['lighthouse', 'research_platform', 'wind_turbine'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
-                else if (['plane_wreck', 'sailboat_broken', 'ornithopter_wreck', 'baywatch_car', 'baywatch_hq', 'baywatch_tower'].includes(obj.type))
+                else if (['plane_wreck', 'sailboat_broken', 'ornithopter_wreck', 'baywatch_car', 'baywatch_hq', 'baywatch_tower',
+                    'concert_stage',
+                    'festival_tent', 'festival_tent_red', 'festival_tent_green',
+                    'festival_tent_broken', 'festival_tent_broken_red', 'festival_tent_broken_green',
+                    'festival_car_red', 'festival_car_blue', 'festival_car_silver', 'festival_car_black', 'festival_car_yellow'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
                 if (hit) {
                     startDrag('object', i, obj.x, obj.y);
@@ -1426,6 +1580,8 @@ export const initUI = () => {
                 state.currentTool !== 'baywatch_car' &&
                 state.currentTool !== 'baywatch_hq' &&
                 state.currentTool !== 'baywatch_tower' &&
+                state.currentTool !== 'concert_stage' &&
+                state.currentTool !== 'festival_car' &&
                 state.currentTool !== 'foliage'
             ) {
                 paint(e);
@@ -1518,6 +1674,7 @@ export const initUI = () => {
                     typeof mAny.foliage === 'string' ? decompressFoliage(mAny.foliage) : mAny.foliage || []
                 ),
                 ...(mAny.sand ? { sand: compressTerrain(mAny.sand) } : {}),
+                ...(mAny.pavement ? { pavement: compressTerrain(mAny.pavement) } : {}),
             };
         });
 
@@ -1576,6 +1733,7 @@ export const initUI = () => {
                     terrain: typeof m.terrain === 'string' ? decompressTerrain(m.terrain, m.gridSize) : m.terrain,
                     foliage: typeof m.foliage === 'string' ? decompressFoliage(m.foliage) : m.foliage || [],
                     ...(m.sand ? { sand: decompressTerrain(m.sand, m.gridSize) } : {}),
+                    ...((m as any).pavement ? { pavement: decompressTerrain((m as any).pavement, m.gridSize) } : {}),
                 } as Mission;
                 delete (base as any).previewBase64;
                 return base;

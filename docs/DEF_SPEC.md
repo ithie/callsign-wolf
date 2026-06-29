@@ -130,7 +130,7 @@ If `rescueZones` is absent or empty, the entire vessel surface allows both picku
 
 ### `landingZone`
 
-Defines the landing pad rectangle where the helicopter can touch down (fuel replenishment, deposit). Currently used only on `research_platform.zdef`.
+Defines the landing pad rectangle where the helicopter can touch down (fuel replenishment, deposit). Used on `research_platform.zdef` (deck at z=6.65) and `wind_turbine.zdef` (gondola top at z=12.3).
 
 ```typescript
 interface DEFLandingZone {
@@ -138,16 +138,20 @@ interface DEFLandingZone {
     y: number;   // local center Y
     w: number;   // half-extent in X
     h: number;   // half-extent in Y
-    z: number;   // height above waterLevel (world z = waterLevel + z)
+    z: number;   // height above terrain (world z = obj.gz + z for static structures)
 }
 ```
 
 At runtime `game.ts` converts this into a world-space axis-aligned box pushed into `G.LANDING_ZONES`:
 
 ```text
+// Research Platform (waterLevel-based):
 xMin = obj.x + lz.x − lz.w,  xMax = obj.x + lz.x + lz.w
 yMin = obj.y + lz.y − lz.h,  yMax = obj.y + lz.y + lz.h
 z    = waterLevel + lz.z
+
+// Wind Turbine (terrain-gz-based):
+z    = obj.gz + lz.z          // gz = terrain height at turbine position
 ```
 
 ### `lights`

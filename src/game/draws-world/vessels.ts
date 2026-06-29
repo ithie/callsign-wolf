@@ -114,14 +114,14 @@ export const createVesselsDraw = (dwCtx: DrawWorldCtx) => {
         ctx.restore();
     };
 
-    const _drawBoatModel = (b: any, cx: number, cy: number) => {
+    const _drawBoatModel = (b: any, cx: number, cy: number, onBeforeFlush?: (ni: number) => void) => {
         if (b.objectType === VESSEL.PILOT_BOAT) {
             renderNodes(PILOT_BOAT_DEF as any, {}, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer, cx, cy);
         } else if (b.objectType === VESSEL.SAR_BOAT) {
             renderNodes(SAR_BOAT_DEF as any, {}, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer, cx, cy);
         } else if (b.objectType === VESSEL.FRIGATE) {
-            renderNodes(FRIGATE_DEF as any, {}, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer, cx, cy);
-        } else if (b.objectType === VESSEL.SALVAGE_TUG) {
+            renderNodes(FRIGATE_DEF as any, {}, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer, cx, cy, undefined, onBeforeFlush);
+        } else if (b.objectType === VESSEL.SALVAGE_TUG || b.objectType === VESSEL.SUPPLY_VESSEL) {
             renderNodes(SALVAGE_TUG_DEF as any, {}, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer, cx, cy);
         } else {
             SceneRenderer.add(SAILBOAT_DEF, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });

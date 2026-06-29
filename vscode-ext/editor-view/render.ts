@@ -23,6 +23,10 @@ export const drawMap = () => {
     const bwcUI = document.getElementById('ui_baywatch_car') as HTMLElement;
     const bwhUI = document.getElementById('ui_baywatch_hq') as HTMLElement;
     const bwtUI2 = document.getElementById('ui_baywatch_tower') as HTMLElement;
+    const csUI = document.getElementById('ui_concert_stage') as HTMLElement;
+    const ftUI = document.getElementById('ui_festival_tent') as HTMLElement;
+    const ftbUI = document.getElementById('ui_festival_tent_broken') as HTMLElement;
+    const fcUI = document.getElementById('ui_festival_car') as HTMLElement;
 
     if (pUI) pUI.style.display = 'none';
     if (cUI) cUI.style.display = 'none';
@@ -36,6 +40,10 @@ export const drawMap = () => {
     if (bwcUI) bwcUI.style.display = 'none';
     if (bwhUI) bwhUI.style.display = 'none';
     if (bwtUI2) bwtUI2.style.display = 'none';
+    if (csUI) csUI.style.display = 'none';
+    if (ftUI) ftUI.style.display = 'none';
+    if (ftbUI) ftbUI.style.display = 'none';
+    if (fcUI) fcUI.style.display = 'none';
 
     // ── Terrain ────────────────────────────────────────────────────────────────
     const wl: number = (m as any).waterLevel ?? 0;
@@ -43,7 +51,8 @@ export const drawMap = () => {
         for (let y = Math.floor(state.panY); y < Math.min(m.gridSize, state.panY + 600 / tSize + 1); y++) {
             const h = m.terrain[x][y];
             const isSand = h > wl && ((m as any).sand?.[x]?.[y] ?? 0) > 0;
-            ctx.fillStyle = h <= wl ? COLORS.water : isSand ? getSandColor(h) : getLandColor(h, false);
+            const isPavement = h > wl && ((m as any).pavement?.[x]?.[y] ?? 0) > 0;
+            ctx.fillStyle = h <= wl ? COLORS.water : isPavement ? '#808088' : isSand ? getSandColor(h) : getLandColor(h, false);
             ctx.fillRect((x - state.panX) * tSize, (y - state.panY) * tSize, tSize + 1.5, tSize + 1.5);
         }
     }
@@ -556,6 +565,78 @@ export const drawMap = () => {
                 bwtUI2.style.display = 'block';
                 bwtUI2.style.left = Math.min(600 - 140, Math.max(0, ox + 20)) + 'px';
                 bwtUI2.style.top = Math.min(600 - 60, Math.max(0, oy)) + 'px';
+            }
+        } else if (obj.type === 'concert_stage') {
+            ctx.fillStyle = '#7a2aee';
+            ctx.fillRect(ox - 2 * tSize, oy - 2.5 * tSize, 4 * tSize, 5 * tSize);
+            ctx.fillStyle = '#2a1040';
+            ctx.fillRect(ox - 1.5 * tSize, oy - 2 * tSize, 3 * tSize, 4 * tSize);
+            ctx.shadowBlur = 0;
+            if (isSelected && csUI) {
+                csUI.style.display = 'block';
+                csUI.style.left = Math.min(600 - 140, Math.max(0, ox + 20)) + 'px';
+                csUI.style.top = Math.min(600 - 60, Math.max(0, oy)) + 'px';
+            }
+        } else if (['festival_tent','festival_tent_red','festival_tent_green'].includes(obj.type as string)) {
+            const tentColors: Record<string, string> = {
+                festival_tent: '#2266cc', festival_tent_red: '#bb3018', festival_tent_green: '#2a8030',
+            };
+            ctx.fillStyle = tentColors[obj.type as string] ?? '#2266cc';
+            ctx.beginPath();
+            ctx.moveTo(ox, oy - 0.7 * tSize);
+            ctx.lineTo(ox - 0.55 * tSize, oy + 0.55 * tSize);
+            ctx.lineTo(ox + 0.55 * tSize, oy + 0.55 * tSize);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            if (isSelected && ftUI) {
+                const colorSel = document.getElementById('m_tent_color') as HTMLSelectElement;
+                if (colorSel) colorSel.value = obj.type as string;
+                const angEl = document.getElementById('m_tent_angle') as HTMLInputElement;
+                if (angEl) angEl.value = String((obj as any).angle ?? 0);
+                ftUI.style.display = 'block';
+                ftUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + 'px';
+                ftUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + 'px';
+            }
+        } else if (['festival_tent_broken','festival_tent_broken_red','festival_tent_broken_green'].includes(obj.type as string)) {
+            const tentBrokenColors: Record<string, string> = {
+                festival_tent_broken: '#6688aa', festival_tent_broken_red: '#884422', festival_tent_broken_green: '#335533',
+            };
+            ctx.fillStyle = tentBrokenColors[obj.type as string] ?? '#6688aa';
+            ctx.beginPath();
+            ctx.moveTo(ox - 0.7 * tSize, oy);
+            ctx.lineTo(ox, oy - 0.25 * tSize);
+            ctx.lineTo(ox + 0.7 * tSize, oy);
+            ctx.lineTo(ox, oy + 0.15 * tSize);
+            ctx.closePath();
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            if (isSelected && ftbUI) {
+                const colorSel = document.getElementById('m_tent_broken_color') as HTMLSelectElement;
+                if (colorSel) colorSel.value = obj.type as string;
+                const angEl = document.getElementById('m_tent_broken_angle') as HTMLInputElement;
+                if (angEl) angEl.value = String((obj as any).angle ?? 0);
+                ftbUI.style.display = 'block';
+                ftbUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + 'px';
+                ftbUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + 'px';
+            }
+        } else if ((obj.type as string).startsWith('festival_car_')) {
+            const carColors: Record<string, string> = {
+                festival_car_red: '#cc2020', festival_car_blue: '#204499',
+                festival_car_silver: '#9aabb5', festival_car_black: '#333',
+                festival_car_yellow: '#cc9900',
+            };
+            ctx.fillStyle = carColors[obj.type as string] ?? '#888';
+            ctx.fillRect(ox - 0.9 * tSize, oy - 0.5 * tSize, 1.8 * tSize, tSize);
+            ctx.shadowBlur = 0;
+            if (isSelected && fcUI) {
+                const colorSel = document.getElementById('m_fcar_color') as HTMLSelectElement;
+                if (colorSel) colorSel.value = obj.type as string;
+                const angleEl = document.getElementById('m_fcar_angle') as HTMLInputElement;
+                if (angleEl) angleEl.value = ((obj as any).angle ?? 0).toString();
+                fcUI.style.display = 'block';
+                fcUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + 'px';
+                fcUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + 'px';
             }
         }
     });
