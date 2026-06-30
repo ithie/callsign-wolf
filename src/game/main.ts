@@ -20,6 +20,7 @@ import Ignition from './music/ignition.zsong';
 import Offshore from './music/offshore.zsong';
 import Vigil from './music/vigil.zsong';
 import Baywatch from './music/baywatch.zsong';
+import Fanfare from './music/fanfare.zsong';
 import { SongData } from '@/shared/tracker-types';
 
 const soundHandler = (() => {
@@ -39,6 +40,7 @@ const soundHandler = (() => {
         slowway: SlowWay,
         spocktribute: SoundSpocktribute,
         thunderscene: ThunderScene,
+        fanfare: Fanfare,
     };
 
     const state: { activeTheme: string; isMuted: boolean } = {

@@ -1,18 +1,8 @@
 import { init, mount, show } from './rankup';
-import { createDrawObjects } from '../../draw-objects';
-import { iso } from '../../render';
-import { tileW, tileH, stepH } from '../../render-config';
 import { RANKS } from '../rank-badge/rank-badge';
 
 const _setup = () => {
-    const c = document.createElement('canvas');
-    c.width = 2; c.height = 2;
-    const cx = c.getContext('2d')!;
-    const isoFn = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
-        iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
-    const sr = { add: () => {}, flush: () => {} };
-    const { drawHeli } = createDrawObjects(cx, isoFn, tileW, tileH, sr as any);
-    init(drawHeli);
+    init(() => 'WOLF');
     mount();
 };
 

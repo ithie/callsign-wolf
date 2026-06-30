@@ -137,7 +137,7 @@ const { drawTrees, rebuildEntryCache } = createFoliage({
 });
 
 HeliSelect.init(G, drawHeli);
-Rankup.init(drawHeli);
+Rankup.init(() => _session.playerName || 'WOLF');
 
 // ─── helper flags ────────────────────────────────────────────────────────────
 const _isPadTile = (x: number, y: number): boolean =>
@@ -254,10 +254,11 @@ const missionComplete = () => {
             }
             : () => CampaignCompleteScreen.show('');
         if (rankUpRank) {
+            soundHandler.play('fanfare');
             Rankup.show(
                 rankUpRank,
                 HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id,
-                showEndScreen,
+                () => { soundHandler.play('maintheme'); showEndScreen(); },
             );
         } else {
             showEndScreen();
@@ -278,8 +279,10 @@ const missionComplete = () => {
         _hud.showAll(false);
         _resetHeliState();
         if (isTutorial) _openCampaignSelect(); else _openMissionSelect();
-        if (rankUpRank)
-            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id);
+        if (rankUpRank) {
+            soundHandler.play('fanfare');
+            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id, () => soundHandler.play('maintheme'));
+        }
     };
 
     const onNext = hasNext ? () => {
@@ -294,8 +297,10 @@ const missionComplete = () => {
         G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
         initGrid(gridSize, G.points);
         startGame(heliType);
-        if (rankUpRank)
-            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id);
+        if (rankUpRank) {
+            soundHandler.play('fanfare');
+            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id, () => soundHandler.play('maintheme'));
+        }
     } : null;
 
     MissionSuccessScreen.mount(onNext, onBack, isTutorial ? I18N.TO_CAMPAIGN_SELECT : undefined);

@@ -3,16 +3,24 @@ import { I18N } from '../../i18n';
 import { ensureEl } from '../dom-helpers';
 import { iso } from '../../render';
 import { tileW, tileH, stepH, CANVAS_SCALE } from '../../render-config';
-import { rankBadgeHtml, type Rank } from '../rank-badge/rank-badge';
+import { rankBadgeHtml, type Rank, RANKS } from '../rank-badge/rank-badge';
+import { COMMODORE_SVG } from '../commodore-svg';
+import { createDrawObjects } from '../../draw-objects';
 
 export { rankBadgeHtml };
 
-type DrawHeliFn = (...args: any[]) => void;
+let _getPlayerName: (() => string) | null = null;
 
-let _drawHeli: DrawHeliFn | null = null;
+const _stub2 = document.createElement('canvas');
+_stub2.width = 2; _stub2.height = 2;
+const _stub2cx = _stub2.getContext('2d')!;
+const _stub2iso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
+    iso(wx, wy, wz, camX, camY, { canvas: _stub2, tileW, tileH, stepH });
+const _stubSr = { add: () => {}, flush: () => {} };
+const { drawHeli: _drawHeli } = createDrawObjects(_stub2cx, _stub2iso, tileW, tileH, _stubSr as any);
 
-export const init = (drawHeli: DrawHeliFn): void => {
-    _drawHeli = drawHeli;
+export const init = (getPlayerName: () => string): void => {
+    _getPlayerName = getPlayerName;
 };
 
 export const hide = (): void => {
@@ -27,11 +35,13 @@ export const hide = (): void => {
 export const mount = (): void => {
     const el = ensureEl('rankup-overlay');
     el.innerHTML = `
+        <p id="rankup-decree"></p>
         <div id="rankup-main">
-            <div id="rankup-badge"></div>
             <div id="rankup-heli" style="display:none">
                 <canvas id="rankup-heli-canvas"></canvas>
             </div>
+            <div id="rankup-badge"></div>
+            <div id="rankup-commodore">${COMMODORE_SVG}</div>
         </div>
         <p class="start-hint" style="color: #cc9900; margin-top: 10px">${I18N.NEXT}</p>`;
     el.addEventListener('click', hide);
@@ -84,6 +94,20 @@ const _animLoop = (): void => {
 
 export const show = (rank: Rank, unlockedHeli?: string, onDismiss?: () => void): void => {
     _onDismiss = onDismiss ?? null;
+    const rankIdx = RANKS.indexOf(rank);
+    const prevRank = rankIdx > 0 ? RANKS[rankIdx - 1] : null;
+    const callsign = _getPlayerName?.() || 'WOLF';
+    const decreeEl = document.getElementById('rankup-decree') as HTMLElement;
+    if (decreeEl && prevRank) {
+        decreeEl.textContent = I18N.RANKUP_DECREE(
+            I18N.RANK_NAME(prevRank.key),
+            I18N.RANK_NAME(rank.key),
+            callsign,
+        );
+        decreeEl.style.display = 'block';
+    } else if (decreeEl) {
+        decreeEl.style.display = 'none';
+    }
     (document.getElementById('rankup-badge') as HTMLElement).innerHTML = rankBadgeHtml(rank);
     const heliEl = document.getElementById('rankup-heli') as HTMLElement;
     if (unlockedHeli) {

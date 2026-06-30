@@ -1,0 +1,23 @@
+bpm 155
+
+[kick]  vol=74
+0 16 32 48
+
+[snare]  vol=56
+12 28 44 60
+
+[hat]  vol=80
+
+[clap]  vol=80
+
+[synth1]  vol=82  wave=sawtooth  filter=2200  inst=custom  attack=0.01  release=0.22  detune=0
+0:C4 4:E4 8:G4 16:C4 20:E4 24:G4 32:E4 36:G4 40:B4 48:C4 52:E4 56:G4
+
+[synth2]  vol=90  wave=sawtooth  filter=2000  inst=custom  attack=0.01  release=1.4  detune=0
+12:C4 28:B4 44:B4 60:B4
+
+[synth3]  vol=58  wave=sawtooth  filter=480  inst=custom  attack=0.01  release=0.22  detune=0
+0:C3 4:G3 8:G3 16:C3 20:G3 24:G3 32:E3 36:G3 40:G3 48:C3 52:E3 56:G3
+
+[synth4]  vol=64  wave=sawtooth  filter=530  inst=custom  attack=0.01  release=1.4  detune=0
+12:C3 28:G3 44:G3 60:G3

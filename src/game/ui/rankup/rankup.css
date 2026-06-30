@@ -16,11 +16,29 @@
 }
 #rankup-badge { animation: rankup-pulse 1.8s ease-in-out infinite; }
 
+#rankup-decree {
+    font-family: monospace;
+    font-size: 15px;
+    color: #eedd88;
+    text-align: center;
+    white-space: pre-line;
+    line-height: 1.7;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    opacity: 0.92;
+}
+
 #rankup-main {
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 40px;
+}
+
+#rankup-commodore {
+    height: min(160px, 26vh);
+    opacity: 0.85;
+    flex-shrink: 0;
 }
 
 #rankup-heli {

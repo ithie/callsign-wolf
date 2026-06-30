@@ -1,5 +1,20 @@
 # SAR: Callsign WOLF — Changelog
 
+## v28.8.0 — Rankup Screen & Fanfare
+
+### Added
+
+- **Rankup — Beförderungsdekret** — Beim Rankup-Screen erscheint ein einzeiliger Dekretext („Leutnant WOLF!\nHiermit befördere ich Sie zum OBERLEUTNANT.") über Badge und Helikopter; lokalisiert in DE/EN.
+- **Rankup — Fanfare** — Neue Musik `fanfare.zsong` wird beim Rankup gespielt; nach Bestätigung kehrt das Spiel zum Maintheme zurück.
+- **Rankup — Commodore-Figur** — SVG-Figur aus dem Missionsbriefing wird rechts neben Badge und Helikopter eingeblendet; SVG in `commodore-svg.ts` ausgelagert und von `briefing.ts` wie `rankup.ts` gemeinsam genutzt.
+
+### Changed
+
+- **Rankup — interner drawHeli** — `rankup.ts` erstellt seinen eigenen `drawHeli`-Renderer (Wegwerf-Canvas + Stub-SceneRenderer), unabhängig vom Game-Canvas; behebt fehlende Helikopteranimation im Simulator.
+- **Rankup — Layout** — Reihenfolge im `#rankup-main`-Flex-Row: Helikopter | Dienstgradabzeichen | Commodore.
+
+---
+
 ## v28.7.2 — Rank System & Frigate Rework
 
 ### Added

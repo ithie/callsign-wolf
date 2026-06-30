@@ -93,6 +93,8 @@ const _DE = {
 
     PILOT_ADDRESS: (rank: string, callsign: string) => `${rank} ${callsign || 'WOLF'}`,
     BRIEFING_ADDRESS: (rank: string, callsign: string) => `Ihre Mission, ${rank} ${callsign || 'WOLF'}`,
+    RANKUP_DECREE: (fromRank: string, toRank: string, callsign: string) =>
+        `${fromRank} ${callsign || 'WOLF'}!\nHiermit befördere ich Sie zum ${toRank.toUpperCase()}.`,
 
     SAVE_CODE_INVALID: 'UNGÜLTIGER CODE',
     SAVE_CODE_LOADED: 'SPIELSTAND GELADEN',
@@ -230,6 +232,8 @@ const _EN = {
 
     PILOT_ADDRESS: (rank: string, callsign: string) => `${rank} ${callsign || 'WOLF'}`,
     BRIEFING_ADDRESS: (rank: string, callsign: string) => `Your mission, ${rank} ${callsign || 'WOLF'}`,
+    RANKUP_DECREE: (fromRank: string, toRank: string, callsign: string) =>
+        `${fromRank} ${callsign || 'WOLF'}!\nI hereby promote you to ${toRank.toUpperCase()}.`,
 
     SAVE_CODE_INVALID: 'INVALID CODE',
     SAVE_CODE_LOADED: 'SAVE LOADED',
