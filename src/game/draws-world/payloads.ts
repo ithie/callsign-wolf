@@ -9,6 +9,32 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
     // Draws one non-hanging, non-orni payload. cx/cy are the camera coords for this frame.
     const _drawSinglePayload = (payload: any, cx: number, cy: number) => {
         const p = isoFn(payload.x, payload.y, payload.z, cx, cy);
+        if (payload.type === PAYLOAD.REINDEER) {
+            const s = tileW * 0.18;
+            ctx.fillStyle = '#8b5228';
+            ctx.fillRect(p.x - s * 1.1, p.y - s * 0.55, s * 2.2, s * 0.65);
+            ctx.fillStyle = '#7a4520';
+            ctx.fillRect(p.x + s * 0.75, p.y - s * 1.0, s * 0.65, s * 0.45);
+            ctx.fillStyle = '#dd2020';
+            ctx.beginPath();
+            ctx.arc(p.x + s * 1.25, p.y - s * 0.82, s * 0.14, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#5a3010';
+            ctx.lineWidth = Math.max(0.8, tileW / 90);
+            ctx.beginPath();
+            ctx.moveTo(p.x + s * 0.9, p.y - s * 0.95);
+            ctx.lineTo(p.x + s * 0.85, p.y - s * 1.55);
+            ctx.lineTo(p.x + s * 1.2, p.y - s * 1.25);
+            ctx.moveTo(p.x + s * 0.85, p.y - s * 1.55);
+            ctx.lineTo(p.x + s * 0.55, p.y - s * 1.25);
+            ctx.moveTo(p.x + s * 1.2, p.y - s * 0.95);
+            ctx.lineTo(p.x + s * 1.3, p.y - s * 1.55);
+            ctx.lineTo(p.x + s * 1.6, p.y - s * 1.25);
+            ctx.moveTo(p.x + s * 1.3, p.y - s * 1.55);
+            ctx.lineTo(p.x + s * 1.05, p.y - s * 1.25);
+            ctx.stroke();
+            return;
+        }
         if (payload.type === PAYLOAD.CRATE) {
             ctx.fillStyle = '#d84';
             ctx.strokeStyle = '#530';

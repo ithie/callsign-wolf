@@ -5,6 +5,9 @@ import { VESSEL, PAYLOAD, VESSEL_PATH } from '../../shared/types';
 import FRIGATE_DEF from '../models/frigate.zdef';
 import CARRIER_DEF from '../models/carrier.zdef';
 import WIND_TURBINE_DEF from '../models/wind_turbine.zdef';
+import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
+import XMAS_HOUSE_A_DEF from '../models/xmas_house_a.zdef';
+import XMAS_HOUSE_B_DEF from '../models/xmas_house_b.zdef';
 
 const getObjects = () => campaignHandler.getCurrentMissionData().objects || [];
 const getObjectByType = (type: string) => getObjects().find((o: any) => o.type === type) || null;
@@ -41,6 +44,12 @@ export const resolveAttachTo = (attachTo: any): { x: number; y: number; z: numbe
         case VESSEL.BOAT: {
             const b = G.BOATS.find((b: any) => b._objIdx === attachTo.objectIdx);
             return b ? { ...applyVesselOffset(b, lx, ly), z: b.zDeck } : null;
+        }
+        case VESSEL.RESEARCH_PLATFORM: {
+            const rp = G.RESEARCH_PLATFORMS.find((r: any) => r._objIdx === attachTo.objectIdx);
+            if (!rp) return null;
+            const lz = (RESEARCH_PLATFORM_DEF as any).landingZone;
+            return { x: rp.x + lx, y: rp.y + ly, z: G.waterLevel + (lz?.z ?? 6.65) };
         }
     }
     return null;
@@ -307,6 +316,7 @@ export const initStaticObjectsFromMission = () => {
         y: obj.y,
         angle: 0,
         zDeck: G.waterLevel + 6.51,
+        _objIdx: allObjects.indexOf(obj),
     }));
     G.WIND_TURBINES = getObjectsByType(VESSEL.WIND_TURBINE).map((obj: any) => ({
         x: obj.x,
@@ -384,7 +394,36 @@ export const initStaticObjectsFromMission = () => {
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
         }))
     );
+    G.XMAS_HOUSES = [
+        ...getObjectsByType(VESSEL.XMAS_HOUSE_A).map((obj: any) => ({
+            type: VESSEL.XMAS_HOUSE_A, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+            gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+            chimneyPos: (XMAS_HOUSE_A_DEF as any).chimneyPos,
+            rescueZones: (XMAS_HOUSE_A_DEF as any).rescueZones,
+        })),
+        ...getObjectsByType(VESSEL.XMAS_HOUSE_B).map((obj: any) => ({
+            type: VESSEL.XMAS_HOUSE_B, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+            gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+            chimneyPos: (XMAS_HOUSE_B_DEF as any).chimneyPos,
+            rescueZones: (XMAS_HOUSE_B_DEF as any).rescueZones,
+        })),
+    ];
+    G.XMAS_LANTERNS = getObjectsByType(VESSEL.XMAS_LANTERN).map((obj: any) => ({
+        x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+        gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+    }));
+    G.SLEIGHS = getObjectsByType(VESSEL.SLEIGH).map((obj: any) => ({
+        x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+        gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+    }));
+    G.REINDEER_OBJECTS = getObjectsByType(VESSEL.REINDEER).map((obj: any) => ({
+        x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+        gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+    }));
     const missionData = campaignHandler.getCurrentMissionData() as any;
+    const _startOnboard = Math.max(0, Math.min(6, missionData?.startOnboard ?? 0));
+    G.heli.onboard = _startOnboard;
+    G.heli.onboardDeliverQueue = Array.from({ length: _startOnboard }, () => undefined);
     G.PARTICLE_EMITTERS = (missionData?.particleEmitters || []).map((e: any) => ({
         type: e.type,
         x: e.x,
@@ -397,6 +436,13 @@ export const initStaticObjectsFromMission = () => {
     G.WIND_TURBINES.forEach((wt: any) => {
         if (wt.onFire) G.PARTICLE_EMITTERS.push({ type: 'fire',  x: wt.x + 0.1, y: wt.y, gz: wt.gz + _gondolaLzZ, particles: [], spawnTimer: 0 });
         if (wt.onFire || wt.onSmoke) G.PARTICLE_EMITTERS.push({ type: 'smoke', x: wt.x + 0.1, y: wt.y, gz: wt.gz + _gondolaLzZ, particles: [], spawnTimer: 0 });
+    });
+    G.XMAS_HOUSES.forEach((h: any) => {
+        if (!h.chimneyPos) return;
+        const c = Math.cos(h.angle ?? 0), s = Math.sin(h.angle ?? 0);
+        const cx = h.x + h.chimneyPos.x * c - h.chimneyPos.y * s;
+        const cy = h.y + h.chimneyPos.x * s + h.chimneyPos.y * c;
+        G.PARTICLE_EMITTERS.push({ type: 'chimney', x: cx, y: cy, gz: h.gz + h.chimneyPos.z, particles: [], spawnTimer: 0 });
     });
 };
 

@@ -31,6 +31,8 @@ let _prevEngineOn = false;
 let _prevFuelLow = false;
 let _prevCarrierNear = false;
 let _prevFrigateNear = false;
+let _padPayloadTimer = 0;
+let _prevAboveParticleZone = true;
 
 const DEF_RESCUE_ZONES: Partial<Record<string, RescueZone[]>> = {
     [VESSEL.CARRIER]:           (CARRIER_DEF.rescueZones           ?? []) as RescueZone[],
@@ -70,6 +72,7 @@ const _dropzoneVessels = (): Array<{ vessel: any; type: string | null }> => [
     ...G.SUBMARINES.map(v => ({ vessel: v, type: VESSEL.SUBMARINE as string | null })),
     ...G.RESEARCH_PLATFORMS.map(v => ({ vessel: v, type: VESSEL.RESEARCH_PLATFORM as string | null })),
     ...G.WIND_TURBINES.map(v => ({ vessel: v, type: VESSEL.WIND_TURBINE as string | null })),
+    ...G.XMAS_HOUSES.map((h: any) => ({ vessel: h, type: h.type as string | null })),
 ];
 
 const _inDropzone = (wx: number, wy: number, deliverTo?: string, wz?: number): boolean =>
@@ -129,11 +132,10 @@ interface _DepositState { ctx: PhysicsCtx; onCarrierDeck: boolean; onPadSurface:
 
 const _deliveryDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface, onFrigateDeck }: _DepositState) => {
     const deliverTo = (p as any).deliverTo as string | undefined;
-    const effectiveDeliverTo = deliverTo ?? _singleDropzoneType();
     const onCarrierOk  = (!deliverTo || deliverTo === VESSEL.CARRIER)  && onCarrierDeck  && G.heli.z < 3.0;
     const onPadOk      = (!deliverTo || deliverTo === VESSEL.PAD)      && onPadSurface   && G.heli.z < 3.0;
     const onFrigateOk  = (!deliverTo || deliverTo === VESSEL.FRIGATE)  && onFrigateDeck  && G.heli.z < 3.0;
-    const inZone = onCarrierOk || onPadOk || onFrigateOk || _inDropzone(p.x, p.y, effectiveDeliverTo, p.z);
+    const inZone = onCarrierOk || onPadOk || onFrigateOk || _inDropzone(p.x, p.y, deliverTo ?? _singleDropzoneType(), p.z) || (!deliverTo && _inDropzone(p.x, p.y, undefined, p.z));
     G.payloads.splice(G.payloads.indexOf(p), 1);
     p.hanging = false; p.rescued = true; G.activePayload = null;
     if (inZone) {
@@ -270,6 +272,23 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
         .filter((b: any) => b.objectType === VESSEL.FRIGATE)
         .map((b: any) => ({ b, x: b.x, y: b.y, angle: b.angle }));
     updateBoats(G.BOATS, dt);
+
+    G.WIND_TURBINES.forEach((wt: any) => {
+        if (wt.collapsing && (wt.collapseT ?? 0) < 1)
+            wt.collapseT = Math.min(1, (wt.collapseT ?? 0) + dt / 180);
+    });
+
+    if (ctx.onBoatTurbineCollision) {
+        for (let bi = G.BOATS.length - 1; bi >= 0; bi--) {
+            const b = G.BOATS[bi];
+            if (b.path === VESSEL_PATH.STATIC) continue;
+            const wtIdx = G.WIND_TURBINES.findIndex(
+                (wt: any) => !wt.collapsing && Math.hypot(b.x - wt.x, b.y - wt.y) < 3.5,
+            );
+            if (wtIdx >= 0) ctx.onBoatTurbineCollision(bi, wtIdx);
+        }
+    }
+
     if (!crashed) {
         for (const { b, x: oldX, y: oldY, angle: oldAng } of _frigateSnap) {
             const local = getCarrierLocal(G.heli.x, G.heli.y, b);
@@ -339,6 +358,18 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     if (ctx.hasPad && onPadSurface && !G.heli.engineOn && !G.heli.inAir && G.heli.rotorRPM < 0.05
         && G.fuelTruck.state === VEHICLE_STATE.PARKED && G.heli.fuel < 99) {
         G.fuelTruck.state = VEHICLE_STATE.DRIVING; G.fuelTruck.t = 0;
+    }
+    if (ctx.padPayloadRefill && onPadSurface && !G.heli.engineOn && !G.heli.inAir
+        && G.heli.rotorRPM < 0.05 && G.heli.onboard < G.heli.maxLoad) {
+        _padPayloadTimer += dt;
+        if (_padPayloadTimer >= 90) {
+            _padPayloadTimer = 0;
+            G.heli.onboardDeliverQueue.push(undefined);
+            G.heli.onboard++;
+            hapticNotification(NotificationType.Success);
+        }
+    } else {
+        _padPayloadTimer = 0;
     }
     if (ctx.hasCarrier && onCarrierDeck && !G.heli.engineOn && !G.heli.inAir && G.heli.rotorRPM < 0.05
         && G.carrierFuelCar.state === VEHICLE_STATE.PARKED && G.heli.fuel < 99) {
@@ -425,6 +456,34 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
         const _deckVoice = (onCarrierDeck && !G.CARRIER.radioSilent) || (onFrigateDeck && !_landFrigate?.radioSilent);
         voiceEvents.emit(_deckVoice ? 'on-the-deck' : 'touchdown');
     }
+
+    // dust/snow burst on entering low-altitude particle zone (every descent)
+    const _particleThreshold = effectiveGroundH + 3.5;
+    const _aboveParticleZone = G.heli.z >= _particleThreshold;
+    if (!_aboveParticleZone && _prevAboveParticleZone && inAir && !onCarrierDeck && !onFrigateDeck) {
+        const _tx = Math.round(G.heli.x), _ty = Math.round(G.heli.y);
+        const _onSand = (G.sandPoints[_tx]?.[_ty] ?? 0) > 0;
+        const _dustColor = ctx.snow ? '240, 248, 255' : _onSand ? '210, 185, 120' : null;
+        if (_dustColor) {
+            for (let _i = 0; _i < 150; _i++) {
+                const _a = Math.random() * Math.PI * 2;
+                const _spd = 0.008 + Math.random() * 0.02;
+                G.particles.push({
+                    x: G.heli.x + (Math.random() - 0.5) * 0.3,
+                    y: G.heli.y + (Math.random() - 0.5) * 0.3,
+                    z: effectiveGroundH + 0.04,
+                    vx: Math.cos(_a) * _spd,
+                    vy: Math.sin(_a) * _spd,
+                    vz: 0.001 + Math.random() * 0.006,
+                    life: 2.5 + Math.random() * 1.5,
+                    size: 5 + Math.random() * 6,
+                    color: _dustColor,
+                    isSmoke: true,
+                });
+            }
+        }
+    }
+    _prevAboveParticleZone = _aboveParticleZone;
     G.heli.inAir = inAir;
 
     // carrier proximity — "deck cleared" on approach
@@ -597,7 +656,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
                 if (p.attachTo) {
                     let vessel: any = null;
                     if (p.attachTo.objectType === VESSEL.CARRIER) vessel = G.CARRIER;
-                    else if (p.attachTo.objectType === VESSEL.BOAT) vessel = G.BOATS.find((b: any) => b._objIdx === p.attachTo.objectIdx);
+                    else if (p.attachTo.objectType === VESSEL.BOAT || p.attachTo.objectType === VESSEL.SUPPLY_VESSEL) vessel = G.BOATS.find((b: any) => b._objIdx === p.attachTo.objectIdx);
                     else if (p.attachTo.objectType === VESSEL.SUBMARINE) vessel = G.SUBMARINES.find((s: any) => s._objIdx === p.attachTo.objectIdx);
                     if (vessel && !_vesselPickupAllowed(G.heli.x, G.heli.y, vessel, p.attachTo.objectType)) continue;
                 }

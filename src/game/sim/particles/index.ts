@@ -24,3 +24,6 @@ export const updateParticles = (args: ParticleSystemArgs) =>
 
 // Named event trigger — semantically an init of the explosion particle system
 export const spawnExplosion = (args: ParticleSystemArgs) => Explosion.init(args);
+
+export const spawnPositionExplosion = (args: ParticleSystemArgs, x: number, y: number, z: number) =>
+    Explosion.initAt(args.ctx, x, y, z);

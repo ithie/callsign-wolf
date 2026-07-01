@@ -1,5 +1,24 @@
 import type { EmitterParticle, ParticleEmitter, ParticleSystemArgs } from './ctx';
 
+const CHIMNEY_SPAWN_INTERVAL = 6;
+const MAX_CHIMNEY_PARTICLES = 20;
+
+const _spawnChimney = (e: ParticleEmitter, ox: number, oy: number): EmitterParticle => {
+    const gray = 90 + Math.floor(Math.random() * 40);
+    return {
+        x: e.x + ox, y: e.y + oy,
+        z: e.gz + 0.05,
+        vx: (Math.random() - 0.5) * 0.016,
+        vy: (Math.random() - 0.5) * 0.016,
+        vz: 0.018 + Math.random() * 0.014,
+        life: 3.0 + Math.random() * 2.0,
+        maxLife: 5.0,
+        size: 2.2 + Math.random() * 1.8,
+        color: `${gray}, ${gray}, ${gray}`,
+        isSmoke: true,
+    };
+};
+
 const FIRE_SUB_R = 0.18;
 const SMOKE_SUB_R = 0.12;
 const FIRE_SUB: [number, number][] = [[0,0],[FIRE_SUB_R,0],[-FIRE_SUB_R,0],[0,FIRE_SUB_R],[0,-FIRE_SUB_R]];
@@ -55,6 +74,14 @@ export const update = ({ ctx, dt }: ParticleSystemArgs) => {
 
     emitters.forEach((e: ParticleEmitter) => {
         e.spawnTimer += dt;
+
+        if (e.type === 'chimney') {
+            while (e.spawnTimer >= CHIMNEY_SPAWN_INTERVAL && e.particles.length < MAX_CHIMNEY_PARTICLES) {
+                e.spawnTimer -= CHIMNEY_SPAWN_INTERVAL;
+                e.particles.push(_spawnChimney(e, (Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.06));
+            }
+            if (e.particles.length >= MAX_CHIMNEY_PARTICLES) e.spawnTimer = 0;
+        } else {
         const isFire = e.type === 'fire';
         const spawnInterval = isFire ? FIRE_SPAWN_INTERVAL : SMOKE_SPAWN_INTERVAL;
         const sub = isFire ? FIRE_SUB : SMOKE_SUB;
@@ -67,7 +94,9 @@ export const update = ({ ctx, dt }: ParticleSystemArgs) => {
         }
         // Drain timer if cap was hit to avoid burst on uncap
         if (e.particles.length >= MAX_PARTICLES) e.spawnTimer = 0;
+        }
 
+        const isChimney = e.type === 'chimney';
         e.particles.forEach(p => {
             p.vx += (targetVx - p.vx) * conv;
             p.vy += (targetVy - p.vy) * conv;
@@ -75,6 +104,7 @@ export const update = ({ ctx, dt }: ParticleSystemArgs) => {
             p.y += p.vy * dt;
             p.z += p.vz * dt;
             p.life -= 0.02 * dt;
+            if (isChimney) p.size += 0.012 * dt;
         });
 
         e.particles = e.particles.filter(p => p.life > 0);

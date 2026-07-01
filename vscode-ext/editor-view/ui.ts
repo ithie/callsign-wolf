@@ -59,7 +59,11 @@ export const syncToData = () => {
         en: getEl<HTMLTextAreaElement>('m_briefing_en').value,
     };
     m.rain = getInput('m_rain').checked;
+    m.snow = getInput('m_snow').checked;
     m.night = getInput('m_night').checked;
+    m.padPayloadRefill = getInput('m_pad_payload_refill').checked || undefined;
+    const _startOnboard = parseInt(getInput('m_start_onboard').value);
+    (m as any).startOnboard = _startOnboard > 0 ? _startOnboard : undefined;
     (m as any).waterLevel = parseFloat(getInput('m_water_level').value) || 0;
     m.windDir = parseInt(getInput('m_wind_dir').value) || 0;
     m.windStr = parseFloat(getInput('m_wind_str').value) || 0;
@@ -111,7 +115,10 @@ export const loadMission = (idx: number) => {
     getEl<HTMLTextAreaElement>('m_briefing_en').value = _lsEn(m.briefing);
     getInput('m_grid_size').value = m.gridSize.toString();
     getInput('m_rain').checked = m.rain;
+    getInput('m_snow').checked = !!m.snow;
     getInput('m_night').checked = m.night;
+    getInput('m_pad_payload_refill').checked = !!(m as any).padPayloadRefill;
+    getInput('m_start_onboard').value = ((m as any).startOnboard ?? 0).toString();
     getInput('m_water_level').value = ((m as any).waterLevel ?? 0).toString();
     getInput('m_wind_dir').value = (m.windDir ?? 0).toString();
     getInput('m_wind_str').value = (m.windStr ?? 0).toString();
@@ -802,64 +809,51 @@ export const initUI = () => {
     safeClick('close-festival-tent', () => { state.selectedObjectIdx = null; drawMap(); });
     safeClick('close-festival-tent-broken', () => { state.selectedObjectIdx = null; drawMap(); });
     safeClick('close-festival-car', () => { state.selectedObjectIdx = null; drawMap(); });
-    document.getElementById('m_bwc_angle')?.addEventListener('input', () => {
-        const m = getCurrentMission();
-        if (!m || state.selectedObjectIdx === null) return;
-        const obj = m.objects[state.selectedObjectIdx] as any;
-        if (obj?.type !== 'baywatch_car') return;
-        obj.angle = parseInt((document.getElementById('m_bwc_angle') as HTMLInputElement).value) || 0;
-        drawMap(); broadcastPreview(); notifyWorkbench();
-    });
-    document.getElementById('m_tent_color')?.addEventListener('change', () => {
-        const m = getCurrentMission();
-        if (!m || state.selectedObjectIdx === null) return;
-        const obj = m.objects[state.selectedObjectIdx] as any;
-        if (!['festival_tent','festival_tent_red','festival_tent_green'].includes(obj?.type)) return;
-        const v = (document.getElementById('m_tent_color') as HTMLSelectElement).value;
-        if (v !== 'random') obj.type = v;
-        drawMap(); broadcastPreview(); notifyWorkbench();
-    });
-    document.getElementById('m_tent_angle')?.addEventListener('input', () => {
-        const m = getCurrentMission();
-        if (!m || state.selectedObjectIdx === null) return;
-        const obj = m.objects[state.selectedObjectIdx] as any;
-        if (!['festival_tent','festival_tent_red','festival_tent_green'].includes(obj?.type)) return;
-        obj.angle = parseInt((document.getElementById('m_tent_angle') as HTMLInputElement).value) || 0;
-        drawMap(); broadcastPreview(); notifyWorkbench();
-    });
-    document.getElementById('m_tent_broken_color')?.addEventListener('change', () => {
-        const m = getCurrentMission();
-        if (!m || state.selectedObjectIdx === null) return;
-        const obj = m.objects[state.selectedObjectIdx] as any;
-        if (!['festival_tent_broken','festival_tent_broken_red','festival_tent_broken_green'].includes(obj?.type)) return;
-        const v = (document.getElementById('m_tent_broken_color') as HTMLSelectElement).value;
-        if (v !== 'random') obj.type = v;
-        drawMap(); broadcastPreview(); notifyWorkbench();
-    });
-    document.getElementById('m_tent_broken_angle')?.addEventListener('input', () => {
-        const m = getCurrentMission();
-        if (!m || state.selectedObjectIdx === null) return;
-        const obj = m.objects[state.selectedObjectIdx] as any;
-        if (!['festival_tent_broken','festival_tent_broken_red','festival_tent_broken_green'].includes(obj?.type)) return;
-        obj.angle = parseInt((document.getElementById('m_tent_broken_angle') as HTMLInputElement).value) || 0;
-        drawMap(); broadcastPreview(); notifyWorkbench();
-    });
-    document.getElementById('m_fcar_color')?.addEventListener('change', () => {
-        const m = getCurrentMission();
-        if (!m || state.selectedObjectIdx === null) return;
-        const obj = m.objects[state.selectedObjectIdx] as any;
-        if (!obj?.type?.startsWith('festival_car_')) return;
-        obj.type = (document.getElementById('m_fcar_color') as HTMLSelectElement).value;
-        drawMap(); broadcastPreview(); notifyWorkbench();
-    });
-    document.getElementById('m_fcar_angle')?.addEventListener('input', () => {
-        const m = getCurrentMission();
-        if (!m || state.selectedObjectIdx === null) return;
-        const obj = m.objects[state.selectedObjectIdx] as any;
-        if (!obj?.type?.startsWith('festival_car_')) return;
-        obj.angle = parseInt((document.getElementById('m_fcar_angle') as HTMLInputElement).value) || 0;
-        drawMap(); broadcastPreview(); notifyWorkbench();
-    });
+    safeClick('close-xmas-house', () => { state.selectedObjectIdx = null; drawMap(); });
+    safeClick('close-xmas-lantern', () => { state.selectedObjectIdx = null; drawMap(); });
+    safeClick('close-sleigh', () => { state.selectedObjectIdx = null; drawMap(); });
+    safeClick('close-reindeer', () => { state.selectedObjectIdx = null; drawMap(); });
+    // Generic angle wire-up: input saves back to selected object of given types
+    const wireAngle = (inputId: string, types: string[]) => {
+        document.getElementById(inputId)?.addEventListener('input', () => {
+            const m = getCurrentMission();
+            if (!m || state.selectedObjectIdx === null) return;
+            const obj = m.objects[state.selectedObjectIdx] as any;
+            if (!types.includes(obj?.type)) return;
+            obj.angle = parseInt((document.getElementById(inputId) as HTMLInputElement).value) || 0;
+            drawMap(); broadcastPreview(); notifyWorkbench();
+        });
+    };
+    wireAngle('m_bwc_angle', ['baywatch_car']);
+    wireAngle('m_tent_angle', ['festival_tent', 'festival_tent_red', 'festival_tent_green']);
+    wireAngle('m_tent_broken_angle', ['festival_tent_broken', 'festival_tent_broken_red', 'festival_tent_broken_green']);
+    wireAngle('m_fcar_angle', ['festival_car_red', 'festival_car_blue', 'festival_car_silver', 'festival_car_black', 'festival_car_yellow']);
+    wireAngle('m_pw_angle', ['plane_wreck']);
+    wireAngle('m_sb_angle', ['sailboat_broken']);
+    wireAngle('m_ow_angle', ['ornithopter_wreck']);
+    wireAngle('m_xmas_house_angle', ['xmas_house_a', 'xmas_house_b']);
+    wireAngle('m_xmas_lantern_angle', ['xmas_lantern']);
+    wireAngle('m_sleigh_angle', ['sleigh']);
+    wireAngle('m_reindeer_angle', ['reindeer']);
+
+    // Type-selector handlers (non-angle object properties)
+    const wireTypeSelect = (selectId: string, types: string[], useStartsWith = false) => {
+        document.getElementById(selectId)?.addEventListener('change', () => {
+            const m = getCurrentMission();
+            if (!m || state.selectedObjectIdx === null) return;
+            const obj = m.objects[state.selectedObjectIdx] as any;
+            const match = useStartsWith ? types.some(t => obj?.type?.startsWith(t)) : types.includes(obj?.type);
+            if (!match) return;
+            const v = (document.getElementById(selectId) as HTMLSelectElement).value;
+            if (v !== 'random') obj.type = v;
+            drawMap(); broadcastPreview(); notifyWorkbench();
+        });
+    };
+    wireTypeSelect('m_tent_color', ['festival_tent', 'festival_tent_red', 'festival_tent_green']);
+    wireTypeSelect('m_tent_broken_color', ['festival_tent_broken', 'festival_tent_broken_red', 'festival_tent_broken_green']);
+    wireTypeSelect('m_fcar_color', ['festival_car_'], true);
+    wireTypeSelect('m_xmas_house_type', ['xmas_house_a', 'xmas_house_b']);
+
     document.getElementById('m_wt_spinning')?.addEventListener('change', () => {
         const m = getCurrentMission();
         if (!m || state.selectedObjectIdx === null) return;
@@ -896,31 +890,6 @@ export const initUI = () => {
     );
     document.getElementById('m_submarine_exitWarning')?.addEventListener('change', () => syncVesselFromUI('submarine'));
 
-    // Wreck angle sync
-    document.getElementById('m_pw_angle')?.addEventListener('input', () => {
-        const m = getCurrentMission();
-        if (!m || state.selectedObjectIdx === null) return;
-        const obj = m.objects[state.selectedObjectIdx] as any;
-        if (obj?.type !== 'plane_wreck') return;
-        obj.angle = parseInt((document.getElementById('m_pw_angle') as HTMLInputElement).value) || 0;
-        drawMap(); broadcastPreview(); notifyWorkbench();
-    });
-    document.getElementById('m_sb_angle')?.addEventListener('input', () => {
-        const m = getCurrentMission();
-        if (!m || state.selectedObjectIdx === null) return;
-        const obj = m.objects[state.selectedObjectIdx] as any;
-        if (obj?.type !== 'sailboat_broken') return;
-        obj.angle = parseInt((document.getElementById('m_sb_angle') as HTMLInputElement).value) || 0;
-        drawMap(); broadcastPreview(); notifyWorkbench();
-    });
-    document.getElementById('m_ow_angle')?.addEventListener('input', () => {
-        const m = getCurrentMission();
-        if (!m || state.selectedObjectIdx === null) return;
-        const obj = m.objects[state.selectedObjectIdx] as any;
-        if (obj?.type !== 'ornithopter_wreck') return;
-        obj.angle = parseInt((document.getElementById('m_ow_angle') as HTMLInputElement).value) || 0;
-        drawMap(); broadcastPreview(); notifyWorkbench();
-    });
 
     // General sync
     [
@@ -929,6 +898,7 @@ export const initUI = () => {
         'm_briefing_de',
         'm_briefing_en',
         'm_rain',
+        'm_snow',
         'm_night',
         'm_water_level',
         'm_wind_dir',
@@ -980,6 +950,10 @@ export const initUI = () => {
         'festival_car_black',
         'festival_car_yellow',
         'buoy',
+        'xmas_house',
+        'xmas_lantern',
+        'sleigh',
+        'reindeer',
         'person',
         'rescuer',
         'crate',
@@ -1010,6 +984,11 @@ export const initUI = () => {
         festival_car_black: '#444444',
         festival_car_yellow: '#cc9900',
         buoy: '#dd3300',
+        xmas_house_a: '#aaddff',
+        xmas_house_b: '#88bbee',
+        xmas_lantern: '#ffdd44',
+        sleigh: '#cc3333',
+        reindeer: '#8b5228',
         person: '#ffe033',
         crate: '#ff8800',
     };
@@ -1450,8 +1429,11 @@ export const initUI = () => {
                     'concert_stage',
                     'festival_tent', 'festival_tent_red', 'festival_tent_green',
                     'festival_tent_broken', 'festival_tent_broken_red', 'festival_tent_broken_green',
-                    'festival_car_red', 'festival_car_blue', 'festival_car_silver', 'festival_car_black', 'festival_car_yellow'].includes(obj.type))
+                    'festival_car_red', 'festival_car_blue', 'festival_car_silver', 'festival_car_black', 'festival_car_yellow',
+                    'xmas_house_a', 'xmas_house_b', 'sleigh', 'reindeer'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
+                else if (obj.type === 'xmas_lantern')
+                    hit = Math.hypot(gx - obj.x, gy - obj.y) < 2.5;
                 if (hit) {
                     startDrag('object', i, obj.x, obj.y);
                     return;

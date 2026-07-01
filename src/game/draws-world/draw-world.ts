@@ -34,6 +34,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         _drawBaywatchObjects,
         _drawBuoys,
         _drawFestivalObjects,
+        _drawXmasObjects,
     } = createStructuresDraw(dwCtx);
     const { drawPayloadObjects, queueAttachedPayloads } = createPayloadsDraw(dwCtx);
     const { handleCollisionBoxes, drawDebugOverlay } = createCollisionDraw(dwCtx);
@@ -195,8 +196,8 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             if (isVisible(rp.x, rp.y, visMargin) && _inNightCone(rp.x, rp.y)) _drawResearchPlatform(rp.x, rp.y);
         });
         G.WIND_TURBINES.forEach((wt: any) => {
-            if (isVisible(wt.x, wt.y, visMargin) && _inNightCone(wt.x, wt.y)) _drawWindTurbine(wt.x, wt.y, wt.spinning);
-            if (_inNightCone(wt.x, wt.y)) _drawDefLights(wt.x, wt.y, WIND_TURBINE_DEF);
+            if (isVisible(wt.x, wt.y, visMargin) && _inNightCone(wt.x, wt.y)) _drawWindTurbine(wt);
+            if (!wt.collapsing && _inNightCone(wt.x, wt.y)) _drawDefLights(wt.x, wt.y, WIND_TURBINE_DEF);
         });
         G.PLANE_WRECKS.forEach((pw: any) => {
             if (isVisible(pw.x, pw.y, visMargin) && _inNightCone(pw.x, pw.y)) _drawPlaneWreck(pw.x, pw.y, pw.angle);
@@ -207,6 +208,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         _drawBaywatchObjects(_inNightCone);
         _drawBuoys(_inNightCone);
         _drawFestivalObjects(_inNightCone);
+        _drawXmasObjects(_inNightCone);
         const lh = dwCtx.getLighthouse();
         if (lh && isVisible(lh.x, lh.y, visMargin) && _inNightCone(lh.x, lh.y)) _drawLighthouse(camX, camY);
 

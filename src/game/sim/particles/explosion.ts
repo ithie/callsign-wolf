@@ -1,4 +1,4 @@
-import type { Particle, DebrisPiece, ParticleSystemArgs } from './ctx';
+import type { Particle, DebrisPiece, ParticleSystemArgs, ParticlesCtx } from './ctx';
 
 export const init = ({ ctx }: ParticleSystemArgs) => {
     const { particles, debris, getGround, getHeliType } = ctx;
@@ -103,6 +103,52 @@ export const init = ({ ctx }: ParticleSystemArgs) => {
                 } satisfies Particle);
             }
         }, i * 120);
+    }
+};
+
+export const initAt = (ctx: ParticlesCtx, x: number, y: number, z: number) => {
+    const { particles, debris } = ctx;
+    for (let i = 0; i < 70; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const el = (Math.random() - 0.2) * Math.PI;
+        const spd = 0.05 + Math.random() * 0.14;
+        const isFire = Math.random() < 0.55;
+        particles.push({
+            x: x + (Math.random() - 0.5) * 0.4,
+            y: y + (Math.random() - 0.5) * 0.4,
+            z: z + Math.random() * 0.5,
+            vx: Math.cos(a) * Math.cos(el) * spd,
+            vy: Math.sin(a) * Math.cos(el) * spd,
+            vz: Math.sin(el) * spd * 0.5 + 0.06,
+            gravity: -0.004,
+            size: isFire ? 5 + Math.random() * 7 : 4 + Math.random() * 10,
+            life: 0.6 + Math.random() * 0.9,
+            maxLife: 1.0,
+            color: isFire
+                ? `${215 + Math.floor(Math.random() * 40)}, ${Math.floor(Math.random() * 100)}, 0`
+                : `${70 + Math.floor(Math.random() * 60)}, ${65 + Math.floor(Math.random() * 40)}, ${55 + Math.floor(Math.random() * 35)}`,
+            isSmoke: !isFire,
+        } satisfies Particle);
+    }
+    for (let i = 0; i < 10; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const spd = 0.06 + Math.random() * 0.18;
+        debris.push({
+            x, y,
+            z: z + 0.1 + Math.random() * 0.3,
+            vx: Math.cos(a) * spd,
+            vy: Math.sin(a) * spd,
+            vz: 0.04 + Math.random() * 0.1,
+            gravity: -0.008,
+            angle: Math.random() * Math.PI * 2,
+            av: (Math.random() - 0.5) * 0.18,
+            w: 0.08 + Math.random() * 0.18,
+            h: 0.04 + Math.random() * 0.08,
+            color: '#555',
+            stroke: '#333',
+            life: 2.5 + Math.random() * 1.5,
+            bounced: false,
+        } satisfies DebrisPiece);
     }
 };
 

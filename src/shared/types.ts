@@ -33,6 +33,11 @@ export const VESSEL = {
     FESTIVAL_CAR_SILVER:'festival_car_silver',
     FESTIVAL_CAR_BLACK: 'festival_car_black',
     FESTIVAL_CAR_YELLOW:'festival_car_yellow',
+    XMAS_HOUSE_A:       'xmas_house_a',
+    XMAS_HOUSE_B:       'xmas_house_b',
+    XMAS_LANTERN:       'xmas_lantern',
+    SLEIGH:             'sleigh',
+    REINDEER:           'reindeer',
 } as const;
 
 export const PAYLOAD = {
@@ -40,6 +45,7 @@ export const PAYLOAD = {
     CRATE:      'crate',
     RESCUER:    'rescuer',
     ORNI_WRECK: 'orni_wreck',
+    REINDEER:   'reindeer',
 } as const;
 
 export const VEHICLE_STATE = {
@@ -87,8 +93,9 @@ export const OBJECTIVE_TYPE = {
 export type ObjectiveType = typeof OBJECTIVE_TYPE[keyof typeof OBJECTIVE_TYPE];
 
 export const PARTICLE_EMITTER_TYPE = {
-    SMOKE: 'smoke',
-    FIRE:  'fire',
+    SMOKE:   'smoke',
+    FIRE:    'fire',
+    CHIMNEY: 'chimney',
 } as const;
 export type ParticleEmitterType = typeof PARTICLE_EMITTER_TYPE[keyof typeof PARTICLE_EMITTER_TYPE];
 export type ParticleEmitter = { type: ParticleEmitterType; x: number; y: number };
@@ -168,14 +175,20 @@ type FrigateObject = {
     radioSilent?: boolean;
 };
 
-type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | SupplyVesselObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject | FrigateObject;
+type XmasHouseAObject   = { type: 'xmas_house_a'; x: number; y: number; angle?: number };
+type XmasHouseBObject   = { type: 'xmas_house_b'; x: number; y: number; angle?: number };
+type XmasLanternObject  = { type: 'xmas_lantern'; x: number; y: number; angle?: number };
+type SleighObject       = { type: 'sleigh'; x: number; y: number; angle?: number };
+type ReindeerObject     = { type: 'reindeer'; x: number; y: number; angle?: number };
+
+type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | SupplyVesselObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject | FrigateObject | XmasHouseAObject | XmasHouseBObject | XmasLanternObject | SleighObject | ReindeerObject;
 
 export type Objective =
     | { type: 'rescue_all' }
     | { type: 'land_at'; target: 'pad' | 'carrier' | 'frigate' };
 
 export type MissionPayload = {
-    type: 'person' | 'crate' | 'rescuer' | 'orni_wreck';
+    type: 'person' | 'crate' | 'rescuer' | 'orni_wreck' | 'reindeer';
     x: number;
     y: number;
     attachTo?: { objectType: 'carrier' | 'boat' | 'submarine' | 'sailboat_broken' | 'wind_turbine' | 'supply_vessel'; objectIdx: number; localX?: number; localY?: number };
@@ -200,6 +213,7 @@ export interface Mission {
     foliage: { x: number; y: number; s: number; type: string }[];
 
     rain: boolean;
+    snow: boolean;
     night: boolean;
     windDir: number;
     windStr: number;
@@ -208,6 +222,7 @@ export interface Mission {
     music?: string;
     sand?: number[][];
     particleEmitters?: ParticleEmitter[];
+    padPayloadRefill?: boolean;
 }
 
 export type MissionData = Omit<Mission, 'terrain' | 'foliage'> & {

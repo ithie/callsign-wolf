@@ -50,7 +50,7 @@ export type EmitterParticle = {
 
 export type ParticleEmitter = {
     x: number; y: number; gz: number;
-    type: 'fire' | 'smoke';
+    type: 'fire' | 'smoke' | 'chimney';
     particles: EmitterParticle[];
     spawnTimer: number;
 };

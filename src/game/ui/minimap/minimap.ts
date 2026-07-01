@@ -176,10 +176,6 @@ export const updateMinimap = (data: MinimapData): void => {
             octx.moveTo(ex, ey);
             octx.lineTo(ex - headLen * Math.cos(wa + headAngle), ey - headLen * Math.sin(wa + headAngle));
             octx.stroke();
-            octx.fillStyle = 'rgba(180,220,255,0.9)';
-            octx.font = 'bold 9px system-ui';
-            octx.textAlign = 'left';
-            octx.fillText(`Bft ${data.windBft}`, 18, MM_SIZE - 3);
         }
     }
 

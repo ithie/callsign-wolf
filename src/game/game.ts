@@ -27,7 +27,7 @@ import {
 } from './sim/world-init';
 import { carrierCar } from './sim/vehicles/carrier-car';
 import { fuelTruck } from './sim/vehicles/fuel-truck';
-import { initParticles, spawnExplosion, type ParticlesCtx } from './sim/particles';
+import { initParticles, spawnExplosion, spawnPositionExplosion, type ParticlesCtx } from './sim/particles';
 import { updatePhysics } from './sim/simulation';
 import { voiceEvents } from './voice-events';
 import { mountVoiceLine, hideVoiceLine } from './ui/voice-line/voice-line';
@@ -171,6 +171,7 @@ const _stopMission = () => {
     _hud.showAll(false);
     setTouchVisible(false);
     _showRainOverlay(false);
+    _showSnowOverlay(false);
     const flashEl = document.getElementById('flash-overlay');
     if (flashEl) flashEl.style.opacity = '0';
     hideVoiceLine();
@@ -499,7 +500,9 @@ const launchMission = async (showLoader = true): Promise<void> => {
     _missionHasCarrier = !!_lmdObjs.find((o: any) => o.type === VESSEL.CARRIER);
     _missionHasLighthouse = !!_lmdObjs.find((o: any) => o.type === VESSEL.LIGHTHOUSE);
     _missionRain = !!_lmd.rain;
+    _missionSnow = !!_lmd.snow;
     _missionNight = !!_lmd.night;
+    _missionPadPayloadRefill = !!_lmd.padPayloadRefill;
     _missionWindBft = _lmd.windStr ?? 0;
     _missionWindStr = _missionWindBft * 0.6; // Beaufort 0-5 → internal 0-3
     _missionWindDir = _lmd.windDir ?? 0;
@@ -517,7 +520,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     G.sandPoints = campaignHandler.getTerrain().sand ?? [];
     G.pavementPoints = campaignHandler.getTerrain().pavement ?? [];
     initMinimapTerrain(G.points, _missionGridSize, G.waterLevel);
-    precomputeDayColors(_missionRain);
+    precomputeDayColors(_missionRain, _missionSnow);
     handle?.step('Gelände…', 0.25);
     if (handle) await _tick();
 
@@ -594,6 +597,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     zstate.cam.y = (_sp.x + _sp.y) * (tileH / 2);
 
     _showRainOverlay(_missionRain, _lmd.windDir ?? 225, _lmd.windStr ?? 1);
+    _showSnowOverlay(_missionSnow);
     cancelAnimationFrame(_rafId);
     try { soundHandler.play(_lmd.music || 'clike', 'game'); } catch { /* audio unavailable */ }
     initHeliSound(G.heli.type);
@@ -681,6 +685,7 @@ const drawScene = () => {
     ry = camY / tileH - camX / tileW;
 
     drawTerrain(camX, camY, rx, ry, isNight, rain);
+    _updateSnowDrift();
 
     const _visMargin = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH) * 2) + 8;
 
@@ -802,7 +807,7 @@ const drawScene = () => {
         if (p.isSmoke) {
             ctx.fillStyle = `rgb(${p.color})`;
             ctx.beginPath();
-            ctx.arc(pos.x, pos.y, size * (1.5 - p.life * 0.5), 0, Math.PI * 2);
+            ctx.arc(pos.x, pos.y, Math.max(0, size * (1.5 - p.life * 0.5)), 0, Math.PI * 2);
             ctx.fill();
         } else if (p.isMetal) {
             ctx.fillStyle = `rgb(${p.color})`;
@@ -895,6 +900,8 @@ let _missionHasPad = false;
 let _missionHasCarrier = false;
 let _missionHasLighthouse = false;
 let _missionRain = false;
+let _missionSnow = false;
+let _missionPadPayloadRefill = false;
 let _missionNight = false;
 let _missionWindStr = 1;
 let _missionWindDir = 0;
@@ -933,6 +940,12 @@ const _physicsCtx = {
     get hasCarrier() {
         return _missionHasCarrier;
     },
+    get snow() {
+        return _missionSnow;
+    },
+    get padPayloadRefill() {
+        return _missionPadPayloadRefill;
+    },
     get isTutorialMode() {
         return campaignHandler.getCurrentMissionData().campaignType === CAMPAIGN_TYPE.TUTORIAL;
     },
@@ -962,6 +975,19 @@ const _physicsCtx = {
         saveSession(_session);
         _stopMission();
         Rankup.show(RANKS[RANKS.length - 1], undefined);
+    },
+    onBoatTurbineCollision(boatIdx: number, wtIdx: number) {
+        const b = G.BOATS[boatIdx];
+        const wt = G.WIND_TURBINES[wtIdx];
+        if (!b || !wt) return;
+        const bx = b.x, by = b.y;
+        G.BOATS.splice(boatIdx, 1);
+        const pCtx = _makePCtx();
+        spawnPositionExplosion({ ctx: pCtx, dt: 0 }, bx, by, G.waterLevel + 0.5);
+        G.PARTICLE_EMITTERS.push({ type: 'smoke', x: bx, y: by, gz: G.waterLevel, particles: [], spawnTimer: 0 });
+        G.PARTICLE_EMITTERS.push({ type: 'fire',  x: wt.x, y: wt.y, gz: wt.gz + 12.3, particles: [], spawnTimer: 0 });
+        wt.collapsing = true;
+        wt.collapseT = 0;
     },
 } as import('./sim/simulation').PhysicsCtx;
 
@@ -1046,6 +1072,20 @@ const setupTouchControls = () => {
 
 const _ensureEl = ensureEl;
 
+const _showSnowOverlay = (active: boolean) => {
+    const el = document.getElementById('snow-overlay');
+    if (!el) return;
+    el.style.display = active ? 'block' : 'none';
+};
+
+const _updateSnowDrift = () => {
+    if (!_missionSnow) return;
+    const el = document.getElementById('snow-overlay');
+    if (!el) return;
+    const driftX = Math.cos(G.wind.angle) * G.wind.rawStr * 80;
+    el.style.setProperty('--snow-drift-x', `${driftX.toFixed(1)}px`);
+};
+
 const _showRainOverlay = (active: boolean, windDir = 225, windStr = 1) => {
     const el = document.getElementById('rain-overlay');
     if (!el) return;
@@ -1061,6 +1101,7 @@ const _showRainOverlay = (active: boolean, windDir = 225, windStr = 1) => {
 
 const mountGameOverlays = () => {
     _ensureEl('rain-overlay');
+    _ensureEl('snow-overlay');
     _ensureEl('flash-overlay');
     mountVoiceLine();
 };
@@ -1087,6 +1128,7 @@ const _previewLaunch = !import.meta.env.DEV
           _rafId = 0;
           stopHeliSound();
           _showRainOverlay(false);
+          _showSnowOverlay(false);
           const _flashEl = document.getElementById('flash-overlay');
           if (_flashEl) _flashEl.style.opacity = '0';
 

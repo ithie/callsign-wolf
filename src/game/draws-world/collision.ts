@@ -216,9 +216,10 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
         G.BOATS.forEach((b: any) => {
             const wl = G.waterLevel;
             const def =
-                b.objectType === VESSEL.PILOT_BOAT  ? PILOT_BOAT_DEF  :
-                b.objectType === VESSEL.SAR_BOAT     ? SAR_BOAT_DEF    :
-                b.objectType === VESSEL.SALVAGE_TUG  ? SALVAGE_TUG_DEF :
+                b.objectType === VESSEL.PILOT_BOAT    ? PILOT_BOAT_DEF  :
+                b.objectType === VESSEL.SAR_BOAT       ? SAR_BOAT_DEF    :
+                b.objectType === VESSEL.SALVAGE_TUG    ? SALVAGE_TUG_DEF :
+                b.objectType === VESSEL.SUPPLY_VESSEL  ? SALVAGE_TUG_DEF :
                 SAILBOAT_DEF;
             if (showCB) drawDef(def, b.x, b.y, b.angle, wl, 'rgba(0,200,255,0.8)');
             if (!zstate.crashed && checkDef(def, b.x, b.y, b.angle, wl)) triggerCrash();
@@ -238,8 +239,9 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
 
         // ── Wind turbines ─────────────────────────────────────────────────────────
         G.WIND_TURBINES.forEach((wt: any) => {
-            if (showCB) drawDef(WIND_TURBINE_DEF, wt.x, wt.y, 0, 0, 'rgba(0,200,255,0.8)');
-            if (!zstate.crashed && checkDef(WIND_TURBINE_DEF, wt.x, wt.y, 0, 0)) triggerCrash();
+            const gz = wt.gz ?? 0;
+            if (showCB) drawDef(WIND_TURBINE_DEF, wt.x, wt.y, 0, gz, 'rgba(0,200,255,0.8)');
+            if (!zstate.crashed && checkDef(WIND_TURBINE_DEF, wt.x, wt.y, 0, gz)) triggerCrash();
         });
 
         // ── Baywatch objects ──────────────────────────────────────────────────────

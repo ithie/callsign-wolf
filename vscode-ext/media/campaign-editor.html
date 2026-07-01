@@ -498,6 +498,35 @@
                                 Angle (°):
                                 <input type="number" id="m_fcar_angle" value="0" min="0" max="359" style="width: 45px" />
                             </div>
+                            <div id="ui_xmas_house" class="floating-ui">
+                                <span class="close-btn" id="close-xmas-house">✖</span>
+                                <strong style="color: #aaddff">🏠 XMAS HAUS</strong><br />
+                                Typ:
+                                <select id="m_xmas_house_type">
+                                    <option value="xmas_house_a">Haus A (klein)</option>
+                                    <option value="xmas_house_b">Haus B (groß)</option>
+                                </select><br />
+                                Angle (°):
+                                <input type="number" id="m_xmas_house_angle" value="0" min="0" max="359" style="width: 45px" />
+                            </div>
+                            <div id="ui_xmas_lantern" class="floating-ui">
+                                <span class="close-btn" id="close-xmas-lantern">✖</span>
+                                <strong style="color: #ffeeaa">🕯 LATERNE</strong><br />
+                                Angle (°):
+                                <input type="number" id="m_xmas_lantern_angle" value="0" min="0" max="359" style="width: 45px" />
+                            </div>
+                            <div id="ui_sleigh" class="floating-ui">
+                                <span class="close-btn" id="close-sleigh">✖</span>
+                                <strong style="color: #ff4422">🛷 SCHLITTEN</strong><br />
+                                Angle (°):
+                                <input type="number" id="m_sleigh_angle" value="0" min="0" max="359" style="width: 45px" />
+                            </div>
+                            <div id="ui_reindeer" class="floating-ui">
+                                <span class="close-btn" id="close-reindeer">✖</span>
+                                <strong style="color: #cc8844">🦌 RENTIER (Payload)</strong><br />
+                                Angle (°):
+                                <input type="number" id="m_reindeer_angle" value="0" min="0" max="359" style="width: 45px" />
+                            </div>
                             <div id="ui_wind" class="floating-ui" style="left: 90px; top: 15px">
                                 <span class="close-btn" id="close-wind">✖</span>
                                 <strong style="color: cyan">💨 WIND VECTOR</strong><br />
@@ -698,6 +727,10 @@
             <input type="radio" name="tool" value="festival_tent" />
             <input type="radio" name="tool" value="festival_tent_broken" />
             <input type="radio" name="tool" value="festival_car" />
+            <input type="radio" name="tool" value="xmas_house" />
+            <input type="radio" name="tool" value="xmas_lantern" />
+            <input type="radio" name="tool" value="sleigh" />
+            <input type="radio" name="tool" value="reindeer" />
             <input type="radio" name="tool" value="person" />
             <input type="radio" name="tool" value="rescuer" />
             <input type="radio" name="tool" value="crate" />
@@ -739,7 +772,10 @@
             <textarea id="m_briefing_de"></textarea>
             <textarea id="m_briefing_en"></textarea>
             <input type="checkbox" id="m_rain" />
+            <input type="checkbox" id="m_snow" />
             <input type="checkbox" id="m_night" />
+            <input type="checkbox" id="m_pad_payload_refill" />
+            <input type="number" id="m_start_onboard" value="0" min="0" max="6" />
             <input type="number" id="m_water_level" value="0" min="-5" max="30" step="0.5" />
             <input type="number" id="m_npc_heli_count" value="0" min="0" max="3" />
             <select id="m_npc_heli_type">
@@ -1015,9 +1051,21 @@ Viel Glück, Pilot.</textarea
                         chk('m_rain', data.value);
                         fire('m_rain', 'input');
                         break;
+                    case 'set-snow':
+                        chk('m_snow', data.value);
+                        fire('m_snow', 'input');
+                        break;
                     case 'set-night':
                         chk('m_night', data.value);
                         fire('m_night', 'input');
+                        break;
+                    case 'set-pad-payload-refill':
+                        chk('m_pad_payload_refill', data.value);
+                        fire('m_pad_payload_refill', 'input');
+                        break;
+                    case 'set-start-onboard':
+                        set('m_start_onboard', data.value);
+                        fire('m_start_onboard', 'input');
                         break;
                     case 'set-water-level':
                         set('m_water_level', data.value);
@@ -1607,8 +1655,18 @@ Viel Glück, Pilot.</textarea
                         (cm.rain ? 'checked' : '') +
                         ' onchange="edDispatch(\'set-rain\',{value:this.checked})"> 🌧️ Regen / Sturm</label>' +
                         '<label><input type="checkbox" ' +
+                        (cm.snow ? 'checked' : '') +
+                        ' onchange="edDispatch(\'set-snow\',{value:this.checked})"> ❄️ Schnee</label>' +
+                        '<label><input type="checkbox" ' +
                         (cm.night ? 'checked' : '') +
                         ' onchange="edDispatch(\'set-night\',{value:this.checked})"> 🌙 Nacht</label>' +
+                        '<label style="margin-top:4px"><input type="checkbox" ' +
+                        (cm.padPayloadRefill ? 'checked' : '') +
+                        ' onchange="edDispatch(\'set-pad-payload-refill\',{value:this.checked})"> 🎁 Pad lädt Pakete nach</label>' +
+                        '<div class="ed-row" style="margin-top:4px"><label style="color:var(--text-dim)">🚁 Start-Pakete</label>' +
+                        '<input type="number" value="' +
+                        (cm.startOnboard || 0) +
+                        '" min="0" max="6" style="width:45px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:2px;padding:2px 4px;font-size:11px" oninput="edDispatch(\'set-start-onboard\',{value:this.value})"></div>' +
                         '<div class="ed-row" style="margin-top:5px"><label style="color:var(--text-dim)">🌊 Meeresspiegel</label>' +
                         '<input type="number" value="' +
                         (cm.waterLevel != null ? cm.waterLevel : 0) +

@@ -128,6 +128,10 @@
     const ftUI = document.getElementById("ui_festival_tent");
     const ftbUI = document.getElementById("ui_festival_tent_broken");
     const fcUI = document.getElementById("ui_festival_car");
+    const xhUI = document.getElementById("ui_xmas_house");
+    const xlUI = document.getElementById("ui_xmas_lantern");
+    const slUI = document.getElementById("ui_sleigh");
+    const rdUI = document.getElementById("ui_reindeer");
     if (pUI) pUI.style.display = "none";
     if (cUI) cUI.style.display = "none";
     if (bUI) bUI.style.display = "none";
@@ -144,13 +148,20 @@
     if (ftUI) ftUI.style.display = "none";
     if (ftbUI) ftbUI.style.display = "none";
     if (fcUI) fcUI.style.display = "none";
+    if (xhUI) xhUI.style.display = "none";
+    if (xlUI) xlUI.style.display = "none";
+    if (slUI) slUI.style.display = "none";
+    if (rdUI) rdUI.style.display = "none";
     const wl = m.waterLevel ?? 0;
+    const isSnow = !!m.snow;
     for (let x = Math.floor(state.panX); x < Math.min(m.gridSize, state.panX + 600 / tSize + 1); x++) {
       for (let y = Math.floor(state.panY); y < Math.min(m.gridSize, state.panY + 600 / tSize + 1); y++) {
         const h = m.terrain[x][y];
         const isSand = h > wl && (m.sand?.[x]?.[y] ?? 0) > 0;
         const isPavement = h > wl && (m.pavement?.[x]?.[y] ?? 0) > 0;
-        ctx.fillStyle = h <= wl ? COLORS.water : isPavement ? "#808088" : isSand ? getSandColor(h) : getLandColor(h, false);
+        const landColor = isSnow ? `rgb(${190 + Math.floor(h * 8)},${205 + Math.floor(h * 7)},${220 + Math.floor(h * 6)})` : getLandColor(h, false);
+        const waterColor = isSnow ? "#0a3060" : COLORS.water;
+        ctx.fillStyle = h <= wl ? waterColor : isPavement ? "#808088" : isSand ? getSandColor(h) : landColor;
         ctx.fillRect((x - state.panX) * tSize, (y - state.panY) * tSize, tSize + 1.5, tSize + 1.5);
       }
     }
@@ -723,6 +734,90 @@
           fcUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + "px";
           fcUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + "px";
         }
+      } else if (obj.type === "xmas_house_a" || obj.type === "xmas_house_b") {
+        const rad = (obj.angle ?? 0) * Math.PI / 180;
+        if (isSelected) {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "#aaddff";
+        }
+        ctx.save();
+        ctx.translate(ox, oy);
+        ctx.rotate(rad);
+        ctx.fillStyle = obj.type === "xmas_house_a" ? "#aaddff" : "#88bbee";
+        ctx.fillRect(-tSize, -tSize * 1.2, tSize * 2, tSize * 1.2);
+        ctx.restore();
+        ctx.shadowBlur = 0;
+        if (isSelected && xhUI) {
+          const typeSel = document.getElementById("m_xmas_house_type");
+          if (typeSel) typeSel.value = obj.type;
+          const angleEl = document.getElementById("m_xmas_house_angle");
+          if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
+          xhUI.style.display = "block";
+          xhUI.style.left = Math.min(600 - 170, Math.max(0, ox + 20)) + "px";
+          xhUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + "px";
+        }
+      } else if (obj.type === "xmas_lantern") {
+        const rad = (obj.angle ?? 0) * Math.PI / 180;
+        if (isSelected) {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "#ffee88";
+        }
+        ctx.save();
+        ctx.translate(ox, oy);
+        ctx.rotate(rad);
+        ctx.fillStyle = "#ffee88";
+        ctx.beginPath();
+        ctx.arc(0, -0.4 * tSize, Math.max(4, tSize * 0.3), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        ctx.shadowBlur = 0;
+        if (isSelected && xlUI) {
+          const angleEl = document.getElementById("m_xmas_lantern_angle");
+          if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
+          xlUI.style.display = "block";
+          xlUI.style.left = Math.min(600 - 160, Math.max(0, ox + 20)) + "px";
+          xlUI.style.top = Math.min(600 - 80, Math.max(0, oy)) + "px";
+        }
+      } else if (obj.type === "sleigh") {
+        const rad = (obj.angle ?? 0) * Math.PI / 180;
+        if (isSelected) {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "#ee3300";
+        }
+        ctx.save();
+        ctx.translate(ox, oy);
+        ctx.rotate(rad);
+        ctx.fillStyle = "#ee3300";
+        ctx.fillRect(-tSize * 0.8, -0.3 * tSize, tSize * 1.6, tSize * 0.6);
+        ctx.restore();
+        ctx.shadowBlur = 0;
+        if (isSelected && slUI) {
+          const angleEl = document.getElementById("m_sleigh_angle");
+          if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
+          slUI.style.display = "block";
+          slUI.style.left = Math.min(600 - 160, Math.max(0, ox + 20)) + "px";
+          slUI.style.top = Math.min(600 - 80, Math.max(0, oy)) + "px";
+        }
+      } else if (obj.type === "reindeer") {
+        const rad = (obj.angle ?? 0) * Math.PI / 180;
+        if (isSelected) {
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = "#cc8844";
+        }
+        ctx.save();
+        ctx.translate(ox, oy);
+        ctx.rotate(rad);
+        ctx.fillStyle = "#cc8844";
+        ctx.fillRect(-tSize * 0.6, -0.3 * tSize, tSize * 1.2, tSize * 0.6);
+        ctx.restore();
+        ctx.shadowBlur = 0;
+        if (isSelected && rdUI) {
+          const angleEl = document.getElementById("m_reindeer_angle");
+          if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
+          rdUI.style.display = "block";
+          rdUI.style.left = Math.min(600 - 160, Math.max(0, ox + 20)) + "px";
+          rdUI.style.top = Math.min(600 - 80, Math.max(0, oy)) + "px";
+        }
       }
     });
     const payloads = m.payloads || [];
@@ -764,6 +859,13 @@
         ctx.beginPath();
         ctx.arc(px, py, r * 0.45, 0, Math.PI * 2);
         ctx.stroke();
+      } else if (p.type === "reindeer") {
+        ctx.fillStyle = isAttached ? "#eebb88" : "#cc8844";
+        ctx.fillRect(px - r * 0.7, py - r * 0.3, r * 1.4, r * 0.6);
+        ctx.fillStyle = "#cc8844";
+        ctx.beginPath();
+        ctx.arc(px + r * 0.5, py - r * 0.4, r * 0.25, 0, Math.PI * 2);
+        ctx.fill();
       } else if (p.type === "crate") {
         const s = r * 0.85;
         ctx.fillStyle = isAttached ? "#44ccff" : "#ff8800";
@@ -1005,7 +1107,11 @@
       en: getEl("m_briefing_en").value
     };
     m.rain = getInput("m_rain").checked;
+    m.snow = getInput("m_snow").checked;
     m.night = getInput("m_night").checked;
+    m.padPayloadRefill = getInput("m_pad_payload_refill").checked || void 0;
+    const _startOnboard = parseInt(getInput("m_start_onboard").value);
+    m.startOnboard = _startOnboard > 0 ? _startOnboard : void 0;
     m.waterLevel = parseFloat(getInput("m_water_level").value) || 0;
     m.windDir = parseInt(getInput("m_wind_dir").value) || 0;
     m.windStr = parseFloat(getInput("m_wind_str").value) || 0;
@@ -1052,7 +1158,10 @@
     getEl("m_briefing_en").value = _lsEn(m.briefing);
     getInput("m_grid_size").value = m.gridSize.toString();
     getInput("m_rain").checked = m.rain;
+    getInput("m_snow").checked = !!m.snow;
     getInput("m_night").checked = m.night;
+    getInput("m_pad_payload_refill").checked = !!m.padPayloadRefill;
+    getInput("m_start_onboard").value = (m.startOnboard ?? 0).toString();
     getInput("m_water_level").value = (m.waterLevel ?? 0).toString();
     getInput("m_wind_dir").value = (m.windDir ?? 0).toString();
     getInput("m_wind_str").value = (m.windStr ?? 0).toString();
@@ -1709,78 +1818,63 @@
       state.selectedObjectIdx = null;
       drawMap();
     });
-    document.getElementById("m_bwc_angle")?.addEventListener("input", () => {
-      const m = getCurrentMission();
-      if (!m || state.selectedObjectIdx === null) return;
-      const obj = m.objects[state.selectedObjectIdx];
-      if (obj?.type !== "baywatch_car") return;
-      obj.angle = parseInt(document.getElementById("m_bwc_angle").value) || 0;
+    safeClick("close-xmas-house", () => {
+      state.selectedObjectIdx = null;
       drawMap();
-      broadcastPreview();
-      notifyWorkbench();
     });
-    document.getElementById("m_tent_color")?.addEventListener("change", () => {
-      const m = getCurrentMission();
-      if (!m || state.selectedObjectIdx === null) return;
-      const obj = m.objects[state.selectedObjectIdx];
-      if (!["festival_tent", "festival_tent_red", "festival_tent_green"].includes(obj?.type)) return;
-      const v = document.getElementById("m_tent_color").value;
-      if (v !== "random") obj.type = v;
+    safeClick("close-xmas-lantern", () => {
+      state.selectedObjectIdx = null;
       drawMap();
-      broadcastPreview();
-      notifyWorkbench();
     });
-    document.getElementById("m_tent_angle")?.addEventListener("input", () => {
-      const m = getCurrentMission();
-      if (!m || state.selectedObjectIdx === null) return;
-      const obj = m.objects[state.selectedObjectIdx];
-      if (!["festival_tent", "festival_tent_red", "festival_tent_green"].includes(obj?.type)) return;
-      obj.angle = parseInt(document.getElementById("m_tent_angle").value) || 0;
+    safeClick("close-sleigh", () => {
+      state.selectedObjectIdx = null;
       drawMap();
-      broadcastPreview();
-      notifyWorkbench();
     });
-    document.getElementById("m_tent_broken_color")?.addEventListener("change", () => {
-      const m = getCurrentMission();
-      if (!m || state.selectedObjectIdx === null) return;
-      const obj = m.objects[state.selectedObjectIdx];
-      if (!["festival_tent_broken", "festival_tent_broken_red", "festival_tent_broken_green"].includes(obj?.type)) return;
-      const v = document.getElementById("m_tent_broken_color").value;
-      if (v !== "random") obj.type = v;
+    safeClick("close-reindeer", () => {
+      state.selectedObjectIdx = null;
       drawMap();
-      broadcastPreview();
-      notifyWorkbench();
     });
-    document.getElementById("m_tent_broken_angle")?.addEventListener("input", () => {
-      const m = getCurrentMission();
-      if (!m || state.selectedObjectIdx === null) return;
-      const obj = m.objects[state.selectedObjectIdx];
-      if (!["festival_tent_broken", "festival_tent_broken_red", "festival_tent_broken_green"].includes(obj?.type)) return;
-      obj.angle = parseInt(document.getElementById("m_tent_broken_angle").value) || 0;
-      drawMap();
-      broadcastPreview();
-      notifyWorkbench();
-    });
-    document.getElementById("m_fcar_color")?.addEventListener("change", () => {
-      const m = getCurrentMission();
-      if (!m || state.selectedObjectIdx === null) return;
-      const obj = m.objects[state.selectedObjectIdx];
-      if (!obj?.type?.startsWith("festival_car_")) return;
-      obj.type = document.getElementById("m_fcar_color").value;
-      drawMap();
-      broadcastPreview();
-      notifyWorkbench();
-    });
-    document.getElementById("m_fcar_angle")?.addEventListener("input", () => {
-      const m = getCurrentMission();
-      if (!m || state.selectedObjectIdx === null) return;
-      const obj = m.objects[state.selectedObjectIdx];
-      if (!obj?.type?.startsWith("festival_car_")) return;
-      obj.angle = parseInt(document.getElementById("m_fcar_angle").value) || 0;
-      drawMap();
-      broadcastPreview();
-      notifyWorkbench();
-    });
+    const wireAngle = (inputId, types) => {
+      document.getElementById(inputId)?.addEventListener("input", () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx];
+        if (!types.includes(obj?.type)) return;
+        obj.angle = parseInt(document.getElementById(inputId).value) || 0;
+        drawMap();
+        broadcastPreview();
+        notifyWorkbench();
+      });
+    };
+    wireAngle("m_bwc_angle", ["baywatch_car"]);
+    wireAngle("m_tent_angle", ["festival_tent", "festival_tent_red", "festival_tent_green"]);
+    wireAngle("m_tent_broken_angle", ["festival_tent_broken", "festival_tent_broken_red", "festival_tent_broken_green"]);
+    wireAngle("m_fcar_angle", ["festival_car_red", "festival_car_blue", "festival_car_silver", "festival_car_black", "festival_car_yellow"]);
+    wireAngle("m_pw_angle", ["plane_wreck"]);
+    wireAngle("m_sb_angle", ["sailboat_broken"]);
+    wireAngle("m_ow_angle", ["ornithopter_wreck"]);
+    wireAngle("m_xmas_house_angle", ["xmas_house_a", "xmas_house_b"]);
+    wireAngle("m_xmas_lantern_angle", ["xmas_lantern"]);
+    wireAngle("m_sleigh_angle", ["sleigh"]);
+    wireAngle("m_reindeer_angle", ["reindeer"]);
+    const wireTypeSelect = (selectId, types, useStartsWith = false) => {
+      document.getElementById(selectId)?.addEventListener("change", () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx];
+        const match = useStartsWith ? types.some((t) => obj?.type?.startsWith(t)) : types.includes(obj?.type);
+        if (!match) return;
+        const v = document.getElementById(selectId).value;
+        if (v !== "random") obj.type = v;
+        drawMap();
+        broadcastPreview();
+        notifyWorkbench();
+      });
+    };
+    wireTypeSelect("m_tent_color", ["festival_tent", "festival_tent_red", "festival_tent_green"]);
+    wireTypeSelect("m_tent_broken_color", ["festival_tent_broken", "festival_tent_broken_red", "festival_tent_broken_green"]);
+    wireTypeSelect("m_fcar_color", ["festival_car_"], true);
+    wireTypeSelect("m_xmas_house_type", ["xmas_house_a", "xmas_house_b"]);
     document.getElementById("m_wt_spinning")?.addEventListener("change", () => {
       const m = getCurrentMission();
       if (!m || state.selectedObjectIdx === null) return;
@@ -1812,42 +1906,13 @@
       (id) => document.getElementById(`m_${id}`)?.addEventListener("input", () => syncVesselFromUI("submarine"))
     );
     document.getElementById("m_submarine_exitWarning")?.addEventListener("change", () => syncVesselFromUI("submarine"));
-    document.getElementById("m_pw_angle")?.addEventListener("input", () => {
-      const m = getCurrentMission();
-      if (!m || state.selectedObjectIdx === null) return;
-      const obj = m.objects[state.selectedObjectIdx];
-      if (obj?.type !== "plane_wreck") return;
-      obj.angle = parseInt(document.getElementById("m_pw_angle").value) || 0;
-      drawMap();
-      broadcastPreview();
-      notifyWorkbench();
-    });
-    document.getElementById("m_sb_angle")?.addEventListener("input", () => {
-      const m = getCurrentMission();
-      if (!m || state.selectedObjectIdx === null) return;
-      const obj = m.objects[state.selectedObjectIdx];
-      if (obj?.type !== "sailboat_broken") return;
-      obj.angle = parseInt(document.getElementById("m_sb_angle").value) || 0;
-      drawMap();
-      broadcastPreview();
-      notifyWorkbench();
-    });
-    document.getElementById("m_ow_angle")?.addEventListener("input", () => {
-      const m = getCurrentMission();
-      if (!m || state.selectedObjectIdx === null) return;
-      const obj = m.objects[state.selectedObjectIdx];
-      if (obj?.type !== "ornithopter_wreck") return;
-      obj.angle = parseInt(document.getElementById("m_ow_angle").value) || 0;
-      drawMap();
-      broadcastPreview();
-      notifyWorkbench();
-    });
     [
       "m_headline_de",
       "m_headline_en",
       "m_briefing_de",
       "m_briefing_en",
       "m_rain",
+      "m_snow",
       "m_night",
       "m_water_level",
       "m_wind_dir",
@@ -1896,6 +1961,10 @@
       "festival_car_black",
       "festival_car_yellow",
       "buoy",
+      "xmas_house",
+      "xmas_lantern",
+      "sleigh",
+      "reindeer",
       "person",
       "rescuer",
       "crate"
@@ -1926,6 +1995,11 @@
       festival_car_black: "#444444",
       festival_car_yellow: "#cc9900",
       buoy: "#dd3300",
+      xmas_house_a: "#aaddff",
+      xmas_house_b: "#88bbee",
+      xmas_lantern: "#ffdd44",
+      sleigh: "#cc3333",
+      reindeer: "#8b5228",
       person: "#ffe033",
       crate: "#ff8800"
     };
@@ -2359,9 +2433,15 @@
             "festival_car_blue",
             "festival_car_silver",
             "festival_car_black",
-            "festival_car_yellow"
+            "festival_car_yellow",
+            "xmas_house_a",
+            "xmas_house_b",
+            "sleigh",
+            "reindeer"
           ].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
+          else if (obj.type === "xmas_lantern")
+            hit = Math.hypot(gx - obj.x, gy - obj.y) < 2.5;
           if (hit) {
             startDrag("object", i, obj.x, obj.y);
             return;

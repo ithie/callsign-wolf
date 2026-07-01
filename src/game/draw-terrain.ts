@@ -77,7 +77,7 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
         }
     };
 
-    const precomputeDayColors = (rain: boolean) => {
+    const precomputeDayColors = (rain: boolean, snow = false) => {
         const { gridSize } = getTerrain();
         _tileColors = [];
         for (let x = 0; x < gridSize; x++) {
@@ -88,18 +88,20 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
                 const c = 35 + Math.floor(h0 * 15);
                 const isSand = !isPadTile(x, y) && !isServiceTile(x, y) && h0 > wl && (G.sandPoints[x]?.[y] ?? 0) > 0;
                 const isPavement = !isPadTile(x, y) && !isServiceTile(x, y) && h0 > wl && (G.pavementPoints[x]?.[y] ?? 0) > 0;
+                const sr = 190 + Math.floor(h0 * 8), sg = 205 + Math.floor(h0 * 7), sb = 220 + Math.floor(h0 * 6);
                 _tileColors[x][y] = isPadTile(x, y)
-                    ? '#444'
+                    ? (snow ? '#888' : '#444')
                     : isServiceTile(x, y)
-                    ? '#444'
+                    ? (snow ? '#888' : '#444')
                     : isPavement
-                    ? `rgb(${c + 40},${c + 40},${c + 45})`
+                    ? (snow ? `rgb(${c + 70},${c + 75},${c + 80})` : `rgb(${c + 40},${c + 40},${c + 45})`)
                     : isSand
-                    ? `rgb(${Math.min(240, c + 160)},${Math.min(215, c + 135)},${Math.min(140, c + 55)})`
+                    ? (snow ? `rgb(${sr},${sg},${sb})` : `rgb(${Math.min(240, c + 160)},${Math.min(215, c + 135)},${Math.min(140, c + 55)})`)
                     : h0 > wl
-                    ? `rgb(${c - 10},${c + 30},${c - 10})`
-                    : rain
-                    ? '#002244'
+                    ? (snow ? `rgb(${sr},${sg},${sb})` : `rgb(${c - 10},${c + 30},${c - 10})`)
+                    : (rain && snow) ? '#081a38'
+                    : rain ? '#002244'
+                    : snow ? '#0a3060'
                     : '#1a5f9e';
             }
         }

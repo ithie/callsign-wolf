@@ -27,6 +27,10 @@ export const drawMap = () => {
     const ftUI = document.getElementById('ui_festival_tent') as HTMLElement;
     const ftbUI = document.getElementById('ui_festival_tent_broken') as HTMLElement;
     const fcUI = document.getElementById('ui_festival_car') as HTMLElement;
+    const xhUI = document.getElementById('ui_xmas_house') as HTMLElement;
+    const xlUI = document.getElementById('ui_xmas_lantern') as HTMLElement;
+    const slUI = document.getElementById('ui_sleigh') as HTMLElement;
+    const rdUI = document.getElementById('ui_reindeer') as HTMLElement;
 
     if (pUI) pUI.style.display = 'none';
     if (cUI) cUI.style.display = 'none';
@@ -44,15 +48,22 @@ export const drawMap = () => {
     if (ftUI) ftUI.style.display = 'none';
     if (ftbUI) ftbUI.style.display = 'none';
     if (fcUI) fcUI.style.display = 'none';
+    if (xhUI) xhUI.style.display = 'none';
+    if (xlUI) xlUI.style.display = 'none';
+    if (slUI) slUI.style.display = 'none';
+    if (rdUI) rdUI.style.display = 'none';
 
     // ── Terrain ────────────────────────────────────────────────────────────────
     const wl: number = (m as any).waterLevel ?? 0;
+    const isSnow: boolean = !!(m as any).snow;
     for (let x = Math.floor(state.panX); x < Math.min(m.gridSize, state.panX + 600 / tSize + 1); x++) {
         for (let y = Math.floor(state.panY); y < Math.min(m.gridSize, state.panY + 600 / tSize + 1); y++) {
             const h = m.terrain[x][y];
             const isSand = h > wl && ((m as any).sand?.[x]?.[y] ?? 0) > 0;
             const isPavement = h > wl && ((m as any).pavement?.[x]?.[y] ?? 0) > 0;
-            ctx.fillStyle = h <= wl ? COLORS.water : isPavement ? '#808088' : isSand ? getSandColor(h) : getLandColor(h, false);
+            const landColor = isSnow ? `rgb(${190 + Math.floor(h * 8)},${205 + Math.floor(h * 7)},${220 + Math.floor(h * 6)})` : getLandColor(h, false);
+            const waterColor = isSnow ? '#0a3060' : COLORS.water;
+            ctx.fillStyle = h <= wl ? waterColor : isPavement ? '#808088' : isSand ? getSandColor(h) : landColor;
             ctx.fillRect((x - state.panX) * tSize, (y - state.panY) * tSize, tSize + 1.5, tSize + 1.5);
         }
     }
@@ -638,6 +649,78 @@ export const drawMap = () => {
                 fcUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + 'px';
                 fcUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + 'px';
             }
+        } else if (obj.type === 'xmas_house_a' || obj.type === 'xmas_house_b') {
+            const rad = (((obj as any).angle ?? 0) * Math.PI) / 180;
+            if (isSelected) { ctx.shadowBlur = 10; ctx.shadowColor = '#aaddff'; }
+            ctx.save();
+            ctx.translate(ox, oy);
+            ctx.rotate(rad);
+            ctx.fillStyle = obj.type === 'xmas_house_a' ? '#aaddff' : '#88bbee';
+            ctx.fillRect(-tSize, -tSize * 1.2, tSize * 2, tSize * 1.2);
+            ctx.restore();
+            ctx.shadowBlur = 0;
+            if (isSelected && xhUI) {
+                const typeSel = document.getElementById('m_xmas_house_type') as HTMLSelectElement;
+                if (typeSel) typeSel.value = obj.type;
+                const angleEl = document.getElementById('m_xmas_house_angle') as HTMLInputElement;
+                if (angleEl) angleEl.value = ((obj as any).angle ?? 0).toString();
+                xhUI.style.display = 'block';
+                xhUI.style.left = Math.min(600 - 170, Math.max(0, ox + 20)) + 'px';
+                xhUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + 'px';
+            }
+        } else if (obj.type === 'xmas_lantern') {
+            const rad = (((obj as any).angle ?? 0) * Math.PI) / 180;
+            if (isSelected) { ctx.shadowBlur = 10; ctx.shadowColor = '#ffee88'; }
+            ctx.save();
+            ctx.translate(ox, oy);
+            ctx.rotate(rad);
+            ctx.fillStyle = '#ffee88';
+            ctx.beginPath();
+            ctx.arc(0, -0.4 * tSize, Math.max(4, tSize * 0.3), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            ctx.shadowBlur = 0;
+            if (isSelected && xlUI) {
+                const angleEl = document.getElementById('m_xmas_lantern_angle') as HTMLInputElement;
+                if (angleEl) angleEl.value = ((obj as any).angle ?? 0).toString();
+                xlUI.style.display = 'block';
+                xlUI.style.left = Math.min(600 - 160, Math.max(0, ox + 20)) + 'px';
+                xlUI.style.top = Math.min(600 - 80, Math.max(0, oy)) + 'px';
+            }
+        } else if (obj.type === 'sleigh') {
+            const rad = (((obj as any).angle ?? 0) * Math.PI) / 180;
+            if (isSelected) { ctx.shadowBlur = 10; ctx.shadowColor = '#ee3300'; }
+            ctx.save();
+            ctx.translate(ox, oy);
+            ctx.rotate(rad);
+            ctx.fillStyle = '#ee3300';
+            ctx.fillRect(-tSize * 0.8, -0.3 * tSize, tSize * 1.6, tSize * 0.6);
+            ctx.restore();
+            ctx.shadowBlur = 0;
+            if (isSelected && slUI) {
+                const angleEl = document.getElementById('m_sleigh_angle') as HTMLInputElement;
+                if (angleEl) angleEl.value = ((obj as any).angle ?? 0).toString();
+                slUI.style.display = 'block';
+                slUI.style.left = Math.min(600 - 160, Math.max(0, ox + 20)) + 'px';
+                slUI.style.top = Math.min(600 - 80, Math.max(0, oy)) + 'px';
+            }
+        } else if (obj.type === 'reindeer') {
+            const rad = (((obj as any).angle ?? 0) * Math.PI) / 180;
+            if (isSelected) { ctx.shadowBlur = 10; ctx.shadowColor = '#cc8844'; }
+            ctx.save();
+            ctx.translate(ox, oy);
+            ctx.rotate(rad);
+            ctx.fillStyle = '#cc8844';
+            ctx.fillRect(-tSize * 0.6, -0.3 * tSize, tSize * 1.2, tSize * 0.6);
+            ctx.restore();
+            ctx.shadowBlur = 0;
+            if (isSelected && rdUI) {
+                const angleEl = document.getElementById('m_reindeer_angle') as HTMLInputElement;
+                if (angleEl) angleEl.value = ((obj as any).angle ?? 0).toString();
+                rdUI.style.display = 'block';
+                rdUI.style.left = Math.min(600 - 160, Math.max(0, ox + 20)) + 'px';
+                rdUI.style.top = Math.min(600 - 80, Math.max(0, oy)) + 'px';
+            }
         }
     });
 
@@ -682,6 +765,13 @@ export const drawMap = () => {
             ctx.beginPath();
             ctx.arc(px, py, r * 0.45, 0, Math.PI * 2);
             ctx.stroke();
+        } else if (p.type === 'reindeer') {
+            ctx.fillStyle = isAttached ? '#eebb88' : '#cc8844';
+            ctx.fillRect(px - r * 0.7, py - r * 0.3, r * 1.4, r * 0.6);
+            ctx.fillStyle = '#cc8844';
+            ctx.beginPath();
+            ctx.arc(px + r * 0.5, py - r * 0.4, r * 0.25, 0, Math.PI * 2);
+            ctx.fill();
         } else if (p.type === 'crate') {
             const s = r * 0.85;
             ctx.fillStyle = isAttached ? '#44ccff' : '#ff8800';
