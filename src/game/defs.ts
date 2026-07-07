@@ -112,8 +112,8 @@ export interface DEF2 {
 
 // ─── Static model exports ─────────────────────────────────────────────────────
 
-import HANGAR_RAW from './models/hangar.zdef';
-import LIGHTHOUSE_RAW from './models/lighthouse.zdef';
+import HANGAR_RAW from './models/objects/hangar.zdef';
+import LIGHTHOUSE_RAW from './models/objects/lighthouse.zdef';
 export const HANGAR_DEF: DEF = HANGAR_RAW as unknown as DEF;
 export const LIGHTHOUSE_DEF: DEF = LIGHTHOUSE_RAW as unknown as DEF;
 

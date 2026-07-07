@@ -1,7 +1,7 @@
 import { campaignHandler } from '../main';
 import { G, zstate } from '../state';
 import { VESSEL, PAYLOAD, VEHICLE_STATE, RESCUE_ZONE_ROLE, OBJECTIVE_TYPE, VESSEL_PATH, type RescueZone } from '../../shared/types';
-import WIND_TURBINE_DEF from '../models/wind_turbine.zdef';
+import WIND_TURBINE_DEF from '../models/objects/wind_turbine.zdef';
 import CARRIER_DEF from '../models/carrier.zdef';
 import SUBMARINE_DEF from '../models/submarine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';

@@ -10,108 +10,40 @@ import SUBMARINE_DEF from '../models/submarine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
 import FRIGATE_DEF from '../models/frigate.zdef';
 
-// ─── Wake crest emitter ───────────────────────────────────────────────────────
-// Each crest is emitted at the ship's stern every EMIT_DIST wu. After emission
-// it has no connection to the ship: it drifts slowly in its emission direction,
-// arms grow, and alpha fades — all driven by its own age (ms since birth).
-// Time-based aging means no index-shuffle jumps when new crests are added.
-type _Crest = { x: number; y: number; a: number; born: number };
-const _emitters = new WeakMap<object, { crests: _Crest[]; lastX: number; lastY: number }>();
-const EMIT_DIST  = 1.6;   // world-units between emissions
-const EMIT_MAX   = 7;     // max simultaneous crests
-const CREST_LIFE = 2800;  // ms until fully faded
-
-const _emit = (v: any, hullOffset: number): _Crest[] => {
-    let e = _emitters.get(v);
-    const wd = v.angle + Math.PI;
-    const sx = v.x + Math.cos(wd) * hullOffset;
-    const sy = v.y + Math.sin(wd) * hullOffset;
-    if (!e) { _emitters.set(v, (e = { crests: [], lastX: sx, lastY: sy })); }
-    const now = performance.now();
-    const dsq = (sx - e.lastX) ** 2 + (sy - e.lastY) ** 2;
-    if (dsq >= EMIT_DIST * EMIT_DIST) {
-        e.crests.push({ x: sx, y: sy, a: v.angle, born: now });
-        if (e.crests.length > EMIT_MAX) e.crests.shift();
-        e.lastX = sx; e.lastY = sy;
-    }
-    const cutoff = now - CREST_LIFE;
-    while (e.crests.length > 0 && e.crests[0].born < cutoff) e.crests.shift();
-    return e.crests;
-};
 
 export const createVesselsDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, tileW } = dwCtx;
 
     const _drawBowWave = (
-        vessel: any,
-        camX: number, camY: number,
-        hullOffset = 0,
+        x: number, y: number, angle: number, speed: number,
+        camX: number, camY: number, hullOffset = 0, nCrests = 5,
     ) => {
-        const speed: number = vessel.speedKnots;
-        if (speed < 0.5) return;
-
-        const crests = _emit(vessel, hullOffset);
-        if (crests.length === 0) return;
-
-        const now = performance.now();
-
-        // scUnit: pixels per world-unit in the current wake direction
-        const wd0    = vessel.angle + Math.PI;
-        const _sBase = isoFn(vessel.x, vessel.y, G.waterLevel, camX, camY);
-        const _sAhd  = isoFn(vessel.x + Math.cos(wd0), vessel.y + Math.sin(wd0), G.waterLevel, camX, camY);
-        const scUnit = Math.sqrt((_sAhd.x - _sBase.x) ** 2 + (_sAhd.y - _sBase.y) ** 2);
-
-        // Speed-dependent cap: show only the newest N crests
-        const nCap  = Math.max(1, Math.ceil(speed * 0.5));
-        const start = Math.max(0, crests.length - nCap);
-
-        const lw     = Math.max(1.2, tileW / 26);
-        // V opening scales with ship size: small boat ≈27°, carrier ≈43°
-        const V_HALF = 0.40 + hullOffset * 0.035;
-        const minArm = scUnit * 1.0;
-        const maxArm = scUnit * 7.0;
-        const DRIFT  = 3.5; // wu — max world-space drift over a crest's lifetime
-
-        ctx.save();
-        ctx.lineCap = 'round';
-
-        for (let i = start; i < crests.length; i++) {
-            const c   = crests[i];
-            const age = Math.min(1, (now - c.born) / CREST_LIFE); // 0=fresh, 1=dead
-
-            // Smooth fade: ramp in over first 15%, then decay
-            const fadeIn  = Math.min(1, age / 0.15);
-            const fadeOut = Math.pow(1 - age, 1.5);
-            const fade    = fadeIn * fadeOut * 0.9;
-            if (fade < 0.04) continue;
-
-            // Drift slowly in emission direction (wake rolls away from ship)
-            const cWD  = c.a + Math.PI;
-            const drift = age * DRIFT;
-            const px = c.x + Math.cos(cWD) * drift;
-            const py = c.y + Math.sin(cWD) * drift;
-
-            // Arms grow from small (fresh) to large (old)
-            const armPx = minArm + age * (maxArm - minArm);
-
-            // Project emission angle to screen-space → symmetric V at any heading
-            const tip   = isoFn(px, py, G.waterLevel, camX, camY);
-            const ahead = isoFn(px + Math.cos(cWD), py + Math.sin(cWD), G.waterLevel, camX, camY);
-            const scDir = Math.atan2(ahead.y - tip.y, ahead.x - tip.x);
-
-            ctx.lineWidth   = lw * (1 - age * 0.35);
-            ctx.globalAlpha = fade;
-            ctx.strokeStyle = '#cde8f8';
+        const wakeLen = Math.min(14, speed * 1.1);
+        if (wakeLen < 1) return;
+        const wakeDir = angle + Math.PI;
+        const perpDir = angle + Math.PI / 2;
+        const KELVIN_HALF = 0.34;
+        const spacing = wakeLen / nCrests;
+        const phase = (performance.now() * speed * 0.0002) % spacing;
+        ctx.lineWidth = Math.max(1.5, tileW / 22);
+        for (let i = 0; i < nCrests; i++) {
+            const d = hullOffset + phase + i * spacing;
+            const wakeProgress = (d - hullOffset) / wakeLen;
+            if (wakeProgress >= 1) continue;
+            const fade = Math.pow(1 - wakeProgress, 0.5);
+            ctx.globalAlpha = fade * 0.72;
+            ctx.strokeStyle = '#cce8f4';
+            const cX = x + Math.cos(wakeDir) * d;
+            const cY = y + Math.sin(wakeDir) * d;
+            const halfW = d * Math.tan(KELVIN_HALF) * 1.2;
+            const s = isoFn(cX + Math.cos(perpDir) * halfW, cY + Math.sin(perpDir) * halfW, G.waterLevel, camX, camY);
+            const e = isoFn(cX - Math.cos(perpDir) * halfW, cY - Math.sin(perpDir) * halfW, G.waterLevel, camX, camY);
             ctx.beginPath();
-            ctx.moveTo(tip.x + Math.cos(scDir + V_HALF) * armPx,
-                       tip.y + Math.sin(scDir + V_HALF) * armPx);
-            ctx.lineTo(tip.x, tip.y);
-            ctx.lineTo(tip.x + Math.cos(scDir - V_HALF) * armPx,
-                       tip.y + Math.sin(scDir - V_HALF) * armPx);
+            ctx.moveTo(s.x, s.y);
+            ctx.lineTo(e.x, e.y);
             ctx.stroke();
         }
-
-        ctx.restore();
+        ctx.globalAlpha = 1.0;
     };
 
     const _drawBoatModel = (b: any, cx: number, cy: number, onBeforeFlush?: (ni: number) => void) => {

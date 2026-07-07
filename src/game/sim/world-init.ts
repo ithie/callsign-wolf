@@ -4,10 +4,10 @@ import { getGround } from './terrain';
 import { VESSEL, PAYLOAD, VESSEL_PATH } from '../../shared/types';
 import FRIGATE_DEF from '../models/frigate.zdef';
 import CARRIER_DEF from '../models/carrier.zdef';
-import WIND_TURBINE_DEF from '../models/wind_turbine.zdef';
+import WIND_TURBINE_DEF from '../models/objects/wind_turbine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
-import XMAS_HOUSE_A_DEF from '../models/xmas_house_a.zdef';
-import XMAS_HOUSE_B_DEF from '../models/xmas_house_b.zdef';
+import XMAS_HOUSE_A_DEF from '../models/objects/xmas_house_a.zdef';
+import XMAS_HOUSE_B_DEF from '../models/objects/xmas_house_b.zdef';
 
 const getObjects = () => campaignHandler.getCurrentMissionData().objects || [];
 const getObjectByType = (type: string) => getObjects().find((o: any) => o.type === type) || null;

@@ -7,6 +7,7 @@ import type { Plugin } from 'vite';
 import { zsongPlugin } from './plugins/zsong';
 import { zdefPlugin } from './plugins/zdef';
 import { zcampaignPlugin } from './plugins/zcampaign';
+import { zdefTreeShakePlugin } from './plugins/zdef-tree-shake';
 import { makeSingleFile } from './plugins/make-single-file';
 
 const GZIP_WARN_THRESHOLD = 500 * 1024; // 500 kB
@@ -88,6 +89,7 @@ export default defineConfig(({ command }) => {
         base: isApp ? './' : command === 'build' ? '/callsign-wolf/' : '/',
         plugins: [
             zsongPlugin(),
+            zdefTreeShakePlugin(resolve(__dirname, 'src/game/campaigns')),
             zdefPlugin(),
             zcampaignPlugin(),
             makeSingleFile(),

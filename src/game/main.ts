@@ -162,12 +162,21 @@ const createCampaignHandler = () => {
         return { ...missionData, campaignType: campaigns[campaignState.activeCampaign].type };
     };
 
+    const _isCompressed = (s: string) => s.charCodeAt(0) === 0;
+
+    const _decompressStr = async (s: string): Promise<string> => {
+        const compressed = Uint8Array.from(atob(s.slice(1)), c => c.charCodeAt(0));
+        const ds = new DecompressionStream('deflate-raw');
+        return new Response(new Blob([compressed]).stream().pipeThrough(ds)).text();
+    };
+
     const getTerrain = () => {
         if (!cachedTerrain) {
+            // prewarmTerrain() must be awaited before getTerrain() is called when terrain is compressed
             const level = campaigns[campaignState.activeCampaign].levels[campaignState.activeMission];
             const { terrain, gridSize } = level;
             cachedTerrain = {
-                terrain: decompressTerrain(terrain, gridSize),
+                terrain: decompressTerrain(terrain as string, gridSize),
                 gridSize,
                 sand: (level as any).sand ? decompressTerrain((level as any).sand, gridSize) : undefined,
                 pavement: (level as any).pavement ? decompressTerrain((level as any).pavement, gridSize) : undefined,
@@ -175,6 +184,29 @@ const createCampaignHandler = () => {
         }
 
         return cachedTerrain;
+    };
+
+    const prewarmTerrain = async (): Promise<void> => {
+        if (cachedTerrain) return;
+        const level = campaigns[campaignState.activeCampaign].levels[campaignState.activeMission];
+        const { gridSize } = level;
+        const terrainStr = _isCompressed(level.terrain as string)
+            ? await _decompressStr(level.terrain as string)
+            : (level.terrain as string);
+        const sandRaw = (level as any).sand as string | undefined;
+        const sandStr = sandRaw
+            ? (_isCompressed(sandRaw) ? await _decompressStr(sandRaw) : sandRaw)
+            : undefined;
+        const pavRaw = (level as any).pavement as string | undefined;
+        const pavStr = pavRaw
+            ? (_isCompressed(pavRaw) ? await _decompressStr(pavRaw) : pavRaw)
+            : undefined;
+        cachedTerrain = {
+            terrain: decompressTerrain(terrainStr, gridSize),
+            gridSize,
+            sand: sandStr ? decompressTerrain(sandStr, gridSize) : undefined,
+            pavement: pavStr ? decompressTerrain(pavStr, gridSize) : undefined,
+        };
     };
 
     const getCampaignByKey = (key: string): CampaignExport | undefined => campaignMap.get(key);
@@ -189,6 +221,7 @@ const createCampaignHandler = () => {
         },
         getCurrentMissionData,
         getTerrain,
+        prewarmTerrain,
     };
 };
 

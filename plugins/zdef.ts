@@ -37,6 +37,8 @@ export const zdefPlugin = (): Plugin => ({
     load: id => (id === VIRTUAL_ID ? EXPAND_SRC : null),
     transform(code: string, id: string) {
         if (!id.endsWith('.zdef')) return null;
+        // Skip if already transformed by another plugin (e.g. tree-shake stub)
+        if (code.startsWith('export default')) return null;
         const stripped = code.replace(/\/\/[^\n]*/g, '');
         const compressed = JSON.stringify(compress(JSON.parse(stripped)));
         return {

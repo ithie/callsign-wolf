@@ -4,7 +4,7 @@ import { getGround } from '../sim/terrain';
 import { isLightningActive } from '../lightning-state';
 import ORNI_WRECK_CARRY_DEF from '../models/ornithopter_wreck_carry.zdef';
 import ORNI_WRECK_RESIDUE_DEF from '../models/ornithopter_wreck_residue.zdef';
-import WIND_TURBINE_DEF from '../models/wind_turbine.zdef';
+import WIND_TURBINE_DEF from '../models/objects/wind_turbine.zdef';
 
 import { createCarrierDraw } from './carrier';
 import { createVesselsDraw } from './vessels';
@@ -88,16 +88,16 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         const showCarrier = hasCarrier() && isVisible(G.CARRIER.x, G.CARRIER.y, visMargin + 9);
         const showPad = hasPad() && isVisible(G.PAD.xMin + 3, G.PAD.yMin + 3, visMargin);
         if (showCarrier && G.CARRIER.path !== 'static' && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle))
-            _drawBowWave(G.CARRIER, camX, camY, 9);
+            _drawBowWave(G.CARRIER.x, G.CARRIER.y, G.CARRIER.angle, G.CARRIER.speedKnots, camX, camY, 9, 3);
         G.BOATS.forEach((b: any) => {
             if (isVisible(b.x, b.y, visMargin) && b.path !== 'static' && _inNightConeRect(b.x, b.y, b.w, b.l, b.angle)) {
                 const hullOff = b.objectType === 'frigate' ? 10 : 2;
-                _drawBowWave(b, camX, camY, hullOff);
+                _drawBowWave(b.x, b.y, b.angle, b.speedKnots, camX, camY, hullOff);
             }
         });
         G.SUBMARINES.forEach((s: any) => {
             if (isVisible(s.x, s.y, visMargin) && s.path !== 'static' && _inNightConeRect(s.x, s.y, s.w, s.l, s.angle))
-                _drawBowWave(s, camX, camY, 3);
+                _drawBowWave(s.x, s.y, s.angle, s.speedKnots, camX, camY, 3, 4);
         });
 
         if (showCarrier && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle)) _drawVectorCarrier(camX, camY, _inNightCone);

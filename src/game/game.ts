@@ -545,6 +545,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     const _lhObj = _lmdObjs.find((o: any) => o.type === VESSEL.LIGHTHOUSE);
     _lighthouseX = _lhObj ? _lhObj.x : -1;
     _lighthouseY = _lhObj ? _lhObj.y : -1;
+    await campaignHandler.prewarmTerrain();
     _missionGridSize = campaignHandler.getTerrain().gridSize;
     _missionMaxTime = (_lmd as any).maxTime ?? null;
     _missionTypeRatingFor = (_lmd as any).typeRatingFor as string | undefined;
