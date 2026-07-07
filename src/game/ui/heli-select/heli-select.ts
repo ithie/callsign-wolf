@@ -10,6 +10,7 @@ import { ensureEl } from '../dom-helpers';
 import { showScreenCrtEnter } from '../nav';
 import { mountScreenShell } from '../screen-shell/screen-shell';
 import { createSwipeCarousel } from '../swipe-carousel/swipe-carousel';
+import { addStamp } from '../box-stamp';
 
 let _G: any;
 let _drawHeli: (...args: any[]) => void;
@@ -125,6 +126,7 @@ export const mount = () => {
 
 type HeliSelectDeps = {
     rankIndex: number;
+    typeRatings: Record<string, true>;
     onSelect: (heliId: string) => void;
     onBack: () => void;
 };
@@ -194,7 +196,20 @@ const _buildOverlayDetail = (ht: HeliType, onSelect: (heliId: string) => void): 
 };
 
 export const show = (deps: HeliSelectDeps) => {
-    const { rankIndex, onSelect, onBack } = deps;
+    const { rankIndex, typeRatings, onSelect, onBack } = deps;
+
+    const _isLocked = (ht: HeliType): boolean => {
+        if (ht.minRankIndex > rankIndex) return true;
+        if (ht.typeRatingRequired && !typeRatings[ht.id]) return true;
+        return false;
+    };
+    const _lockLabel = (ht: HeliType): string => {
+        if (ht.minRankIndex > rankIndex)
+            return `<div class="box-sub heli-lock-label heli-card-label-sub">${I18N.HELI_LOCKED_FROM(I18N.RANK_NAME(RANKS[ht.minRankIndex].key).toUpperCase())}</div>`;
+        if (ht.typeRatingRequired && !typeRatings[ht.id])
+            return `<div class="box-sub heli-lock-label heli-card-label-sub">${I18N.HELI_TYPE_RATING_REQUIRED}</div>`;
+        return `<div class="box-sub heli-cap-label heli-card-label-sub">${localize(ht.selectCap)}</div>`;
+    };
 
     const body = mountScreenShell('heli-select', I18N.HELI_SELECT_TITLE, I18N.HELI_SELECT_SUB, onBack);
 
@@ -202,22 +217,23 @@ export const show = (deps: HeliSelectDeps) => {
 
     const carousel = createSwipeCarousel<HeliType>({
         items: visibleTypes,
-        isLocked: ht => ht.minRankIndex > rankIndex,
-        renderCard: (ht, locked) => {
+        isLocked: _isLocked,
+        renderStamp: (ht) =>
+            ht.typeRatingRequired && !typeRatings[ht.id]
+                ? addStamp(I18N.HELI_TYPE_RATING_REQUIRED, '#5a3a00')
+                : null,
+        renderCard: (ht, _locked) => {
             const card = document.createElement('div');
-            const lockLabel = locked
-                ? `<div class="box-sub heli-lock-label heli-card-label-sub">${I18N.HELI_LOCKED_FROM(I18N.RANK_NAME(RANKS[ht.minRankIndex].key).toUpperCase())}</div>`
-                : `<div class="box-sub heli-cap-label heli-card-label-sub">${localize(ht.selectCap)}</div>`;
             card.innerHTML = `
                 <canvas id="icon-${ht.id}" class="heli-card-canvas"></canvas>
                 <div class="heli-card-label">
                     <div class="box-label">${ht.selectLabel}</div>
-                    ${lockLabel}
+                    ${_lockLabel(ht)}
                 </div>`;
             return card;
         },
         renderDetail: (ht, _close) => {
-            const locked = ht.minRankIndex > rankIndex;
+            const locked = _isLocked(ht);
             if (locked) return null;
             _activeHeliId = ht.id;
             _overlayAngle = _G.menuAngles[ht.id];

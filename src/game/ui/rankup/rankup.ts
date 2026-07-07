@@ -43,6 +43,7 @@ export const mount = (): void => {
             <div id="rankup-badge"></div>
             <div id="rankup-commodore">${COMMODORE_SVG}</div>
         </div>
+        <p id="rankup-tr-hint" style="display:none;color:#ffd700;font-size:0.85em;letter-spacing:0.08em;margin-top:8px"></p>
         <p class="start-hint" style="color: #cc9900; margin-top: 10px">${I18N.NEXT}</p>`;
     el.addEventListener('click', hide);
 };
@@ -92,7 +93,7 @@ const _animLoop = (): void => {
     requestAnimationFrame(_animLoop);
 };
 
-export const show = (rank: Rank, unlockedHeli?: string, onDismiss?: () => void): void => {
+export const show = (rank: Rank, unlockedHeli?: string, onDismiss?: () => void, typeRatingHint?: string): void => {
     _onDismiss = onDismiss ?? null;
     const rankIdx = RANKS.indexOf(rank);
     const prevRank = rankIdx > 0 ? RANKS[rankIdx - 1] : null;
@@ -122,6 +123,11 @@ export const show = (rank: Rank, unlockedHeli?: string, onDismiss?: () => void):
     } else {
         _heliId = null;
         heliEl.style.display = 'none';
+    }
+    const trHintEl = document.getElementById('rankup-tr-hint') as HTMLElement;
+    if (trHintEl) {
+        trHintEl.textContent = typeRatingHint ?? '';
+        trHintEl.style.display = typeRatingHint ? 'block' : 'none';
     }
     (document.getElementById('rankup-overlay') as HTMLElement).style.display = 'flex';
 };

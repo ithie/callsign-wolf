@@ -22,6 +22,9 @@ export interface PlayerSession {
     highestUnlockedCampaignIndex: number; // highest regular campaign index reachable (for cross-device import)
     campaignProgress: Record<string, CampaignProgress>;
     rankOverride: number; // rank index preserved across device imports
+    typeRatings?: Record<string, true>;         // heliId → passed
+    typeRatingBestTime?: Record<string, number>; // heliId → best time ms
+    typeRatingSystemSince?: number;             // absent/0 = old save (gets migrated), 1 = system active
 }
 
 
@@ -30,6 +33,9 @@ const _default = (): PlayerSession => ({
     highestUnlockedCampaignIndex: 0,
     campaignProgress: {},
     rankOverride: 0,
+    typeRatings: {},
+    typeRatingBestTime: {},
+    typeRatingSystemSince: 0,
 });
 
 export const loadSession = (): PlayerSession => {
@@ -48,6 +54,16 @@ export const loadSession = (): PlayerSession => {
         for (const key of Object.keys(merged.campaignProgress)) {
             const cp = merged.campaignProgress[key];
             if (!Array.isArray(cp?.missions)) cp.missions = [];
+        }
+        if (!merged.typeRatings) merged.typeRatings = {};
+        if (!merged.typeRatingBestTime) merged.typeRatingBestTime = {};
+        if (!merged.typeRatingSystemSince) {
+            merged.typeRatingSystemSince = 1;
+            // old save: grant all ratings — rank check still applies as second gate
+            merged.typeRatings['coasthawk'] = true;
+            merged.typeRatings['dolphin'] = true;
+            merged.typeRatings['atlas'] = true;
+            merged.typeRatings['ornithopter'] = true;
         }
         return merged;
     } catch {
@@ -80,10 +96,13 @@ export const isCampaignUnlocked = (
     // Cross-device import: highest reached campaign unlocks all up to that index
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return true;
 
+    // Coast Hawk type rating is the gate for all non-tutorial content
+    if (!s.typeRatings?.['coasthawk']) return false;
+
     if (type === CAMPAIGN_TYPE.FREE_FLIGHT) return true;
 
     const tutorialIndex = campaigns.findIndex(c => c.type === CAMPAIGN_TYPE.TUTORIAL);
-    const tutorialDone = tutorialIndex === -1 || !!s.campaignProgress[String(tutorialIndex)]?.completed;
+    const tutorialDone = tutorialIndex === -1 || !!s.campaignProgress[String(tutorialIndex)]?.missions[0]?.completed;
     if (!tutorialDone) return false;
 
     const regular = campaigns
@@ -101,21 +120,32 @@ export const isCampaignLockedByTutorial = (
     index: number
 ): boolean => {
     const type = campaigns[index]?.type;
-    if (!type || type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT) return false;
+    if (!type || type === CAMPAIGN_TYPE.TUTORIAL) return false;
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return false;
+    // Missing Coast Hawk type rating → training required stamp for everything
+    if (!s.typeRatings?.['coasthawk']) return true;
+    // Free flight is unlocked once Coast Hawk rating exists
+    if (type === CAMPAIGN_TYPE.FREE_FLIGHT) return false;
     const tutorialIndex = campaigns.findIndex(c => c.type === CAMPAIGN_TYPE.TUTORIAL);
     if (tutorialIndex === -1) return false;
-    return !s.campaignProgress[String(tutorialIndex)]?.completed;
+    return !s.campaignProgress[String(tutorialIndex)]?.missions[0]?.completed;
 };
 
 export const isMissionUnlocked = (
     s: PlayerSession,
     campaignKey: string,
     missionIndex: number,
-    campaignType: string
+    campaignType: string,
+    rankIndex = 0,
+    missionMinRank = 0,
 ): boolean => {
     if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return true;
     if (missionIndex === 0) return true;
+    if (campaignType === CAMPAIGN_TYPE.TUTORIAL) {
+        const tutorialDone = !!s.campaignProgress[campaignKey]?.missions[0]?.completed;
+        if (!tutorialDone) return false;
+        return rankIndex >= missionMinRank;
+    }
     if (Number(campaignKey) < (s.highestUnlockedCampaignIndex ?? 0)) return true;
     return !!s.campaignProgress[campaignKey]?.missions[missionIndex - 1]?.completed;
 };

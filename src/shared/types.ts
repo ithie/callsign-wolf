@@ -89,6 +89,7 @@ export type RescueZone = { x: number; y: number; w: number; h: number; role: Res
 export const OBJECTIVE_TYPE = {
     RESCUE_ALL: 'rescue_all',
     LAND_AT:    'land_at',
+    RING_ALL:   'ring_all',
 } as const;
 export type ObjectiveType = typeof OBJECTIVE_TYPE[keyof typeof OBJECTIVE_TYPE];
 
@@ -181,11 +182,13 @@ type XmasLanternObject  = { type: 'xmas_lantern'; x: number; y: number; angle?: 
 type SleighObject       = { type: 'sleigh'; x: number; y: number; angle?: number };
 type ReindeerObject     = { type: 'reindeer'; x: number; y: number; angle?: number };
 
-type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | SupplyVesselObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject | FrigateObject | XmasHouseAObject | XmasHouseBObject | XmasLanternObject | SleighObject | ReindeerObject;
+type RingObject = { type: 'ring'; x: number; y: number; z: number; radius?: number; angle?: number };
+type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | SupplyVesselObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject | FrigateObject | XmasHouseAObject | XmasHouseBObject | XmasLanternObject | SleighObject | ReindeerObject | RingObject;
 
 export type Objective =
     | { type: 'rescue_all' }
-    | { type: 'land_at'; target: 'pad' | 'carrier' | 'frigate' };
+    | { type: 'land_at'; target: 'pad' | 'carrier' | 'frigate' }
+    | { type: 'ring_all' };
 
 export type MissionPayload = {
     type: 'person' | 'crate' | 'rescuer' | 'orni_wreck' | 'reindeer';
@@ -223,6 +226,9 @@ export interface Mission {
     sand?: number[][];
     particleEmitters?: ParticleEmitter[];
     padPayloadRefill?: boolean;
+    maxTime?: number;         // mission time limit in seconds; countdown shown in HUD
+    typeRatingFor?: string;   // heliId: grant type rating on successful completion
+    heliOverride?: string;    // force this heli for the mission (tutorial ring missions)
 }
 
 export type MissionData = Omit<Mission, 'terrain' | 'foliage'> & {

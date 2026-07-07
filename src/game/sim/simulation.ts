@@ -736,4 +736,30 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
         else if (G.heli.fuel < 0) ctx.triggerCrash();
     }
 
+    // ring passage detection (plane-crossing + in-ring check)
+    if (G.RINGS.length > 0 && G.objectives.some((o: any) => o.type === OBJECTIVE_TYPE.RING_ALL)) {
+        let anyChanged = false;
+        for (const ring of G.RINGS) {
+            if (ring.flown) continue;
+            const cosA = Math.cos(ring.angle), sinA = Math.sin(ring.angle);
+            const dx = G.heli.x - ring.x, dy = G.heli.y - ring.y;
+            // signed distance from ring plane (ring normal = (cosA, sinA, 0))
+            const d = dx * cosA + dy * sinA;
+            const prevD = ring._lastD;
+            ring._lastD = d;
+            if (prevD === 0) continue; // skip first frame (no sign to compare)
+            if (Math.sign(d) === Math.sign(prevD)) continue; // no plane crossing
+            // check position in ring plane: tangential (horizontal) + vertical offsets
+            const dt2 = -dx * sinA + dy * cosA; // tangential component in ring plane
+            const dz2 = G.heli.z - ring.z;      // vertical component
+            if (Math.sqrt(dt2 * dt2 + dz2 * dz2) < ring.radius * 0.85) {
+                ring.flown = true;
+                anyChanged = true;
+            }
+        }
+        if (anyChanged && G.RINGS.every(r => r.flown)) {
+            _objectiveDone(OBJECTIVE_TYPE.RING_ALL, ctx);
+        }
+    }
+
 }

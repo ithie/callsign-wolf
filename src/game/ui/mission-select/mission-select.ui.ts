@@ -25,7 +25,7 @@ const _campaign: CampaignExport = {
 
 export const FrischerStart = () => {
     mount();
-    show({ campaign: _campaign, campaignIndex: 1, session: _session(), onSelect: () => {}, onBack: () => {} });
+    show({ campaign: _campaign, campaignIndex: 1, session: _session(), rankIndex: 0, onSelect: () => {}, onBack: () => {} });
 };
 
 export const TeilweiseFertig = () => {
@@ -45,6 +45,7 @@ export const TeilweiseFertig = () => {
                 },
             },
         }),
+        rankIndex: 0,
         onSelect: () => {},
         onBack: () => {},
     });
@@ -69,6 +70,7 @@ export const AlleGeschafft = () => {
                 },
             },
         }),
+        rankIndex: 3,
         onSelect: () => {},
         onBack: () => {},
     });

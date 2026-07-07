@@ -818,6 +818,31 @@
           rdUI.style.left = Math.min(600 - 160, Math.max(0, ox + 20)) + "px";
           rdUI.style.top = Math.min(600 - 80, Math.max(0, oy)) + "px";
         }
+      } else if (obj.type === "ring") {
+        const r = (obj.radius ?? 2.5) * tSize;
+        const angle = obj.angle ?? 0;
+        ctx.save();
+        if (isSelected) {
+          ctx.shadowBlur = 12;
+          ctx.shadowColor = "#FFD700";
+        }
+        ctx.strokeStyle = isSelected ? "#fff" : "#FFD700";
+        ctx.lineWidth = isSelected ? 2.5 : 1.5;
+        ctx.beginPath();
+        ctx.arc(ox, oy, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.strokeStyle = "#FFD700";
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.6;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(ox - Math.cos(angle) * r, oy - Math.sin(angle) * r);
+        ctx.lineTo(ox + Math.cos(angle) * r, oy + Math.sin(angle) * r);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.globalAlpha = 1;
+        ctx.shadowBlur = 0;
+        ctx.restore();
       }
     });
     const payloads = m.payloads || [];
@@ -1083,7 +1108,7 @@
   var broadcastPreview = () => {
     const m = getCurrentMission();
     if (!m) return;
-    previewChannel.postMessage({ type: "mission-update", mission: m });
+    previewChannel.postMessage({ type: "mission-update", mission: m, heliType: m.heliOverride || void 0 });
   };
   previewChannel.onmessage = (e) => {
     if (e.data.type === "preview-ready") broadcastPreview();
@@ -1113,6 +1138,10 @@
     const _startOnboard = parseInt(getInput("m_start_onboard").value);
     m.startOnboard = _startOnboard > 0 ? _startOnboard : void 0;
     m.waterLevel = parseFloat(getInput("m_water_level").value) || 0;
+    const _maxTime = parseFloat(getInput("m_max_time").value);
+    m.maxTime = isFinite(_maxTime) && _maxTime > 0 ? _maxTime : void 0;
+    const _heliOverride = getEl("m_heli_override").value;
+    m.heliOverride = _heliOverride || void 0;
     m.windDir = parseInt(getInput("m_wind_dir").value) || 0;
     m.windStr = parseFloat(getInput("m_wind_str").value) || 0;
     m.windVar = getInput("m_wind_var").checked;
@@ -1163,6 +1192,8 @@
     getInput("m_pad_payload_refill").checked = !!m.padPayloadRefill;
     getInput("m_start_onboard").value = (m.startOnboard ?? 0).toString();
     getInput("m_water_level").value = (m.waterLevel ?? 0).toString();
+    getInput("m_max_time").value = m.maxTime != null ? m.maxTime.toString() : "";
+    getEl("m_heli_override").value = m.heliOverride ?? "";
     getInput("m_wind_dir").value = (m.windDir ?? 0).toString();
     getInput("m_wind_str").value = (m.windStr ?? 0).toString();
     getInput("m_wind_var").checked = !!m.windVar;
@@ -1669,6 +1700,96 @@
       popup.style.top = Math.min(cy + 6, vh - 150) + "px";
       popup.style.display = "block";
     };
+    const showRingPopup = (idx, cx, cy) => {
+      const m = getCurrentMission();
+      const ring = m.objects[idx];
+      popup.innerHTML = "";
+      const header = document.createElement("div");
+      header.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px";
+      const title = document.createElement("span");
+      title.style.fontWeight = "bold";
+      title.textContent = `\u2B55 Ring #${m.objects.slice(0, idx + 1).filter((o) => o.type === "ring").length}`;
+      const closeBtn = document.createElement("span");
+      closeBtn.textContent = "\xD7";
+      closeBtn.style.cssText = "cursor:pointer;color:#f55;font-weight:bold;font-size:16px;margin-left:12px";
+      closeBtn.onclick = hidePopup;
+      header.append(title, closeBtn);
+      popup.appendChild(header);
+      const makeRow = (label, value, step, min, max, onChange) => {
+        const row = document.createElement("div");
+        row.style.cssText = "margin:4px 0;display:flex;align-items:center;gap:6px";
+        const lbl = document.createElement("span");
+        lbl.style.cssText = "color:#aaa;min-width:55px;font-size:11px";
+        lbl.textContent = label;
+        const inp = document.createElement("input");
+        inp.type = "number";
+        inp.value = String(value);
+        inp.step = String(step);
+        inp.min = String(min);
+        inp.max = String(max);
+        inp.style.cssText = "flex:1;background:#111;color:#FFD700;border:1px solid #444;font-family:monospace;font-size:11px;padding:2px 4px;width:60px";
+        inp.oninput = () => {
+          const v = parseFloat(inp.value);
+          if (!isNaN(v)) onChange(v);
+        };
+        row.append(lbl, inp);
+        return { row, inp };
+      };
+      const { row: angleRow, inp: angleInp } = makeRow("Winkel \xB0:", Math.round((ring.angle ?? 0) * 180 / Math.PI), 15, 0, 360, (v) => {
+        ring.angle = v * Math.PI / 180;
+        drawMap();
+        notifyWorkbench();
+        broadcastPreview();
+      });
+      popup.appendChild(angleRow);
+      popup.appendChild(makeRow("H\xF6he z:", ring.z ?? 4, 0.5, 0.5, 20, (v) => {
+        ring.z = v;
+        notifyWorkbench();
+        broadcastPreview();
+      }).row);
+      popup.appendChild(makeRow("Radius:", ring.radius ?? 2.5, 0.5, 1, 10, (v) => {
+        ring.radius = v;
+        drawMap();
+        notifyWorkbench();
+        broadcastPreview();
+      }).row);
+      const rotRow = document.createElement("div");
+      rotRow.style.cssText = "display:flex;gap:4px;margin-top:6px";
+      const mkRotBtn = (label, delta) => {
+        const b = document.createElement("button");
+        b.textContent = label;
+        b.style.cssText = "flex:1;background:#1a3a5a;border:1px solid #4af;color:#4af;font-size:11px;padding:4px;cursor:pointer;border-radius:3px;font-family:inherit";
+        b.onclick = () => {
+          ring.angle = (((ring.angle ?? 0) + delta * Math.PI / 180) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+          angleInp.value = String(Math.round(ring.angle * 180 / Math.PI));
+          drawMap();
+          notifyWorkbench();
+          broadcastPreview();
+        };
+        return b;
+      };
+      rotRow.append(mkRotBtn("\u21BA \u221215\xB0", -15), mkRotBtn("\u21BB +15\xB0", 15));
+      popup.appendChild(rotRow);
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "\u{1F5D1} Ring l\xF6schen";
+      delBtn.style.cssText = "width:100%;background:#3a1a1a;border:1px solid #f55;color:#f55;font-size:11px;padding:5px;cursor:pointer;border-radius:3px;font-family:inherit;margin-top:6px";
+      delBtn.onclick = () => {
+        m.objects.splice(idx, 1);
+        const mAny = m;
+        if (!m.objects.some((o) => o.type === "ring") && mAny.objectives)
+          mAny.objectives = mAny.objectives.filter((o) => o.type !== "ring_all");
+        hidePopup();
+        renderObjectList();
+        drawMap();
+        notifyWorkbench();
+        broadcastPreview();
+      };
+      popup.appendChild(delBtn);
+      const vw = window.innerWidth, vh = window.innerHeight;
+      popup.style.left = Math.min(cx + 6, vw - 190) + "px";
+      popup.style.top = Math.min(cy + 6, vh - 200) + "px";
+      popup.style.display = "block";
+    };
     document.addEventListener("mousedown", (e) => {
       if (!popup.contains(e.target)) hidePopup();
     });
@@ -1915,6 +2036,8 @@
       "m_snow",
       "m_night",
       "m_water_level",
+      "m_max_time",
+      "m_heli_override",
       "m_wind_dir",
       "m_wind_str",
       "m_wind_var",
@@ -2215,6 +2338,12 @@
           if (!mAny.particleEmitters) mAny.particleEmitters = [];
           mAny.particleEmitters.push({ type, x: gx, y: gy });
           break;
+        case "ring":
+          m.objects.push({ type: "ring", x: gx, y: gy, z: 4, radius: 2.5, angle: 0 });
+          if (!mAny.objectives) mAny.objectives = [];
+          if (!mAny.objectives.some((o) => o.type === "ring_all"))
+            mAny.objectives.push({ type: "ring_all" });
+          break;
       }
       renderObjectList();
       drawMap();
@@ -2226,7 +2355,8 @@
         { cat: "Stat.", emoji: "\u{1F3D7}", items: [
           { v: "pad", l: "\u{1F7E9} Landepad" },
           { v: "lighthouse", l: "\u{1F526} Leuchtturm" },
-          { v: "research_platform", l: "\u{1F3D7} Plattform" }
+          { v: "research_platform", l: "\u{1F3D7} Plattform" },
+          { v: "ring", l: "\u2B55 Ring" }
         ] },
         { cat: "Fahr.", emoji: "\u{1F6A2}", items: [
           { v: "carrier", l: "\u{1F6A2} Tr\xE4ger" },
@@ -2442,6 +2572,8 @@
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
           else if (obj.type === "xmas_lantern")
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 2.5;
+          else if (obj.type === "ring")
+            hit = Math.hypot(gx - obj.x, gy - obj.y) < (obj.radius ?? 2.5) + 1;
           if (hit) {
             startDrag("object", i, obj.x, obj.y);
             return;
@@ -2587,6 +2719,10 @@
           hidePopup();
         } else if (!state.dragHasMoved && state.dragItemType === "payload" && state.dragItemIdx !== null) {
           showPayloadPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
+        } else if (!state.dragHasMoved && state.dragItemType === "object" && state.dragItemIdx !== null) {
+          const clickedObj = getCurrentMission()?.objects[state.dragItemIdx];
+          if (clickedObj?.type === "ring")
+            showRingPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
         }
         state.isDraggingItem = false;
         state.dragItemType = null;
@@ -2654,16 +2790,6 @@
       if (!raw) return;
       try {
         const parsed = JSON.parse(raw);
-        if (parsed.type === "tutorial") {
-          document.getElementById("editor-tutorial-guard")?.remove();
-          const banner = document.createElement("div");
-          banner.id = "editor-tutorial-guard";
-          banner.style.cssText = "background:#6b0000;color:#fff;font-weight:bold;padding:10px 16px;margin-bottom:8px;border-radius:3px;border:1px solid #c00;font-size:13px;line-height:1.4;";
-          banner.textContent = "Tutorial-Kampagnen sind schreibgesch\xFCtzt und k\xF6nnen nicht im Editor bearbeitet werden.";
-          getEl("output").insertAdjacentElement("beforebegin", banner);
-          setTimeout(() => banner.remove(), 8e3);
-          return;
-        }
         const ct = parsed.campaignTitle;
         getInput("c_title_de").value = ct ? typeof ct === "string" ? ct : ct.de || "" : "Imported Campaign";
         getInput("c_title_en").value = ct && typeof ct !== "string" ? ct.en || "" : "";
@@ -2697,6 +2823,7 @@
   document.head.appendChild(styleEl);
   var notifyTimer = null;
   var isLoading = true;
+  var _isTutorial = false;
   var doExport = () => {
     const origAlert = window.alert;
     window.alert = () => {
@@ -2711,6 +2838,10 @@
   };
   var scheduleNotify = () => {
     window.__onEditorStateChanged?.();
+    if (_isTutorial && state.curIdx === 0) {
+      loadMission(1);
+      return;
+    }
     if (notifyTimer) clearTimeout(notifyTimer);
     if (isLoading) return;
     vscode.postMessage({ type: "missionIndex", value: state.curIdx });
@@ -2718,13 +2849,6 @@
       const content = doExport();
       if (content) vscode.postMessage({ type: "change", content });
     }, 400);
-  };
-  var _showTutorialLock = () => {
-    document.body.innerHTML = "";
-    const el = document.createElement("div");
-    el.style.cssText = "display:flex;align-items:center;justify-content:center;height:100vh;font-family:monospace;font-size:13px;color:#555;letter-spacing:2px;";
-    el.textContent = "TUTORIAL KANN NICHT BEARBEITET WERDEN";
-    document.body.appendChild(el);
   };
   setOnStateChanged(scheduleNotify);
   initUI();
@@ -2736,11 +2860,7 @@
         campaignType = JSON.parse(e.data.content).type ?? "";
       } catch {
       }
-      if (campaignType === "tutorial") {
-        _showTutorialLock();
-        isLoading = false;
-        return;
-      }
+      _isTutorial = campaignType === "tutorial";
       doImport(e.data.content);
       isLoading = false;
       setTimeout(() => window.__onEditorStateChanged?.(), 100);

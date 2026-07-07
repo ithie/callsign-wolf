@@ -27,6 +27,9 @@ export interface HudUpdateState {
     playerName: string;
     deliverMode: boolean;
     minimap: MinimapData;
+    maxTimeRemaining: number | null;
+    ringsFlown: number;
+    ringsTotal: number;
 }
 
 interface HudOpts {
@@ -61,6 +64,10 @@ export const createHud = ({ isoFn, canvas }: HudOpts) => {
     panel.appendChild(pax);
     const obj = document.createElement('div');
     panel.appendChild(obj);
+    const countdown = document.createElement('div');
+    panel.appendChild(countdown);
+    const rings = document.createElement('div');
+    panel.appendChild(rings);
     const callsign = document.createElement('div');
     callsign.style.cssText = 'font-size:11px;color:#888;';
     panel.appendChild(callsign);
@@ -100,7 +107,27 @@ export const createHud = ({ isoFn, canvas }: HudOpts) => {
         pax.textContent = `PAX: ${s.heli.onboard}/${s.heli.maxLoad}`;
         pax.style.color = s.heli.onboard >= s.heli.maxLoad ? '#f90' : '#5f5';
 
-        obj.textContent = `SAVED: ${s.totalRescued}/${s.goalCount}`;
+        obj.textContent = s.goalCount > 0 ? `SAVED: ${s.totalRescued}/${s.goalCount}` : '';
+
+        if (s.maxTimeRemaining !== null) {
+            const secs = Math.max(0, Math.ceil(s.maxTimeRemaining));
+            const mm = Math.floor(secs / 60).toString().padStart(2, '0');
+            const ss = (secs % 60).toString().padStart(2, '0');
+            countdown.textContent = `TIME: ${mm}:${ss}`;
+            countdown.style.color = s.maxTimeRemaining < 30 ? '#f44' : '#5f5';
+            countdown.style.display = 'block';
+        } else {
+            countdown.style.display = 'none';
+        }
+
+        if (s.ringsTotal > 0) {
+            rings.textContent = `RINGS: ${s.ringsFlown}/${s.ringsTotal}`;
+            rings.style.color = s.ringsFlown >= s.ringsTotal ? '#4f4' : '#FFD700';
+            rings.style.display = 'block';
+        } else {
+            rings.style.display = 'none';
+        }
+
         callsign.textContent = s.playerName || '';
 
         deliver.style.display = s.deliverMode ? 'block' : 'none';

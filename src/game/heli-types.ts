@@ -39,6 +39,8 @@ export interface HeliType {
     description?: string | { de: string; en: string };
     // Minimum rank index required to fly this type (0=Leutnant, 1=Oberleutnant, 2=Hauptmann)
     minRankIndex: number;
+    /** If true, player must also complete the type-rating parkour before flying this heli */
+    typeRatingRequired?: boolean;
     /** If true, this type is completely hidden in the selection screen when locked (instead of greyed out) */
     hideWhenLocked?: boolean;
 }
@@ -54,7 +56,7 @@ export const HELI_TYPES: HeliType[] = [
         tiltSpeed: 0.05,
         fuelRate: 0.012,
         liftPower: 0.0009,
-        cargoResist: 0.5,
+        cargoResist: 0.35,
         scale: 0.7,
         previewScale: 1.43,
         collisionBox: { xMin: -1.26, xMax: 1.26, yMin: -0.28, yMax: 0.28, zMax: 0.56 },
@@ -69,6 +71,7 @@ export const HELI_TYPES: HeliType[] = [
             en: 'An agile coast guard helicopter — ideal for rapid deployment in difficult terrain. Light, precise, responsive. The preferred tool of experienced pilots.',
         },
         minRankIndex: 1,
+        typeRatingRequired: true,
     },
     {
         id: 'coasthawk',
@@ -121,6 +124,7 @@ export const HELI_TYPES: HeliType[] = [
             en: 'Two rotors, no excuses. The Atlas is built for mass operations — when ordinary helicopters give up, the Atlas flies on.',
         },
         minRankIndex: 2,
+        typeRatingRequired: true,
     },
     {
         id: 'ornithopter',
@@ -147,6 +151,7 @@ export const HELI_TYPES: HeliType[] = [
             en: 'A next-generation ornithopter. Two crew, maximum agility. Surprisingly fast with cargo — not a helicopter, not a plane, something in between.',
         },
         minRankIndex: 3,
+        typeRatingRequired: true,
         hideWhenLocked: true,
     },
 ];

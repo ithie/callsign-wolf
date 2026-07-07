@@ -20,7 +20,7 @@ const previewChannel = new BroadcastChannel('editor-preview');
 const broadcastPreview = () => {
     const m = getCurrentMission();
     if (!m) return;
-    previewChannel.postMessage({ type: 'mission-update', mission: m });
+    previewChannel.postMessage({ type: 'mission-update', mission: m, heliType: (m as any).heliOverride || undefined });
 };
 // Re-broadcast when the preview window signals it's ready
 previewChannel.onmessage = e => {
@@ -65,6 +65,10 @@ export const syncToData = () => {
     const _startOnboard = parseInt(getInput('m_start_onboard').value);
     (m as any).startOnboard = _startOnboard > 0 ? _startOnboard : undefined;
     (m as any).waterLevel = parseFloat(getInput('m_water_level').value) || 0;
+    const _maxTime = parseFloat(getInput('m_max_time').value);
+    (m as any).maxTime = isFinite(_maxTime) && _maxTime > 0 ? _maxTime : undefined;
+    const _heliOverride = getEl<HTMLSelectElement>('m_heli_override').value;
+    (m as any).heliOverride = _heliOverride || undefined;
     m.windDir = parseInt(getInput('m_wind_dir').value) || 0;
     m.windStr = parseFloat(getInput('m_wind_str').value) || 0;
     m.windVar = getInput('m_wind_var').checked;
@@ -120,6 +124,8 @@ export const loadMission = (idx: number) => {
     getInput('m_pad_payload_refill').checked = !!(m as any).padPayloadRefill;
     getInput('m_start_onboard').value = ((m as any).startOnboard ?? 0).toString();
     getInput('m_water_level').value = ((m as any).waterLevel ?? 0).toString();
+    getInput('m_max_time').value = (m as any).maxTime != null ? (m as any).maxTime.toString() : '';
+    getEl<HTMLSelectElement>('m_heli_override').value = (m as any).heliOverride ?? '';
     getInput('m_wind_dir').value = (m.windDir ?? 0).toString();
     getInput('m_wind_str').value = (m.windStr ?? 0).toString();
     getInput('m_wind_var').checked = !!m.windVar;
@@ -674,6 +680,90 @@ export const initUI = () => {
         popup.style.display = 'block';
     };
 
+    const showRingPopup = (idx: number, cx: number, cy: number) => {
+        const m = getCurrentMission()!;
+        const ring = m.objects[idx] as any;
+        popup.innerHTML = '';
+
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px';
+        const title = document.createElement('span');
+        title.style.fontWeight = 'bold';
+        title.textContent = `⭕ Ring #${m.objects.slice(0, idx + 1).filter((o: any) => o.type === 'ring').length}`;
+        const closeBtn = document.createElement('span');
+        closeBtn.textContent = '×';
+        closeBtn.style.cssText = 'cursor:pointer;color:#f55;font-weight:bold;font-size:16px;margin-left:12px';
+        closeBtn.onclick = hidePopup;
+        header.append(title, closeBtn);
+        popup.appendChild(header);
+
+        const makeRow = (label: string, value: number, step: number, min: number, max: number, onChange: (v: number) => void) => {
+            const row = document.createElement('div');
+            row.style.cssText = 'margin:4px 0;display:flex;align-items:center;gap:6px';
+            const lbl = document.createElement('span');
+            lbl.style.cssText = 'color:#aaa;min-width:55px;font-size:11px';
+            lbl.textContent = label;
+            const inp = document.createElement('input');
+            inp.type = 'number';
+            inp.value = String(value);
+            inp.step = String(step);
+            inp.min = String(min);
+            inp.max = String(max);
+            inp.style.cssText = 'flex:1;background:#111;color:#FFD700;border:1px solid #444;font-family:monospace;font-size:11px;padding:2px 4px;width:60px';
+            inp.oninput = () => { const v = parseFloat(inp.value); if (!isNaN(v)) onChange(v); };
+            row.append(lbl, inp);
+            return { row, inp };
+        };
+
+        const { row: angleRow, inp: angleInp } = makeRow('Winkel °:', Math.round((ring.angle ?? 0) * 180 / Math.PI), 15, 0, 360, v => {
+            ring.angle = v * Math.PI / 180;
+            drawMap(); notifyWorkbench(); broadcastPreview();
+        });
+        popup.appendChild(angleRow);
+
+        popup.appendChild(makeRow('Höhe z:', ring.z ?? 4, 0.5, 0.5, 20, v => {
+            ring.z = v; notifyWorkbench(); broadcastPreview();
+        }).row);
+
+        popup.appendChild(makeRow('Radius:', ring.radius ?? 2.5, 0.5, 1, 10, v => {
+            ring.radius = v; drawMap(); notifyWorkbench(); broadcastPreview();
+        }).row);
+
+        const rotRow = document.createElement('div');
+        rotRow.style.cssText = 'display:flex;gap:4px;margin-top:6px';
+        const mkRotBtn = (label: string, delta: number) => {
+            const b = document.createElement('button');
+            b.textContent = label;
+            b.style.cssText = 'flex:1;background:#1a3a5a;border:1px solid #4af;color:#4af;font-size:11px;padding:4px;cursor:pointer;border-radius:3px;font-family:inherit';
+            b.onclick = () => {
+                ring.angle = (((ring.angle ?? 0) + delta * Math.PI / 180) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2);
+                angleInp.value = String(Math.round(ring.angle * 180 / Math.PI));
+                drawMap(); notifyWorkbench(); broadcastPreview();
+            };
+            return b;
+        };
+        rotRow.append(mkRotBtn('↺ −15°', -15), mkRotBtn('↻ +15°', +15));
+        popup.appendChild(rotRow);
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '🗑 Ring löschen';
+        delBtn.style.cssText = 'width:100%;background:#3a1a1a;border:1px solid #f55;color:#f55;font-size:11px;padding:5px;cursor:pointer;border-radius:3px;font-family:inherit;margin-top:6px';
+        delBtn.onclick = () => {
+            m.objects.splice(idx, 1);
+            const mAny = m as any;
+            if (!m.objects.some((o: any) => o.type === 'ring') && mAny.objectives)
+                mAny.objectives = mAny.objectives.filter((o: any) => o.type !== 'ring_all');
+            hidePopup();
+            renderObjectList(); drawMap(); notifyWorkbench(); broadcastPreview();
+        };
+        popup.appendChild(delBtn);
+
+        const vw = window.innerWidth, vh = window.innerHeight;
+        popup.style.left = Math.min(cx + 6, vw - 190) + 'px';
+        popup.style.top = Math.min(cy + 6, vh - 200) + 'px';
+        popup.style.display = 'block';
+    };
+
     document.addEventListener('mousedown', e => {
         if (!popup.contains(e.target as Node)) hidePopup();
     });
@@ -901,6 +991,8 @@ export const initUI = () => {
         'm_snow',
         'm_night',
         'm_water_level',
+        'm_max_time',
+        'm_heli_override',
         'm_wind_dir',
         'm_wind_str',
         'm_wind_var',
@@ -1219,6 +1311,12 @@ export const initUI = () => {
                 if (!mAny.particleEmitters) mAny.particleEmitters = [];
                 mAny.particleEmitters.push({ type, x: gx, y: gy });
                 break;
+            case 'ring':
+                m.objects.push({ type: 'ring' as any, x: gx, y: gy, z: 4, radius: 2.5, angle: 0 });
+                if (!mAny.objectives) mAny.objectives = [];
+                if (!mAny.objectives.some((o: any) => o.type === 'ring_all'))
+                    mAny.objectives.push({ type: 'ring_all' });
+                break;
         }
         renderObjectList();
         drawMap();
@@ -1232,6 +1330,7 @@ export const initUI = () => {
                 { v: 'pad', l: '🟩 Landepad' },
                 { v: 'lighthouse', l: '🔦 Leuchtturm' },
                 { v: 'research_platform', l: '🏗 Plattform' },
+                { v: 'ring', l: '⭕ Ring' },
             ]},
             { cat: 'Fahr.', emoji: '🚢', items: [
                 { v: 'carrier', l: '🚢 Träger' },
@@ -1434,6 +1533,8 @@ export const initUI = () => {
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
                 else if (obj.type === 'xmas_lantern')
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 2.5;
+                else if ((obj as any).type === 'ring')
+                    hit = Math.hypot(gx - obj.x, gy - obj.y) < ((obj as any).radius ?? 2.5) + 1;
                 if (hit) {
                     startDrag('object', i, obj.x, obj.y);
                     return;
@@ -1599,8 +1700,11 @@ export const initUI = () => {
                 state.selectedObjectIdx = null;
                 hidePopup();
             } else if (!state.dragHasMoved && state.dragItemType === 'payload' && state.dragItemIdx !== null) {
-                // fresh selection of a payload → show popup near click position
                 showPayloadPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
+            } else if (!state.dragHasMoved && state.dragItemType === 'object' && state.dragItemIdx !== null) {
+                const clickedObj = getCurrentMission()?.objects[state.dragItemIdx] as any;
+                if (clickedObj?.type === 'ring')
+                    showRingPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
             }
             state.isDraggingItem = false;
             state.dragItemType = null;
@@ -1684,19 +1788,6 @@ export const initUI = () => {
         if (!raw) return;
         try {
             const parsed = JSON.parse(raw);
-            if (parsed.type === 'tutorial') {
-                document.getElementById('editor-tutorial-guard')?.remove();
-                const banner = document.createElement('div');
-                banner.id = 'editor-tutorial-guard';
-                banner.style.cssText =
-                    'background:#6b0000;color:#fff;font-weight:bold;padding:10px 16px;' +
-                    'margin-bottom:8px;border-radius:3px;border:1px solid #c00;font-size:13px;line-height:1.4;';
-                banner.textContent =
-                    'Tutorial-Kampagnen sind schreibgeschützt und können nicht im Editor bearbeitet werden.';
-                getEl('output').insertAdjacentElement('beforebegin', banner);
-                setTimeout(() => banner.remove(), 8000);
-                return;
-            }
             const ct = parsed.campaignTitle;
             getInput('c_title_de').value = ct ? (typeof ct === 'string' ? ct : ct.de || '') : 'Imported Campaign';
             getInput('c_title_en').value = ct && typeof ct !== 'string' ? ct.en || '' : '';

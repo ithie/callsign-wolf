@@ -182,6 +182,7 @@ const mkMinimapData = (): MinimapData => ({
     payloads: [],
     windBft: 0,
     windAngle: 0,
+    rings: [],
 });
 
 // ─── legal-screen ─────────────────────────────────────────────────────────────
@@ -343,6 +344,7 @@ describe('mission-select', () => {
             campaign: mkCampaign(3),
             campaignIndex: 0,
             session: mkSession(),
+            rankIndex: 0,
             onSelect: vi.fn(),
             onBack: vi.fn(),
         });
@@ -365,6 +367,7 @@ describe('mission-select', () => {
                     },
                 },
             }),
+            rankIndex: 0,
             onSelect: vi.fn(),
             onBack: vi.fn(),
         });
@@ -557,14 +560,14 @@ describe('heli-select', () => {
 
     it('showHeliSelect renders a carousel with all heli cards', () => {
         HeliSelect.mount();
-        HeliSelect.show({ rankIndex: 3, onSelect: vi.fn(), onBack: vi.fn() });
+        HeliSelect.show({ rankIndex: 3, typeRatings: {} as Record<string, true>, onSelect: vi.fn(), onBack: vi.fn() });
         const cards = document.querySelectorAll('.swipe-card');
         expect(cards.length).toBeGreaterThan(0);
     });
 
     it('snapshot', () => {
         HeliSelect.mount();
-        HeliSelect.show({ rankIndex: 3, onSelect: vi.fn(), onBack: vi.fn() });
+        HeliSelect.show({ rankIndex: 3, typeRatings: {} as Record<string, true>, onSelect: vi.fn(), onBack: vi.fn() });
         snap('heli-select');
     });
 });

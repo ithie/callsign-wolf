@@ -394,9 +394,9 @@
                     <div style="padding: 6px 10px; color: var(--text-dim); font-size: 11px">Lade Editor…</div>
                 </div>
                 <div id="ed-tab-bar">
-                    <button class="ed-tab active" data-tab="terrain" onclick="edSwitchTab('terrain')">Gelände</button>
+                    <button class="ed-tab active" data-tab="mission" onclick="edSwitchTab('mission')">Mission</button>
+                    <button class="ed-tab" data-tab="terrain" onclick="edSwitchTab('terrain')">Gelände</button>
                     <button class="ed-tab" data-tab="objects" onclick="edSwitchTab('objects')">Objekte</button>
-                    <button class="ed-tab" data-tab="mission" onclick="edSwitchTab('mission')">Mission</button>
                 </div>
                 <div id="ed-tab-content">
                     <div style="padding: 10px; color: var(--text-dim); font-size: 11px">…</div>
@@ -777,6 +777,14 @@
             <input type="checkbox" id="m_pad_payload_refill" />
             <input type="number" id="m_start_onboard" value="0" min="0" max="6" />
             <input type="number" id="m_water_level" value="0" min="-5" max="30" step="0.5" />
+            <input type="number" id="m_max_time" min="30" max="600" step="10" />
+            <select id="m_heli_override">
+                <option value="">Spieler-Wahl</option>
+                <option value="coasthawk">Coast Hawk</option>
+                <option value="dolphin">Dolphin</option>
+                <option value="atlas">Atlas</option>
+                <option value="ornithopter">Ornithopter</option>
+            </select>
             <input type="number" id="m_npc_heli_count" value="0" min="0" max="3" />
             <select id="m_npc_heli_type">
                 <option value="random">Zufällig</option>
@@ -1071,6 +1079,10 @@ Viel Glück, Pilot.</textarea
                         set('m_water_level', data.value);
                         fire('m_water_level', 'input');
                         break;
+                    case 'set-max-time':
+                        set('m_max_time', data.value != null ? data.value : '');
+                        fire('m_max_time', 'input');
+                        break;
                     case 'set-wind-dir':
                         set('m_wind_dir', data.value);
                         fire('m_wind_dir', 'input');
@@ -1082,6 +1094,10 @@ Viel Glück, Pilot.</textarea
                     case 'set-wind-var':
                         chk('m_wind_var', data.value);
                         fire('m_wind_var', 'input');
+                        break;
+                    case 'set-heli-override':
+                        set('m_heli_override', data.value ?? '');
+                        fire('m_heli_override', 'input');
                         break;
                     case 'set-npc-count':
                         set('m_npc_heli_count', data.value);
@@ -1176,7 +1192,7 @@ Viel Glück, Pilot.</textarea
             };
             let SONG_KEYS = [''];
             let _edLang = 'de';
-            let _edActiveTab = 'terrain';
+            let _edActiveTab = 'mission';
             let edLastState = null;
 
             const edH = s =>
@@ -1526,26 +1542,6 @@ Viel Glück, Pilot.</textarea
                                   .join('')
                             : '<div class="ed-empty">Keine Emitter</div>') +
                         '</div>' +
-                        '<div class="ed-section"><div class="ed-section-title">Spielziele</div>' +
-                        (cm.objectives.length
-                            ? cm.objectives
-                                  .map(
-                                      o =>
-                                          '<div class="ed-list-row"><span>' +
-                                          (o.type === 'rescue_all' ? '🚁 Alle retten' : '🎯 Landen: ' + o.target) +
-                                          '</span>' +
-                                          '<button class="ed-btn-sm ed-del" style="color:#f55" onclick="edDispatch(\'delete-objective\',{idx:' +
-                                          o.idx +
-                                          '})">✕</button></div>'
-                                  )
-                                  .join('')
-                            : '<div class="ed-empty">Keine Ziele</div>') +
-                        '<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px">' +
-                        '<button class="ed-btn" style="width:auto;font-size:10px;padding:3px 6px" onclick="edDispatch(\'add-objective\',{type:\'rescue_all\'})">+ Alle retten</button>' +
-                        '<button class="ed-btn" style="width:auto;font-size:10px;padding:3px 6px" onclick="edDispatch(\'add-objective\',{type:\'land_at\',target:\'pad\'})">+ Landen: Pad</button>' +
-                        '<button class="ed-btn" style="width:auto;font-size:10px;padding:3px 6px" onclick="edDispatch(\'add-objective\',{type:\'land_at\',target:\'carrier\'})">+ Landen: Carrier</button>' +
-                        '<button class="ed-btn" style="width:auto;font-size:10px;padding:3px 6px" onclick="edDispatch(\'add-objective\',{type:\'land_at\',target:\'frigate\'})">+ Landen: Fregatte</button>' +
-                        '</div></div>' +
                         '<div class="ed-section"><div class="ed-section-title">Payloads</div>' +
                         (cm.payloads.length
                             ? cm.payloads
@@ -1648,6 +1644,31 @@ Viel Glück, Pilot.</textarea
                         '\',value:this.value})">' +
                         edH(edLs(cm.briefing, _edLang)) +
                         '</textarea>' +
+                        '</div>' +
+                        '<div class="ed-section"><div class="ed-section-title">Spielziele</div>' +
+                        (cm.objectives.length
+                            ? cm.objectives
+                                  .map(
+                                      o =>
+                                          '<div class="ed-list-row"><span>' +
+                                          (o.type === 'rescue_all' ? '🚁 Alle retten' : o.type === 'ring_all' ? '⭕ Alle Ringe' : '🎯 Landen: ' + o.target) +
+                                          '</span>' +
+                                          '<button class="ed-btn-sm ed-del" style="color:#f55" onclick="edDispatch(\'delete-objective\',{idx:' +
+                                          o.idx +
+                                          '})">✕</button></div>'
+                                  )
+                                  .join('')
+                            : '<div class="ed-empty">Keine Ziele</div>') +
+                        '<div style="display:flex;gap:3px;flex-wrap:wrap;margin-top:5px">' +
+                        '<button class="ed-btn" style="width:auto;font-size:10px;padding:3px 6px" onclick="edDispatch(\'add-objective\',{type:\'rescue_all\'})">+ Alle retten</button>' +
+                        '<button class="ed-btn" style="width:auto;font-size:10px;padding:3px 6px" onclick="edDispatch(\'add-objective\',{type:\'land_at\',target:\'pad\'})">+ Landen: Pad</button>' +
+                        '<button class="ed-btn" style="width:auto;font-size:10px;padding:3px 6px" onclick="edDispatch(\'add-objective\',{type:\'land_at\',target:\'carrier\'})">+ Landen: Carrier</button>' +
+                        '<button class="ed-btn" style="width:auto;font-size:10px;padding:3px 6px" onclick="edDispatch(\'add-objective\',{type:\'land_at\',target:\'frigate\'})">+ Landen: Fregatte</button>' +
+                        '</div>' +
+                        '<div class="ed-row" style="margin-top:8px"><label style="color:var(--text-dim)">⏱ Max. Zeit (s)</label>' +
+                        '<input type="number" value="' +
+                        (cm.maxTime != null ? cm.maxTime : '') +
+                        '" min="30" max="600" step="10" placeholder="–" style="width:55px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:2px;padding:2px 4px;font-size:11px" oninput="edDispatch(\'set-max-time\',{value:this.value ? parseFloat(this.value) : null})"></div>' +
                         '</div>' +
                         '<div class="ed-section">' +
                         '<div class="ed-section-title">Bedingungen</div>' +

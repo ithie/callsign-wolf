@@ -168,8 +168,22 @@ class ViewController: UIViewController {
             cp["missions"] = missions
             progress[key] = cp
         }
+        if changed { session["campaignProgress"] = progress }
+
+        // type-rating system migration: old saves get all ratings granted
+        if session["typeRatingSystemSince"] == nil {
+            let rankOverride = session["rankOverride"] as? Int ?? 0
+            var ratings = session["typeRatings"] as? [String: Bool] ?? [:]
+            if rankOverride >= 1 { ratings["dolphin"]     = true }
+            if rankOverride >= 2 { ratings["atlas"]       = true }
+            if rankOverride >= 3 { ratings["ornithopter"] = true }
+            session["typeRatings"]           = ratings
+            session["typeRatingBestTime"]    = session["typeRatingBestTime"] ?? [String: Int]()
+            session["typeRatingSystemSince"] = 1
+            changed = true
+        }
+
         guard changed else { return raw }
-        session["campaignProgress"] = progress
         return (try? JSONSerialization.data(withJSONObject: session))
             .flatMap { String(data: $0, encoding: .utf8) } ?? raw
     }

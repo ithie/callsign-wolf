@@ -721,6 +721,29 @@ export const drawMap = () => {
                 rdUI.style.left = Math.min(600 - 160, Math.max(0, ox + 20)) + 'px';
                 rdUI.style.top = Math.min(600 - 80, Math.max(0, oy)) + 'px';
             }
+        } else if ((obj as any).type === 'ring') {
+            const r = ((obj as any).radius ?? 2.5) * tSize;
+            const angle = (obj as any).angle ?? 0;
+            ctx.save();
+            if (isSelected) { ctx.shadowBlur = 12; ctx.shadowColor = '#FFD700'; }
+            ctx.strokeStyle = isSelected ? '#fff' : '#FFD700';
+            ctx.lineWidth = isSelected ? 2.5 : 1.5;
+            ctx.beginPath();
+            ctx.arc(ox, oy, r, 0, Math.PI * 2);
+            ctx.stroke();
+            // Dashed line showing the ring's facing direction (normal)
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 1;
+            ctx.globalAlpha = 0.6;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(ox - Math.cos(angle) * r, oy - Math.sin(angle) * r);
+            ctx.lineTo(ox + Math.cos(angle) * r, oy + Math.sin(angle) * r);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.globalAlpha = 1;
+            ctx.shadowBlur = 0;
+            ctx.restore();
         }
     });
 

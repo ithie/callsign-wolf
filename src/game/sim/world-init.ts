@@ -37,8 +37,8 @@ export const resolveAttachTo = (attachTo: any): { x: number; y: number; z: numbe
         case VESSEL.WIND_TURBINE: {
             const wt = G.WIND_TURBINES.find((w: any) => w._objIdx === attachTo.objectIdx);
             if (!wt) return null;
-            const lzZ = (WIND_TURBINE_DEF as any).landingZone?.z ?? 12.3;
-            return { x: wt.x + lx, y: wt.y + ly, z: wt.gz + lzZ };
+            const rzZ = (WIND_TURBINE_DEF as any).rescueZones?.[0]?.z ?? 12.15;
+            return { x: wt.x + lx, y: wt.y + ly, z: wt.gz + rzZ };
         }
         case VESSEL.SUPPLY_VESSEL:
         case VESSEL.BOAT: {
@@ -432,7 +432,7 @@ export const initStaticObjectsFromMission = () => {
         particles: [] as any[],
         spawnTimer: 0,
     }));
-    const _gondolaLzZ = (WIND_TURBINE_DEF as any).landingZone?.z ?? 12.3;
+    const _gondolaLzZ = (WIND_TURBINE_DEF as any).rescueZones?.[0]?.z ?? 12.15;
     G.WIND_TURBINES.forEach((wt: any) => {
         if (wt.onFire) G.PARTICLE_EMITTERS.push({ type: 'fire',  x: wt.x + 0.1, y: wt.y, gz: wt.gz + _gondolaLzZ, particles: [], spawnTimer: 0 });
         if (wt.onFire || wt.onSmoke) G.PARTICLE_EMITTERS.push({ type: 'smoke', x: wt.x + 0.1, y: wt.y, gz: wt.gz + _gondolaLzZ, particles: [], spawnTimer: 0 });
@@ -523,4 +523,19 @@ export const initPayloadsFromMission = () => {
     G.goalCount = G.payloads.filter((p: any) => !p.npcTarget).length;
     G.totalRescued = 0;
     G.activePayload = null;
+};
+
+export const initRingsFromMission = () => {
+    const objs = campaignHandler.getCurrentMissionData().objects || [];
+    G.RINGS = (objs as any[])
+        .filter(o => o.type === 'ring')
+        .map(o => ({
+            x: o.x as number,
+            y: o.y as number,
+            z: (o.z ?? 3) as number,
+            radius: (o.radius ?? 2.5) as number,
+            angle: (o.angle ?? 0) as number,
+            flown: false,
+            _lastD: 0,
+        }));
 };

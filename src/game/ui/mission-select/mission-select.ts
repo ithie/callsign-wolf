@@ -4,6 +4,7 @@ import { I18N, localize } from '../../i18n';
 import { ensureEl } from '../dom-helpers';
 import { isMissionUnlocked, type PlayerSession } from '../../session';
 import type { CampaignExport } from '../../../shared/types';
+import { HELI_TYPES } from '../../heli-types';
 import { showScreenCrtEnter } from '../nav';
 import { mountScreenShell } from '../screen-shell/screen-shell';
 import { createSwipeCarousel } from '../swipe-carousel/swipe-carousel';
@@ -13,6 +14,7 @@ type MissionSelectDeps = {
     campaign: CampaignExport;
     campaignIndex: number;
     session: PlayerSession;
+    rankIndex: number;
     onSelect: (missionIndex: number) => void;
     onBack: () => void;
 };
@@ -30,22 +32,31 @@ export const mount = () => {
 };
 
 export const show = (deps: MissionSelectDeps) => {
-    const { campaign, campaignIndex, session, onSelect, onBack } = deps;
+    const { campaign, campaignIndex, session, rankIndex, onSelect, onBack } = deps;
     const key = String(campaignIndex);
     const cp = session.campaignProgress[key];
 
     const body = mountScreenShell('mission-select', localize(campaign.campaignTitle), I18N.MISSION_SELECT_SUB, onBack);
 
-    const missionItems: MissionItem[] = campaign.levels.map((level, i) => {
+    const allItems: MissionItem[] = campaign.levels.map((level, i) => {
         const mp = cp?.missions[i];
+        const typeRatingFor = (level as any).typeRatingFor as string | undefined;
+        const missionMinRank = typeRatingFor
+            ? (HELI_TYPES.find(h => h.id === typeRatingFor)?.minRankIndex ?? 0)
+            : 0;
         return {
             level,
             index: i,
-            unlocked: isMissionUnlocked(session, key, i, campaign.type),
+            unlocked: isMissionUnlocked(session, key, i, campaign.type, rankIndex, missionMinRank),
             done: mp?.completed ?? false,
             bestTime: mp?.bestTimeMs ?? null,
         };
     });
+
+    // For tutorial campaigns: only show missions that are currently unlocked
+    const missionItems = campaign.type === 'tutorial'
+        ? allItems.filter(m => m.unlocked)
+        : allItems;
 
     const carousel = createSwipeCarousel<MissionItem>({
         items: missionItems,

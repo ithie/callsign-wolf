@@ -109,6 +109,7 @@ export type MinimapData = {
     payloads: Array<{ x: number; y: number; type: string; rescued: boolean; npcTarget: boolean; hanging: boolean }>;
     windBft: number;
     windAngle: number;
+    rings: Array<{ x: number; y: number; flown: boolean }>;
 };
 
 export const updateMinimap = (data: MinimapData): void => {
@@ -215,6 +216,17 @@ export const updateMinimap = (data: MinimapData): void => {
         dot.style.background = p.type === 'crate' ? '#ff7755' : '#ff3333';
         dot.style.width = '4px';
         dot.style.height = '4px';
+        dot.style.display = 'block';
+    });
+
+    // Ringe: gelb (offen) oder grün (geflogen)
+    data.rings.forEach(ring => {
+        const dot = _getDot(dotIdx++);
+        dot.style.left = `${ring.x * sc}px`;
+        dot.style.top = `${ring.y * sc}px`;
+        dot.style.background = ring.flown ? '#44ee44' : '#FFD700';
+        dot.style.width = '6px';
+        dot.style.height = '6px';
         dot.style.display = 'block';
     });
 

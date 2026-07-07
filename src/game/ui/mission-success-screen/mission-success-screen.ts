@@ -5,12 +5,12 @@ import { I18N } from '../../i18n';
 
 let _el: HTMLElement | null = null;
 
-export const mount = (onNext: (() => void) | null, onBack: () => void, backLabel?: string): void => {
+export const mount = (onNext: (() => void) | null, onBack: () => void, backLabel?: string, extraText?: string): void => {
     _el = ensureEl('mission-success-screen');
     _el.classList.add('ui-screen');
     _el.innerHTML = `
         <div class="title" style="color:#fff">${I18N.MISSION_COMPLETE}</div>
-        <p style="color:#ffd700">${I18N.OBJECTIVES_CLEARED}</p>
+        ${extraText ? `<p style="color:#ffd700;font-size:1.1em;letter-spacing:0.05em">${extraText}</p>` : `<p style="color:#ffd700">${I18N.OBJECTIVES_CLEARED}</p>`}
         <div class="success-buttons">
             ${onNext ? `<button class="success-btn success-btn--primary">${I18N.NEXT_MISSION}</button>` : ''}
             <button class="success-btn success-btn--secondary">${backLabel ?? I18N.TO_MISSION_SELECT}</button>

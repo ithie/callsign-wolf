@@ -5,11 +5,12 @@ import { I18N } from '../../i18n';
 
 let _el: HTMLElement | null = null;
 
-export const mount = (onBack: () => void, onRetry: () => void): void => {
+export const mount = (onBack: () => void, onRetry: () => void, extraText?: string): void => {
     _el = ensureEl('mission-failed-screen');
     _el.classList.add('ui-screen');
     _el.innerHTML = `
         <div class="title" style="color:#fff">${I18N.MISSION_FAILED}</div>
+        ${extraText ? `<p style="color:#f55;font-size:1.1em;letter-spacing:0.05em">${extraText}</p>` : ''}
         <div class="failed-buttons">
             <button class="failed-btn failed-btn--primary">${I18N.RETRY}</button>
             <button class="failed-btn failed-btn--secondary">${I18N.BACK}</button>

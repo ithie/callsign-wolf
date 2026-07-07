@@ -254,6 +254,80 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         });
     };
 
+    const _RING_SEGS = 24; // must be divisible by 3 for clean stripe groups
+
+    const _drawRings = (inCone: (x: number, y: number) => boolean) => {
+        G.RINGS.forEach(ring => {
+            if (!inCone(ring.x, ring.y)) return;
+            const r = ring.radius;
+            const cosA = Math.cos(ring.angle), sinA = Math.sin(ring.angle);
+            SceneRenderer.add(null, {
+                x: 0, y: 0, depth: ring.x + ring.y,
+                drawFn: (cx: number, cy: number) => {
+                    ctx.lineWidth = Math.max(2, 3 * tileW / 64);
+                    ctx.lineCap = 'butt';
+                    // Ground shadow: projected outline of the tilted ring onto z=0
+                    ctx.beginPath();
+                    for (let si = 0; si <= 24; si++) {
+                        const st = (si / 24) * Math.PI * 2;
+                        const sp = isoFn(ring.x + r * Math.cos(st) * (-sinA), ring.y + r * Math.cos(st) * cosA, 0, cx, cy);
+                        if (si === 0) ctx.moveTo(sp.x, sp.y); else ctx.lineTo(sp.x, sp.y);
+                    }
+                    ctx.closePath();
+                    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+                    ctx.lineWidth = Math.max(1, 1.5 * tileW / 64);
+                    ctx.stroke();
+                    if (ring.flown) {
+                        ctx.strokeStyle = '#44ee44';
+                        ctx.globalAlpha = 0.55;
+                        ctx.beginPath();
+                        for (let i = 0; i <= _RING_SEGS; i++) {
+                            const t = (i / _RING_SEGS) * Math.PI * 2;
+                            const p = isoFn(
+                                ring.x + r * Math.cos(t) * (-sinA),
+                                ring.y + r * Math.cos(t) * cosA,
+                                ring.z + r * Math.sin(t),
+                                cx, cy
+                            );
+                            if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                        }
+                        ctx.stroke();
+                        ctx.globalAlpha = 1;
+                    } else {
+                        const now = performance.now() / 1000;
+                        const rotOff = now * 0.9;
+                        const rAnim = r * (1 + 0.055 * Math.sin(now * 2.4));
+                        // yellow/black stripes: 3 segments per stripe group, 8 groups
+                        for (let g = 0; g < _RING_SEGS / 3; g++) {
+                            ctx.strokeStyle = g % 2 === 0 ? '#FFD700' : '#2a2a2a';
+                            ctx.beginPath();
+                            for (let s = 0; s < 3; s++) {
+                                const i = g * 3 + s;
+                                const t0 = (i / _RING_SEGS) * Math.PI * 2 + rotOff;
+                                const t1 = ((i + 1) / _RING_SEGS) * Math.PI * 2 + rotOff;
+                                const p0 = isoFn(
+                                    ring.x + rAnim * Math.cos(t0) * (-sinA),
+                                    ring.y + rAnim * Math.cos(t0) * cosA,
+                                    ring.z + rAnim * Math.sin(t0),
+                                    cx, cy
+                                );
+                                const p1 = isoFn(
+                                    ring.x + rAnim * Math.cos(t1) * (-sinA),
+                                    ring.y + rAnim * Math.cos(t1) * cosA,
+                                    ring.z + rAnim * Math.sin(t1),
+                                    cx, cy
+                                );
+                                if (s === 0) ctx.moveTo(p0.x, p0.y);
+                                ctx.lineTo(p1.x, p1.y);
+                            }
+                            ctx.stroke();
+                        }
+                    }
+                },
+            });
+        });
+    };
+
     return {
         _drawWindTurbine,
         _drawDefLights,
@@ -267,5 +341,6 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         _drawBuoys,
         _drawFestivalObjects,
         _drawXmasObjects,
+        _drawRings,
     };
 };

@@ -1,9 +1,7 @@
 import { CampaignExport, MissionData } from '@/shared/types';
 import Tutorial from './campaigns/tutorial.zcampaign';
 import FreeFlight from './campaigns/freeFlight.zcampaign';
-import DemoCampaign from './campaigns/demo.zcampaign';
 import CallsignWolf from './campaigns/callsignwolf.zcampaign';
-import Zephyr from './campaigns/zephyr.zcampaign';
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
 import { songToZsong } from '../shared/zsong';
@@ -121,8 +119,6 @@ const createCampaignHandler = () => {
         Tutorial as unknown as CampaignExport,
         FreeFlight as unknown as CampaignExport,
         CallsignWolf as unknown as CampaignExport,
-        Zephyr as unknown as CampaignExport,
-        DemoCampaign as unknown as CampaignExport,
     ];
 
     const campaignMap = new Map<string, CampaignExport>(campaigns.map(c => [(c as any)._key as string, c]));

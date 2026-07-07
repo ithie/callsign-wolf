@@ -14,6 +14,7 @@ document.head.appendChild(styleEl);
 
 let notifyTimer: ReturnType<typeof setTimeout> | null = null;
 let isLoading = true;
+let _isTutorial = false;
 
 const doExport = (): string | null => {
     const origAlert = window.alert;
@@ -30,6 +31,10 @@ const doImport = (content: string): void => {
 
 const scheduleNotify = (): void => {
     (window as any).__onEditorStateChanged?.();
+    if (_isTutorial && state.curIdx === 0) {
+        loadMission(1);
+        return;
+    }
     if (notifyTimer) clearTimeout(notifyTimer);
     if (isLoading) return;
     vscode.postMessage({ type: 'missionIndex', value: state.curIdx });
@@ -37,14 +42,6 @@ const scheduleNotify = (): void => {
         const content = doExport();
         if (content) vscode.postMessage({ type: 'change', content });
     }, 400);
-};
-
-const _showTutorialLock = (): void => {
-    document.body.innerHTML = '';
-    const el = document.createElement('div');
-    el.style.cssText = 'display:flex;align-items:center;justify-content:center;height:100vh;font-family:monospace;font-size:13px;color:#555;letter-spacing:2px;';
-    el.textContent = 'TUTORIAL KANN NICHT BEARBEITET WERDEN';
-    document.body.appendChild(el);
 };
 
 // Wire up the state-changed callback before initUI so all changes are captured
@@ -57,11 +54,7 @@ window.addEventListener('message', (e: MessageEvent<{ type: string; content?: st
     if (e.data.type === 'load' && e.data.content !== undefined) {
         let campaignType = '';
         try { campaignType = (JSON.parse(e.data.content) as { type?: string }).type ?? ''; } catch { /* ignore */ }
-        if (campaignType === 'tutorial') {
-            _showTutorialLock();
-            isLoading = false;
-            return;
-        }
+        _isTutorial = campaignType === 'tutorial';
         doImport(e.data.content);
         isLoading = false;
         setTimeout(() => (window as any).__onEditorStateChanged?.(), 100);

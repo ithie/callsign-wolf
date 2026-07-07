@@ -35,6 +35,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         _drawBuoys,
         _drawFestivalObjects,
         _drawXmasObjects,
+        _drawRings,
     } = createStructuresDraw(dwCtx);
     const { drawPayloadObjects, queueAttachedPayloads } = createPayloadsDraw(dwCtx);
     const { handleCollisionBoxes, drawDebugOverlay } = createCollisionDraw(dwCtx);
@@ -182,7 +183,12 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 if (Math.abs(lx) <= 14 && Math.abs(ly) <= 5) {
                     _heliQueuedInFrigate = true;
                     _drawBoatModel(b, camX, camY, (ni) => {
-                        if (ni === 1) SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt.x + heliAt.y, drawFn: (cx, cy) => heliAt.fn(cx, cy) });
+                        if (ni === 0) {
+                            // Flush hull immediately, then heli alone — superstructure (node 1) renders last
+                            SceneRenderer.flush(camX, camY);
+                            SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt.x + heliAt.y, drawFn: (cx, cy) => heliAt.fn(cx, cy) });
+                            SceneRenderer.flush(camX, camY);
+                        }
                     });
                     return;
                 }
@@ -209,6 +215,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         _drawBuoys(_inNightCone);
         _drawFestivalObjects(_inNightCone);
         _drawXmasObjects(_inNightCone);
+        _drawRings(_inNightCone);
         const lh = dwCtx.getLighthouse();
         if (lh && isVisible(lh.x, lh.y, visMargin) && _inNightCone(lh.x, lh.y)) _drawLighthouse(camX, camY);
 

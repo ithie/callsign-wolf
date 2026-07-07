@@ -68,6 +68,7 @@ export const G = {
     XMAS_LANTERNS: [] as any[],
     SLEIGHS: [] as any[],
     REINDEER_OBJECTS: [] as any[],
+    RINGS: [] as { x: number; y: number; z: number; radius: number; angle: number; flown: boolean; _lastD: number }[],
     seaTime: 0,
     payloads: [] as any[],
     activePayload: null as any,

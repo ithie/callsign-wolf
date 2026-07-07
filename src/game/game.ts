@@ -12,7 +12,6 @@ import { initHeliSound, updateHeliSound, stopHeliSound, setSfxEnabled, isSfxEnab
 
 import { createDrawWorld } from './draws-world/draw-world';
 import RESEARCH_PLATFORM_DEF from './models/research_platform.zdef';
-import WIND_TURBINE_DEF from './models/wind_turbine.zdef';
 import { createSceneRenderer } from './scene-renderer';
 import { getHeliType, HELI_TYPES } from './heli-types';
 import { G } from './state';
@@ -23,6 +22,7 @@ import {
     initSubmarinesFromMission,
     initStaticObjectsFromMission,
     initPayloadsFromMission,
+    initRingsFromMission,
     spawnPayload,
 } from './sim/world-init';
 import { carrierCar } from './sim/vehicles/carrier-car';
@@ -186,6 +186,11 @@ const triggerCrash = () => {
     zstate.crashed = true;
     setTimeout(() => {
         _stopMission();
+        MissionFailedScreen.mount(
+            returnToBase,
+            retryMission,
+            _missionTypeRatingFor ? I18N.TYPE_RATING_FAILED : undefined
+        );
         MissionFailedScreen.show();
     }, 1800);
 };
@@ -238,6 +243,28 @@ const missionComplete = () => {
         if (newRank.key !== prevRank.key) rankUpRank = newRank;
     }
 
+    const _rankUpHeliId = rankUpRank
+        ? HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id
+        : undefined;
+    const typeRatingHint = _rankUpHeliId && !_session.typeRatings?.[_rankUpHeliId]
+        ? I18N.TYPE_RATING_UNLOCKED(HELI_TYPES.find(h => h.id === _rankUpHeliId)!.label)
+        : undefined;
+
+    // grant type rating if this is a ring parkour mission
+    const isFirstTypeRating = !!(_missionTypeRatingFor && !_session.typeRatings?.[_missionTypeRatingFor]);
+    if (_missionTypeRatingFor) {
+        const heliId = _missionTypeRatingFor;
+        if (!_session.typeRatings) _session.typeRatings = {};
+        _session.typeRatings[heliId] = true;
+        if (!_session.typeRatingBestTime) _session.typeRatingBestTime = {};
+        if (_missionStartTime > 0) {
+            const t = Date.now() - _missionStartTime;
+            if (!_session.typeRatingBestTime[heliId] || t < _session.typeRatingBestTime[heliId]) {
+                _session.typeRatingBestTime[heliId] = t;
+            }
+        }
+    }
+
     saveSession(_session);
     _stopMission();
 
@@ -261,6 +288,7 @@ const missionComplete = () => {
                 rankUpRank,
                 HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id,
                 () => { soundHandler.play('maintheme'); showEndScreen(); },
+                typeRatingHint,
             );
         } else {
             showEndScreen();
@@ -280,10 +308,10 @@ const missionComplete = () => {
         setTouchVisible(false);
         _hud.showAll(false);
         _resetHeliState();
-        if (isTutorial) _openCampaignSelect(); else _openMissionSelect();
+        _openMissionSelect();
         if (rankUpRank) {
             soundHandler.play('fanfare');
-            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id, () => soundHandler.play('maintheme'));
+            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id, () => soundHandler.play('maintheme'), typeRatingHint);
         }
     };
 
@@ -301,11 +329,11 @@ const missionComplete = () => {
         startGame(heliType);
         if (rankUpRank) {
             soundHandler.play('fanfare');
-            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id, () => soundHandler.play('maintheme'));
+            Rankup.show(rankUpRank, HELI_TYPES.find(h => h.minRankIndex === RANKS.indexOf(rankUpRank))?.id, () => soundHandler.play('maintheme'), typeRatingHint);
         }
     } : null;
 
-    MissionSuccessScreen.mount(onNext, onBack, isTutorial ? I18N.TO_CAMPAIGN_SELECT : undefined);
+    MissionSuccessScreen.mount(onNext, onBack, undefined, isFirstTypeRating ? I18N.TYPE_RATING_GRANTED : undefined);
     MissionSuccessScreen.show();
 };
 
@@ -333,12 +361,7 @@ const returnToBase = () => {
     MissionFailedScreen.hide();
     MissionSuccessScreen.hide();
     Briefing.hide();
-    const isTutorial = campaignHandler.getCurrentMissionData().campaignType === CAMPAIGN_TYPE.TUTORIAL;
-    if (isTutorial) {
-        toCampaignSelect();
-    } else {
-        _openMissionSelect();
-    }
+    _openMissionSelect();
     soundHandler.play('maintheme');
 };
 
@@ -406,7 +429,13 @@ const _doSelectCampaign = (idx: number) => {
     campaignHandler.campaign.setActiveCampaign(idx);
 
     if (type === CAMPAIGN_TYPE.TUTORIAL) {
-        selectMission(0);
+        const tutKey = String(idx);
+        const m0done = !!_session.campaignProgress[tutKey]?.missions[0]?.completed;
+        if (!m0done) {
+            selectMission(0);
+        } else {
+            _openMissionSelect();
+        }
         return;
     }
     _openMissionSelect(); // calls showScreen('mission-select')
@@ -418,6 +447,7 @@ const _openMissionSelect = () => {
         campaign: campaigns[_selectedCampaignIndex],
         campaignIndex: _selectedCampaignIndex,
         session: _session,
+        rankIndex: RANKS.indexOf(getRank(_session.rankOverride ?? 0, _getRankMissions())),
         onSelect: selectMission,
         onBack: toCampaignSelect,
     });
@@ -434,12 +464,14 @@ const selectMission = (missionIndex: number) => {
     initGrid(gridSize, G.points);
 
     if (campaignType === CAMPAIGN_TYPE.TUTORIAL) {
-        startGame('dolphin');
+        const _tutMd = campaignHandler.getCurrentMissionData();
+        startGame((_tutMd as any).heliOverride || 'dolphin');
         return;
     }
 
     HeliSelect.show({
         rankIndex: RANKS.indexOf(getRank(_session.rankOverride ?? 0, _getRankMissions())),
+        typeRatings: _session.typeRatings ?? {},
         onSelect: startGame,
         onBack: backFromHeliSelect,
     });
@@ -464,7 +496,9 @@ const startGame = (type: string): void => {
 const _tick = (): Promise<void> => new Promise(r => setTimeout(r, 0));
 
 const _maybeSpawnOrniWreck = () => {
-    if (getRank(_session.rankOverride ?? 0, _getRankMissions()).key === RANKS[RANKS.length - 1].key) return;
+    const _orniRankIdx = RANKS.indexOf(getRank(_session.rankOverride ?? 0, _getRankMissions()));
+    if (_orniRankIdx >= RANKS.length - 1) return; // already Major — type rating mission is the proper path
+    if (_session.typeRatings?.['ornithopter']) return; // type rating already earned
     if (Math.random() >= 1 / __ORNI_SPAWN_RATE__) return;
     const gridSize = campaignHandler.getTerrain().gridSize;
     const margin = 6;
@@ -512,6 +546,9 @@ const launchMission = async (showLoader = true): Promise<void> => {
     _lighthouseX = _lhObj ? _lhObj.x : -1;
     _lighthouseY = _lhObj ? _lhObj.y : -1;
     _missionGridSize = campaignHandler.getTerrain().gridSize;
+    _missionMaxTime = (_lmd as any).maxTime ?? null;
+    _missionTypeRatingFor = (_lmd as any).typeRatingFor as string | undefined;
+    _hudMaxTimeRemaining = null;
 
     const handle = showLoader ? LoadingScreen.show(localize(_lmd.headline) || 'MISSION') : null;
 
@@ -530,6 +567,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
     initBoatsFromMission();
     initSubmarinesFromMission();
     initStaticObjectsFromMission();
+    initRingsFromMission();
     G.LANDING_ZONES = [];
     G.RESEARCH_PLATFORMS.forEach((rp: any) => {
         const lz = (RESEARCH_PLATFORM_DEF as any).landingZone;
@@ -542,16 +580,6 @@ const launchMission = async (showLoader = true): Promise<void> => {
                 z: G.waterLevel + lz.z,
             });
         }
-    });
-    const _wtLz = (WIND_TURBINE_DEF as any).landingZone;
-    G.WIND_TURBINES.forEach((wt: any) => {
-        if (_wtLz) G.LANDING_ZONES.push({
-            xMin: wt.x + _wtLz.x - _wtLz.w,
-            xMax: wt.x + _wtLz.x + _wtLz.w,
-            yMin: wt.y + _wtLz.y - _wtLz.h,
-            yMax: wt.y + _wtLz.y + _wtLz.h,
-            z: wt.gz + _wtLz.z,
-        });
     });
     handle?.step('Objekte…', 0.5);
     if (handle) await _tick();
@@ -613,7 +641,7 @@ const launchMission = async (showLoader = true): Promise<void> => {
         _missionStartTime = Date.now();
         setTouchVisible(true);
 
-        if (_lmd.campaignType === CAMPAIGN_TYPE.TUTORIAL) {
+        if (_lmd.campaignType === CAMPAIGN_TYPE.TUTORIAL && !(_lmd as any).heliOverride) {
             initTutorial(G, getGround(G.heli.x, G.heli.y, G.points, G.CARRIER), missionComplete, () => {
                 const personDef = campaignHandler
                     .getCurrentMissionData()
@@ -668,6 +696,14 @@ const drawScene = () => {
     if (!zstate.gameStarted) return;
     if (!zstate.crashed && !_briefingActive) updatePhysics(dt, _physicsCtx);
     if (!zstate.gameStarted) return;
+
+    // maxTime countdown — only after briefing, only while alive
+    if (_missionMaxTime !== null && _missionStartTime > 0 && !_briefingActive && !zstate.crashed) {
+        _hudMaxTimeRemaining = Math.max(0, _missionMaxTime - (Date.now() - _missionStartTime) / 1000);
+        if (_hudMaxTimeRemaining <= 0) triggerCrash();
+    } else if (_missionMaxTime === null) {
+        _hudMaxTimeRemaining = null;
+    }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const tx = (G.heli.x - G.heli.y) * (tileW / 2);
@@ -846,6 +882,9 @@ const drawScene = () => {
         goalCount: G.goalCount,
         playerName: _session.playerName || '',
         deliverMode: G.deliverMode,
+        maxTimeRemaining: _hudMaxTimeRemaining,
+        ringsFlown: G.RINGS.filter(r => r.flown).length,
+        ringsTotal: G.RINGS.length,
         minimap: {
             gridSize,
             pad: hasPad() ? G.PAD : null,
@@ -860,6 +899,7 @@ const drawScene = () => {
             payloads: G.payloads,
             windBft: _missionWindBft,
             windAngle: _missionWindDir * (Math.PI / 180),
+            rings: G.RINGS.map(r => ({ x: r.x, y: r.y, flown: r.flown })),
         },
     });
 
@@ -910,6 +950,9 @@ let _missionWindBft = 0;
 let _lighthouseX = -1;
 let _lighthouseY = -1;
 let _missionGridSize = 28;
+let _missionMaxTime: number | null = null;
+let _missionTypeRatingFor: string | undefined;
+let _hudMaxTimeRemaining: number | null = null;
 
 const _makePCtx = (): ParticlesCtx => ({
     particles: G.particles,
@@ -971,10 +1014,17 @@ const _physicsCtx = {
         return triggerCrash;
     },
     orniWreckDelivered() {
-        _session.rankOverride = RANKS.length - 1;
-        saveSession(_session);
+        const _alreadyMajor = RANKS.indexOf(getRank(_session.rankOverride ?? 0, _getRankMissions())) >= RANKS.length - 1;
+        if (!_alreadyMajor) {
+            _session.rankOverride = RANKS.length - 1;
+            saveSession(_session);
+        }
         _stopMission();
-        Rankup.show(RANKS[RANKS.length - 1], undefined);
+        if (_alreadyMajor) {
+            returnToBase();
+        } else {
+            Rankup.show(RANKS[RANKS.length - 1], undefined, returnToBase);
+        }
     },
     onBoatTurbineCollision(boatIdx: number, wtIdx: number) {
         const b = G.BOATS[boatIdx];
@@ -1113,7 +1163,7 @@ const mountGameScreens = () => {
     MissionSelect.mount();
     CampaignSelect.mount();
     HeliSelect.mount();
-    MissionFailedScreen.mount(returnToBase, retryMission);
+    // MissionFailedScreen is mounted per-crash in the crash handler
     // MissionSuccessScreen is mounted per-mission in missionComplete
     CampaignCompleteScreen.mount(returnToCampaignSelect);
     CampaignEndScreen.mount(_returnFromCampaignEnd);
@@ -1183,7 +1233,12 @@ if (import.meta.env.DEV && new URLSearchParams(location.search).has('preview') &
     });
     const _previewBc = new BroadcastChannel('editor-preview');
     _previewBc.onmessage = e => {
-        if (e.data?.type === 'mission-update' && e.data.mission) _previewLaunch(e.data.mission);
+        if (e.data?.type === 'mission-update' && e.data.mission) {
+            const sel = document.getElementById('pvw-heli') as HTMLSelectElement | null;
+            const heliType = e.data.heliType ?? sel?.value;
+            if (sel && e.data.heliType) sel.value = e.data.heliType;
+            _previewLaunch(e.data.mission, heliType);
+        }
     };
 }
 
@@ -1201,6 +1256,27 @@ const _onloadPreview = !import.meta.env.DEV
           setSfxEnabled(false);
           setupTouchControls();
 
+          // Preview toolbar — floating heli selector + restart button
+          const _pvwBar = document.createElement('div');
+          _pvwBar.style.cssText = 'position:fixed;top:8px;right:8px;z-index:9999;display:flex;gap:6px;align-items:center;background:rgba(0,0,0,0.72);border-radius:6px;padding:5px 8px;font:11px monospace;color:#fff';
+          _pvwBar.innerHTML =
+              '<span style="opacity:.6">🚁</span>' +
+              '<select id="pvw-heli" style="background:#1a1a1a;color:#fff;border:1px solid #555;border-radius:3px;padding:2px 5px;font-size:11px">' +
+              [['coasthawk','Coast Hawk'],['dolphin','Dolphin'],['atlas','Atlas'],['ornithopter','Ornithopter']]
+                  .map(([v, l]) => `<option value="${v}">${l}</option>`)
+                  .join('') +
+              '</select>' +
+              '<button id="pvw-restart" style="background:#1a1a1a;color:#fff;border:1px solid #555;border-radius:3px;padding:2px 7px;font-size:13px;cursor:pointer;line-height:1">↺</button>';
+          document.body.appendChild(_pvwBar);
+
+          const _pvwSel = document.getElementById('pvw-heli') as HTMLSelectElement;
+          const _pvwRestart = () => {
+              if (_previewLaunch)
+                  _previewLaunch((campaignHandler as any).getPreviewMissionData?.(), _pvwSel.value);
+          };
+          _pvwSel.addEventListener('change', _pvwRestart);
+          document.getElementById('pvw-restart')?.addEventListener('click', _pvwRestart);
+
           // Auto-launch from URL params — no cross-origin messaging needed
           const params = new URLSearchParams(location.search);
           const campaignKey = params.get('preview') ?? '';
@@ -1208,7 +1284,11 @@ const _onloadPreview = !import.meta.env.DEV
           const campaign = campaignHandler.getCampaignByKey(campaignKey) ?? campaignHandler.getCampaigns()[0];
           if (campaign && _previewLaunch) {
               const mission = campaign.levels[missionIdx] ?? campaign.levels[0];
-              if (mission) _previewLaunch(mission);
+              if (mission) {
+                  const initialHeli = (mission as any).heliOverride || 'dolphin';
+                  _pvwSel.value = initialHeli;
+                  _previewLaunch(mission, initialHeli);
+              }
           }
       };
 

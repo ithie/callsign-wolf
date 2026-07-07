@@ -17,6 +17,6 @@ const _setup = () => {
     mount();
 };
 
-export const RangLeutnant = () => { _setup(); show({ rankIndex: 0, onSelect: () => {}, onBack: () => {} }); };
-export const RangHauptmann = () => { _setup(); show({ rankIndex: 2, onSelect: () => {}, onBack: () => {} }); };
-export const RangMajor = () => { _setup(); show({ rankIndex: 3, onSelect: () => {}, onBack: () => {} }); };
+export const RangLeutnant = () => { _setup(); show({ rankIndex: 0, typeRatings: {}, onSelect: () => {}, onBack: () => {} }); };
+export const RangHauptmann = () => { _setup(); show({ rankIndex: 2, typeRatings: { atlas: true } as Record<string, true>, onSelect: () => {}, onBack: () => {} }); };
+export const RangMajor = () => { _setup(); show({ rankIndex: 3, typeRatings: { atlas: true, ornithopter: true } as Record<string, true>, onSelect: () => {}, onBack: () => {} }); };
