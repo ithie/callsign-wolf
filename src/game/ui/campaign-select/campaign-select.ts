@@ -1,11 +1,12 @@
-import '../nav-screens.css';
+import '@/ui/nav-screens.css';
 import { I18N, localize } from '../../i18n';
 import { isCampaignUnlocked, isCampaignLockedByTutorial, type PlayerSession } from '../../session';
 import type { CampaignExport } from '../../../shared/types';
-import { ensureEl } from '../dom-helpers';
+import { ensureEl } from '@/ui/dom-helpers';
 import { showScreenCrtEnter } from '../nav';
-import { mountScreenShell } from '../screen-shell/screen-shell';
-import { createSwipeCarousel } from '../swipe-carousel/swipe-carousel';
+import { mountScreenShell } from '@/ui/screen-shell/screen-shell';
+import { createSwipeCarousel } from '@/ui/swipe-carousel/swipe-carousel';
+import { hapticImpact, ImpactStyle } from '../../haptics';
 import { addStamp } from '../box-stamp';
 
 
@@ -67,6 +68,7 @@ export const show = (deps: CampaignSelectDeps) => {
             return card;
         },
         onTap: c => onSelect(c.index),
+        haptic: () => hapticImpact(ImpactStyle.Light),
     });
 
     body.appendChild(carousel);

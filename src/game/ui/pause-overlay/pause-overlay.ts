@@ -1,5 +1,5 @@
 import './pause-overlay.css';
-import { ensureEl } from '../dom-helpers';
+import { ensureEl } from '@/ui/dom-helpers';
 import { I18N } from '../../i18n';
 import { createSettingsBtn } from '../settings-btn/settings-btn';
 

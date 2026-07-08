@@ -18,7 +18,7 @@ import * as LegalScreen from '../../game/ui/legal-screen/legal-screen';
 import * as LoadingScreen from '../../game/ui/loading-screen/loading-screen';
 import * as PauseOverlay from '../../game/ui/pause-overlay/pause-overlay';
 import * as TouchControls from '../../game/ui/touch-controls/touch-controls';
-import { createSwipeCarousel } from '../../game/ui/swipe-carousel/swipe-carousel';
+import { createSwipeCarousel } from '@/ui/swipe-carousel/swipe-carousel';
 import * as MissionSelect from '../../game/ui/mission-select/mission-select';
 import {
     mountMinimap,

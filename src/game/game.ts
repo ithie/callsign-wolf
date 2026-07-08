@@ -1,7 +1,7 @@
-import './ui/base.css';
-import './ui/screens.css';
+import '@/ui/base.css';
+import '@/ui/screens.css';
 import * as LoadingScreen from './ui/loading-screen/loading-screen';
-import { ensureEl } from './ui/dom-helpers';
+import { ensureEl } from '@/ui/dom-helpers';
 import { setDeliverToggle as _touchSetDeliverToggle } from './ui/touch-controls/touch-controls';
 import { createIsoFn } from './render';
 import { campaignHandler, soundHandler, zinit } from './main';
@@ -490,7 +490,7 @@ const startGame = (type: string): void => {
     G.heli.liftPower = _heliType.liftPower;
     G.heli.cargoResist = _heliType.cargoResist;
     showScreen(null);
-    void launchMission();
+    launchMission().catch(err => _showDebugError(err instanceof Error ? (err.stack ?? err.message) : String(err)));
 };
 
 const _tick = (): Promise<void> => new Promise(r => setTimeout(r, 0));
@@ -682,6 +682,11 @@ const launchMission = async (showLoader = true): Promise<void> => {
 //
 let _fpsLastTime = 0;
 const drawScene = () => {
+    try { _drawSceneInner(); } catch (err) {
+        _showDebugError(err instanceof Error ? (err.stack ?? err.message) : String(err));
+    }
+};
+const _drawSceneInner = () => {
     const _now = performance.now();
     if (_fpsLastTime > 0 && _now - _fpsLastTime < 1000 / 30 - 1) {
         _rafId = requestAnimationFrame(drawScene);
@@ -1223,7 +1228,7 @@ const _previewLaunch = !import.meta.env.DEV
           G.heli.liftPower = _ht.liftPower;
           G.heli.cargoResist = _ht.cargoResist;
 
-          void launchMission(false);
+          launchMission(false).catch(err => _showDebugError(err instanceof Error ? (err.stack ?? err.message) : String(err)));
       };
 
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('preview') && _previewLaunch) {
@@ -1301,11 +1306,14 @@ const _showDebugError = (msg: string) => {
     document.body.appendChild(el);
 };
 window.addEventListener('unhandledrejection', e => _showDebugError(String(e.reason?.stack ?? e.reason)));
-window.addEventListener('error', e => _showDebugError(e.message + '\n' + e.filename + ':' + e.lineno));
+window.addEventListener('error', e => {
+    const detail = e.error?.stack ?? (e.filename ? `${e.filename}:${e.lineno}:${e.colno}` : e.message);
+    _showDebugError(detail);
+});
 
 window.onload = () => {
     requestAnimationFrame(() => {
-        void (async () => {
+        (async () => {
             if (import.meta.env.DEV && new URLSearchParams(location.search).has('preview') && _onloadPreview) {
                 _onloadPreview();
                 return;
@@ -1315,7 +1323,7 @@ window.onload = () => {
             const _sl = storageGet(LANG_PREF_KEY);
             if (_sl === 'de' || _sl === 'en') setLanguage(_sl);
             _onloadMain();
-        })();
+        })().catch(err => _showDebugError(err instanceof Error ? (err.stack ?? err.message) : String(err)));
     });
 };
 

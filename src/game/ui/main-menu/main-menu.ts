@@ -1,9 +1,9 @@
 import './main-menu.css';
-import '../nav-screens.css';
+import '@/ui/nav-screens.css';
 import { I18N } from '../../i18n';
-import { ensureEl as _ensureEl } from '../dom-helpers';
+import { ensureEl as _ensureEl } from '@/ui/dom-helpers';
 import { showScreen } from '../nav';
-import { mountScreenShell } from '../screen-shell/screen-shell';
+import { mountScreenShell } from '@/ui/screen-shell/screen-shell';
 import { playSfx } from '../../heli-sound';
 
 type MainMenuCallbacks = {

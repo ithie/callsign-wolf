@@ -1,6 +1,6 @@
 import './rankup.css';
 import { I18N } from '../../i18n';
-import { ensureEl } from '../dom-helpers';
+import { ensureEl } from '@/ui/dom-helpers';
 import { iso } from '../../render';
 import { tileW, tileH, stepH, CANVAS_SCALE } from '../../render-config';
 import { rankBadgeHtml, type Rank, RANKS } from '../rank-badge/rank-badge';

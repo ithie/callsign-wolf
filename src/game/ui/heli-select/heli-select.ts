@@ -1,15 +1,16 @@
 import './heli-select.css';
-import '../nav-screens.css';
+import '@/ui/nav-screens.css';
 import { iso } from '../../render';
 import { HELI_TYPES, type HeliType } from '../../heli-types';
 import { RANKS } from '../rank-badge/rank-badge';
 import { tileW, tileH, stepH, CANVAS_SCALE } from '../../render-config';
 import { zstate } from '../../state';
 import { I18N, localize } from '../../i18n';
-import { ensureEl } from '../dom-helpers';
+import { ensureEl } from '@/ui/dom-helpers';
 import { showScreenCrtEnter } from '../nav';
-import { mountScreenShell } from '../screen-shell/screen-shell';
-import { createSwipeCarousel } from '../swipe-carousel/swipe-carousel';
+import { mountScreenShell } from '@/ui/screen-shell/screen-shell';
+import { createSwipeCarousel } from '@/ui/swipe-carousel/swipe-carousel';
+import { hapticImpact, ImpactStyle } from '../../haptics';
 import { addStamp } from '../box-stamp';
 
 let _G: any;
@@ -242,6 +243,7 @@ export const show = (deps: HeliSelectDeps) => {
         onDetailClose: () => {
             _activeHeliId = null;
         },
+        haptic: () => hapticImpact(ImpactStyle.Light),
     });
 
     body.appendChild(carousel);

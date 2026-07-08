@@ -1,7 +1,7 @@
 import './briefing.css';
 import { localize } from '../../i18n';
 import type { LocalizedString } from '../../../shared/types';
-import { ensureEl as _ensureEl } from '../dom-helpers';
+import { ensureEl as _ensureEl } from '@/ui/dom-helpers';
 import { COMMODORE_SVG as _COMMODORE_SVG } from '../commodore-svg';
 
 export const mount = (): void => {

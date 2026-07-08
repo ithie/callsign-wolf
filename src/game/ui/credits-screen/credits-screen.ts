@@ -2,9 +2,9 @@ import './credits-screen.css';
 import { soundHandler } from '../../main';
 import { I18N } from '../../i18n';
 
-import { ensureEl as _ensureEl } from '../dom-helpers';
+import { ensureEl as _ensureEl } from '@/ui/dom-helpers';
 import { showScreenCrtEnter } from '../nav';
-import { mountScreenShell } from '../screen-shell/screen-shell';
+import { mountScreenShell } from '@/ui/screen-shell/screen-shell';
 import { sections } from '../campaign-end-screen/campaign-end-screen';
 
 export const mount = (onBack: () => void): void => {

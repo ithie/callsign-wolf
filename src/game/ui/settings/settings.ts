@@ -11,7 +11,7 @@ import {
 import { rankBadgeHtml } from '../rank-badge/rank-badge';
 import { createSettingsBtn } from '../settings-btn/settings-btn';
 import { showScreen, showScreenCrtEnter } from '../nav';
-import { mountScreenShell } from '../screen-shell/screen-shell';
+import { mountScreenShell } from '@/ui/screen-shell/screen-shell';
 
 type Deps = {
     getSession: () => PlayerSession;

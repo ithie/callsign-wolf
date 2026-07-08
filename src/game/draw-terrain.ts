@@ -20,7 +20,14 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
     } = dtCtx;
 
     let _tileColors: string[][] = [];
+    // Precomputed base vertex coords per tile (without hw/hh/camX/camY offset).
+    // Layout: [bx0,by0, bx1,by1, bx2,by2, bx3,by3] at index (y*gridSize+x)*8.
+    let _baseCoords: Float32Array | null = null;
     const _terrainBatch = new Map<string, number[]>();
+    const _batchColorLastD = new Map<string, number>();
+    let _batchMaxD = -Infinity;
+    // Per-diagonal getFill result cache — computed once in Pass 1, reused in Pass 2.
+    const _diagFillCache: string[] = [];
 
     const _renderTerrainBatched = (
         tW: number,
@@ -33,52 +40,101 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
         yTo: number,
         getFill: (x: number, y: number, h0: number) => string
     ) => {
+        const base = _baseCoords;
+        if (!base) return;
         const { gridSize } = getTerrain();
         _terrainBatch.clear();
-        const hw = tW / 2, hh = tH / 2;
-        const htW = tileW / 2, htH = tileH / 2;
+        _batchColorLastD.clear();
+        _batchMaxD = -Infinity;
+        const ox = tW / 2 - ccX, oy = tH / 2 - ccY;
+
+        const flushBatch = () => {
+            for (const [fill, coords] of _terrainBatch) {
+                ctx.fillStyle = fill;
+                ctx.beginPath();
+                for (let i = 0; i < coords.length; i += 8) {
+                    ctx.moveTo(coords[i], coords[i + 1]);
+                    ctx.lineTo(coords[i + 2], coords[i + 3]);
+                    ctx.lineTo(coords[i + 4], coords[i + 5]);
+                    ctx.lineTo(coords[i + 6], coords[i + 7]);
+                    ctx.closePath();
+                }
+                ctx.fill();
+            }
+            _terrainBatch.clear();
+            _batchColorLastD.clear();
+            _batchMaxD = -Infinity;
+        };
 
         const dMin = xFrom + yFrom, dMax = xTo + yTo;
         for (let d = dMin; d <= dMax; d++) {
             const xLo = Math.max(Math.max(0, xFrom), d - Math.min(gridSize - 1, yTo) + 1);
             const xHi = Math.min(Math.min(gridSize - 1, xTo) - 1, d - Math.max(0, yFrom));
+
+            // Pass 1: compute fills into cache and detect depth-order conflicts.
+            // Conflict: color C reappears after another color D was added since C's last occurrence,
+            // meaning D must be drawn between C's two occurrences — impossible with a single batch.
+            let needsFlush = false;
+            let cacheLen = 0;
             for (let x = xLo; x <= xHi; x++) {
                 const y = d - x;
-                if (y < 0 || y >= gridSize - 1) continue;
-                const h0 = G.points[x][y], h1 = G.points[x + 1][y];
-                const h2 = G.points[x + 1][y + 1], h3 = G.points[x][y + 1];
-                const fill = getFill(x, y, h0);
-                const p0x = hw + (x - y) * htW - ccX;
-                const p0y = hh + (x + y) * htH - h0 * stepH - ccY;
-                const p1x = hw + (x + 1 - y) * htW - ccX;
-                const p1y = hh + (x + 1 + y) * htH - h1 * stepH - ccY;
-                const p2x = hw + (x + 1 - (y + 1)) * htW - ccX;
-                const p2y = hh + (x + 1 + (y + 1)) * htH - h2 * stepH - ccY;
-                const p3x = hw + (x - (y + 1)) * htW - ccX;
-                const p3y = hh + (x + (y + 1)) * htH - h3 * stepH - ccY;
+                if (y < 0 || y >= gridSize - 1) { _diagFillCache[cacheLen++] = ''; continue; }
+                const fill = getFill(x, y, G.points[x][y]);
+                _diagFillCache[cacheLen++] = fill;
+                if (!needsFlush) {
+                    const lastD = _batchColorLastD.get(fill);
+                    if (lastD !== undefined && _batchMaxD > lastD) needsFlush = true;
+                }
+            }
+
+            if (needsFlush) flushBatch();
+
+            // Pass 2: add tiles to batch using cached fills and precomputed base coords.
+            let anyAdded = false;
+            for (let ci = 0, x = xLo; x <= xHi; x++, ci++) {
+                const fill = _diagFillCache[ci];
+                if (!fill) continue;
+                const y = d - x;
+                const bi = (y * gridSize + x) * 8;
+                const p0x = base[bi]     + ox, p0y = base[bi + 1] + oy;
+                const p1x = base[bi + 2] + ox, p1y = base[bi + 3] + oy;
+                const p2x = base[bi + 4] + ox, p2y = base[bi + 5] + oy;
+                const p3x = base[bi + 6] + ox, p3y = base[bi + 7] + oy;
 
                 let batch = _terrainBatch.get(fill);
                 if (!batch) { batch = []; _terrainBatch.set(fill, batch); }
                 batch.push(p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y);
+                _batchColorLastD.set(fill, d);
+                anyAdded = true;
             }
+            if (anyAdded) _batchMaxD = d;
         }
-
-        for (const [fill, coords] of _terrainBatch) {
-            ctx.fillStyle = fill;
-            ctx.beginPath();
-            for (let i = 0; i < coords.length; i += 8) {
-                ctx.moveTo(coords[i], coords[i + 1]);
-                ctx.lineTo(coords[i + 2], coords[i + 3]);
-                ctx.lineTo(coords[i + 4], coords[i + 5]);
-                ctx.lineTo(coords[i + 6], coords[i + 7]);
-                ctx.closePath();
-            }
-            ctx.fill();
-        }
+        flushBatch();
     };
 
     const precomputeDayColors = (rain: boolean, snow = false) => {
         const { gridSize } = getTerrain();
+        const htW = tileW / 2, htH = tileH / 2;
+
+        // Precompute base vertex coords from terrain heights (camera-independent).
+        // Each vertex expanded 0.5px outward from tile centroid to close anti-aliasing gaps.
+        _baseCoords = new Float32Array(gridSize * gridSize * 8);
+        for (let x = 0; x < gridSize - 1; x++) {
+            for (let y = 0; y < gridSize - 1; y++) {
+                const h0 = G.points[x][y],         h1 = G.points[x + 1][y];
+                const h2 = G.points[x + 1][y + 1], h3 = G.points[x][y + 1];
+                const bi = (y * gridSize + x) * 8;
+                _baseCoords[bi]     = (x - y) * htW;
+                _baseCoords[bi + 1] = (x + y) * htH - h0 * stepH - 0.5;      // top: y up
+                _baseCoords[bi + 2] = (x + 1 - y) * htW + 0.5;               // right: x right
+                _baseCoords[bi + 3] = (x + 1 + y) * htH - h1 * stepH;
+                _baseCoords[bi + 4] = (x + 1 - (y + 1)) * htW;
+                _baseCoords[bi + 5] = (x + 1 + (y + 1)) * htH - h2 * stepH + 0.5; // bottom: y down
+                _baseCoords[bi + 6] = (x - (y + 1)) * htW - 0.5;             // left: x left
+                _baseCoords[bi + 7] = (x + (y + 1)) * htH - h3 * stepH;
+            }
+        }
+
         _tileColors = [];
         for (let x = 0; x < gridSize; x++) {
             _tileColors[x] = [];
@@ -109,10 +165,12 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
 
     const drawTerrain = (camX: number, camY: number, rx: number, ry: number, isNight: boolean, _rain: boolean) => {
         const _tileRange = Math.ceil(Math.max(canvas.width / tileW, canvas.height / tileH)) + 2;
+        // At altitude, rx/ry shift NW by heli.z*(stepH/tileH). Extend SE to keep elevated tiles in range.
+        const _heightBoost = isFinite(G.heli.z) && G.heli.z > 0 ? Math.ceil(G.heli.z * stepH / tileH) : 0;
         const xFrom = Math.floor(rx - _tileRange);
-        const xTo = Math.ceil(rx + _tileRange);
+        const xTo = Math.ceil(rx + _tileRange + _heightBoost);
         const yFrom = Math.floor(ry - _tileRange);
-        const yTo = Math.ceil(ry + _tileRange);
+        const yTo = Math.ceil(ry + _tileRange + _heightBoost);
 
         if (isNight) {
             if (isLightningActive()) {

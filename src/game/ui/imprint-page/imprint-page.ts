@@ -1,6 +1,6 @@
 import './imprint-page.css';
 import { I18N_DE, I18N_EN, LEGAL_DATENSCHUTZ_IMPRINT } from '../../i18n';
-import { ensureEl } from '../dom-helpers';
+import { ensureEl } from '@/ui/dom-helpers';
 
 const _rows = (lines: readonly string[]) => lines.map(l => (l ? `<p>${l}</p>` : '<br>')).join('');
 

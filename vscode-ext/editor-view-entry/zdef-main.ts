@@ -6,13 +6,13 @@ import type { DEF, DEFFace, DEFCollisionBox, DEFPart, DEF2 } from '../../src/gam
 import { createSceneRenderer } from '../../src/game/scene-renderer';
 import { applyParts, getTransformedPivots, renderNodes } from '../../src/game/def-utils';
 
-import HANGAR_RAW from '../../src/game/models/hangar.zdef';
-import LIGHTHOUSE_RAW from '../../src/game/models/lighthouse.zdef';
+import HANGAR_RAW from '../../src/game/models/objects/hangar.zdef';
+import LIGHTHOUSE_RAW from '../../src/game/models/objects/lighthouse.zdef';
 import SAILBOAT_RAW from '../../src/game/models/sailboat.zdef';
 import COASTHAWK_RAW from '../../src/game/models/coasthawk.zdef';
 import DOLPHIN_RAW from '../../src/game/models/dolphin.zdef';
 import ATLAS_RAW from '../../src/game/models/atlas.zdef';
-import GLIDER_RAW from '../../src/game/models/glider.zdef';
+import GLIDER_RAW from '../../src/game/models/objects/glider.zdef';
 import SUBMARINE_RAW from '../../src/game/models/submarine.zdef';
 import CARRIER_RAW from '../../src/game/models/carrier.zdef';
 import ORNITHOPTER_RAW from '../../src/game/models/ornithopter.zdef';

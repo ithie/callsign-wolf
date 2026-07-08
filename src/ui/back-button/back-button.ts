@@ -1,5 +1,5 @@
 import './back-button.css';
-import { I18N } from '../../i18n';
+import { I18N } from '@/game/i18n';
 
 export const createBackButton = (onClick: () => void): HTMLElement => {
     const btn = document.createElement('div');

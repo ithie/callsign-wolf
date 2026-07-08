@@ -1,5 +1,5 @@
 import './campaign-end-screen.css';
-import { ensureEl } from '../dom-helpers';
+import { ensureEl } from '@/ui/dom-helpers';
 import { I18N } from '../../i18n';
 
 let _el: HTMLElement | null = null;

@@ -2,7 +2,7 @@ import './promo.css';
 import { createDrawObjects } from '../../draw-objects';
 import { iso } from '../../render';
 import { tileW, tileH, stepH, CANVAS_SCALE } from '../../render-config';
-import { ensureEl } from '../dom-helpers';
+import { ensureEl } from '@/ui/dom-helpers';
 
 let _rafId = 0;
 

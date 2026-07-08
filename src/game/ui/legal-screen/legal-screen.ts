@@ -1,7 +1,7 @@
 import './legal-screen.css';
 import { I18N } from '../../i18n';
-import { ensureEl } from '../dom-helpers';
-import { mountScreenShell } from '../screen-shell/screen-shell';
+import { ensureEl } from '@/ui/dom-helpers';
+import { mountScreenShell } from '@/ui/screen-shell/screen-shell';
 import { showScreenCrtEnter } from '../nav';
 
 

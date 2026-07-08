@@ -1,5 +1,5 @@
 import './loading-screen.css';
-import { ensureEl } from '../dom-helpers';
+import { ensureEl } from '@/ui/dom-helpers';
 
 const MIN_MS = 1000;
 

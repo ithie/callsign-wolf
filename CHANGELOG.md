@@ -1,5 +1,20 @@
 # SAR: Callsign WOLF — Changelog
 
+## v29.1.0 — Terrain Renderer
+
+### Fixed
+
+- **Terrain flickering** — Tiles briefly appeared or disappeared while flying. Root cause: color batching broke painter's algorithm depth order when the same color appeared at both a small and a large `d` value with a different color in between. Fix: smart-batch only flushes on an actual depth conflict instead of per diagonal.
+- **Concert stage — right speaker** — Inner wall face (`spk_r_inner`, normal `[0,−1]`) was missing; the right speaker box was open at the front.
+- **Campaign editor — terrain preview** — `zcampaignPlugin` compressed terrain strings in dev mode as well; `setPreviewMission` could not decompress them synchronously → blank preview. Compression now runs in production builds only.
+
+### Changed
+
+- **Terrain renderer — precomputation** — Vertex coordinates for all tiles are computed once at map load and stored as a `Float32Array` (`_baseCoords`). Per-frame `G.points` lookups for h1/h2/h3 and all vertex arithmetic are eliminated; only 8 additions per tile remain at runtime (camera offset).
+- **Terrain renderer — getFill cache** — Pass 1 (conflict detection) caches `getFill` results in `_diagFillCache`; Pass 2 reads from the cache instead of calling `getFill` a second time. Halves expensive lighting calculations in night spotlight mode.
+
+---
+
 ## v29.0.0 — Projekt Zephyr
 
 ### Added

@@ -1,7 +1,7 @@
-import '../base.css';
-import '../screens.css';
-import { ensureEl } from '../dom-helpers';
-import { createBackButton } from '../back-button/back-button';
+import '@/ui/base.css';
+import '@/ui/screens.css';
+import { ensureEl } from '@/ui/dom-helpers';
+import { createBackButton } from '@/ui/back-button/back-button';
 
 export const mountScreenShell = (
     id: string,
