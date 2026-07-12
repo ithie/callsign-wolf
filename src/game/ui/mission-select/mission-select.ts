@@ -37,7 +37,7 @@ export const show = (deps: MissionSelectDeps) => {
     const key = String(campaignIndex);
     const cp = session.campaignProgress[key];
 
-    const body = mountScreenShell('mission-select', localize(campaign.campaignTitle), I18N.MISSION_SELECT_SUB, onBack);
+    const body = mountScreenShell('mission-select', localize(campaign.campaignTitle), onBack);
 
     const allItems: MissionItem[] = campaign.levels.map((level, i) => {
         const mp = cp?.missions[i];

@@ -104,7 +104,7 @@ export const mount = (cb: MainMenuCallbacks) => {
     _splashHandler = _handleSplashClick;
     splash.addEventListener('click', _handleSplashClick);
 
-    const menuBody = mountScreenShell('main-menu', I18N.MENU_TITLE, I18N.MENU_SUBTITLE);
+    const menuBody = mountScreenShell('main-menu', I18N.MENU_TITLE);
     const menuRoot = document.getElementById('main-menu')!;
     const bgCanvas = document.createElement('canvas');
     bgCanvas.id = 'main-menu-bg-canvas';

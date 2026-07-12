@@ -44,7 +44,7 @@ const _field = (labelText: string, ...children: HTMLElement[]): HTMLDivElement =
 };
 
 export const mount = () => {
-    const body = mountScreenShell('settings-screen', I18N.MENU_SETTINGS, I18N.PILOT_HEADING, hide);
+    const body = mountScreenShell('settings-screen', I18N.MENU_SETTINGS, hide);
 
     // Badge
     const badge = document.createElement('div');

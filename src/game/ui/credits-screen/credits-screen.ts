@@ -10,7 +10,7 @@ import { sections } from '../campaign-end-screen/campaign-end-screen';
 export const mount = (onBack: () => void): void => {
     const root = _ensureEl('credits-screen');
     if (root.children.length > 0) return;
-    const body = mountScreenShell('credits-screen', I18N.MENU_CREDITS, '', onBack);
+    const body = mountScreenShell('credits-screen', I18N.MENU_CREDITS, onBack);
     const canvas = document.createElement('canvas');
     canvas.id = 'credits-canvas';
     const inner = document.createElement('div');

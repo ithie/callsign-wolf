@@ -212,7 +212,7 @@ export const show = (deps: HeliSelectDeps) => {
         return `<div class="box-sub heli-cap-label heli-card-label-sub">${localize(ht.selectCap)}</div>`;
     };
 
-    const body = mountScreenShell('heli-select', I18N.HELI_SELECT_TITLE, I18N.HELI_SELECT_SUB, onBack);
+    const body = mountScreenShell('heli-select', I18N.HELI_SELECT_TITLE, onBack);
 
     const visibleTypes = HELI_TYPES.filter(ht => !(ht.hideWhenLocked && ht.minRankIndex > rankIndex));
 

@@ -17,7 +17,7 @@ const _addParagraphs = (parent: HTMLElement, lines: readonly string[]) => {
 export const mount = (onBack: () => void): void => {
     const root = ensureEl('legal-screen');
     if (root.children.length > 0) return;
-    const body = mountScreenShell('legal-screen', I18N.LEGAL_TITLE, '', onBack);
+    const body = mountScreenShell('legal-screen', I18N.LEGAL_TITLE, onBack);
 
     const content = document.createElement('div');
     content.className = 'legal-content';

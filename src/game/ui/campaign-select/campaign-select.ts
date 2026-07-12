@@ -26,7 +26,7 @@ export const mount = () => {
 export const show = (deps: CampaignSelectDeps) => {
     const { session, campaigns, onSelect, onBack } = deps;
 
-    const body = mountScreenShell('campaign-select', I18N.CAMPAIGN_SELECT_TITLE, I18N.CAMPAIGN_SELECT_SUB, onBack);
+    const body = mountScreenShell('campaign-select', I18N.CAMPAIGN_SELECT_TITLE, onBack);
 
     const typePriority = (t: string) => (t === 'tutorial' ? 0 : t === 'free-flight' ? 1 : 2);
     const displayOrder: CampaignItem[] = campaigns

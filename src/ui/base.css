@@ -115,12 +115,6 @@ body {
     margin-bottom: 5px;
     font-weight: bold;
 }
-.subtitle {
-    font-size: 20px;
-    color: #5f5;
-    margin-bottom: 30px;
-    letter-spacing: 4px;
-}
 .start-hint {
     font-size: 22px;
     animation: blink 1s infinite;
@@ -158,10 +152,6 @@ body {
         font-size: clamp(26px, 7vh, 64px);
         text-shadow: 0 0 10px #ff6600;
         margin-bottom: 2px;
-    }
-    .subtitle {
-        font-size: 14px;
-        margin-bottom: 12px;
     }
     .start-hint {
         font-size: 16px;
