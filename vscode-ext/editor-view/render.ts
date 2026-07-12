@@ -100,7 +100,7 @@ export const drawMap = () => {
                 const btn = document.getElementById('btn_spawn_pad');
                 if (btn) btn.style.background = m.spawnObject === 'pad' ? COLORS.uiHighlight : 'var(--accent)';
             }
-        } else if (obj.type === 'carrier' || obj.type === 'boat' || obj.type === 'pilot_boat' || obj.type === 'sar_boat' || obj.type === 'salvage_tug' || obj.type === 'frigate') {
+        } else if (obj.type === 'carrier' || obj.type === 'boat' || obj.type === 'pilot_boat' || obj.type === 'sar_boat' || obj.type === 'salvage_tug' || obj.type === 'supply_vessel' || obj.type === 'frigate') {
             const isCarrier = obj.type === 'carrier';
             const rad = (obj.angle * Math.PI) / 180;
 
@@ -183,6 +183,18 @@ export const drawMap = () => {
                 ctx.fill();
                 ctx.fillStyle = '#eee';
                 ctx.fillRect(1.0 * tSize, -0.8 * tSize, 1.2 * tSize, 1.6 * tSize);
+            } else if (obj.type === 'supply_vessel') {
+                // hull: -3.5..3.4 × ±1.2; yellow cab: 0.2..2.5 × ±0.9
+                ctx.fillStyle = '#0d233a';
+                ctx.fillRect(-3.5 * tSize, -1.2 * tSize, 6.9 * tSize, 2.4 * tSize);
+                ctx.fillStyle = '#1a3050';
+                ctx.beginPath();
+                ctx.moveTo(3.2 * tSize, -1.2 * tSize);
+                ctx.lineTo(3.8 * tSize, 0);
+                ctx.lineTo(3.2 * tSize, 1.2 * tSize);
+                ctx.fill();
+                ctx.fillStyle = '#ffcd07';
+                ctx.fillRect(0.2 * tSize, -0.9 * tSize, 2.3 * tSize, 1.8 * tSize);
             } else if (obj.type === 'frigate') {
                 // Fregatte: 12 × 3.6, Aufbau mittschiffs, Helipad achtern
                 ctx.fillStyle = '#5a6673';

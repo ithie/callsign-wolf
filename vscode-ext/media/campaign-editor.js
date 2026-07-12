@@ -195,7 +195,7 @@
           const btn = document.getElementById("btn_spawn_pad");
           if (btn) btn.style.background = m.spawnObject === "pad" ? COLORS.uiHighlight : "var(--accent)";
         }
-      } else if (obj.type === "carrier" || obj.type === "boat" || obj.type === "pilot_boat" || obj.type === "sar_boat" || obj.type === "salvage_tug" || obj.type === "frigate") {
+      } else if (obj.type === "carrier" || obj.type === "boat" || obj.type === "pilot_boat" || obj.type === "sar_boat" || obj.type === "salvage_tug" || obj.type === "supply_vessel" || obj.type === "frigate") {
         const isCarrier = obj.type === "carrier";
         const rad = obj.angle * Math.PI / 180;
         ctx.save();
@@ -270,6 +270,17 @@
           ctx.fill();
           ctx.fillStyle = "#eee";
           ctx.fillRect(1 * tSize, -0.8 * tSize, 1.2 * tSize, 1.6 * tSize);
+        } else if (obj.type === "supply_vessel") {
+          ctx.fillStyle = "#0d233a";
+          ctx.fillRect(-3.5 * tSize, -1.2 * tSize, 6.9 * tSize, 2.4 * tSize);
+          ctx.fillStyle = "#1a3050";
+          ctx.beginPath();
+          ctx.moveTo(3.2 * tSize, -1.2 * tSize);
+          ctx.lineTo(3.8 * tSize, 0);
+          ctx.lineTo(3.2 * tSize, 1.2 * tSize);
+          ctx.fill();
+          ctx.fillStyle = "#ffcd07";
+          ctx.fillRect(0.2 * tSize, -0.9 * tSize, 2.3 * tSize, 1.8 * tSize);
         } else if (obj.type === "frigate") {
           ctx.fillStyle = "#5a6673";
           ctx.fillRect(-6 * tSize, -1.8 * tSize, 12 * tSize, 3.6 * tSize);
@@ -1159,7 +1170,7 @@
     const m = getCurrentMission();
     if (!m || state.selectedObjectIdx === null) return;
     const obj = m.objects[state.selectedObjectIdx];
-    const _boatTypes = /* @__PURE__ */ new Set(["boat", "pilot_boat", "sar_boat", "salvage_tug", "frigate"]);
+    const _boatTypes = /* @__PURE__ */ new Set(["boat", "pilot_boat", "sar_boat", "salvage_tug", "supply_vessel", "frigate"]);
     if (!obj || (kind === "boat" ? !_boatTypes.has(obj.type) : obj.type !== kind)) return;
     const prefix = kind === "carrier" ? "carrier" : kind === "submarine" ? "submarine" : "boat";
     obj.path = document.getElementById(`m_${prefix}_path`)?.value ?? obj.path;
@@ -1630,7 +1641,7 @@
       if (m.objects.some((o) => o.type === "pad")) opts.push(["pad", "Pad"]);
       if (m.objects.some((o) => o.type === "carrier")) opts.push(["carrier", "Carrier"]);
       if (m.objects.some((o) => o.type === "submarine")) opts.push(["submarine", "U-Boot"]);
-      if (m.objects.some((o) => ["boat", "pilot_boat", "sar_boat", "salvage_tug", "frigate"].includes(o.type)))
+      if (m.objects.some((o) => ["boat", "pilot_boat", "sar_boat", "salvage_tug", "supply_vessel", "frigate"].includes(o.type)))
         opts.push(["boat", "Boot"]);
       opts.forEach(([val, lbl]) => {
         const opt = document.createElement("option");
@@ -2060,6 +2071,7 @@
       "pilot_boat",
       "sar_boat",
       "salvage_tug",
+      "supply_vessel",
       "frigate",
       "submarine",
       "lighthouse",
@@ -2320,6 +2332,9 @@
         case "salvage_tug":
           m.objects.push(_vesselBase("salvage_tug"));
           break;
+        case "supply_vessel":
+          m.objects.push(_vesselBase("supply_vessel"));
+          break;
         case "frigate":
           m.objects.push({ ..._vesselBase("frigate"), speed: 3 });
           break;
@@ -2364,6 +2379,7 @@
           { v: "pilot_boat", l: "\u{1F6A4} Lotsenboot" },
           { v: "sar_boat", l: "\u{1F6E5} SAR-Boot" },
           { v: "salvage_tug", l: "\u{1F6F3} Schlepper" },
+          { v: "supply_vessel", l: "\u{1F6A2} Versorgungsschiff" },
           { v: "frigate", l: "\u2693 Fregatte" },
           { v: "submarine", l: "\u{1F93F} U-Boot" }
         ] },
@@ -2541,7 +2557,7 @@
           const obj = m.objects[i];
           let hit = false;
           if (obj.type === "pad") hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
-          else if (["carrier", "boat", "pilot_boat", "sar_boat", "salvage_tug", "frigate", "submarine"].includes(obj.type))
+          else if (["carrier", "boat", "pilot_boat", "sar_boat", "salvage_tug", "supply_vessel", "frigate", "submarine"].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
           else if (["lighthouse", "research_platform", "wind_turbine"].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
@@ -2687,7 +2703,7 @@
         clampCamera();
         drawMap();
       } else if (state.isDrawing) {
-        if (state.currentTool !== "person" && state.currentTool !== "rescuer" && state.currentTool !== "crate" && state.currentTool !== "boat" && state.currentTool !== "pilot_boat" && state.currentTool !== "salvage_tug" && state.currentTool !== "frigate" && state.currentTool !== "submarine" && state.currentTool !== "carrier" && state.currentTool !== "pad" && state.currentTool !== "lighthouse" && state.currentTool !== "research_platform" && state.currentTool !== "wind_turbine" && state.currentTool !== "plane_wreck" && state.currentTool !== "sailboat_broken" && state.currentTool !== "ornithopter_wreck" && state.currentTool !== "baywatch_car" && state.currentTool !== "baywatch_hq" && state.currentTool !== "baywatch_tower" && state.currentTool !== "concert_stage" && state.currentTool !== "festival_car" && state.currentTool !== "foliage") {
+        if (state.currentTool !== "person" && state.currentTool !== "rescuer" && state.currentTool !== "crate" && state.currentTool !== "boat" && state.currentTool !== "pilot_boat" && state.currentTool !== "salvage_tug" && state.currentTool !== "supply_vessel" && state.currentTool !== "frigate" && state.currentTool !== "submarine" && state.currentTool !== "carrier" && state.currentTool !== "pad" && state.currentTool !== "lighthouse" && state.currentTool !== "research_platform" && state.currentTool !== "wind_turbine" && state.currentTool !== "plane_wreck" && state.currentTool !== "sailboat_broken" && state.currentTool !== "ornithopter_wreck" && state.currentTool !== "baywatch_car" && state.currentTool !== "baywatch_hq" && state.currentTool !== "baywatch_tower" && state.currentTool !== "concert_stage" && state.currentTool !== "festival_car" && state.currentTool !== "foliage") {
           paint(e);
         }
       }
@@ -2761,8 +2777,12 @@
     getEl("btn-export-campaign").onclick = () => {
       const savedIdx = state.curIdx;
       const data = state.campaign.map((m, i) => {
-        state.curIdx = i;
         const mAny = m;
+        if (mAny.terrainRef !== void 0) {
+          const { terrain, gridSize, sand, pavement, foliage, ...rest } = { ...mAny };
+          return { ...rest, terrainRef: mAny.terrainRef };
+        }
+        state.curIdx = i;
         return {
           ...m,
           terrain: typeof m.terrain === "string" ? m.terrain : compressTerrain(m.terrain),
@@ -2799,6 +2819,9 @@
         getEl("c_type").value = parsed.type || "CSW_CAMPAIGN";
         state.type = parsed.type;
         state.campaign = parsed.levels.map((m) => {
+          if (m.terrainRef !== void 0) {
+            return { ...m, terrain: [], gridSize: 0 };
+          }
           const base = {
             ...m,
             terrain: typeof m.terrain === "string" ? decompressTerrain(m.terrain, m.gridSize) : m.terrain,
@@ -2808,6 +2831,17 @@
           };
           delete base.previewBase64;
           return base;
+        });
+        state.campaign.forEach((m) => {
+          if (m.terrainRef !== void 0) {
+            const src = state.campaign[m.terrainRef];
+            if (src) {
+              m.terrain = src.terrain;
+              m.gridSize = src.gridSize;
+              if (src.sand) m.sand = src.sand;
+              if (src.pavement) m.pavement = src.pavement;
+            }
+          }
         });
         loadMission(0);
       } catch (e) {

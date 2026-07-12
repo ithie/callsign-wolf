@@ -1036,14 +1036,29 @@ const _physicsCtx = {
         const b = G.BOATS[boatIdx];
         const wt = G.WIND_TURBINES[wtIdx];
         if (!b || !wt) return;
-        const bx = b.x, by = b.y;
+        const _boatObjIdx = b._objIdx;
+        const _personsLost = G.payloads.some((p: any) =>
+            !p.rescued && !p.hanging &&
+            p.attachTo?.objectType === VESSEL.SUPPLY_VESSEL &&
+            p.attachTo?.objectIdx === _boatObjIdx,
+        );
+        const bx = b.x, by = b.y, bAngle = b.angle;
         G.BOATS.splice(boatIdx, 1);
+        G.BOAT_WRECKS.push({ x: bx, y: by, angle: bAngle });
         const pCtx = _makePCtx();
         spawnPositionExplosion({ ctx: pCtx, dt: 0 }, bx, by, G.waterLevel + 0.5);
         G.PARTICLE_EMITTERS.push({ type: 'smoke', x: bx, y: by, gz: G.waterLevel, particles: [], spawnTimer: 0 });
         G.PARTICLE_EMITTERS.push({ type: 'fire',  x: wt.x, y: wt.y, gz: wt.gz + 12.3, particles: [], spawnTimer: 0 });
         wt.collapsing = true;
         wt.collapseT = 0;
+        if (_personsLost && !zstate.crashed) {
+            zstate.crashed = true;
+            setTimeout(() => {
+                _stopMission();
+                MissionFailedScreen.mount(returnToBase, retryMission, undefined);
+                MissionFailedScreen.show();
+            }, 2500);
+        }
     },
 } as import('./sim/simulation').PhysicsCtx;
 

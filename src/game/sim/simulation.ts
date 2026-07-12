@@ -645,6 +645,21 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
         G.activePayload = dp; G.payloads.push(dp); G.heli.onboard--;
     }
 
+    // PAD auto-boarding: persons within PAD bounds board automatically on landing (no winch)
+    if (onPadSurface && !G.heli.inAir && G.PAD) {
+        const _pad = G.PAD;
+        for (let _i = G.payloads.length - 1; _i >= 0; _i--) {
+            const _p = G.payloads[_i];
+            if (_p.type !== PAYLOAD.PERSON) continue;
+            if (_p.rescued || _p.hanging || _p.npcTarget || (_p as any).isDelivery) continue;
+            if (_p.x < _pad.xMin - 1 || _p.x > _pad.xMax + 1 || _p.y < _pad.yMin - 1 || _p.y > _pad.yMax + 1) continue;
+            G.payloads.splice(_i, 1);
+            if (G.activePayload === _p) G.activePayload = null;
+            G.heli.onboard++;
+            G.heli.onboardDeliverQueue.push((_p as any).deliverTo);
+        }
+    }
+
     // pickup
     if (!G.activePayload && !G.deliverMode) {
         for (const p of G.payloads) {
@@ -652,7 +667,8 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
             if ((p as any).dropCooldown > 0) { (p as any).dropCooldown -= dt; continue; }
             const dist = Math.hypot(G.rescuerSwing.x - p.x, G.rescuerSwing.y - p.y);
             const hZ = Math.max(G.heli.z - G.heli.winch, getGround(G.rescuerSwing.x, G.rescuerSwing.y));
-            if (dist < 1.8 && Math.abs(hZ - getGround(p.x, p.y)) < 1.0) {
+            const _pz = (p as any).z ?? getGround(p.x, p.y);
+            if (dist < 1.8 && Math.abs(hZ - _pz) < 1.0) {
                 if (p.attachTo) {
                     let vessel: any = null;
                     if (p.attachTo.objectType === VESSEL.CARRIER) vessel = G.CARRIER;

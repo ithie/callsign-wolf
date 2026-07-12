@@ -88,7 +88,7 @@ const syncVesselFromUI = (kind: 'carrier' | 'boat' | 'submarine') => {
     const m = getCurrentMission();
     if (!m || state.selectedObjectIdx === null) return;
     const obj = m.objects[state.selectedObjectIdx] as any;
-    const _boatTypes = new Set(['boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'frigate']);
+    const _boatTypes = new Set(['boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'supply_vessel', 'frigate']);
     if (!obj || (kind === 'boat' ? !_boatTypes.has(obj.type) : obj.type !== kind)) return;
     const prefix = kind === 'carrier' ? 'carrier' : kind === 'submarine' ? 'submarine' : 'boat';
     obj.path = (document.getElementById(`m_${prefix}_path`) as HTMLSelectElement)?.value ?? obj.path;
@@ -604,7 +604,7 @@ export const initUI = () => {
         if (m.objects.some((o: any) => o.type === 'pad')) opts.push(['pad', 'Pad']);
         if (m.objects.some((o: any) => o.type === 'carrier')) opts.push(['carrier', 'Carrier']);
         if (m.objects.some((o: any) => o.type === 'submarine')) opts.push(['submarine', 'U-Boot']);
-        if (m.objects.some((o: any) => ['boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'frigate'].includes(o.type)))
+        if (m.objects.some((o: any) => ['boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'supply_vessel', 'frigate'].includes(o.type)))
             opts.push(['boat', 'Boot']);
         opts.forEach(([val, lbl]) => {
             const opt = document.createElement('option');
@@ -1018,6 +1018,7 @@ export const initUI = () => {
         'pilot_boat',
         'sar_boat',
         'salvage_tug',
+        'supply_vessel',
         'frigate',
         'submarine',
         'lighthouse',
@@ -1293,6 +1294,9 @@ export const initUI = () => {
             case 'salvage_tug':
                 m.objects.push(_vesselBase('salvage_tug'));
                 break;
+            case 'supply_vessel':
+                m.objects.push(_vesselBase('supply_vessel'));
+                break;
             case 'frigate':
                 m.objects.push({ ..._vesselBase('frigate'), speed: 3 });
                 break;
@@ -1338,6 +1342,7 @@ export const initUI = () => {
                 { v: 'pilot_boat', l: '🚤 Lotsenboot' },
                 { v: 'sar_boat', l: '🛥 SAR-Boot' },
                 { v: 'salvage_tug', l: '🛳 Schlepper' },
+                { v: 'supply_vessel', l: '🚢 Versorgungsschiff' },
                 { v: 'frigate', l: '⚓ Fregatte' },
                 { v: 'submarine', l: '🤿 U-Boot' },
             ]},
@@ -1520,7 +1525,7 @@ export const initUI = () => {
                 const obj = m.objects[i] as any;
                 let hit = false;
                 if (obj.type === 'pad') hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
-                else if (['carrier', 'boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'frigate', 'submarine'].includes(obj.type))
+                else if (['carrier', 'boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'supply_vessel', 'frigate', 'submarine'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
                 else if (['lighthouse', 'research_platform', 'wind_turbine'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
@@ -1650,6 +1655,7 @@ export const initUI = () => {
                 state.currentTool !== 'boat' &&
                 state.currentTool !== 'pilot_boat' &&
                 state.currentTool !== 'salvage_tug' &&
+                state.currentTool !== 'supply_vessel' &&
                 state.currentTool !== 'frigate' &&
                 state.currentTool !== 'submarine' &&
                 state.currentTool !== 'carrier' &&
@@ -1751,8 +1757,12 @@ export const initUI = () => {
         const savedIdx = state.curIdx;
 
         const data = state.campaign.map((m, i) => {
-            state.curIdx = i;
             const mAny = m as any;
+            if (mAny.terrainRef !== undefined) {
+                const { terrain, gridSize, sand, pavement, foliage, ...rest } = { ...mAny };
+                return { ...rest, terrainRef: mAny.terrainRef };
+            }
+            state.curIdx = i;
             return {
                 ...m,
                 terrain: typeof m.terrain === 'string' ? m.terrain : compressTerrain(m.terrain),
@@ -1801,6 +1811,9 @@ export const initUI = () => {
             getEl<HTMLSelectElement>('c_type').value = parsed.type || 'CSW_CAMPAIGN';
             state.type = parsed.type;
             state.campaign = parsed.levels.map((m: any) => {
+                if (m.terrainRef !== undefined) {
+                    return { ...m, terrain: [] as any, gridSize: 0 } as Mission;
+                }
                 const base = {
                     ...m,
                     terrain: typeof m.terrain === 'string' ? decompressTerrain(m.terrain, m.gridSize) : m.terrain,
@@ -1810,6 +1823,18 @@ export const initUI = () => {
                 } as Mission;
                 delete (base as any).previewBase64;
                 return base;
+            });
+            // Resolve terrainRefs to shared array references
+            state.campaign.forEach((m: any) => {
+                if (m.terrainRef !== undefined) {
+                    const src = state.campaign[m.terrainRef] as any;
+                    if (src) {
+                        m.terrain = src.terrain;
+                        m.gridSize = src.gridSize;
+                        if (src.sand) m.sand = src.sand;
+                        if (src.pavement) m.pavement = src.pavement;
+                    }
+                }
             });
             loadMission(0);
         } catch (e) {

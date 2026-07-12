@@ -229,6 +229,7 @@ export interface Mission {
     maxTime?: number;         // mission time limit in seconds; countdown shown in HUD
     typeRatingFor?: string;   // heliId: grant type rating on successful completion
     heliOverride?: string;    // force this heli for the mission (tutorial ring missions)
+    terrainRef?: number;      // index into campaign.levels — share terrain with that mission
 }
 
 export type MissionData = Omit<Mission, 'terrain' | 'foliage'> & {
@@ -246,10 +247,11 @@ export interface CampaignExport {
     campaignSublines: LocalizedString[];
     music?: { briefing?: string; ingame?: string };
     levels: (Omit<Mission, 'terrain' | 'foliage'> & {
-        terrain: string;
-        gridSize: number;
-        foliage: string | { x: number; y: number; s: number; type: string }[];
+        terrain?: string;
+        gridSize?: number;
+        foliage?: string | { x: number; y: number; s: number; type: string }[];
         sand?: string;
+        terrainRef?: number;
     })[];
 }
 

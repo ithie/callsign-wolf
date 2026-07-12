@@ -21,7 +21,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
     const { SceneRenderer, isVisible, hasCarrier, hasPad, getWindStr } = dwCtx;
 
     const { _drawPadLights, _drawVectorCarrier, _drawNpcHelis } = createCarrierDraw(dwCtx);
-    const { _drawBowWave, _drawBoatModel, _drawSubmarine, _drawResearchPlatform } = createVesselsDraw(dwCtx);
+    const { _drawBowWave, _drawBoatModel, _drawBoatWreck, _drawSubmarine, _drawResearchPlatform } = createVesselsDraw(dwCtx);
     const {
         _drawWindTurbine,
         _drawDefLights,
@@ -204,6 +204,9 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         G.WIND_TURBINES.forEach((wt: any) => {
             if (isVisible(wt.x, wt.y, visMargin) && _inNightCone(wt.x, wt.y)) _drawWindTurbine(wt);
             if (!wt.collapsing && _inNightCone(wt.x, wt.y)) _drawDefLights(wt.x, wt.y, WIND_TURBINE_DEF);
+        });
+        G.BOAT_WRECKS.forEach((w: any) => {
+            if (isVisible(w.x, w.y, visMargin) && _inNightCone(w.x, w.y)) _drawBoatWreck(w, camX, camY);
         });
         G.PLANE_WRECKS.forEach((pw: any) => {
             if (isVisible(pw.x, pw.y, visMargin) && _inNightCone(pw.x, pw.y)) _drawPlaneWreck(pw.x, pw.y, pw.angle);

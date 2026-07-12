@@ -2,6 +2,7 @@ import { CampaignExport, MissionData } from '@/shared/types';
 import Tutorial from './campaigns/tutorial.zcampaign';
 import FreeFlight from './campaigns/freeFlight.zcampaign';
 import CallsignWolf from './campaigns/callsignwolf.zcampaign';
+//import Zephyr from './campaigns/Zephyr.zcampaign';
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
 import { songToZsong } from '../shared/zsong';
@@ -119,6 +120,7 @@ const createCampaignHandler = () => {
         Tutorial as unknown as CampaignExport,
         FreeFlight as unknown as CampaignExport,
         CallsignWolf as unknown as CampaignExport,
+        //Zephyr as unknown as CampaignExport,
     ];
 
     const campaignMap = new Map<string, CampaignExport>(campaigns.map(c => [(c as any)._key as string, c]));
@@ -159,10 +161,23 @@ const createCampaignHandler = () => {
 
     const getCurrentMissionData = (): MissionData => {
         const missionData = campaigns[campaignState.activeCampaign].levels[campaignState.activeMission];
-        return { ...missionData, campaignType: campaigns[campaignState.activeCampaign].type };
+        const terrainLevel = _getTerrainLevel();
+        return {
+            ...missionData,
+            terrain: terrainLevel.terrain ?? '',
+            gridSize: terrainLevel.gridSize ?? 0,
+            foliage: missionData.foliage ?? [],
+            campaignType: campaigns[campaignState.activeCampaign].type,
+        };
     };
 
     const _isCompressed = (s: string) => s.charCodeAt(0) === 0;
+
+    const _getTerrainLevel = () => {
+        const level = campaigns[campaignState.activeCampaign].levels[campaignState.activeMission];
+        const ref = level.terrainRef;
+        return ref !== undefined ? campaigns[campaignState.activeCampaign].levels[ref] : level;
+    };
 
     const _decompressStr = async (s: string): Promise<string> => {
         const compressed = Uint8Array.from(atob(s.slice(1)), c => c.charCodeAt(0));
@@ -173,7 +188,7 @@ const createCampaignHandler = () => {
     const getTerrain = () => {
         if (!cachedTerrain) {
             // prewarmTerrain() must be awaited before getTerrain() is called when terrain is compressed
-            const level = campaigns[campaignState.activeCampaign].levels[campaignState.activeMission];
+            const level = _getTerrainLevel();
             const { terrain, gridSize } = level;
             cachedTerrain = {
                 terrain: decompressTerrain(terrain as string, gridSize),
@@ -188,19 +203,15 @@ const createCampaignHandler = () => {
 
     const prewarmTerrain = async (): Promise<void> => {
         if (cachedTerrain) return;
-        const level = campaigns[campaignState.activeCampaign].levels[campaignState.activeMission];
+        const level = _getTerrainLevel();
         const { gridSize } = level;
         const terrainStr = _isCompressed(level.terrain as string)
             ? await _decompressStr(level.terrain as string)
             : (level.terrain as string);
         const sandRaw = (level as any).sand as string | undefined;
-        const sandStr = sandRaw
-            ? (_isCompressed(sandRaw) ? await _decompressStr(sandRaw) : sandRaw)
-            : undefined;
+        const sandStr = sandRaw ? (_isCompressed(sandRaw) ? await _decompressStr(sandRaw) : sandRaw) : undefined;
         const pavRaw = (level as any).pavement as string | undefined;
-        const pavStr = pavRaw
-            ? (_isCompressed(pavRaw) ? await _decompressStr(pavRaw) : pavRaw)
-            : undefined;
+        const pavStr = pavRaw ? (_isCompressed(pavRaw) ? await _decompressStr(pavRaw) : pavRaw) : undefined;
         cachedTerrain = {
             terrain: decompressTerrain(terrainStr, gridSize),
             gridSize,

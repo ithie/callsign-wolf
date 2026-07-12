@@ -1,5 +1,25 @@
 # SAR: Callsign WOLF — Changelog
 
+## v29.2.0 — Zephyr: Ship Wreck + spawnOnboard + PAD Auto-Boarding
+
+### Added
+
+- **`spawnOnboard: true`** — Payload flag for persons. Persons with this flag start directly in the helicopter (`G.heli.onboard`) at mission start without requiring winch pickup. Their `deliverTo` is pushed to `G.heli.onboardDeliverQueue` so landing deposit works correctly.
+- **PAD auto-boarding** — Persons within PAD bounds are automatically loaded when the helicopter lands on the pad (no winch required). Persons only, not crates.
+- **Supply vessel wreck** — After a supply vessel collides with a wind turbine, a wreck (`supply_vessel_wreck.zdef`) is spawned at the collision point. The bow is modelled as submerged/sinking; the superstructure is reduced to a charred stub. Stored in `G.BOAT_WRECKS[]`.
+- **`maxTime` — Zephyr M2** — Mission 2 ("Auflandig") now has a 240-second countdown.
+- **Gondola rescue** — Persons attached to wind turbine gondolas can be winched from their actual elevation (`p.z`) instead of terrain height. Fixes pickup on elevated structures.
+- **Editor — `spawnOnboard` checkbox** — Green "onboard" checkbox in the payload row; shown for persons only.
+- **Editor — `deliverTo: wind_turbine`** — Added to the deliverTo dropdown.
+
+### Changed
+
+- **Zephyr M1 — payloads** — Three technician persons now use `spawnOnboard: true` (heli starts full); two equipment crates remain on the supply vessel deck.
+- **Zephyr M1 — briefing** — Updated DE/EN to reflect new setup (technicians already aboard, vessel has crates).
+- **Zephyr M5** — Supply vessel at (348, 238) follows a straight collision course toward wind turbine (388, 375). On impact: explosion + fire emitter on turbine + smoke emitter at collision point + turbine collapse animation + wreck visual.
+
+---
+
 ## v29.1.0 — Terrain Renderer
 
 ### Fixed

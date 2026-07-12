@@ -6,6 +6,7 @@ import SAILBOAT_DEF from '../models/sailboat.zdef';
 import PILOT_BOAT_DEF from '../models/pilot_boat.zdef';
 import SAR_BOAT_DEF from '../models/sar_boat.zdef';
 import SALVAGE_TUG_DEF from '../models/supply_vessel.zdef';
+import SUPPLY_VESSEL_WRECK_DEF from '../models/supply_vessel_wreck.zdef';
 import SUBMARINE_DEF from '../models/submarine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
 import FRIGATE_DEF from '../models/frigate.zdef';
@@ -69,5 +70,9 @@ export const createVesselsDraw = (dwCtx: DrawWorldCtx) => {
         SceneRenderer.add(RESEARCH_PLATFORM_DEF as any, { x: rX, y: rY, z: G.waterLevel, angle: 0, depth: rX + rY - 4 });
     };
 
-    return { _drawBowWave, _drawBoatModel, _drawSubmarine, _drawResearchPlatform };
+    const _drawBoatWreck = (w: { x: number; y: number; angle: number }, cx: number, cy: number) => {
+        renderNodes(SUPPLY_VESSEL_WRECK_DEF as any, {}, { x: w.x, y: w.y, z: G.waterLevel, angle: w.angle }, SceneRenderer, cx, cy);
+    };
+
+    return { _drawBowWave, _drawBoatModel, _drawBoatWreck, _drawSubmarine, _drawResearchPlatform };
 };

@@ -335,6 +335,7 @@ export const initStaticObjectsFromMission = () => {
         y: obj.y,
         angle: obj.angle ?? 0,
     }));
+    G.BOAT_WRECKS = [];
     G.ORNI_RESIDUES = [];
     getObjectsByType(VESSEL.ORNITHOPTER_WRECK).forEach((obj: any) => {
         const gz = getGround(obj.x, obj.y, G.points, G.CARRIER);
@@ -422,8 +423,15 @@ export const initStaticObjectsFromMission = () => {
     }));
     const missionData = campaignHandler.getCurrentMissionData() as any;
     const _startOnboard = Math.max(0, Math.min(6, missionData?.startOnboard ?? 0));
-    G.heli.onboard = _startOnboard;
-    G.heli.onboardDeliverQueue = Array.from({ length: _startOnboard }, () => undefined);
+    const _spawnOnboardPersons = (missionData?.payloads ?? []).filter(
+        (p: any) => p.type === PAYLOAD.PERSON && p.spawnOnboard
+    ) as any[];
+    G.heli.onboard = _startOnboard + _spawnOnboardPersons.length;
+    const _padded: (string | undefined)[] = Array(_startOnboard).fill(undefined);
+    G.heli.onboardDeliverQueue = [
+        ..._padded,
+        ..._spawnOnboardPersons.map((p: any) => p.deliverTo as string | undefined),
+    ];
     G.PARTICLE_EMITTERS = (missionData?.particleEmitters || []).map((e: any) => ({
         type: e.type,
         x: e.x,
@@ -519,8 +527,11 @@ export const initPayloadsFromMission = () => {
         G.goalCount = 0;
         return;
     }
-    G.payloads = missionPayloads.map((p: any) => initPayloadEntry(p));
-    G.goalCount = G.payloads.filter((p: any) => !p.npcTarget).length;
+    const _onboardPersons = missionPayloads.filter((p: any) => p.type === PAYLOAD.PERSON && p.spawnOnboard);
+    G.payloads = missionPayloads
+        .filter((p: any) => !(p.type === PAYLOAD.PERSON && p.spawnOnboard))
+        .map((p: any) => initPayloadEntry(p));
+    G.goalCount = G.payloads.filter((p: any) => !p.npcTarget).length + _onboardPersons.length;
     G.totalRescued = 0;
     G.activePayload = null;
 };

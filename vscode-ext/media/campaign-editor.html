@@ -714,6 +714,7 @@
             <input type="radio" name="tool" value="pilot_boat" />
             <input type="radio" name="tool" value="sar_boat" />
             <input type="radio" name="tool" value="salvage_tug" />
+            <input type="radio" name="tool" value="supply_vessel" />
             <input type="radio" name="tool" value="submarine" />
             <input type="radio" name="tool" value="research_platform" />
             <input type="radio" name="tool" value="wind_turbine" />
@@ -930,6 +931,7 @@ Viel Glück, Pilot.</textarea
                               })),
                               foliageCount: foliageArr.length,
                               foliageSummary,
+                              terrainRef: m.terrainRef != null ? m.terrainRef : null,
                           }
                         : null,
                 };
@@ -968,6 +970,24 @@ Viel Glück, Pilot.</textarea
                     case 'set-mission-music':
                         if (m) {
                             m.music = data.value || undefined;
+                            ed.syncToData();
+                        }
+                        break;
+                    case 'set-terrain-ref':
+                        if (m) {
+                            if (data.value === '' || data.value == null) {
+                                delete m.terrainRef;
+                            } else {
+                                const refIdx = parseInt(data.value);
+                                const src = ed.state.campaign[refIdx];
+                                if (src) {
+                                    m.terrainRef = refIdx;
+                                    m.terrain = src.terrain;
+                                    m.gridSize = src.gridSize;
+                                    if (src.sand) m.sand = src.sand;
+                                    if (src.pavement) m.pavement = src.pavement;
+                                }
+                            }
                             ed.syncToData();
                         }
                         break;
@@ -1135,6 +1155,12 @@ Viel Glück, Pilot.</textarea
                         if (m && m.payloads && m.payloads[data.idx])
                             m.payloads[data.idx].deliverTo = data.value || undefined;
                         break;
+                    case 'set-payload-spawnonboard':
+                        if (m && m.payloads && m.payloads[data.idx]) {
+                            if (data.value) m.payloads[data.idx].spawnOnboard = true;
+                            else delete m.payloads[data.idx].spawnOnboard;
+                        }
+                        break;
                     case 'set-payload-swimwear':
                         if (m && m.payloads && m.payloads[data.idx]) {
                             var pl = m.payloads[data.idx];
@@ -1171,6 +1197,7 @@ Viel Glück, Pilot.</textarea
                 pilot_boat: '🚤',
                 sar_boat: '🛥',
                 salvage_tug: '🛳',
+                supply_vessel: '🚢',
                 submarine: '🤿',
                 lighthouse: '🔦',
                 research_platform: '🏗',
@@ -1418,6 +1445,9 @@ Viel Glück, Pilot.</textarea
                 if (_edActiveTab === 'terrain') {
                     const paintTools = ['terrain', 'flatten', 'sand', 'pavement', 'foliage'];
                     el.innerHTML =
+                        (cm && cm.terrainRef != null
+                            ? '<div style="padding:6px 8px;background:#332200;border-left:3px solid #fa8;font-size:10px;color:#fa8;margin-bottom:4px">📋 Terrain geteilt mit Mission ' + (cm.terrainRef + 1) + ' — Änderungen gelten für alle Missionen mit dieser Quelle.</div>'
+                            : '') +
                         '<div class="ed-section">' +
                         '<div class="ed-section-title">Geländetools</div>' +
                         [
@@ -1563,7 +1593,12 @@ Viel Glück, Pilot.</textarea
                                           p.idx +
                                           ',value:this.checked})"> NPC</label>' +
                                           (p.type === 'person'
-                                              ? '<select style="background:#222;color:#8fa;border:1px solid #555;font-size:10px;padding:1px 3px" onchange="edDispatch(\'set-payload-swimwear\',{idx:' +
+                                              ? '<label style="font-size:10px;color:#af8;white-space:nowrap"><input type="checkbox" ' +
+                                                (p.spawnOnboard ? 'checked' : '') +
+                                                " onchange=\"edDispatch('set-payload-spawnonboard',{idx:" +
+                                                p.idx +
+                                                ',value:this.checked})"> onboard</label>' +
+                                                '<select style="background:#222;color:#8fa;border:1px solid #555;font-size:10px;padding:1px 3px" onchange="edDispatch(\'set-payload-swimwear\',{idx:' +
                                                 p.idx +
                                                 ',value:this.value})">' +
                                                 [
@@ -1594,7 +1629,7 @@ Viel Glück, Pilot.</textarea
                                               ? '<select style="background:#222;color:#fa8;border:1px solid #555;font-size:10px;padding:1px 3px" onchange="edDispatch(\'set-payload-deliverto\',{idx:' +
                                                 p.idx +
                                                 ',value:this.value})">' +
-                                                ['', 'pad', 'carrier', 'frigate', 'submarine']
+                                                ['', 'pad', 'carrier', 'frigate', 'submarine', 'wind_turbine']
                                                     .map(
                                                         v =>
                                                             '<option value="' +
@@ -1669,6 +1704,18 @@ Viel Glück, Pilot.</textarea
                         '<input type="number" value="' +
                         (cm.maxTime != null ? cm.maxTime : '') +
                         '" min="30" max="600" step="10" placeholder="–" style="width:55px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:2px;padding:2px 4px;font-size:11px" oninput="edDispatch(\'set-max-time\',{value:this.value ? parseFloat(this.value) : null})"></div>' +
+                        '</div>' +
+                        '<div class="ed-section">' +
+                        '<div class="ed-section-title">Karte</div>' +
+                        '<div class="ed-row"><label style="color:var(--text-dim)">Terrain-Quelle</label>' +
+                        '<select style="flex:1;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:2px;padding:2px;font-size:11px" onchange="edDispatch(\'set-terrain-ref\',{value:this.value})">' +
+                        '<option value=""' + (cm.terrainRef == null ? ' selected' : '') + '>Eigene Karte</option>' +
+                        st.missions
+                            .filter(mm => !mm.active)
+                            .map(mm => '<option value="' + mm.idx + '"' + (cm.terrainRef === mm.idx ? ' selected' : '') + '>Wie M' + (mm.idx + 1) + ': ' + edH(typeof mm.headline === 'object' ? (mm.headline.de || mm.headline.en || '') : (mm.headline || '')) + '</option>')
+                            .join('') +
+                        '</select></div>' +
+                        (cm.terrainRef != null ? '<div style="font-size:10px;color:#fa8;margin-top:3px">⚠️ Terrain-Bearbeitung ändert Mission ' + (cm.terrainRef + 1) + ' (Quelle).</div>' : '') +
                         '</div>' +
                         '<div class="ed-section">' +
                         '<div class="ed-section-title">Bedingungen</div>' +
