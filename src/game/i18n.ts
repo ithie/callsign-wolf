@@ -89,7 +89,12 @@ const _DE = {
     CLICK_TO_DEPLOY: 'KLICKEN ZUM EINSATZ',
 
     RANK_NAME: (key: string): string =>
-        ({ leutnant: 'Leutnant', oberleutnant: 'Oberleutnant', hauptmann: 'Hauptmann', major: 'Major' } as Record<string, string>)[key] ?? key,
+        (
+            ({ leutnant: 'Leutnant', oberleutnant: 'Oberleutnant', hauptmann: 'Hauptmann', major: 'Major' }) as Record<
+                string,
+                string
+            >
+        )[key] ?? key,
 
     PILOT_ADDRESS: (rank: string, callsign: string) => `${rank} ${callsign || 'WOLF'}`,
     BRIEFING_ADDRESS: (rank: string, callsign: string) => `Ihre Mission, ${rank} ${callsign || 'WOLF'}`,
@@ -157,7 +162,7 @@ const _DE = {
         'Inhaltlich Verantwortlicher gemäß § 18 Abs. 2 MStV:',
         'Michael Draws-Beer – Anschrift wie oben',
         '',
-        'Ust.ID: DE [tbd]',
+        'Ust.ID: DE463616899',
         'Kleinunternehmer gemäß § 19 UStG - keine Umsatzsteuer wird ausgewiesen',
     ],
     LEGAL_DATENSCHUTZ: _DATENSCHUTZ_DE,
@@ -227,7 +232,14 @@ const _EN = {
     CLICK_TO_DEPLOY: 'CLICK TO DEPLOY',
 
     RANK_NAME: (key: string): string =>
-        ({ leutnant: 'Lieutenant', oberleutnant: '1st Lieutenant', hauptmann: 'Captain', major: 'Major' } as Record<string, string>)[key] ?? key,
+        (
+            ({
+                leutnant: 'Lieutenant',
+                oberleutnant: '1st Lieutenant',
+                hauptmann: 'Captain',
+                major: 'Major',
+            }) as Record<string, string>
+        )[key] ?? key,
 
     PILOT_ADDRESS: (rank: string, callsign: string) => `${rank} ${callsign || 'WOLF'}`,
     BRIEFING_ADDRESS: (rank: string, callsign: string) => `Your mission, ${rank} ${callsign || 'WOLF'}`,
@@ -295,7 +307,7 @@ const _EN = {
         'Responsible for content (§ 18 para. 2 MStV):',
         'Michael Draws-Beer – address as above',
         '',
-        'VAT ID: DE [tbd]',
+        'VAT ID: DE463616899',
         'Small business owner according to § 19 of the German VAT Act (UStG) - no VAT is invoiced',
     ],
     LEGAL_DATENSCHUTZ: _DATENSCHUTZ_EN,
