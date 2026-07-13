@@ -4,6 +4,7 @@ import {
     getRank,
     encodeSession,
     decodeSession,
+    migrateSession,
     getCampaignsDone,
     getMissionsDone,
     type PlayerSession,
@@ -216,6 +217,7 @@ const applySaveCode = () => {
     }
     const session = _deps.getSession();
     Object.assign(session, decoded);
+    migrateSession(session);
     _deps.saveSession(session);
     input.value = '';
     msg.style.color = '#5f5';

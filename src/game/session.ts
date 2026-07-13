@@ -38,6 +38,17 @@ const _default = (): PlayerSession => ({
     typeRatingSystemSince: 0,
 });
 
+export const migrateSession = (s: PlayerSession): void => {
+    if (!s.typeRatingSystemSince) {
+        s.typeRatingSystemSince = 1;
+        if (!s.typeRatings) s.typeRatings = {};
+        s.typeRatings['coasthawk'] = true;
+        s.typeRatings['dolphin'] = true;
+        s.typeRatings['atlas'] = true;
+        s.typeRatings['ornithopter'] = true;
+    }
+};
+
 export const loadSession = (): PlayerSession => {
     try {
         const raw = storageGet(STORAGE_KEY);
@@ -57,14 +68,7 @@ export const loadSession = (): PlayerSession => {
         }
         if (!merged.typeRatings) merged.typeRatings = {};
         if (!merged.typeRatingBestTime) merged.typeRatingBestTime = {};
-        if (!merged.typeRatingSystemSince) {
-            merged.typeRatingSystemSince = 1;
-            // old save: grant all ratings — rank check still applies as second gate
-            merged.typeRatings['coasthawk'] = true;
-            merged.typeRatings['dolphin'] = true;
-            merged.typeRatings['atlas'] = true;
-            merged.typeRatings['ornithopter'] = true;
-        }
+        migrateSession(merged);
         return merged;
     } catch {
         return _default();
