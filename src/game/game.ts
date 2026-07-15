@@ -158,6 +158,7 @@ const { drawTerrain, precomputeDayColors } = createDrawTerrain({
 });
 
 import { buildStartZone } from './start-zone';
+import { isMac } from './platform';
 
 // ─── screens ────────────────────────────────────────────────────────────────
 const _stopMission = () => {
@@ -714,7 +715,7 @@ const _drawSceneInner = () => {
 
     const tx = (G.heli.x - G.heli.y) * (tileW / 2);
 
-    const ty = (G.heli.x + G.heli.y) * (tileH / 2) - G.heli.z * stepH;
+    const ty = (G.heli.x + G.heli.y) * (tileH / 2) - (isMac() ? 0 : G.heli.z * stepH);
     zstate.cam.x = tx;
     zstate.cam.y = ty;
 
@@ -1135,6 +1136,27 @@ const _RIGHT_KEYS = ['ArrowUp', 'ArrowDown', 'KeyA', 'KeyD'] as const;
     (G.keys as Record<string, boolean>)['KeyR'] = input.deliverBtn;
     if (isTutorialRunning() && (input.leftKey || input.rightKey || input.pitchWheel.active || input.deliverBtn))
         notifyTutorialInput();
+};
+
+// ─── Mac keyboard input (set by Swift via window.__setKey) ──────────────────
+
+const _MAC_KEYS = new Set([
+    'KeyW', 'KeyS', 'KeyA', 'KeyD', 'KeyQ', 'KeyE', 'KeyR',
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+]);
+
+(window as any).__setKey = (code: string, down: boolean) => {
+    if (!_MAC_KEYS.has(code)) return;
+    if (down) {
+        if (_isKeyAllowed(code)) (G.keys as Record<string, boolean>)[code] = true;
+    } else {
+        (G.keys as Record<string, boolean>)[code] = false;
+    }
+    if (isTutorialRunning() && down) notifyTutorialInput();
+};
+
+(window as any).__clearAllKeys = () => {
+    _MAC_KEYS.forEach(k => { (G.keys as Record<string, boolean>)[k] = false; });
 };
 
 const setupTouchControls = () => {

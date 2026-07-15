@@ -1,5 +1,6 @@
 import './tutorial.css';
 import { I18N } from '../../i18n';
+import { isMac } from '../../platform';
 import type { GameState } from '../../state';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -13,6 +14,7 @@ interface TutorialStep {
     direction?: Direction;
     dimControls: NonNullable<ControlHint>[];
     allowedKeys: Set<string> | null;
+    keys?: readonly string[];
     condition: (g: GameState) => boolean;
     onComplete?: (g: GameState) => void;
 }
@@ -67,58 +69,65 @@ const _angleDiff = (a: number, b: number): number => {
 const _STEPS: readonly TutorialStep[] = [
     // 0: Climb to 100m
     {
-        getText: () => I18N.TUT_TAKEOFF_M,
+        getText: () => isMac() ? I18N.TUT_TAKEOFF_K : I18N.TUT_TAKEOFF_M,
         control: 'joystick-left', direction: 'up',
         dimControls: ['joystick-right', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_CLIMB,
+        keys: ['W'],
         condition: g => g.heli.z >= _padGroundZ + _CLIMB_METERS,
     },
     // 1: Turn Left 90°
     {
-        getText: () => I18N.TUT_TURN_L_M,
+        getText: () => isMac() ? I18N.TUT_TURN_L_K : I18N.TUT_TURN_L_M,
         control: 'joystick-left', direction: 'left',
         dimControls: ['joystick-right', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_TURN_L,
+        keys: ['←'],
         condition: g => _angleDiff(g.heli.angle, _stepStartAngle) <= -_TURN_ANGLE,
     },
     // 2: Turn Right 90° — back to original heading
     {
-        getText: () => I18N.TUT_TURN_R_M,
+        getText: () => isMac() ? I18N.TUT_TURN_R_K : I18N.TUT_TURN_R_M,
         control: 'joystick-left', direction: 'right',
         dimControls: ['joystick-right', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_TURN_R,
+        keys: ['→'],
         condition: g => _angleDiff(g.heli.angle, _stepStartAngle) >= _TURN_ANGLE,
     },
     // 3: Strafe Left
     {
-        getText: () => I18N.TUT_STRAFE_L_M,
+        getText: () => isMac() ? I18N.TUT_STRAFE_L_K : I18N.TUT_STRAFE_L_M,
         control: 'joystick-right', direction: 'left',
         dimControls: ['joystick-left', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_LEFT,
+        keys: ['A'],
         condition: g => Math.hypot(g.heli.x - _stepStartX, g.heli.y - _stepStartY) >= _STEP_DIST,
     },
     // 4: Strafe Right — back over pad
     {
-        getText: () => I18N.TUT_STRAFE_R_M,
+        getText: () => isMac() ? I18N.TUT_STRAFE_R_K : I18N.TUT_STRAFE_R_M,
         control: 'joystick-right', direction: 'right',
         dimControls: ['joystick-left', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_RIGHT,
+        keys: ['D'],
         condition: g => Math.hypot(g.heli.x - _stepStartX, g.heli.y - _stepStartY) >= _STEP_DIST,
     },
     // 5: Forward
     {
-        getText: () => I18N.TUT_FORWARD_M,
+        getText: () => isMac() ? I18N.TUT_FORWARD_K : I18N.TUT_FORWARD_M,
         control: 'joystick-right', direction: 'up',
         dimControls: ['joystick-left', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_FORWARD,
+        keys: ['↑'],
         condition: g => Math.hypot(g.heli.x - _stepStartX, g.heli.y - _stepStartY) >= _STEP_DIST,
     },
     // 6: Backward — back over pad; drops fuel to 15% on complete
     {
-        getText: () => I18N.TUT_BACKWARD_M,
+        getText: () => isMac() ? I18N.TUT_BACKWARD_K : I18N.TUT_BACKWARD_M,
         control: 'joystick-right', direction: 'down',
         dimControls: ['joystick-left', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_BACKWARD,
+        keys: ['↓'],
         condition: g => Math.hypot(g.heli.x - _stepStartX, g.heli.y - _stepStartY) >= _STEP_DIST,
         onComplete: g => {
             g.heli.fuel = 15;
@@ -126,18 +135,20 @@ const _STEPS: readonly TutorialStep[] = [
     },
     // 7: Land — S only; x/y stays locked over pad from step 6
     {
-        getText: () => I18N.TUT_LAND_M,
+        getText: () => isMac() ? I18N.TUT_LAND_K : I18N.TUT_LAND_M,
         control: 'joystick-left', direction: 'down',
         dimControls: ['joystick-right', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_LAND,
+        keys: ['S'],
         condition: g => !g.heli.inAir && g.heli.z < 1.5,
     },
     // 8: Engine off — same gesture (stick down) while on ground stops engine
     {
-        getText: () => I18N.TUT_ENGINE_STOP,
+        getText: () => isMac() ? I18N.TUT_ENGINE_STOP_K : I18N.TUT_ENGINE_STOP,
         control: 'joystick-left', direction: 'down',
         dimControls: ['joystick-right', 'pitch-wheel', 'deliver-toggle'],
         allowedKeys: _KEYS_LAND,
+        keys: ['S'],
         condition: g => !g.heli.engineOn,
     },
     // 9: Refuel — all controls locked, player just waits
@@ -161,18 +172,20 @@ const _STEPS: readonly TutorialStep[] = [
     },
     // 10: Pick up crate
     {
-        getText: () => I18N.TUT_CRATE_PICKUP_M,
+        getText: () => isMac() ? I18N.TUT_CRATE_PICKUP_K : I18N.TUT_CRATE_PICKUP_M,
         control: 'pitch-wheel',
         dimControls: ['deliver-toggle'],
         allowedKeys: null,
+        keys: ['E'],
         condition: g => (g.payloads as any[]).some(p => p.type === 'crate' && p.hanging),
     },
     // 11: Deliver crate → spawn person on complete
     {
-        getText: () => I18N.TUT_CRATE_TO_PAD_M,
+        getText: () => isMac() ? I18N.TUT_CRATE_TO_PAD_K : I18N.TUT_CRATE_TO_PAD_M,
         control: null,
         dimControls: [],
         allowedKeys: null,
+        keys: ['E'],
         condition: g => (g.payloads as any[]).some(p => p.type === 'crate' && p.rescued),
         onComplete: () => {
             _onSpawnPerson?.();
@@ -196,15 +209,16 @@ const _STEPS: readonly TutorialStep[] = [
     },
     // 13: Pick up person
     {
-        getText: () => I18N.TUT_PERSON_PICKUP_M,
+        getText: () => isMac() ? I18N.TUT_PERSON_PICKUP_K : I18N.TUT_PERSON_PICKUP_M,
         control: 'pitch-wheel',
         dimControls: [],
         allowedKeys: null,
+        keys: ['E', 'Q'],
         condition: g => g.heli.onboard > 0,
     },
     // 14: Deliver person to pad — fires when totalRescued increases (simulation handles delivery)
     {
-        getText: () => I18N.TUT_PERSON_TO_PAD_M,
+        getText: () => isMac() ? I18N.TUT_PERSON_TO_PAD_K : I18N.TUT_PERSON_TO_PAD_M,
         control: null,
         dimControls: [],
         allowedKeys: null,
@@ -237,8 +251,21 @@ const _setOverlay = (visible: boolean): void => {
 const _renderStep = (step: TutorialStep): void => {
     const el = document.getElementById('tutorial-step-text');
     if (el) el.textContent = step.getText();
-    _setHighlight(step.control, step.direction);
-    _setDim(step.dimControls);
+    if (isMac()) {
+        const hint = document.getElementById('tutorial-key-hint');
+        if (hint) {
+            hint.innerHTML = '';
+            step.keys?.forEach(k => {
+                const cap = document.createElement('div');
+                cap.className = 'key-cap';
+                cap.textContent = k;
+                hint.appendChild(cap);
+            });
+        }
+    } else {
+        _setHighlight(step.control, step.direction);
+        _setDim(step.dimControls);
+    }
     _setOverlay(true);
 };
 
@@ -327,6 +354,11 @@ export const initTutorial = (
         const hud = document.createElement('div');
         hud.id = 'tutorial-hud';
         hud.innerHTML = '<div id="tutorial-step-text"></div>';
+        if (isMac()) {
+            const keyHint = document.createElement('div');
+            keyHint.id = 'tutorial-key-hint';
+            hud.appendChild(keyHint);
+        }
         document.body.appendChild(hud);
     }
     document.getElementById('tutorial-hud')!.style.opacity = '1';

@@ -66,6 +66,7 @@ private final class AppReviewHandler: NSObject, WKScriptMessageHandler {
 
 private final class ControlsHandler: NSObject, WKScriptMessageHandler {
     weak var overlay: GameControlOverlay?
+    private let isMac = ProcessInfo.processInfo.isiOSAppOnMac
 
     func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
         // WKScriptMessageHandler is already called on the main thread — no async dispatch needed.
@@ -74,7 +75,7 @@ private final class ControlsHandler: NSObject, WKScriptMessageHandler {
               let overlay else { return }
         switch type {
         case "showControls":
-            overlay.setVisible((body["visible"] as? Bool) == true)
+            if !isMac { overlay.setVisible((body["visible"] as? Bool) == true) }
         case "deliverToggle":
             overlay.setDeliverOn((body["on"] as? Bool) == true)
         case "tutorialHighlight":
@@ -202,6 +203,56 @@ class ViewController: UIViewController {
             injectionTime: .atDocumentStart,
             forMainFrameOnly: true
         ))
+        if ProcessInfo.processInfo.isiOSAppOnMac {
+            config.userContentController.addUserScript(WKUserScript(
+                source: "window.__platform = 'mac';",
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            ))
+        }
+    }
+
+    // MARK: - Mac keyboard input
+
+    private let _keyMap: [UIKeyboardHIDUsage: String] = [
+        .keyboardW:          "KeyW",
+        .keyboardS:          "KeyS",
+        .keyboardA:          "KeyA",
+        .keyboardD:          "KeyD",
+        .keyboardQ:          "KeyQ",
+        .keyboardE:          "KeyE",
+        .keyboardR:          "KeyR",
+        .keyboardUpArrow:    "ArrowUp",
+        .keyboardDownArrow:  "ArrowDown",
+        .keyboardLeftArrow:  "ArrowLeft",
+        .keyboardRightArrow: "ArrowRight",
+    ]
+
+    override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        guard ProcessInfo.processInfo.isiOSAppOnMac else {
+            super.pressesBegan(presses, with: event); return
+        }
+        for press in presses {
+            guard let key = press.key, let code = _keyMap[key.keyCode] else { continue }
+            webView.evaluateJavaScript("window.__setKey('\(code)',true)")
+        }
+    }
+
+    override func pressesEnded(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        guard ProcessInfo.processInfo.isiOSAppOnMac else {
+            super.pressesEnded(presses, with: event); return
+        }
+        for press in presses {
+            guard let key = press.key, let code = _keyMap[key.keyCode] else { continue }
+            webView.evaluateJavaScript("window.__setKey('\(code)',false)")
+        }
+    }
+
+    override func pressesCancelled(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        guard ProcessInfo.processInfo.isiOSAppOnMac else {
+            super.pressesCancelled(presses, with: event); return
+        }
+        webView.evaluateJavaScript("window.__clearAllKeys()")
     }
 
     // MARK: - Orientation / UI

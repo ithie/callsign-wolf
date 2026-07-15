@@ -1,5 +1,22 @@
 # SAR: Callsign WOLF — Changelog
 
+## v1.1 — Mac Keyboard Support
+
+### Added
+
+- **Mac keyboard controls** — Full keyboard input on Mac. Controls: W/S (altitude), Arrow Left/Right (turn), Arrow Up/Down (forward/backward), A/D (strafe), E (lower winch), Q (raise winch), R (deliver).
+- **Tutorial — keyboard adaptation** — On Mac, all tutorial instructions show keyboard shortcuts instead of joystick hints. A stylised animated key cap in the HUD highlights the relevant key(s) for each step.
+- **Language support — French, Spanish, Portuguese** — Full localisation added for FR, ES, PT. Language can be selected in Settings. Privacy policy available in all five languages.
+- **`src/game/platform.ts`** — New module exposing `isMac()`, reading the `window.__platform` flag injected by Swift at document start.
+
+### Changed
+
+- **Mac camera** — Camera no longer follows helicopter altitude on Mac; view stays fixed at ground level regardless of flight height.
+- **Mac tile size** — Tile dimensions adjusted for Mac screen size (32/16/12.5 vs iPad 28/14/10.9) to limit the visible world area on large displays.
+- **Touch controls** — Hidden automatically on Mac; Swift skips the native overlay entirely.
+
+---
+
 ## v29.2.0 — Zephyr: Ship Wreck + spawnOnboard + PAD Auto-Boarding
 
 ### Added

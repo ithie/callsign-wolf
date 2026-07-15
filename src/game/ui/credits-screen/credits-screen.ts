@@ -5,21 +5,23 @@ import { I18N } from '../../i18n';
 import { ensureEl as _ensureEl } from '@/ui/dom-helpers';
 import { showScreenCrtEnter } from '../nav';
 import { mountScreenShell } from '@/ui/screen-shell/screen-shell';
-import { sections } from '../campaign-end-screen/campaign-end-screen';
+import { getSections } from '../campaign-end-screen/campaign-end-screen';
+
+let _onBack: () => void = () => {};
 
 export const mount = (onBack: () => void): void => {
-    const root = _ensureEl('credits-screen');
-    if (root.children.length > 0) return;
-    const body = mountScreenShell('credits-screen', I18N.MENU_CREDITS, onBack);
+    _onBack = onBack;
+    _ensureEl('credits-screen');
+};
+
+export const show = () => {
+    const body = mountScreenShell('credits-screen', I18N.MENU_CREDITS, _onBack);
     const canvas = document.createElement('canvas');
     canvas.id = 'credits-canvas';
     const inner = document.createElement('div');
     inner.id = 'credits-inner';
     body.appendChild(canvas);
     body.appendChild(inner);
-};
-
-export const show = () => {
     _buildCredits();
     showScreenCrtEnter('credits-screen');
     soundHandler.play('spocktribute');
@@ -30,7 +32,7 @@ const _buildCredits = () => {
     inner.innerHTML = '';
 
     let delay = 0.15;
-    sections.forEach(s => {
+    getSections().forEach(s => {
         const sec = document.createElement('div');
         sec.className = 'credits-section';
         const role = document.createElement('div');

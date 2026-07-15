@@ -14,10 +14,15 @@ const _addParagraphs = (parent: HTMLElement, lines: readonly string[]) => {
     });
 };
 
+let _onBack: () => void = () => {};
+
 export const mount = (onBack: () => void): void => {
-    const root = ensureEl('legal-screen');
-    if (root.children.length > 0) return;
-    const body = mountScreenShell('legal-screen', I18N.LEGAL_TITLE, onBack);
+    _onBack = onBack;
+    ensureEl('legal-screen');
+};
+
+export const show = (): void => {
+    const body = mountScreenShell('legal-screen', I18N.LEGAL_TITLE, _onBack);
 
     const content = document.createElement('div');
     content.className = 'legal-content';
@@ -35,8 +40,5 @@ export const mount = (onBack: () => void): void => {
     _addParagraphs(content, I18N.LEGAL_DATENSCHUTZ);
 
     body.appendChild(content);
-};
-
-export const show = (): void => {
     showScreenCrtEnter('legal-screen');
 };

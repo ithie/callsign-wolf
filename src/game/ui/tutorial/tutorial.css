@@ -42,3 +42,46 @@
     60%  { color: #cfc; background: rgba(0, 80, 0, 0.7); }
     100% { color: #fff; background: rgba(0, 0, 0, 0.72); border-color: rgba(255, 255, 255, 0.18); }
 }
+
+/* ── Keyboard Key Hints (Mac only) ────────────────────────────────────────── */
+#tutorial-key-hint {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.key-cap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 34px;
+    height: 34px;
+    padding: 0 8px;
+    background: rgba(10, 14, 28, 0.92);
+    color: #4af;
+    font-family: 'Courier New', monospace;
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 0;
+    border: 1.5px solid #4af;
+    border-bottom: 4px solid #28a;
+    border-radius: 5px;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.55);
+    animation: key-press 1.4s ease-in-out infinite;
+}
+
+@keyframes key-press {
+    0%, 35%, 100% {
+        transform: translateY(0);
+        border-bottom-width: 4px;
+        color: #4af;
+        box-shadow: 0 3px 6px rgba(0, 0, 0, 0.55);
+    }
+    50%, 65% {
+        transform: translateY(3px);
+        border-bottom-width: 1px;
+        color: #8df;
+        box-shadow: 0 0 4px rgba(68, 170, 255, 0.3);
+    }
+}

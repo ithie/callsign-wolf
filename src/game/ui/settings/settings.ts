@@ -1,5 +1,5 @@
 import './settings.css';
-import { I18N, LANG, setLanguage } from '../../i18n';
+import { I18N, LANG, setLanguage, type Lang } from '../../i18n';
 import {
     getRank,
     encodeSession,
@@ -105,15 +105,30 @@ export const mount = () => {
     const musicOff = createSettingsBtn(I18N.AUDIO_OFF, { id: 'music-off-btn' });
     const sfxOn    = createSettingsBtn(I18N.AUDIO_ON,  { id: 'sfx-on-btn' });
     const sfxOff   = createSettingsBtn(I18N.AUDIO_OFF, { id: 'sfx-off-btn' });
-    const langDe   = createSettingsBtn('DEUTSCH', { id: 'lang-de-btn' });
-    const langEn   = createSettingsBtn('ENGLISH', { id: 'lang-en-btn' });
+    const _langs: { id: string; label: string; code: Lang }[] = [
+        { id: 'lang-de-btn', label: 'DEUTSCH',    code: 'de' },
+        { id: 'lang-en-btn', label: 'ENGLISH',    code: 'en' },
+        { id: 'lang-fr-btn', label: 'FRANÇAIS',   code: 'fr' },
+        { id: 'lang-es-btn', label: 'ESPAÑOL',    code: 'es' },
+        { id: 'lang-pt-btn', label: 'PORTUGUÊS',  code: 'pt' },
+    ];
+    const langBtns = _langs.map(l => createSettingsBtn(l.label, { id: l.id }));
 
     const musicField = _field(I18N.MUSIC_HEADING, musicOn, musicOff);
     musicField.style.width = '100%';
     const sfxField = _field(I18N.SFX_HEADING, sfxOn, sfxOff);
     sfxField.style.width = '100%';
-    const langField = _field(I18N.LANGUAGE_HEADING, langDe, langEn);
+
+    const langField = document.createElement('div');
+    langField.className = 'settings-field';
     langField.style.width = '100%';
+    const langLabel = document.createElement('label');
+    langLabel.textContent = I18N.LANGUAGE_HEADING;
+    const langCol = document.createElement('div');
+    langCol.style.cssText = 'display:flex;flex-direction:column;gap:8px;margin-top:6px';
+    langBtns.forEach(b => langCol.appendChild(b));
+    langField.append(langLabel, langCol);
+
     audioSection.append(musicField, sfxField, langField);
 
     // Delete section
@@ -134,8 +149,7 @@ export const mount = () => {
     musicOff.addEventListener('click', () => { _deps.setMusicEnabled(false); _refreshAudioButtons(); });
     sfxOn.addEventListener('click',    () => { _deps.setSfxEnabled(true);    _refreshAudioButtons(); });
     sfxOff.addEventListener('click',   () => { _deps.setSfxEnabled(false);   _refreshAudioButtons(); });
-    langDe.addEventListener('click',   () => { setLanguage('de'); show(); });
-    langEn.addEventListener('click',   () => { setLanguage('en'); show(); });
+    _langs.forEach((l, i) => langBtns[i].addEventListener('click', () => { setLanguage(l.code); show(); }));
 };
 
 const HL = 'var(--accent, #4af)';
@@ -157,14 +171,21 @@ const _refreshAudioButtons = () => {
     sfxOff.style.color         = sfx ? '' : HL;
 };
 
+const _LANG_IDS: { id: string; code: Lang }[] = [
+    { id: 'lang-de-btn', code: 'de' },
+    { id: 'lang-en-btn', code: 'en' },
+    { id: 'lang-fr-btn', code: 'fr' },
+    { id: 'lang-es-btn', code: 'es' },
+    { id: 'lang-pt-btn', code: 'pt' },
+];
+
 const _refreshLangButtons = () => {
-    const de = document.getElementById('lang-de-btn') as HTMLButtonElement | null;
-    const en = document.getElementById('lang-en-btn') as HTMLButtonElement | null;
-    if (!de || !en) return;
-    de.style.borderColor = LANG === 'de' ? HL : '';
-    de.style.color       = LANG === 'de' ? HL : '';
-    en.style.borderColor = LANG === 'en' ? HL : '';
-    en.style.color       = LANG === 'en' ? HL : '';
+    _LANG_IDS.forEach(({ id, code }) => {
+        const btn = document.getElementById(id) as HTMLButtonElement | null;
+        if (!btn) return;
+        btn.style.borderColor = LANG === code ? HL : '';
+        btn.style.color       = LANG === code ? HL : '';
+    });
 };
 
 const _refreshSettingsScreen = () => {

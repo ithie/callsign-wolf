@@ -31,7 +31,7 @@ const _burst = (el: HTMLElement) => {
     setTimeout(() => wrap.remove(), 1300);
 };
 
-export const sections: { role: string; names: string[] }[] = [
+export const getSections = (): { role: string; names: string[] }[] => [
     { role: I18N.CREDITS_ROLE_DEVELOPMENT, names: ['Yarrick'] },
     { role: I18N.CREDITS_ROLE_CAMPAIGN, names: ['Jay "G" Man'] },
     { role: I18N.CREDITS_ROLE_CONSULTGS, names: ['DBuhn'] },
@@ -51,7 +51,7 @@ const _scheduleBursts = (el: HTMLElement, startDelay: number) => {
 export const show = (campaignName: string, onCreditsStart?: () => void): void => {
     if (!_el) return;
 
-    const blocksHtml = sections
+    const blocksHtml = getSections()
         .map(
             s => `
         <div class="ced-block">

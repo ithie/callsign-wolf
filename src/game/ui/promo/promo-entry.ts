@@ -3,7 +3,7 @@ import { mount as imprintMount, show as imprintShow } from '../imprint-page/impr
 
 if (new URLSearchParams(location.search).has('imprint')) {
     imprintMount();
-    imprintShow('https://ithie.github.io/callsign-wolf');
+    imprintShow(window.location.href.split('?')[0]);
 } else {
     promoMount();
     promoShow();
