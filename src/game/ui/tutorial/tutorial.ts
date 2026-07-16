@@ -179,7 +179,7 @@ const _STEPS: readonly TutorialStep[] = [
         keys: ['E'],
         condition: g => (g.payloads as any[]).some(p => p.type === 'crate' && p.hanging),
     },
-    // 11: Deliver crate → spawn person on complete
+    // 11: Deliver crate
     {
         getText: () => isMac() ? I18N.TUT_CRATE_TO_PAD_K : I18N.TUT_CRATE_TO_PAD_M,
         control: null,
@@ -187,11 +187,20 @@ const _STEPS: readonly TutorialStep[] = [
         allowedKeys: null,
         keys: ['E'],
         condition: g => (g.payloads as any[]).some(p => p.type === 'crate' && p.rescued),
+    },
+    // 12: Mandatory refuel before person rescue — land + engine off, then wait
+    {
+        getText: () => I18N.TUT_REFUEL_2,
+        control: 'joystick-left', direction: 'down',
+        dimControls: ['joystick-right', 'pitch-wheel', 'deliver-toggle'],
+        allowedKeys: _KEYS_LAND,
+        keys: ['S'],
+        condition: g => g.heli.fuel >= 90,
         onComplete: () => {
             _onSpawnPerson?.();
         },
     },
-    // 12: Locate person
+    // 13: Locate person
     {
         getText: () => I18N.TUT_LOCATE_PERSON,
         control: null,
