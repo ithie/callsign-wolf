@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		2724CBA730095B9A00DDC142 /* PrivacyInfo 2.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2724CBA630095B9A00DDC142 /* PrivacyInfo 2.xcprivacy */; };
+		27C2DD74300A06D600C7E3BC /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 27C2DD72300A06D600C7E3BC /* InfoPlist.strings */; };
 		27D455E62FD80EBF0042D988 /* ZsynthPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D455E52FD80EBF0042D988 /* ZsynthPlayer.swift */; };
 		27F496252FD9A3E000E7ECD1 /* HeliSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27F496242FD9A3E000E7ECD1 /* HeliSound.swift */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -22,6 +23,11 @@
 
 /* Begin PBXFileReference section */
 		2724CBA630095B9A00DDC142 /* PrivacyInfo 2.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "PrivacyInfo 2.xcprivacy"; sourceTree = "<group>"; };
+		27C2DD73300A06D600C7E3BC /* pt */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = pt; path = pt.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		27C2DD77300A06F300C7E3BC /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		27C2DD78300A070000C7E3BC /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		27C2DD7B300A073300C7E3BC /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		27C2DD7C300A074B00C7E3BC /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		27D455E52FD80EBF0042D988 /* ZsynthPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZsynthPlayer.swift; sourceTree = "<group>"; };
 		27F496242FD9A3E000E7ECD1 /* HeliSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeliSound.swift; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -78,6 +84,7 @@
 				27D455E52FD80EBF0042D988 /* ZsynthPlayer.swift */,
 				27F496242FD9A3E000E7ECD1 /* HeliSound.swift */,
 				2724CBA630095B9A00DDC142 /* PrivacyInfo 2.xcprivacy */,
+				27C2DD72300A06D600C7E3BC /* InfoPlist.strings */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -128,6 +135,10 @@
 			knownRegions = (
 				en,
 				Base,
+				pt,
+				de,
+				es,
+				fr,
 			);
 			mainGroup = 504EC2FB1FED79650016851F;
 			packageReferences = (
@@ -147,6 +158,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */,
+				27C2DD74300A06D600C7E3BC /* InfoPlist.strings in Resources */,
 				50B271D11FEDC1A000F3C39B /* public in Resources */,
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
 				2724CBA730095B9A00DDC142 /* PrivacyInfo 2.xcprivacy in Resources */,
@@ -173,6 +185,18 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
+		27C2DD72300A06D600C7E3BC /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				27C2DD77300A06F300C7E3BC /* en */,
+				27C2DD73300A06D600C7E3BC /* pt */,
+				27C2DD78300A070000C7E3BC /* es */,
+				27C2DD7B300A073300C7E3BC /* de */,
+				27C2DD7C300A074B00C7E3BC /* fr */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -326,7 +350,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.1.1;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = i.thie.softworks;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -350,7 +374,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = i.thie.softworks;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";

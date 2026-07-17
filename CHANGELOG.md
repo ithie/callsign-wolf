@@ -1,5 +1,14 @@
 # SAR: Callsign WOLF — Changelog
 
+## v1.1.1 — Localisation Fix
+
+### Added
+
+- **Privacy manifest** — `PrivacyInfo.xcprivacy` added, declaring `UserDefaults` access (reason CA92.1) as required by Apple.
+- **Language declarations** — `CFBundleLocalizations` added to `Info.plist`; `.lproj` bundles for DE, FR, ES, PT registered as Xcode target members so the App Store correctly lists all supported languages.
+
+---
+
 ## v1.1 — Mac Keyboard Support
 
 ### Added
