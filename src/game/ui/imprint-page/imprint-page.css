@@ -17,7 +17,7 @@
 
 #imprint-page h1 { color: #ff6600; font-size: clamp(24px, 5vw, 42px); letter-spacing: 6px; margin-bottom: 4px; font-weight: bold; }
 #imprint-page h2 { color: #ff6600; font-size: 11px; letter-spacing: 4px; font-weight: bold; margin: 28px 0 10px; border-bottom: 1px solid #1a1a1a; padding-bottom: 6px; }
-#imprint-page p { color: #666; font-size: 12px; line-height: 1.8; margin: 4px 0; letter-spacing: 0.5px; }
+#imprint-page p { color: #fff; font-size: 12px; line-height: 1.8; margin: 4px 0; letter-spacing: 0.5px; }
 
 #imprint-page .sub { color: #5f5; letter-spacing: 4px; font-size: 12px; margin-bottom: 36px; }
 #imprint-page .lang-row { margin-bottom: 28px; }

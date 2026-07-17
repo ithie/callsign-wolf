@@ -74,7 +74,7 @@ body {
 }
 
 #promo .il {
-    color: #888;
+    color: #fff;
     font-size: 10px;
     letter-spacing: 3px;
     text-decoration: none;
@@ -84,5 +84,5 @@ body {
 }
 
 #promo .il:hover {
-    color: #555;
+    color: #aaa;
 }
