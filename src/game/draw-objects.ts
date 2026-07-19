@@ -40,7 +40,7 @@ export interface DrawHeliOpts {
     flapRate?: number;
     /** Tail rotor speed multiplier (1.0 = normal, >1 = yawing). */
     tailRotorRate?: number;
-    /** Player color variant: 'blue' | 'disco' | undefined (= default orange). */
+    /** Player color variant: 'blue' | undefined (= default orange). */
     colorVariant?: string;
 }
 
@@ -672,18 +672,8 @@ export const createDrawObjects = (
             colorVariant,
         } = opts;
 
-        const _now = Date.now();
-        const _discoHue = (_now * 0.20) % 360;
-        const fillColor = colorVariant === 'blue' ? '#55aadd'
-            : colorVariant === 'disco' ? `hsl(${_discoHue.toFixed(0)}, 100%, 55%)`
-            : _rawFill;
-        const strokeColor = colorVariant === 'blue' ? '#3388bb'
-            : colorVariant === 'disco' ? `hsl(${((_discoHue + 30) % 360).toFixed(0)}, 100%, 40%)`
-            : _rawStroke;
-        // Per-section disco color: each section gets independent speed + phase → desynchronised.
-        const _d = (phase: number, speed: number = 1.0): string => colorVariant === 'disco'
-            ? `hsl(${((_now * 0.18 * speed + phase) % 360).toFixed(0)}, 100%, 55%)`
-            : fillColor;
+        const fillColor = colorVariant === 'blue' ? '#55aadd' : _rawFill;
+        const strokeColor = colorVariant === 'blue' ? '#3388bb' : _rawStroke;
 
         const actualCtx = tCtx ?? ctx;
         const actualIso = tIso ?? iso;
@@ -751,27 +741,14 @@ export const createDrawObjects = (
                 tailBase = p(-0.8, 0, 0.5);
             const lSide = p(0, 0.4, 0.4),
                 rSide = p(0, -0.4, 0.4);
-            if (colorVariant === 'disco') {
-                // Nose half
-                actualCtx.fillStyle = _d(0, 1.0);
-                actualCtx.beginPath();
-                actualCtx.moveTo(nose.x, nose.y); actualCtx.lineTo(rSide.x, rSide.y); actualCtx.lineTo(lSide.x, lSide.y);
-                actualCtx.closePath(); actualCtx.fill();
-                // Rear half
-                actualCtx.fillStyle = _d(60, 1.3);
-                actualCtx.beginPath();
-                actualCtx.moveTo(rSide.x, rSide.y); actualCtx.lineTo(tailBase.x, tailBase.y); actualCtx.lineTo(lSide.x, lSide.y);
-                actualCtx.closePath(); actualCtx.fill();
-            } else {
-                actualCtx.fillStyle = fillColor;
-                actualCtx.beginPath();
-                actualCtx.moveTo(nose.x, nose.y);
-                actualCtx.lineTo(rSide.x, rSide.y);
-                actualCtx.lineTo(tailBase.x, tailBase.y);
-                actualCtx.lineTo(lSide.x, lSide.y);
-                actualCtx.closePath();
-                actualCtx.fill();
-            }
+            actualCtx.fillStyle = fillColor;
+            actualCtx.beginPath();
+            actualCtx.moveTo(nose.x, nose.y);
+            actualCtx.lineTo(rSide.x, rSide.y);
+            actualCtx.lineTo(tailBase.x, tailBase.y);
+            actualCtx.lineTo(lSide.x, lSide.y);
+            actualCtx.closePath();
+            actualCtx.fill();
             actualCtx.fillStyle = '#112';
             actualCtx.beginPath();
             actualCtx.moveTo(p(1.2, 0, 0.25).x, p(1.2, 0, 0.25).y);
@@ -780,7 +757,7 @@ export const createDrawObjects = (
             actualCtx.fill();
             const tTop = p(-1.8, 0, 1.2),
                 tBack = p(-2.0, 0, 0.4);
-            actualCtx.fillStyle = _d(120, 1.4);
+            actualCtx.fillStyle = fillColor;
             actualCtx.beginPath();
             actualCtx.moveTo(tailBase.x, tailBase.y);
             actualCtx.lineTo(tTop.x, tTop.y);
@@ -835,7 +812,7 @@ export const createDrawObjects = (
                 actualCtx.stroke();
             }
             fenEllipse('#444', null, 0, 0.33);
-            fenEllipse(null, _d(240, 0.75), 1.5 * s * lineScale, 1.0);
+            fenEllipse(null, strokeColor, 1.5 * s * lineScale, 1.0);
             // Main rotor
             actualCtx.strokeStyle = 'rgba(220,245,255,0.5)';
             actualCtx.lineWidth = 2 * lineScale;
@@ -874,7 +851,6 @@ export const createDrawObjects = (
             actualCtx.moveTo(stabL.x, stabL.y);
             actualCtx.lineTo(stabR.x, stabR.y);
             actualCtx.stroke();
-            // Main body (front/rear split for disco multi-colour)
             const n = p(1.3, 0, 0.3),
                 tailBoomStart = p(-1.1, 0, 0.6);
             const bodyFL = p(0.4, 0.45, 0.4),
@@ -883,31 +859,16 @@ export const createDrawObjects = (
                 bodyBR = p(-1.0, -0.45, 0.4);
             actualCtx.strokeStyle = strokeColor;
             actualCtx.lineWidth = 1;
-            if (colorVariant === 'disco') {
-                const mR = p(-0.25, -0.45, 0.4), mL = p(-0.25, 0.45, 0.4);
-                actualCtx.fillStyle = _d(0, 1.0);
-                actualCtx.beginPath();
-                actualCtx.moveTo(n.x, n.y); actualCtx.lineTo(bodyFR.x, bodyFR.y); actualCtx.lineTo(mR.x, mR.y); actualCtx.lineTo(mL.x, mL.y); actualCtx.lineTo(bodyFL.x, bodyFL.y);
-                actualCtx.closePath(); actualCtx.fill();
-                actualCtx.fillStyle = _d(60, 1.4);
-                actualCtx.beginPath();
-                actualCtx.moveTo(mL.x, mL.y); actualCtx.lineTo(mR.x, mR.y); actualCtx.lineTo(bodyBR.x, bodyBR.y); actualCtx.lineTo(tailBoomStart.x, tailBoomStart.y); actualCtx.lineTo(bodyBL.x, bodyBL.y);
-                actualCtx.closePath(); actualCtx.fill();
-                actualCtx.beginPath();
-                actualCtx.moveTo(n.x, n.y); actualCtx.lineTo(bodyFR.x, bodyFR.y); actualCtx.lineTo(bodyBR.x, bodyBR.y); actualCtx.lineTo(tailBoomStart.x, tailBoomStart.y); actualCtx.lineTo(bodyBL.x, bodyBL.y); actualCtx.lineTo(bodyFL.x, bodyFL.y);
-                actualCtx.closePath(); actualCtx.stroke();
-            } else {
-                actualCtx.fillStyle = fillColor;
-                actualCtx.beginPath();
-                actualCtx.moveTo(n.x, n.y);
-                actualCtx.lineTo(bodyFR.x, bodyFR.y);
-                actualCtx.lineTo(bodyBR.x, bodyBR.y);
-                actualCtx.lineTo(tailBoomStart.x, tailBoomStart.y);
-                actualCtx.lineTo(bodyBL.x, bodyBL.y);
-                actualCtx.lineTo(bodyFL.x, bodyFL.y);
-                actualCtx.fill();
-                actualCtx.stroke();
-            }
+            actualCtx.fillStyle = fillColor;
+            actualCtx.beginPath();
+            actualCtx.moveTo(n.x, n.y);
+            actualCtx.lineTo(bodyFR.x, bodyFR.y);
+            actualCtx.lineTo(bodyBR.x, bodyBR.y);
+            actualCtx.lineTo(tailBoomStart.x, tailBoomStart.y);
+            actualCtx.lineTo(bodyBL.x, bodyBL.y);
+            actualCtx.lineTo(bodyFL.x, bodyFL.y);
+            actualCtx.fill();
+            actualCtx.stroke();
             // Windows
             actualCtx.fillStyle = '#111';
             actualCtx.beginPath();
@@ -936,12 +897,12 @@ export const createDrawObjects = (
             actualCtx.lineTo(p(-0.8, -0.35, 0.7).x, p(-0.8, -0.35, 0.7).y);
             actualCtx.fill();
             // Tail boom + vertical fin
-            actualCtx.fillStyle = _d(90, 1.5);
+            actualCtx.fillStyle = fillColor;
             const finBase = p(-2.4, 0, 0.6),
                 finTop = p(-2.9, 0, 1.3),
                 finBack = p(-3.0, 0, 0.6);
             actualCtx.lineWidth = 6 * s * lineScale;
-            actualCtx.strokeStyle = _d(90, 1.5);
+            actualCtx.strokeStyle = strokeColor;
             actualCtx.beginPath();
             actualCtx.moveTo(tailBoomStart.x, tailBoomStart.y);
             actualCtx.lineTo(finBase.x, finBase.y);
@@ -1014,12 +975,12 @@ export const createDrawObjects = (
                 tailLow = wf(-2.6, 0, 0.4);
             // nearLeft: local +Y side is closer to camera (iso depth = vx+vy; larger = nearer)
             const nearLeft = sinA < cosA;
-            const _cBody  = _d(0,   1.00);
-            const _cTop   = _d(60,  1.20);
-            const _cTail  = _d(120, 1.60);
-            const _cNose  = _d(180, 0.75);
-            const _cPylF  = _d(240, 1.35);
-            const _cPylR  = _d(300, 0.90);
+            const _cBody  = fillColor;
+            const _cTop   = fillColor;
+            const _cTail  = fillColor;
+            const _cNose  = fillColor;
+            const _cPylF  = fillColor;
+            const _cPylR  = fillColor;
             // Body — far side first, near side + its window, then top
             if (nearLeft) {
                 faceFn([rB2, rM2, rM3, rB3], _cBody, null, 0, camX, camY);
@@ -1133,11 +1094,8 @@ export const createDrawObjects = (
                     return { pts, color: face.color, stroke: face.stroke ?? null, depth };
                 })
                 .sort((a, b) => a.depth - b.depth);
-            sorted.forEach((f, idx) => {
-                const fColor = colorVariant === 'disco'
-                    ? `hsl(${((_now * (0.05 + (idx & 3) * 0.02) + idx * 113) % 360).toFixed(0)}, 100%, 60%)`
-                    : f.color;
-                faceFn(f.pts, fColor, f.stroke, 0, camX, camY);
+            sorted.forEach(f => {
+                faceFn(f.pts, f.color, f.stroke, 0, camX, camY);
             });
         }
 
