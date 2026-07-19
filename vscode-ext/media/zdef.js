@@ -5647,11 +5647,11 @@
       ctx.clip();
       if (state.def) {
         const testParams = buildTestParams();
+        const activeFaces = getActiveFaces();
         if (state.def2) {
           SceneRenderer.debugCollision = showCboxes;
           renderNodes(state.def2, {}, { x: 0, y: 0, angle: renderViewAngle }, SceneRenderer, renderCam.x, renderCam.y, { ctx, isoFn: iso, tileW: TW * renderZoom });
         } else {
-          const activeFaces2 = getActiveFaces();
           const colors = {};
           if (state.activePart) {
             const ap = state.def.parts?.find((p) => p.id === state.activePart);
@@ -5659,8 +5659,8 @@
               colors[f.id] = "#2d5c88";
             });
           }
-          if (state.selectedFaceIdx >= 0 && activeFaces2[state.selectedFaceIdx]) {
-            colors[activeFaces2[state.selectedFaceIdx].id] = "#ffdd44";
+          if (state.selectedFaceIdx >= 0 && activeFaces[state.selectedFaceIdx]) {
+            colors[activeFaces[state.selectedFaceIdx].id] = "#ffdd44";
           }
           const renderedDef = applyParts(state.def, testParams);
           SceneRenderer.debugCollision = showCboxes;
@@ -6424,9 +6424,9 @@
     setRenderContext(lockedQ);
     const g = grids[lockedQ], gv = gridVs[lockedQ];
     if (state.def) {
-      const activeFaces2 = getActiveFaces();
+      const activeFaces = getActiveFaces();
       if (state.selectedFaceIdx >= 0) {
-        const face = activeFaces2[state.selectedFaceIdx];
+        const face = activeFaces[state.selectedFaceIdx];
         if (face) {
           for (let i = 0; i < face.verts.length; i++) {
             const pt = localToScreen(face.verts[i][0], face.verts[i][1], face.verts[i][2]);
@@ -6439,10 +6439,10 @@
           }
         }
       }
-      if (activeFaces2.length) {
-        const order = activeFaces2.map((_, i) => i).sort((a, b) => faceCentroidDepth(activeFaces2[b]) - faceCentroidDepth(activeFaces2[a]));
+      if (activeFaces.length) {
+        const order = activeFaces.map((_, i) => i).sort((a, b) => faceCentroidDepth(activeFaces[b]) - faceCentroidDepth(activeFaces[a]));
         for (const i of order) {
-          const f = activeFaces2[i];
+          const f = activeFaces[i];
           if (f.normal) {
             const [nx, ny] = f.normal, cosA = Math.cos(renderViewAngle), sinA = Math.sin(renderViewAngle);
             if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;

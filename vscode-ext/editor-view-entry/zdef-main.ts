@@ -263,12 +263,12 @@ const draw = (): void => {
 
         if (state.def) {
             const testParams = buildTestParams();
+            const activeFaces = getActiveFaces();
 
             if (state.def2) {
                 SceneRenderer.debugCollision = showCboxes;
                 renderNodes(state.def2, {}, { x: 0, y: 0, angle: renderViewAngle }, SceneRenderer as any, renderCam.x, renderCam.y, { ctx, isoFn: iso, tileW: TW * renderZoom } as any);
             } else {
-                const activeFaces = getActiveFaces();
                 const colors: Record<string, string> = {};
                 if (state.activePart) {
                     const ap = state.def.parts?.find(p => p.id === state.activePart);
