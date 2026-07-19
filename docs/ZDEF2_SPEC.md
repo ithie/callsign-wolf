@@ -202,6 +202,38 @@ coarse layering (e.g. hull → deck objects → superstructure).
 
 ---
 
+## Palettes
+
+A model can declare named color sets in the optional `palettes` top-level field:
+
+```json
+{
+  "version": 2,
+  "id": "festival_car",
+  "palettes": {
+    "red":    { "hood_top": "#c02020", "body_side_l": "#a81c1c", ... },
+    "blue":   { "hood_top": "#1a4a8a", "body_side_l": "#153d78", ... }
+  },
+  "nodes": [ ... ]
+}
+```
+
+Keys are variant names (e.g. `"red"`, `"blue"`). Values are face-id → color maps that override the base face colors when this variant is active.
+
+**Campaign objects** reference a palette by name via the `colorVariant` field:
+
+```json
+{ "type": "festival_car", "colorVariant": "red", "x": 6, "y": 9, "angle": 180 }
+```
+
+**Runtime resolution**: call `resolvePalette(def, colorVariant)` from `src/game/defs.ts` to get the color override map, then pass it as `colors` to `SceneRenderer.add()`. The renderer applies overrides per face ID; faces without an entry keep their declared color.
+
+When `colorVariant` is absent or undefined, `resolvePalette` returns `undefined` and the model renders with its base face colors.
+
+The special variant name `"disco"` is **not** declared in the palette map — it is recognized by the renderer and triggers animated color cycling.
+
+---
+
 ## Known Limitations
 
 - **Particles** (wake, spray): procedural and physics-driven — not in format.

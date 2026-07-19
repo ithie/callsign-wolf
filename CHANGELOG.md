@@ -1,5 +1,23 @@
 # SAR: Callsign WOLF — Changelog
 
+## v30.2.0 — Helicopter Colour + Performance
+
+### Added
+
+- **Helicopter colour variants** — Players can choose between Orange (default) and Blue for their helicopter in the hangar detail overlay. Selection persists across sessions via native storage (`z_heli_color`).
+
+### Fixed
+
+- **Menu canvas resize per frame** — `animMainMenuBg` and `drawMenuHeli` no longer reallocate the GPU texture on every frame; canvas is only resized when its dimensions actually change. Significantly reduces device heat during splash and main menu.
+- **Rotor downwash over water** — Descent burst now spawns water spray instead of sand dust when the helicopter is above water; particle spawn Z corrected to water level.
+
+### Changed
+
+- **Menu heli loops throttled to 30 fps** — Background and splash helicopter animation loops are capped at 30 fps instead of running at uncapped RAF speed.
+- **Imprint page language** — `?imprint` always opens in German by default; `?imprint&lang=en` for English.
+
+---
+
 ## v1.1.1 — Localisation Fix
 
 ### Added

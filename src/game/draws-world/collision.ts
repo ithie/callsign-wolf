@@ -15,16 +15,8 @@ import BAYWATCH_HQ_DEF from '../models/objects/baywatch_hq.zdef';
 import BAYWATCH_TOWER_DEF from '../models/objects/baywatch_tower.zdef';
 import CONCERT_STAGE_DEF from '../models/objects/concert_stage.zdef';
 import FESTIVAL_TENT_DEF from '../models/objects/festival_tent.zdef';
-import FESTIVAL_TENT_RED_DEF from '../models/objects/festival_tent_red.zdef';
-import FESTIVAL_TENT_GREEN_DEF from '../models/objects/festival_tent_green.zdef';
 import FESTIVAL_TENT_BROKEN_DEF from '../models/objects/festival_tent_broken.zdef';
-import FESTIVAL_TENT_BROKEN_RED_DEF from '../models/objects/festival_tent_broken_red.zdef';
-import FESTIVAL_TENT_BROKEN_GREEN_DEF from '../models/objects/festival_tent_broken_green.zdef';
-import FESTIVAL_CAR_RED_DEF from '../models/objects/festival_car_red.zdef';
-import FESTIVAL_CAR_BLUE_DEF from '../models/objects/festival_car_blue.zdef';
-import FESTIVAL_CAR_SILVER_DEF from '../models/objects/festival_car_silver.zdef';
-import FESTIVAL_CAR_BLACK_DEF from '../models/objects/festival_car_black.zdef';
-import FESTIVAL_CAR_YELLOW_DEF from '../models/objects/festival_car_yellow.zdef';
+import FESTIVAL_CAR_DEF from '../models/objects/festival_car.zdef';
 
 export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, hasCarrier, hasPad, isVisible, getShowCollisionBoxes, triggerCrash } = dwCtx;
@@ -258,37 +250,21 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
         });
 
         // ── Festival objects ──────────────────────────────────────────────────────
-        const _FESTIVAL_CAR_DEFS: Record<string, unknown> = {
-            [VESSEL.FESTIVAL_CAR_RED]:    FESTIVAL_CAR_RED_DEF,
-            [VESSEL.FESTIVAL_CAR_BLUE]:   FESTIVAL_CAR_BLUE_DEF,
-            [VESSEL.FESTIVAL_CAR_SILVER]: FESTIVAL_CAR_SILVER_DEF,
-            [VESSEL.FESTIVAL_CAR_BLACK]:  FESTIVAL_CAR_BLACK_DEF,
-            [VESSEL.FESTIVAL_CAR_YELLOW]: FESTIVAL_CAR_YELLOW_DEF,
-        };
         G.CONCERT_STAGES.forEach((s: any) => {
             const gz = s.gz ?? 0;
             if (showCB) drawDef(CONCERT_STAGE_DEF, s.x, s.y, s.angle, gz, 'rgba(180,0,255,0.8)');
             if (!zstate.crashed && checkDef(CONCERT_STAGE_DEF, s.x, s.y, s.angle, gz)) triggerCrash();
         });
-        const _TENT_DEFS: Record<string, unknown> = {
-            [VESSEL.FESTIVAL_TENT]:             FESTIVAL_TENT_DEF,
-            [VESSEL.FESTIVAL_TENT_RED]:         FESTIVAL_TENT_RED_DEF,
-            [VESSEL.FESTIVAL_TENT_GREEN]:       FESTIVAL_TENT_GREEN_DEF,
-            [VESSEL.FESTIVAL_TENT_BROKEN]:      FESTIVAL_TENT_BROKEN_DEF,
-            [VESSEL.FESTIVAL_TENT_BROKEN_RED]:  FESTIVAL_TENT_BROKEN_RED_DEF,
-            [VESSEL.FESTIVAL_TENT_BROKEN_GREEN]:FESTIVAL_TENT_BROKEN_GREEN_DEF,
-        };
         G.FESTIVAL_TENTS.forEach((t: any) => {
             const gz = t.gz ?? 0;
-            const def = (_TENT_DEFS[t.type] ?? FESTIVAL_TENT_DEF) as any;
+            const def = (t.type === VESSEL.FESTIVAL_TENT_BROKEN ? FESTIVAL_TENT_BROKEN_DEF : FESTIVAL_TENT_DEF) as any;
             if (showCB) drawDef(def, t.x, t.y, t.angle, gz, 'rgba(0,200,255,0.8)');
             if (!zstate.crashed && checkDef(def, t.x, t.y, t.angle, gz)) triggerCrash();
         });
         G.FESTIVAL_CARS.forEach((c: any) => {
             const gz = c.gz ?? 0;
-            const def = (_FESTIVAL_CAR_DEFS[c.type] ?? FESTIVAL_CAR_SILVER_DEF) as any;
-            if (showCB) drawDef(def, c.x, c.y, c.angle, gz, 'rgba(255,200,0,0.8)');
-            if (!zstate.crashed && checkDef(def, c.x, c.y, c.angle, gz)) triggerCrash();
+            if (showCB) drawDef(FESTIVAL_CAR_DEF as any, c.x, c.y, c.angle, gz, 'rgba(255,200,0,0.8)');
+            if (!zstate.crashed && checkDef(FESTIVAL_CAR_DEF as any, c.x, c.y, c.angle, gz)) triggerCrash();
         });
 
         // ── Trees ─────────────────────────────────────────────────────────────────

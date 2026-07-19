@@ -155,3 +155,52 @@
     color: #000;
     box-shadow: 0 0 20px rgba(255, 102, 0, 0.5);
 }
+
+/* ─── color swatches ─────────────────────────────────────────────────────── */
+
+#heli-select .heli-color-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+#heli-select .heli-color-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+#heli-select .heli-color-swatch {
+    width: 48px;
+    height: 16px;
+    border-radius: 3px;
+    border: 2px solid #333;
+    cursor: pointer;
+    padding: 0;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    touch-action: manipulation;
+}
+
+#heli-select .heli-color-swatch-active {
+    border-color: #fff;
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+#heli-select .heli-color-swatch-orange {
+    background: #ff6600;
+}
+
+#heli-select .heli-color-swatch-blue {
+    background: #55aadd;
+}
+
+
+#heli-select .heli-color-swatch-label {
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: #666;
+    text-transform: uppercase;
+}

@@ -1,5 +1,5 @@
 {
-  "id": "festival_tent_broken_blue",
+  "id": "festival_tent_broken",
   "pivot": [
     0,
     0,
@@ -16,6 +16,22 @@
       "zMax": 0.28
     }
   ],
+  "palettes": {
+    "red": {
+      "sheet_fl": "#aa2c18",
+      "sheet_fr": "#8c2010",
+      "sheet_bl": "#8c2010",
+      "sheet_br": "#aa2c18",
+      "ridge": "#ddddaa"
+    },
+    "green": {
+      "sheet_fl": "#267830",
+      "sheet_fr": "#1a6022",
+      "sheet_bl": "#1a6022",
+      "sheet_br": "#267830",
+      "ridge": "#aaddaa"
+    }
+  },
   "faces": [
     {
       "id": "ground",

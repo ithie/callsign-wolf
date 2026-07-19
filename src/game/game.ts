@@ -735,6 +735,8 @@ const _drawSceneInner = () => {
     // flapRate: vertical climb + horizontal speed (braking from speed → faster flapping)
     const _flapRate = Math.max(0.5, Math.min(3.0, 1.0 + G.heli.vz * 20 + Math.hypot(G.heli.vx, G.heli.vy) * 8));
 
+    const _heliColorOpts = storageGet('z_heli_color') === 'blue' ? { colorVariant: 'blue' } : {};
+
     // shadow pass — before world objects so shadow appears on terrain, not over objects.
     // Suppressed when over a research platform or frigate — deck shadow in draw-world.ts takes over.
     const _overResearchPlatform = G.RESEARCH_PLATFORMS.some(
@@ -758,7 +760,7 @@ const _drawSceneInner = () => {
             G.heli.rotationPos,
             camX,
             camY,
-            { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER), flapRate: _flapRate }
+            { isShadow: true, shadowGetGround: (x, y) => getGround(x, y, G.points, G.CARRIER), flapRate: _flapRate, ..._heliColorOpts }
         );
     }
 
@@ -822,6 +824,7 @@ const _drawSceneInner = () => {
                               shadowGetGround: (x, y) => getGround(x, y),
                               flapRate: _flapRate,
                               tailRotorRate: 1.0 + Math.abs(G.heli.roll) * 4,
+                              ..._heliColorOpts,
                           }
                       );
                   },
@@ -1355,7 +1358,7 @@ window.onload = () => {
                 _onloadPreview();
                 return;
             }
-            await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, 'z_music', 'z_sfx']);
+            await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, 'z_music', 'z_sfx', 'z_heli_color']);
             _session = loadSession();
             const _sl = storageGet(LANG_PREF_KEY);
             if (_sl === 'de' || _sl === 'en') setLanguage(_sl);

@@ -461,18 +461,13 @@ const paint = (e: MouseEvent) => {
         }
         renderPayloadList();
     } else if (state.currentTool === 'festival_tent' || state.currentTool === 'festival_tent_broken') {
-        const isBroken = state.currentTool === 'festival_tent_broken';
-        const TENT_COLORS = isBroken
-            ? ['festival_tent_broken', 'festival_tent_broken_red', 'festival_tent_broken_green']
-            : ['festival_tent', 'festival_tent_red', 'festival_tent_green'];
-        const colorSel = document.getElementById(isBroken ? 'm_tent_broken_color' : 'm_tent_color') as HTMLSelectElement;
+        const baseType = state.currentTool;
+        const colorSel = document.getElementById(baseType === 'festival_tent_broken' ? 'm_tent_broken_color' : 'm_tent_color') as HTMLSelectElement;
         const rad = Math.max(0.5, state.brushRadius);
         const count = Math.max(1, Math.round(rad * 0.5));
+        const _VARIANTS = ['', 'red', 'green'];
         if (e.shiftKey) {
-            m.objects = m.objects.filter((o: any) => {
-                const isTentType = TENT_COLORS.includes(o.type);
-                return !isTentType || Math.hypot(o.x - gx, o.y - gy) > rad;
-            });
+            m.objects = m.objects.filter((o: any) => o.type !== baseType || Math.hypot(o.x - gx, o.y - gy) > rad);
         } else {
             for (let i = 0; i < count; i++) {
                 const a = Math.random() * Math.PI * 2;
@@ -482,11 +477,13 @@ const paint = (e: MouseEvent) => {
                 if (fx < 0 || fx >= m.gridSize || fy < 0 || fy >= m.gridSize) continue;
                 if ((m.terrain[fx]?.[fy] ?? -1) <= 0.05) continue;
                 const selColor = colorSel?.value;
-                const type = selColor && selColor !== 'random'
-                    ? selColor
-                    : TENT_COLORS[Math.floor(Math.random() * TENT_COLORS.length)];
+                const variant = (selColor === 'random' || !selColor)
+                    ? _VARIANTS[Math.floor(Math.random() * _VARIANTS.length)]
+                    : selColor;
                 const angle = Math.round(Math.random() * 360);
-                m.objects.push({ type: type as any, x: fx, y: fy, angle });
+                const obj: any = { type: baseType as any, x: fx, y: fy, angle };
+                if (variant) obj.colorVariant = variant;
+                m.objects.push(obj);
             }
         }
         notifyWorkbench();
@@ -915,9 +912,9 @@ export const initUI = () => {
         });
     };
     wireAngle('m_bwc_angle', ['baywatch_car']);
-    wireAngle('m_tent_angle', ['festival_tent', 'festival_tent_red', 'festival_tent_green']);
-    wireAngle('m_tent_broken_angle', ['festival_tent_broken', 'festival_tent_broken_red', 'festival_tent_broken_green']);
-    wireAngle('m_fcar_angle', ['festival_car_red', 'festival_car_blue', 'festival_car_silver', 'festival_car_black', 'festival_car_yellow']);
+    wireAngle('m_tent_angle', ['festival_tent']);
+    wireAngle('m_tent_broken_angle', ['festival_tent_broken']);
+    wireAngle('m_fcar_angle', ['festival_car']);
     wireAngle('m_pw_angle', ['plane_wreck']);
     wireAngle('m_sb_angle', ['sailboat_broken']);
     wireAngle('m_ow_angle', ['ornithopter_wreck']);
@@ -939,9 +936,21 @@ export const initUI = () => {
             drawMap(); broadcastPreview(); notifyWorkbench();
         });
     };
-    wireTypeSelect('m_tent_color', ['festival_tent', 'festival_tent_red', 'festival_tent_green']);
-    wireTypeSelect('m_tent_broken_color', ['festival_tent_broken', 'festival_tent_broken_red', 'festival_tent_broken_green']);
-    wireTypeSelect('m_fcar_color', ['festival_car_'], true);
+    const wireColorVariant = (selectId: string, type: string) => {
+        document.getElementById(selectId)?.addEventListener('change', () => {
+            const m = getCurrentMission();
+            if (!m || state.selectedObjectIdx === null) return;
+            const obj = m.objects[state.selectedObjectIdx] as any;
+            if (obj?.type !== type) return;
+            const v = (document.getElementById(selectId) as HTMLSelectElement).value;
+            if (v === 'random') return;
+            if (v === '') delete obj.colorVariant; else obj.colorVariant = v;
+            drawMap(); broadcastPreview(); notifyWorkbench();
+        });
+    };
+    wireColorVariant('m_tent_color', 'festival_tent');
+    wireColorVariant('m_tent_broken_color', 'festival_tent_broken');
+    wireColorVariant('m_fcar_color', 'festival_car');
     wireTypeSelect('m_xmas_house_type', ['xmas_house_a', 'xmas_house_b']);
 
     document.getElementById('m_wt_spinning')?.addEventListener('change', () => {
@@ -1032,16 +1041,8 @@ export const initUI = () => {
         'baywatch_tower',
         'concert_stage',
         'festival_tent',
-        'festival_tent_red',
-        'festival_tent_green',
         'festival_tent_broken',
-        'festival_tent_broken_red',
-        'festival_tent_broken_green',
-        'festival_car_red',
-        'festival_car_blue',
-        'festival_car_silver',
-        'festival_car_black',
-        'festival_car_yellow',
+        'festival_car',
         'buoy',
         'xmas_house',
         'xmas_lantern',
@@ -1066,16 +1067,8 @@ export const initUI = () => {
         baywatch_tower: '#cc4400',
         concert_stage: '#aa44ff',
         festival_tent: '#2266cc',
-        festival_tent_red: '#bb3018',
-        festival_tent_green: '#2a8030',
         festival_tent_broken: '#6688aa',
-        festival_tent_broken_red: '#884422',
-        festival_tent_broken_green: '#335533',
-        festival_car_red: '#cc2020',
-        festival_car_blue: '#204499',
-        festival_car_silver: '#9aabb5',
-        festival_car_black: '#444444',
-        festival_car_yellow: '#cc9900',
+        festival_car: '#9aabb5',
         buoy: '#dd3300',
         xmas_house_a: '#aaddff',
         xmas_house_b: '#88bbee',
@@ -1263,23 +1256,26 @@ export const initUI = () => {
                 m.objects.push({ type: 'concert_stage' as any, x: gx, y: gy });
                 break;
             case 'festival_tent': {
-                const _tentColors = ['festival_tent', 'festival_tent_red', 'festival_tent_green'];
                 const _tcs = (document.getElementById('m_tent_color') as HTMLSelectElement)?.value;
-                const _tt = (_tcs && _tcs !== 'random') ? _tcs : _tentColors[Math.floor(Math.random() * _tentColors.length)];
-                m.objects.push({ type: _tt as any, x: gx, y: gy, angle: 0 });
+                const _tv = (_tcs && _tcs !== 'random') ? _tcs : (['', 'red', 'green'][Math.floor(Math.random() * 3)]);
+                const _to: any = { type: 'festival_tent' as any, x: gx, y: gy, angle: 0 };
+                if (_tv) _to.colorVariant = _tv;
+                m.objects.push(_to);
                 break;
             }
             case 'festival_tent_broken': {
-                const _tbColors = ['festival_tent_broken', 'festival_tent_broken_red', 'festival_tent_broken_green'];
                 const _tbcs = (document.getElementById('m_tent_broken_color') as HTMLSelectElement)?.value;
-                const _tbt = (_tbcs && _tbcs !== 'random') ? _tbcs : _tbColors[Math.floor(Math.random() * _tbColors.length)];
-                m.objects.push({ type: _tbt as any, x: gx, y: gy, angle: 0 });
+                const _tbv = (_tbcs && _tbcs !== 'random') ? _tbcs : (['', 'red', 'green'][Math.floor(Math.random() * 3)]);
+                const _tbo: any = { type: 'festival_tent_broken' as any, x: gx, y: gy, angle: 0 };
+                if (_tbv) _tbo.colorVariant = _tbv;
+                m.objects.push(_tbo);
                 break;
             }
             case 'festival_car': {
-                const colorSel = document.getElementById('m_fcar_color') as HTMLSelectElement;
-                const carType = colorSel?.value || 'festival_car_silver';
-                m.objects.push({ type: carType as any, x: gx, y: gy, angle: 0 });
+                const _fcs = (document.getElementById('m_fcar_color') as HTMLSelectElement)?.value ?? '';
+                const _fco: any = { type: 'festival_car' as any, x: gx, y: gy, angle: 0 };
+                if (_fcs) _fco.colorVariant = _fcs;
+                m.objects.push(_fco);
                 break;
             }
             case 'boat':
@@ -1531,9 +1527,7 @@ export const initUI = () => {
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
                 else if (['plane_wreck', 'sailboat_broken', 'ornithopter_wreck', 'baywatch_car', 'baywatch_hq', 'baywatch_tower',
                     'concert_stage',
-                    'festival_tent', 'festival_tent_red', 'festival_tent_green',
-                    'festival_tent_broken', 'festival_tent_broken_red', 'festival_tent_broken_green',
-                    'festival_car_red', 'festival_car_blue', 'festival_car_silver', 'festival_car_black', 'festival_car_yellow',
+                    'festival_tent', 'festival_tent_broken', 'festival_car',
                     'xmas_house_a', 'xmas_house_b', 'sleigh', 'reindeer'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
                 else if (obj.type === 'xmas_lantern')

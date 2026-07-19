@@ -323,6 +323,40 @@ SceneRenderer.add(PERSON_DEF, {
 
 Overrides only replace `color`, not `stroke`.
 
+### Named Palettes in DEF files
+
+For objects that come in multiple color variants (e.g. festival cars, tents), store the named color sets directly in the `.zdef` file using the optional `palettes` field. The base face colors are the default look; each palette entry overrides only the faces it mentions:
+
+```json
+{
+  "id": "festival_car",
+  "palettes": {
+    "red":    { "hood_top": "#c02020", "body_side_l": "#a81c1c", "cab_roof": "#c82222" },
+    "blue":   { "hood_top": "#1a4a8a", "body_side_l": "#153d78", "cab_roof": "#1e5298" }
+  },
+  "faces": [ ... ]
+}
+```
+
+Campaign objects reference a palette via `colorVariant`:
+
+```json
+{ "type": "festival_car", "colorVariant": "red", "x": 6, "y": 9, "angle": 180 }
+```
+
+At runtime, resolve the variant before rendering:
+
+```typescript
+import { resolvePalette } from 'src/game/defs';
+
+const colors = resolvePalette(FESTIVAL_CAR_DEF, obj.colorVariant); // undefined when no variant
+SceneRenderer.add(FESTIVAL_CAR_DEF, { x, y, z, angle, ...(colors ? { colors } : {}) });
+```
+
+`resolvePalette` returns `undefined` when `colorVariant` is absent or the palette name is not found — the DEF then renders with its base colors.
+
+The special variant `"disco"` is **not** declared in `palettes` — it is a renderer-recognized keyword that triggers animated color cycling.
+
 ---
 
 ## Draw Callbacks (`drawFn`)

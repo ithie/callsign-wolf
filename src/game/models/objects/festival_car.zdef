@@ -1,5 +1,5 @@
 {
-  "id": "festival_car_blue",
+  "id": "festival_car",
   "pivot": [
     0,
     0,
@@ -16,6 +16,60 @@
       "zMax": 0.78
     }
   ],
+  "palettes": {
+    "black": {
+      "hood_top": "#1c1c24",
+      "grill": "#1c1c24",
+      "body_side_l": "#141420",
+      "body_side_r": "#181820",
+      "trunk": "#141420",
+      "trunk_r": "#181820",
+      "tailgate": "#141420",
+      "cab_back": "#141420",
+      "cab_side_l": "#141420",
+      "cab_side_r": "#181820",
+      "cab_roof": "#202028"
+    },
+    "blue": {
+      "hood_top": "#1a4a8a",
+      "grill": "#1a4a8a",
+      "body_side_l": "#153d78",
+      "body_side_r": "#184484",
+      "trunk": "#153d78",
+      "trunk_r": "#184484",
+      "tailgate": "#153d78",
+      "cab_back": "#153d78",
+      "cab_side_l": "#153d78",
+      "cab_side_r": "#184484",
+      "cab_roof": "#1e5298"
+    },
+    "red": {
+      "hood_top": "#c02020",
+      "grill": "#c02020",
+      "body_side_l": "#a81c1c",
+      "body_side_r": "#b81e1e",
+      "trunk": "#a81c1c",
+      "trunk_r": "#b81e1e",
+      "tailgate": "#a81c1c",
+      "cab_back": "#a81c1c",
+      "cab_side_l": "#a81c1c",
+      "cab_side_r": "#b81e1e",
+      "cab_roof": "#c82222"
+    },
+    "yellow": {
+      "hood_top": "#d4a020",
+      "grill": "#d4a020",
+      "body_side_l": "#be9018",
+      "body_side_r": "#ca9a1c",
+      "trunk": "#be9018",
+      "trunk_r": "#ca9a1c",
+      "tailgate": "#be9018",
+      "cab_back": "#be9018",
+      "cab_side_l": "#be9018",
+      "cab_side_r": "#ca9a1c",
+      "cab_roof": "#daa822"
+    }
+  },
   "faces": [
     {
       "id": "base_bottom",
@@ -307,7 +361,7 @@
           0.44
         ]
       ],
-      "color": "#1a4a8a"
+      "color": "#a0aab5"
     },
     {
       "id": "grill",
@@ -337,7 +391,7 @@
           0.4
         ]
       ],
-      "color": "#1a4a8a"
+      "color": "#a0aab5"
     },
     {
       "id": "grill_mesh",
@@ -457,7 +511,7 @@
           0.44
         ]
       ],
-      "color": "#153d78"
+      "color": "#8a949f"
     },
     {
       "id": "body_side_r",
@@ -487,7 +541,7 @@
           0.4
         ]
       ],
-      "color": "#184484"
+      "color": "#95a0aa"
     },
     {
       "id": "trunk",
@@ -513,7 +567,7 @@
           0.44
         ]
       ],
-      "color": "#153d78"
+      "color": "#8a949f"
     },
     {
       "id": "trunk_r",
@@ -543,7 +597,7 @@
           0.44
         ]
       ],
-      "color": "#184484"
+      "color": "#95a0aa"
     },
     {
       "id": "tailgate",
@@ -573,7 +627,7 @@
           0.46
         ]
       ],
-      "color": "#153d78"
+      "color": "#8a949f"
     },
     {
       "id": "cab_back",
@@ -603,7 +657,7 @@
           0.75
         ]
       ],
-      "color": "#153d78"
+      "color": "#8a949f"
     },
     {
       "id": "cab_side_l",
@@ -633,7 +687,7 @@
           0.75
         ]
       ],
-      "color": "#153d78"
+      "color": "#8a949f"
     },
     {
       "id": "cab_side_r",
@@ -663,7 +717,7 @@
           0.75
         ]
       ],
-      "color": "#184484"
+      "color": "#95a0aa"
     },
     {
       "id": "cab_roof",
@@ -689,7 +743,7 @@
           0.75
         ]
       ],
-      "color": "#1e5298"
+      "color": "#aab4be"
     },
     {
       "id": "windshield",

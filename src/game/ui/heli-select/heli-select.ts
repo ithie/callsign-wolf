@@ -12,44 +12,60 @@ import { mountScreenShell } from '@/ui/screen-shell/screen-shell';
 import { createSwipeCarousel } from '@/ui/swipe-carousel/swipe-carousel';
 import { hapticImpact, ImpactStyle } from '../../haptics';
 import { addStamp } from '../box-stamp';
+import { storageGet, storageSet } from '../../storage';
 
 let _G: any;
 let _drawHeli: (...args: any[]) => void;
+
+const _getPlayerColor = (): string =>
+    storageGet('z_heli_color') === 'blue' ? 'blue' : 'orange';
 
 export const init = (G: any, drawHeli: (...args: any[]) => void) => {
     _G = G;
     _drawHeli = drawHeli;
 };
 
-export const animMainMenuBg = () => {
+let _lastBgTs = 0;
+let _lastMenuHeliTs = 0;
+
+export const animMainMenuBg = (ts: number = performance.now()) => {
     if (document.getElementById('main-menu')!.style.display === 'none') return;
+    if (ts - _lastBgTs < 1000 / 30) { requestAnimationFrame(animMainMenuBg); return; }
+    _lastBgTs = ts;
     const c = document.getElementById('main-menu-bg-canvas') as HTMLCanvasElement | null;
     if (!c) return;
     const cx = c.getContext('2d')!;
-    c.width = Math.round(900 * CANVAS_SCALE); c.height = Math.round(500 * CANVAS_SCALE);
-    cx.clearRect(0, 0, c.width, c.height);
+    const cW = Math.round(900 * CANVAS_SCALE), cH = Math.round(500 * CANVAS_SCALE);
+    if (c.width !== cW || c.height !== cH) { c.width = cW; c.height = cH; }
+    else cx.clearRect(0, 0, c.width, c.height);
     const t = Date.now() * 0.001;
     const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
         iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
+    const _mc = _getPlayerColor();
     _drawHeli('dolphin', 0, 0, 0, t * 0.25, Math.sin(t * 0.4) * 0.07, Math.cos(t * 0.35) * 0.07, t * 8, 0, 0, {
         targetCtx: cx, targetIso: offIso, scaleOverride: 5,
+        colorVariant: _mc === 'disco' ? undefined : _mc,
     });
     requestAnimationFrame(animMainMenuBg);
 };
 
-export const drawMenuHeli = () => {
+export const drawMenuHeli = (ts: number = performance.now()) => {
     if (zstate.gameStarted) return;
+    if (ts - _lastMenuHeliTs < 1000 / 30) { requestAnimationFrame(drawMenuHeli); return; }
+    _lastMenuHeliTs = ts;
     const c = document.getElementById('menu-heli-big') as HTMLCanvasElement | null;
     if (!c) return;
     const cx = c.getContext('2d')!;
-    c.width = Math.round(800 * CANVAS_SCALE);
-    c.height = Math.round(300 * CANVAS_SCALE);
-    cx.clearRect(0, 0, c.width, c.height);
+    const cW = Math.round(800 * CANVAS_SCALE), cH = Math.round(300 * CANVAS_SCALE);
+    if (c.width !== cW || c.height !== cH) { c.width = cW; c.height = cH; }
+    else cx.clearRect(0, 0, c.width, c.height);
     const t = Date.now() * 0.001;
     const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
         iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
+    const _mc = _getPlayerColor();
     _drawHeli('dolphin', 1.5, 1.5, 0.8, t * 0.5, Math.sin(t) * 0.1, Math.cos(t) * 0.1, t * 12, 0, 0, {
         targetCtx: cx, targetIso: offIso, scaleOverride: 3,
+        colorVariant: _mc === 'disco' ? undefined : _mc,
     });
     const splashVisible = document.getElementById('splash')!.style.display !== 'none';
     if (splashVisible) requestAnimationFrame(drawMenuHeli);
@@ -90,7 +106,7 @@ const _heliPreviewLoop = () => {
             const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
                 iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
             _drawHeli(ht.id, 0, 0, 0, cardAngle, 0, 0, 0, 0, 0, {
-                targetCtx: cx, targetIso: offIso, scaleOverride: ht.previewScale,
+                targetCtx: cx, targetIso: offIso, scaleOverride: ht.previewScale, colorVariant: _getPlayerColor(),
             });
         }
 
@@ -106,6 +122,7 @@ const _heliPreviewLoop = () => {
                     iso(wx, wy, wz, camX, camY, { canvas: oc, tileW, tileH, stepH });
                 _drawHeli(ht.id, 0, 0, 0, _overlayAngle, 0, 0, _rotorPos, 0, 0, {
                     targetCtx: ocx, targetIso: overlayIso, scaleOverride: ht.previewScale * OVERLAY_SCALE_RATIO,
+                    colorVariant: _getPlayerColor(),
                 });
             }
         }
@@ -166,6 +183,34 @@ const _buildOverlayDetail = (ht: HeliType, onSelect: (heliId: string) => void): 
     const statsCol = document.createElement('div');
     statsCol.className = 'heli-overlay-stats';
     statsCol.addEventListener('click', e => e.stopPropagation());
+
+    const _colorDefs: Array<{ key: string; cls: string; label: string }> = [
+        { key: 'orange', cls: 'heli-color-swatch-orange', label: I18N.HELI_COLOR_ORANGE },
+        { key: 'blue',   cls: 'heli-color-swatch-blue',   label: I18N.HELI_COLOR_BLUE },
+    ];
+    const colorRow = document.createElement('div');
+    colorRow.className = 'heli-color-row';
+    _colorDefs.forEach(({ key, cls, label }) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'heli-color-item';
+        const swatch = document.createElement('button');
+        swatch.className = `heli-color-swatch ${cls}`;
+        if (_getPlayerColor() === key) swatch.classList.add('heli-color-swatch-active');
+        swatch.title = label;
+        swatch.addEventListener('click', e => {
+            e.stopPropagation();
+            storageSet('z_heli_color', key);
+            colorRow.querySelectorAll('.heli-color-swatch').forEach(s => s.classList.remove('heli-color-swatch-active'));
+            swatch.classList.add('heli-color-swatch-active');
+        });
+        const lbl = document.createElement('span');
+        lbl.className = 'heli-color-swatch-label';
+        lbl.textContent = label;
+        wrap.appendChild(swatch);
+        wrap.appendChild(lbl);
+        colorRow.appendChild(wrap);
+    });
+    statsCol.appendChild(colorRow);
 
     const spd = Math.min(100, Math.round(ht.accel / 0.00117 * 100));
     const agi = Math.min(100, Math.round(ht.tiltSpeed / 0.05 * 100));

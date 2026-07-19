@@ -55,6 +55,8 @@ export interface DEF {
     parts?: DEFPart[];
     /** Declares render passes for multi-pass depth sorting; processed by renderPasses() */
     passes?: DEFPass[];
+    /** Named color sets: variantName → { faceId → color }. Pass result of resolvePalette() as colors to SceneRenderer.add(). */
+    palettes?: Record<string, Record<string, string>>;
 }
 
 export interface DEFPass {
@@ -108,7 +110,18 @@ export interface DEF2 {
     collisionBoxes?: DEFCollisionBox[];
     landingZone?: { x: number; y: number; w: number; h: number; z: number };
     nodes: DEF2Node[];
+    /** Named color sets: variantName → { faceId → color }. Pass result of resolvePalette() as colors to SceneRenderer.add(). */
+    palettes?: Record<string, Record<string, string>>;
 }
+
+/** Returns the color override map for variantName, or undefined when variant is absent or undefined. */
+export const resolvePalette = (
+    def: { palettes?: Record<string, Record<string, string>> },
+    variantName: string | undefined,
+): Record<string, string> | undefined => {
+    if (!variantName || !def.palettes) return undefined;
+    return def.palettes[variantName];
+};
 
 // ─── Static model exports ─────────────────────────────────────────────────────
 

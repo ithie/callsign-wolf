@@ -600,11 +600,9 @@ export const drawMap = () => {
                 csUI.style.left = Math.min(600 - 140, Math.max(0, ox + 20)) + 'px';
                 csUI.style.top = Math.min(600 - 60, Math.max(0, oy)) + 'px';
             }
-        } else if (['festival_tent','festival_tent_red','festival_tent_green'].includes(obj.type as string)) {
-            const tentColors: Record<string, string> = {
-                festival_tent: '#2266cc', festival_tent_red: '#bb3018', festival_tent_green: '#2a8030',
-            };
-            ctx.fillStyle = tentColors[obj.type as string] ?? '#2266cc';
+        } else if (obj.type === 'festival_tent') {
+            const _tentVariantColors: Record<string, string> = { red: '#bb3018', green: '#2a8030' };
+            ctx.fillStyle = _tentVariantColors[(obj as any).colorVariant] ?? '#2266cc';
             ctx.beginPath();
             ctx.moveTo(ox, oy - 0.7 * tSize);
             ctx.lineTo(ox - 0.55 * tSize, oy + 0.55 * tSize);
@@ -614,18 +612,16 @@ export const drawMap = () => {
             ctx.shadowBlur = 0;
             if (isSelected && ftUI) {
                 const colorSel = document.getElementById('m_tent_color') as HTMLSelectElement;
-                if (colorSel) colorSel.value = obj.type as string;
+                if (colorSel) colorSel.value = (obj as any).colorVariant ?? '';
                 const angEl = document.getElementById('m_tent_angle') as HTMLInputElement;
                 if (angEl) angEl.value = String((obj as any).angle ?? 0);
                 ftUI.style.display = 'block';
                 ftUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + 'px';
                 ftUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + 'px';
             }
-        } else if (['festival_tent_broken','festival_tent_broken_red','festival_tent_broken_green'].includes(obj.type as string)) {
-            const tentBrokenColors: Record<string, string> = {
-                festival_tent_broken: '#6688aa', festival_tent_broken_red: '#884422', festival_tent_broken_green: '#335533',
-            };
-            ctx.fillStyle = tentBrokenColors[obj.type as string] ?? '#6688aa';
+        } else if (obj.type === 'festival_tent_broken') {
+            const _tbVariantColors: Record<string, string> = { red: '#884422', green: '#335533' };
+            ctx.fillStyle = _tbVariantColors[(obj as any).colorVariant] ?? '#6688aa';
             ctx.beginPath();
             ctx.moveTo(ox - 0.7 * tSize, oy);
             ctx.lineTo(ox, oy - 0.25 * tSize);
@@ -636,25 +632,23 @@ export const drawMap = () => {
             ctx.shadowBlur = 0;
             if (isSelected && ftbUI) {
                 const colorSel = document.getElementById('m_tent_broken_color') as HTMLSelectElement;
-                if (colorSel) colorSel.value = obj.type as string;
+                if (colorSel) colorSel.value = (obj as any).colorVariant ?? '';
                 const angEl = document.getElementById('m_tent_broken_angle') as HTMLInputElement;
                 if (angEl) angEl.value = String((obj as any).angle ?? 0);
                 ftbUI.style.display = 'block';
                 ftbUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + 'px';
                 ftbUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + 'px';
             }
-        } else if ((obj.type as string).startsWith('festival_car_')) {
-            const carColors: Record<string, string> = {
-                festival_car_red: '#cc2020', festival_car_blue: '#204499',
-                festival_car_silver: '#9aabb5', festival_car_black: '#333',
-                festival_car_yellow: '#cc9900',
+        } else if (obj.type === 'festival_car') {
+            const _carVariantColors: Record<string, string> = {
+                red: '#cc2020', blue: '#204499', black: '#333', yellow: '#cc9900',
             };
-            ctx.fillStyle = carColors[obj.type as string] ?? '#888';
+            ctx.fillStyle = _carVariantColors[(obj as any).colorVariant] ?? '#9aabb5';
             ctx.fillRect(ox - 0.9 * tSize, oy - 0.5 * tSize, 1.8 * tSize, tSize);
             ctx.shadowBlur = 0;
             if (isSelected && fcUI) {
                 const colorSel = document.getElementById('m_fcar_color') as HTMLSelectElement;
-                if (colorSel) colorSel.value = obj.type as string;
+                if (colorSel) colorSel.value = (obj as any).colorVariant ?? '';
                 const angleEl = document.getElementById('m_fcar_angle') as HTMLInputElement;
                 if (angleEl) angleEl.value = ((obj as any).angle ?? 0).toString();
                 fcUI.style.display = 'block';

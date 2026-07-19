@@ -1,5 +1,5 @@
 {
-  "id": "festival_tent_blue",
+  "id": "festival_tent",
   "pivot": [
     0,
     0,
@@ -16,6 +16,20 @@
       "zMax": 1.0
     }
   ],
+  "palettes": {
+    "red": {
+      "slope_f": "#bb3018",
+      "slope_b": "#9a2412",
+      "gable_l": "#aa2a14",
+      "gable_r": "#aa2a14"
+    },
+    "green": {
+      "slope_f": "#2a8030",
+      "slope_b": "#1e6624",
+      "gable_l": "#247028",
+      "gable_r": "#247028"
+    }
+  },
   "faces": [
     {
       "id": "floor",

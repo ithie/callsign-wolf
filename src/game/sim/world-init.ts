@@ -375,26 +375,23 @@ export const initStaticObjectsFromMission = () => {
         x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
         gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
     }));
-    const _FESTIVAL_TENT_TYPES = [
-        VESSEL.FESTIVAL_TENT, VESSEL.FESTIVAL_TENT_RED, VESSEL.FESTIVAL_TENT_GREEN,
-        VESSEL.FESTIVAL_TENT_BROKEN, VESSEL.FESTIVAL_TENT_BROKEN_RED, VESSEL.FESTIVAL_TENT_BROKEN_GREEN,
-    ] as const;
-    G.FESTIVAL_TENTS = _FESTIVAL_TENT_TYPES.flatMap(tt =>
-        getObjectsByType(tt).map((obj: any) => ({
-            type: tt, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+    G.FESTIVAL_TENTS = [
+        ...getObjectsByType(VESSEL.FESTIVAL_TENT).map((obj: any) => ({
+            type: VESSEL.FESTIVAL_TENT, colorVariant: obj.colorVariant as string | undefined,
+            x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
-        }))
-    );
-    const _FESTIVAL_CAR_TYPES = [
-        VESSEL.FESTIVAL_CAR_RED, VESSEL.FESTIVAL_CAR_BLUE, VESSEL.FESTIVAL_CAR_SILVER,
-        VESSEL.FESTIVAL_CAR_BLACK, VESSEL.FESTIVAL_CAR_YELLOW,
-    ] as const;
-    G.FESTIVAL_CARS = _FESTIVAL_CAR_TYPES.flatMap(ct =>
-        getObjectsByType(ct).map((obj: any) => ({
-            type: ct, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+        })),
+        ...getObjectsByType(VESSEL.FESTIVAL_TENT_BROKEN).map((obj: any) => ({
+            type: VESSEL.FESTIVAL_TENT_BROKEN, colorVariant: obj.colorVariant as string | undefined,
+            x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
-        }))
-    );
+        })),
+    ];
+    G.FESTIVAL_CARS = getObjectsByType(VESSEL.FESTIVAL_CAR).map((obj: any) => ({
+        type: VESSEL.FESTIVAL_CAR, colorVariant: obj.colorVariant as string | undefined,
+        x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+        gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+    }));
     G.XMAS_HOUSES = [
         ...getObjectsByType(VESSEL.XMAS_HOUSE_A).map((obj: any) => ({
             type: VESSEL.XMAS_HOUSE_A, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,

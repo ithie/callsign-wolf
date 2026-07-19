@@ -463,7 +463,12 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     if (!_aboveParticleZone && _prevAboveParticleZone && inAir && !onCarrierDeck && !onFrigateDeck) {
         const _tx = Math.round(G.heli.x), _ty = Math.round(G.heli.y);
         const _onSand = (G.sandPoints[_tx]?.[_ty] ?? 0) > 0;
-        const _dustColor = ctx.snow ? '240, 248, 255' : _onSand ? '210, 185, 120' : null;
+        const _isOverWater = groundH <= G.waterLevel + 0.1;
+        const _dustColor = ctx.snow ? '240, 248, 255'
+            : _isOverWater ? '180, 220, 255'
+            : _onSand ? '210, 185, 120'
+            : null;
+        const _burstZ = _isOverWater ? G.waterLevel + 0.04 : effectiveGroundH + 0.04;
         if (_dustColor) {
             for (let _i = 0; _i < 150; _i++) {
                 const _a = Math.random() * Math.PI * 2;
@@ -471,7 +476,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
                 G.particles.push({
                     x: G.heli.x + (Math.random() - 0.5) * 0.3,
                     y: G.heli.y + (Math.random() - 0.5) * 0.3,
-                    z: effectiveGroundH + 0.04,
+                    z: _burstZ,
                     vx: Math.cos(_a) * _spd,
                     vy: Math.sin(_a) * _spd,
                     vz: 0.001 + Math.random() * 0.006,

@@ -8,9 +8,9 @@ export const mount = (): void => {
     ensureEl('imprint-page');
 };
 
-export const show = (backUrl?: string): void => {
+export const show = (backUrl?: string, forceLang?: 'de' | 'en'): void => {
     const el = ensureEl('imprint-page');
-    const initLang = navigator.language?.toLowerCase().startsWith('de') ? 'de' : 'en';
+    const initLang: 'de' | 'en' = forceLang ?? 'de';
     const backHtml = backUrl
         ? `<a class="back-link sec-en" href="${backUrl}">&#8592; BACK</a>
            <a class="back-link sec-de" href="${backUrl}">&#8592; ZURÜCK</a>`
