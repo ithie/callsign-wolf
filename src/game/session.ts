@@ -3,6 +3,7 @@ export const STORAGE_KEY = 'z_session';
 import { storageGet, storageSet } from './storage';
 import { CAMPAIGN_TYPE } from '../shared/types';
 import { RANKS, getRank, type Rank } from './ui/rank-badge/rank-badge';
+import { HELI_TYPES } from './heli-types';
 export type { Rank };
 export { RANKS, getRank };
 
@@ -42,10 +43,7 @@ export const migrateSession = (s: PlayerSession): void => {
     if (!s.typeRatingSystemSince) {
         s.typeRatingSystemSince = 1;
         if (!s.typeRatings) s.typeRatings = {};
-        s.typeRatings['coasthawk'] = true;
-        s.typeRatings['dolphin'] = true;
-        s.typeRatings['atlas'] = true;
-        s.typeRatings['ornithopter'] = true;
+        for (const h of HELI_TYPES) s.typeRatings[h.id] = true;
     }
 };
 

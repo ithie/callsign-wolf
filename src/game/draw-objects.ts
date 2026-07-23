@@ -672,8 +672,8 @@ export const createDrawObjects = (
             colorVariant,
         } = opts;
 
-        const fillColor = colorVariant === 'blue' ? '#55aadd' : _rawFill;
-        const strokeColor = colorVariant === 'blue' ? '#3388bb' : _rawStroke;
+        const fillColor = colorVariant === 'blue' ? '#55aadd' : colorVariant === 'sand' ? '#c8a45a' : colorVariant === 'green' ? '#4e8c38' : _rawFill;
+        const strokeColor = colorVariant === 'blue' ? '#3388bb' : colorVariant === 'sand' ? '#a07838' : colorVariant === 'green' ? '#336025' : _rawStroke;
 
         const actualCtx = tCtx ?? ctx;
         const actualIso = tIso ?? iso;

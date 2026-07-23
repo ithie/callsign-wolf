@@ -1,5 +1,5 @@
 import { state, createEmptyMission, getCurrentMission } from './state';
-import { drawMap } from './render';
+import { drawMap, screenToGrid, isoHW, isoHH, centerCamera, initIsoCanvas } from './render';
 import { compressTerrain, decompressTerrain, compressFoliage, decompressFoliage } from '@/shared/utils';
 import { Mission } from '@/shared/types';
 
@@ -134,6 +134,7 @@ export const loadMission = (idx: number) => {
 
     state.selectedUI = null;
     state.selectedObjectIdx = null;
+    centerCamera(m.gridSize);
     renderMissionList();
     renderPayloadList();
     renderObjectList();
@@ -150,13 +151,10 @@ const renderMissionList = () => notifyWorkbench();
 const clampCamera = () => {
     const m = getCurrentMission();
     if (!m) return;
-    const tSize = (600 / m.gridSize) * state.zoom;
-    const viewGridW = 600 / tSize,
-        viewGridH = 600 / tSize;
-    state.panX = Math.max(0, Math.min(state.panX, m.gridSize - viewGridW));
-    state.panY = Math.max(0, Math.min(state.panY, m.gridSize - viewGridH));
-    if (viewGridW >= m.gridSize) state.panX = 0;
-    if (viewGridH >= m.gridSize) state.panY = 0;
+    // Soft clamp: keep pan loosely within map bounds (±25% overshoot allowed)
+    const margin = m.gridSize * 0.25;
+    state.panX = Math.max(-margin, Math.min(state.panX, m.gridSize + margin));
+    state.panY = Math.max(-margin, Math.min(state.panY, m.gridSize + margin));
 };
 
 // ── Coastal smoothing ─────────────────────────────────────────────────────────
@@ -230,9 +228,9 @@ const paint = (e: MouseEvent) => {
     if (!m) return;
     const canvas = getEl<HTMLCanvasElement>('editorCanvas');
     const rect = canvas.getBoundingClientRect();
-    const tSize = (600 / m.gridSize) * state.zoom;
-    const gx = Math.floor((e.clientX - rect.left) / tSize + state.panX);
-    const gy = Math.floor((e.clientY - rect.top) / tSize + state.panY);
+    const { gx: _gx, gy: _gy } = screenToGrid(e.clientX - rect.left, e.clientY - rect.top);
+    const gx = Math.floor(_gx);
+    const gy = Math.floor(_gy);
     if (gx < 0 || gx >= m.gridSize || gy < 0 || gy >= m.gridSize) return;
 
     if (state.currentTool === 'terrain') {
@@ -1091,8 +1089,7 @@ export const initUI = () => {
         canvas.style.cursor = 'none';
         cursorEl.style.display = 'block';
         if (PAINT_TOOLS.has(tool)) {
-            const tSize = (600 / m.gridSize) * state.zoom;
-            const radiusPx = state.brushRadius * tSize;
+            const radiusPx = state.brushRadius * isoHW();
             const size = Math.ceil(radiusPx * 2 + 8);
             cursorEl.width = size;
             cursorEl.height = size;
@@ -1174,6 +1171,11 @@ export const initUI = () => {
                 drawMap();
             }
         }
+        const PAN_STEP = 1.5;
+        if (e.key === 'ArrowLeft')  { state.panX -= PAN_STEP; state.panY += PAN_STEP; clampCamera(); drawMap(); e.preventDefault(); }
+        if (e.key === 'ArrowRight') { state.panX += PAN_STEP; state.panY -= PAN_STEP; clampCamera(); drawMap(); e.preventDefault(); }
+        if (e.key === 'ArrowUp')    { state.panX -= PAN_STEP; state.panY -= PAN_STEP; clampCamera(); drawMap(); e.preventDefault(); }
+        if (e.key === 'ArrowDown')  { state.panX += PAN_STEP; state.panY += PAN_STEP; clampCamera(); drawMap(); e.preventDefault(); }
         if (e.key === 'Escape') {
             if (state.isDraggingItem) {
                 const m = getCurrentMission()!;
@@ -1418,9 +1420,9 @@ export const initUI = () => {
             const m = getCurrentMission();
             if (!m) return;
             const rect = canvas.getBoundingClientRect();
-            const tSize = (600 / m.gridSize) * state.zoom;
-            _ctxGx = Math.floor((ev.clientX - rect.left) / tSize + state.panX);
-            _ctxGy = Math.floor((ev.clientY - rect.top) / tSize + state.panY);
+            const { gx: _cg, gy: _cd } = screenToGrid(ev.clientX - rect.left, ev.clientY - rect.top);
+            _ctxGx = Math.floor(_cg);
+            _ctxGy = Math.floor(_cd);
             if (_ctxGx < 0 || _ctxGx >= m.gridSize || _ctxGy < 0 || _ctxGy >= m.gridSize) return;
             // clear object selection so no floating UI overlaps the context menu
             state.selectedObjectIdx = null;
@@ -1443,11 +1445,8 @@ export const initUI = () => {
     canvas.onmousedown = e => {
         const rect = canvas.getBoundingClientRect();
         const m = getCurrentMission()!;
-        const tSize = (600 / m.gridSize) * state.zoom;
-        const mx = e.clientX - rect.left,
-            my = e.clientY - rect.top;
-        const gx = mx / tSize + state.panX,
-            gy = my / tSize + state.panY;
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const { gx, gy } = screenToGrid(mx, my);
 
         // Wind compass
         if (Math.hypot(mx - 50, my - 50) < 30) {
@@ -1616,10 +1615,8 @@ export const initUI = () => {
             if (Math.hypot(e.clientX - state.dragStartMX, e.clientY - state.dragStartMY) > 3) state.dragHasMoved = true;
             if (state.dragHasMoved) {
                 const m = getCurrentMission()!;
-                const tSize = (600 / m.gridSize) * state.zoom;
                 const rect = canvas.getBoundingClientRect();
-                const gx = (e.clientX - rect.left) / tSize + state.panX;
-                const gy = (e.clientY - rect.top) / tSize + state.panY;
+                const { gx, gy } = screenToGrid(e.clientX - rect.left, e.clientY - rect.top);
                 if (state.dragItemType === 'payload')
                     Object.assign(m.payloads[state.dragItemIdx!], { x: Math.round(gx), y: Math.round(gy) });
                 else if (state.dragItemType === 'object')
@@ -1634,9 +1631,11 @@ export const initUI = () => {
             return;
         }
         if (state.isEditorDragging) {
-            const tSize = (600 / getCurrentMission()!.gridSize) * state.zoom;
-            state.panX -= (e.clientX - state.lastMX) / tSize;
-            state.panY -= (e.clientY - state.lastMY) / tSize;
+            const dx = e.clientX - state.lastMX;
+            const dy = e.clientY - state.lastMY;
+            const hw = isoHW(), hh = isoHH();
+            state.panX -= (dx / hw + dy / hh) / 2;
+            state.panY -= (dy / hh - dx / hw) / 2;
             state.lastMX = e.clientX;
             state.lastMY = e.clientY;
             clampCamera();
@@ -1727,18 +1726,20 @@ export const initUI = () => {
     canvas.onwheel = e => {
         e.preventDefault();
         const rect = canvas.getBoundingClientRect();
-        const m = getCurrentMission()!;
-        const tSize = (600 / m.gridSize) * state.zoom;
-        const mx = e.clientX - rect.left,
-            my = e.clientY - rect.top;
-        const gx = mx / tSize + state.panX,
-            gy = my / tSize + state.panY;
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const { gx, gy } = screenToGrid(mx, my);
         const oldZoom = state.zoom;
-        state.zoom = Math.max(1.0, Math.min(state.zoom + (e.deltaY < 0 ? 0.5 : -0.5), 15.0));
+        const factor = e.shiftKey ? 0.08 : 0.12;
+        state.zoom = Math.max(0.2, Math.min(state.zoom * Math.exp(-e.deltaY * factor * 0.01), 20));
         if (state.zoom !== oldZoom) {
-            const nSize = (600 / m.gridSize) * state.zoom;
-            state.panX = gx - mx / nSize;
-            state.panY = gy - my / nSize;
+            // keep the grid point under cursor stationary:
+            // solve for panX/panY such that gridToScreen(gx,gy) == (mx,my) with new zoom
+            const hw = isoHW(), hh = isoHH();
+            const cx = canvas.width / 2, cy = canvas.height * 0.35;
+            const A = (cx - mx) / hw + (gx - gy);   // panX - panY
+            const B = (cy - my) / hh + (gx + gy);   // panX + panY
+            state.panX = (A + B) / 2;
+            state.panY = (B - A) / 2;
             clampCamera();
             drawMap();
         }
@@ -1835,4 +1836,6 @@ export const initUI = () => {
             alert('Import Fehler!\n\n' + e);
         }
     };
+
+    initIsoCanvas();
 };

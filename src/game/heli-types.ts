@@ -43,6 +43,12 @@ export interface HeliType {
     typeRatingRequired?: boolean;
     /** If true, this type is completely hidden in the selection screen when locked (instead of greyed out) */
     hideWhenLocked?: boolean;
+    /** Sound synthesis profile: rotor-oscillator or ornithopter wing-flap. */
+    soundProfile: 'rotor' | 'ornithopter';
+    /** Number of rotor blades (used for blade-pass frequency). 0 for non-rotor types. */
+    bladeCount: number;
+    /** Rotor sound preset: [clipAmount, filterCutHz, filterQ]. Unused for non-rotor types. */
+    audioPreset: [number, number, number];
 }
 
 export const HELI_TYPES: HeliType[] = [
@@ -72,6 +78,9 @@ export const HELI_TYPES: HeliType[] = [
         },
         minRankIndex: 1,
         typeRatingRequired: true,
+        soundProfile: 'rotor',
+        bladeCount: 4,
+        audioPreset: [3.0, 120, 2.5],
     },
     {
         id: 'coasthawk',
@@ -98,6 +107,9 @@ export const HELI_TYPES: HeliType[] = [
             en: 'The workhorse of maritime rescue. Carries heavy loads over long distances, even in rough weather. Once up to speed, it is hard to stop.',
         },
         minRankIndex: 0,
+        soundProfile: 'rotor',
+        bladeCount: 4,
+        audioPreset: [3.0, 110, 2.5],
     },
     {
         id: 'atlas',
@@ -125,6 +137,9 @@ export const HELI_TYPES: HeliType[] = [
         },
         minRankIndex: 2,
         typeRatingRequired: true,
+        soundProfile: 'rotor',
+        bladeCount: 3,
+        audioPreset: [4.0, 90, 3.0],
     },
     {
         id: 'ornithopter',
@@ -153,6 +168,9 @@ export const HELI_TYPES: HeliType[] = [
         minRankIndex: 3,
         typeRatingRequired: true,
         hideWhenLocked: true,
+        soundProfile: 'ornithopter',
+        bladeCount: 0,
+        audioPreset: [0, 0, 0],
     },
 ];
 

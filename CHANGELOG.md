@@ -1,5 +1,24 @@
 # SAR: Callsign WOLF — Changelog
 
+## v30.2.1 — Sand Colour + Carrier Fix
+
+### Added
+
+- **Sand helicopter colour** — New ocher/sand colour variant (`#c8a45a`) available in the hangar alongside Orange and Blue. Ornithopter previews are excluded from colour variants, consistent with other types.
+
+### Changed
+
+- **Winch & Reverse button styling** — Button background changed from solid black to translucent orange (matching joystick palette). Indicator LEDs are now fully opaque: lit state is bright orange with glow, unlit state is dark amber — no transparency on either.
+- **Winch split into two buttons** — Winch Up (↑) and Winch Down (↓) are now separate buttons with a gap between them. Highlight strip and LED indicator moved to the top of each button. Both buttons show raised-edge depth (top highlight + bottom shadow).
+- **Reverse button resized and repositioned** — Now the same width as each winch button and centred above the right joystick. Background becomes fully opaque orange when the reverse mode is active.
+- **Green helicopter colour** — New military green colour variant (`#4e8c38`) available in the hangar alongside Orange, Blue, and Sand. Ornithopter excluded, consistent with other variants. Colour swatch grid rearranged to 2×2 layout.
+
+### Fixed
+
+- **Carrier deck attachment race condition** — Deck-presence check now runs before `updateCarrierPos` so a frame spike (OS interruption, notification) can no longer move the carrier out from under a landed helicopter, leaving it stranded and unable to restart the engine.
+
+---
+
 ## v30.2.0 — Helicopter Colour + Performance
 
 ### Added

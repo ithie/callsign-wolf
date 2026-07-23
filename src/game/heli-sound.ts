@@ -1,19 +1,8 @@
 // ── Heli Sound Synthesis ────────────────────────────────────────────────────
 
-const BLADES: Record<string, number> = {
-    dolphin: 4,
-    coasthawk: 4,
-    atlas: 3,
-};
+import { getHeliType } from './heli-types';
 
 const NOMINAL_RPM = 220;
-
-// Presets per heli type: [clipAmount, filterCutHz, filterQ]
-const PRESETS: Record<string, [number, number, number]> = {
-    dolphin: [3.0, 120, 2.5],
-    coasthawk: [3.0, 110, 2.5],
-    atlas: [4.0, 90, 3.0],
-};
 
 interface HeliSoundNodes {
     actx: AudioContext;
@@ -104,7 +93,8 @@ export const initHeliSound = (heliType: string): void => {
     master.connect(actx.destination);
     const wind = _makeWindPath(actx, master);
 
-    if (heliType === 'ornithopter') {
+    const ht = getHeliType(heliType);
+    if (ht.soundProfile === 'ornithopter') {
         // Wing-flap synthesis: noise → bandpass → LFO amplitude modulation
         const noiseBuf = actx.createBuffer(1, actx.sampleRate * 2, actx.sampleRate);
         const nd = noiseBuf.getChannelData(0);
@@ -141,17 +131,15 @@ export const initHeliSound = (heliType: string): void => {
         return;
     }
 
-    const blades = BLADES[heliType] ?? 4;
-    if (blades === 0) {
+    const { bladeCount, audioPreset: [clipAmount, filterCut, filterQ] } = ht;
+    if (bladeCount === 0) {
         _nodes = { actx, master, ...wind };
         return;
     }
 
-    const [clipAmount, filterCut, filterQ] = PRESETS[heliType] ?? PRESETS['dolphin'];
-
     const osc = actx.createOscillator();
     osc.type = 'sawtooth';
-    osc.frequency.value = (NOMINAL_RPM / 60) * blades * 0.1;
+    osc.frequency.value = (NOMINAL_RPM / 60) * bladeCount * 0.1;
 
     const shaper = actx.createWaveShaper();
     shaper.curve = _buildCurve(clipAmount);
@@ -188,7 +176,8 @@ export const updateHeliSound = (
     // windSpeed = Math.hypot(G.wind.x, G.wind.y), max ~0.0005 at windStr=10
     windGain.gain.setTargetAtTime(Math.min(1, windSpeed * 2000) * 0.5, t, 0.4);
 
-    if (heliType === 'ornithopter') {
+    const ht = getHeliType(heliType);
+    if (ht.soundProfile === 'ornithopter') {
         const { flapLFO, flapLFOGain } = _nodes;
         if (!flapLFO || !flapLFOGain) return;
         flapLFO.frequency.setTargetAtTime(1.1 * flapRate, t, 0.12);
@@ -200,9 +189,8 @@ export const updateHeliSound = (
 
     const { osc, filt } = _nodes;
     if (!osc || !filt) return;
-    const blades = BLADES[heliType] ?? 4;
-    const [, filterCut] = PRESETS[heliType] ?? PRESETS['dolphin'];
-    const bpf = ((rotorRPM * NOMINAL_RPM) / 60) * blades;
+    const { bladeCount, audioPreset: [, filterCut] } = ht;
+    const bpf = ((rotorRPM * NOMINAL_RPM) / 60) * bladeCount;
     osc.frequency.setTargetAtTime(Math.max(1, bpf), t, 0.08);
     filt.frequency.setTargetAtTime(filterCut, t, 0.05);
     const targetVol = _sfxEnabled ? (engineOn ? 0.15 + 0.55 * rotorRPM : 0.1 * rotorRPM) : 0;

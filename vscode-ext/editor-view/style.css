@@ -9,7 +9,7 @@ body {
     color: #fff;
     font-family: monospace;
     margin: 0;
-    overflow: auto;
+    overflow: hidden;
 }
 
 canvas {
@@ -17,42 +17,23 @@ canvas {
     image-rendering: pixelated;
 }
 
-/* ── Canvas containers ──────────────────────────────────────────────────── */
-.canvas-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.canvas-header {
-    background: #111;
-    color: var(--accent);
-    border: 2px solid var(--accent);
-    border-bottom: none;
-    padding: 5px 10px;
-    box-sizing: border-box;
-    font-weight: bold;
-    font-size: 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.header-2d { width: 604px; }
-.header-3d { width: 504px; }
-.canvas-hint { font-size: 10px; color: #aaa; font-weight: normal; }
-
+/* ── Editor wrapper: fills the canvas area ──────────────────────────────── */
 .editor-wrapper {
     position: relative;
-    width: 600px;
-    height: 600px;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
-    border: 2px solid var(--accent);
     background: #002244;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 }
 
 /* Hide the native cursor on the editor canvas — replaced by JS custom cursor */
-#editorCanvas { cursor: none; }
+#editorCanvas {
+    cursor: none;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
 
 #previewCanvas {
     border: 2px solid var(--accent);
@@ -61,19 +42,14 @@ canvas {
 }
 #previewCanvas:active { cursor: grabbing; }
 
-/* ── Floating UI panels (Wind, Carrier, Pad, Boat) ──────────────────────── */
+/* ── Object property panels (live in sidebar #ed-obj-panel) ─────────────── */
 .floating-ui {
-    position: absolute;
-    background: rgba(10, 10, 10, 0.95);
-    border: 1px solid var(--accent);
-    padding: 12px;
+    background: rgba(10, 10, 10, 0.0);
+    border-top: 1px solid #333;
+    padding: 10px 12px;
     font-size: 12px;
     color: #fff;
-    border-radius: 4px;
-    z-index: 100;
-    backdrop-filter: blur(8px);
     display: none;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.8);
 }
 .floating-ui input,
 .floating-ui select {

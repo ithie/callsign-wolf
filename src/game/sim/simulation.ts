@@ -307,6 +307,12 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
 
     if (ctx.hasPad && G.fuelTruck.state !== VEHICLE_STATE.PARKED) fuelTruck.update(dt, ctx);
     if (ctx.hasCarrier && !crashed) {
+        // Check deck BEFORE carrier moves: prevents a large-dt frame (e.g. after app resume)
+        // from moving the carrier out from under the heli and breaking the attachment.
+        const _preDeck = (() => {
+            const l = getCarrierLocal(G.heli.x, G.heli.y, G.CARRIER);
+            return l.x >= -G.CARRIER.w && l.x <= G.CARRIER.w && l.y >= -G.CARRIER.l && l.y <= G.CARRIER.l;
+        })();
         const oldX = G.CARRIER.x, oldY = G.CARRIER.y, oldAng = G.CARRIER.angle;
         updateCarrierPos(
             G.CARRIER,
@@ -316,10 +322,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
         const carrierVX = G.CARRIER.x - oldX;
         const carrierVY = G.CARRIER.y - oldY;
         const carrierRot = G.CARRIER.angle - oldAng;
-        const local = getCarrierLocal(G.heli.x, G.heli.y, G.CARRIER);
-        const onDeck =
-            local.x >= -G.CARRIER.w && local.x <= G.CARRIER.w && local.y >= -G.CARRIER.l && local.y <= G.CARRIER.l;
-        if (onDeck && !G.heli.inAir) {
+        if (_preDeck && !G.heli.inAir) {
             G.heli.x += carrierVX; G.heli.y += carrierVY;
             const dx = G.heli.x - G.CARRIER.x, dy = G.heli.y - G.CARRIER.y;
             G.heli.x += dx * Math.cos(carrierRot) - dy * Math.sin(carrierRot) - dx;
@@ -622,7 +625,7 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     const keyR = !!G.keys['KeyR'];
     if (keyR && !_prevKeyR) {
         const ap = G.activePayload as any;
-        if ((ap?.type === PAYLOAD.CRATE || ap?.type === PAYLOAD.ORNI_WRECK) && ap.hanging) {
+        if (ap && PAYLOAD_DEFS[ap.type]?.terrainDroppable && ap.hanging) {
             const loadZ = G.heli.z - G.heli.winch;
             const groundZ = getGround(G.rescuerSwing.x, G.rescuerSwing.y);
             if (loadZ <= groundZ + 0.4) {

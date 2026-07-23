@@ -159,9 +159,9 @@
 /* ─── color swatches ─────────────────────────────────────────────────────── */
 
 #heli-select .heli-color-row {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    justify-items: center;
     gap: 10px;
     margin-bottom: 12px;
 }
@@ -195,6 +195,14 @@
 
 #heli-select .heli-color-swatch-blue {
     background: #55aadd;
+}
+
+#heli-select .heli-color-swatch-sand {
+    background: #c8a45a;
+}
+
+#heli-select .heli-color-swatch-green {
+    background: #4e8c38;
 }
 
 

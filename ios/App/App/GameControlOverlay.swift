@@ -34,11 +34,12 @@ final class GameControlOverlay: UIView {
     private var _link: CADisplayLink?
 
     // ── Layout (recomputed in layoutSubviews) ─────────────────────────────────────
-    private var leftCenter:      CGPoint = .zero
-    private var rightCenter:     CGPoint = .zero
-    private var winchRockerRect: CGRect  = .zero
-    private var deliverRect:     CGRect  = .zero
-    private var joyRadius:       CGFloat = 75
+    private var leftCenter:   CGPoint = .zero
+    private var rightCenter:  CGPoint = .zero
+    private var winchUpRect:  CGRect  = .zero
+    private var winchDownRect: CGRect = .zero
+    private var deliverRect:  CGRect  = .zero
+    private var joyRadius:    CGFloat = 75
 
     // ── Colours ───────────────────────────────────────────────────────────────────
     private let cBorder   = UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.28)
@@ -109,10 +110,11 @@ final class GameControlOverlay: UIView {
         let btnH: CGFloat = 68
         let btnY = joyY - joyRadius - 8 - btnH
 
-        winchRockerRect = CGRect(x: leftCenter.x  - joyRadius, y: btnY,
-                                 width: joyRadius * 2,          height: btnH)
-        deliverRect     = CGRect(x: rightCenter.x - joyRadius, y: btnY,
-                                 width: joyRadius * 2,          height: btnH)
+        let wGap:  CGFloat = 8
+        let wHalf: CGFloat = (joyRadius * 2 - wGap) / 2
+        winchUpRect   = CGRect(x: leftCenter.x - joyRadius,               y: btnY, width: wHalf, height: btnH)
+        winchDownRect = CGRect(x: leftCenter.x - joyRadius + wHalf + wGap, y: btnY, width: wHalf, height: btnH)
+        deliverRect   = CGRect(x: rightCenter.x - wHalf / 2, y: btnY, width: wHalf, height: btnH)
 
         setNeedsDisplay()
     }
@@ -195,17 +197,64 @@ final class GameControlOverlay: UIView {
         let r: CGFloat = 4
         let rect = CGRect(x: center.x - r, y: center.y - r, width: r * 2, height: r * 2)
         let ctx = UIGraphicsGetCurrentContext()!
-        if alpha > 0.5 {
+        let isLit = alpha > 0.5
+        if isLit {
             ctx.saveGState()
             ctx.setShadow(offset: .zero, blur: 10,
                           color: UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.85).cgColor)
-            UIColor(red: 1, green: 0.4, blue: 0, alpha: alpha).setFill()
+            UIColor(red: 1, green: 0.4, blue: 0, alpha: 1.0).setFill()
             UIBezierPath(ovalIn: rect).fill()
             ctx.restoreGState()
         } else {
-            UIColor(red: 1, green: 0.4, blue: 0, alpha: alpha).setFill()
+            // unlit: fully opaque but dark amber — no transparency
+            UIColor(red: 0.35, green: 0.18, blue: 0, alpha: 1.0).setFill()
             UIBezierPath(ovalIn: rect).fill()
         }
+    }
+
+    private func _drawSquareButton(in rect: CGRect, active: Bool, label: String) {
+        let ctx   = UIGraphicsGetCurrentContext()!
+        let capR: CGFloat = 8
+        let stripH = rect.height * 0.28
+
+        // Background
+        UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.18).setFill()
+        UIBezierPath(roundedRect: rect, cornerRadius: capR).fill()
+
+        // Depth strips (clipped to button shape)
+        ctx.saveGState()
+        UIBezierPath(roundedRect: rect, cornerRadius: capR).addClip()
+
+        // Bottom shadow — simulates raised edge
+        UIColor(red: 0, green: 0, blue: 0, alpha: 0.22).setFill()
+        UIBezierPath(rect: CGRect(x: rect.minX, y: rect.maxY - stripH,
+                                  width: rect.width, height: stripH + capR)).fill()
+
+        // Glanzpunkt — top strip
+        UIColor(white: 1, alpha: 0.16).setFill()
+        UIBezierPath(roundedRect: CGRect(x: rect.minX + 2, y: rect.minY + 2,
+                                         width: rect.width - 4, height: stripH),
+                     cornerRadius: 3).fill()
+        ctx.restoreGState()
+
+        // Border
+        let border = UIBezierPath(roundedRect: rect, cornerRadius: capR)
+        border.lineWidth = 1
+        cBorder.setStroke()
+        border.stroke()
+
+        // Pip (LED) — top center, inside the highlight strip
+        _drawPip(at: CGPoint(x: rect.midX, y: rect.minY + stripH * 0.55 + 2),
+                 alpha: active ? 1.0 : 0.15)
+
+        // Label — centered
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.monospacedSystemFont(ofSize: 15, weight: .bold),
+            .foregroundColor: active ? cActive : cLabel
+        ]
+        let sz = label.size(withAttributes: attrs)
+        label.draw(at: CGPoint(x: rect.midX - sz.width / 2,
+                               y: rect.midY - sz.height / 2 + 2), withAttributes: attrs)
     }
 
     private func _drawHorizontalLever(in rect: CGRect,
@@ -223,24 +272,37 @@ final class GameControlOverlay: UIView {
         let capR: CGFloat = barH * 0.22
         let lr = CGRect(x: cx - barW/2, y: cy - barH/2, width: barW, height: barH)
 
-        UIColor.black.setFill()
+        UIColor(red: 1, green: 0.4, blue: 0, alpha: active ? 0.75 : 0.18).setFill()
         UIBezierPath(roundedRect: lr, cornerRadius: capR).fill()
 
-        // Glanzpunkt — left-side strip
+        // Depth strips (clipped to bar shape)
         ctx.saveGState()
         UIBezierPath(roundedRect: lr, cornerRadius: capR).addClip()
-        UIColor(white: 1, alpha: 0.16).setFill()
+
+        // Bottom shadow
+        let lrStripH = barH * 0.28
+        UIColor(red: 0, green: 0, blue: 0, alpha: 0.22).setFill()
+        UIBezierPath(rect: CGRect(x: lr.minX, y: lr.maxY - lrStripH,
+                                  width: barW, height: lrStripH + capR)).fill()
+
+        // Glanzpunkt — top strip
+        UIColor(white: 1, alpha: active ? 0.28 : 0.16).setFill()
         UIBezierPath(roundedRect: CGRect(x: lr.minX + 2, y: lr.minY + 2,
-                                         width: barH * 0.28, height: barH - 4),
+                                         width: barW - 4, height: lrStripH),
                      cornerRadius: 3).fill()
         ctx.restoreGState()
 
+        // Border
+        let border = UIBezierPath(roundedRect: lr, cornerRadius: capR)
+        border.lineWidth = 1
+        (active ? cActive : cBorder).setStroke()
+        border.stroke()
 
         // Labels
         func leverLabel(_ s: String, x: CGFloat, isActive: Bool) {
             let a: [NSAttributedString.Key: Any] = [
                 .font: UIFont.monospacedSystemFont(ofSize: 13, weight: .bold),
-                .foregroundColor: isActive ? cActive : cLabel
+                .foregroundColor: active ? UIColor.white : (isActive ? cActive : cLabel)
             ]
             let sz = s.size(withAttributes: a)
             s.draw(at: CGPoint(x: x - sz.width/2, y: cy - sz.height/2), withAttributes: a)
@@ -250,18 +312,10 @@ final class GameControlOverlay: UIView {
         if let c  = centerLabel { leverLabel(c,  x: cx,                isActive: active) }
     }
 
-    // ── Winch rocker ──────────────────────────────────────────────────────────────
+    // ── Winch buttons ─────────────────────────────────────────────────────────────
     private func drawWinchRocker() {
-        let upActive   = winch.active &&  winch.isUp
-        let downActive = winch.active && !winch.isUp
-
-        _drawHorizontalLever(in: winchRockerRect,
-                             leftActive: upActive, rightActive: downActive,
-                             leftLabel: "↑", rightLabel: "↓")
-
-        let pipInset = winchRockerRect.height * 0.65 * 0.22 + 8
-        _drawPip(at: CGPoint(x: winchRockerRect.minX + pipInset, y: winchRockerRect.midY), alpha: upActive   ? 1.0 : 0.15)
-        _drawPip(at: CGPoint(x: winchRockerRect.maxX - pipInset, y: winchRockerRect.midY), alpha: downActive ? 1.0 : 0.15)
+        _drawSquareButton(in: winchUpRect,   active: winch.active &&  winch.isUp, label: "↑")
+        _drawSquareButton(in: winchDownRect, active: winch.active && !winch.isUp, label: "↓")
     }
 
     // ── Deliver toggle ────────────────────────────────────────────────────────────
@@ -269,8 +323,10 @@ final class GameControlOverlay: UIView {
         _drawHorizontalLever(in: deliverRect,
                              leftActive: deliverOn, centerLabel: "R")
 
-        let pipInset = deliverRect.height * 0.65 * 0.22 + 8
-        _drawPip(at: CGPoint(x: deliverRect.minX + pipInset, y: deliverRect.midY),
+        let barH   = deliverRect.height * 0.65
+        let stripH = barH * 0.28
+        let pipY   = deliverRect.midY - barH / 2 + 2 + stripH * 0.55
+        _drawPip(at: CGPoint(x: deliverRect.midX, y: pipY),
                  alpha: deliverOn ? 1.0 : 0.15)
     }
 
@@ -292,7 +348,7 @@ final class GameControlOverlay: UIView {
             let rdx = pt.x - rightCenter.x, rdy = pt.y - rightCenter.y
             if rdx*rdx + rdy*rdy <= joyRadius*joyRadius { return .rightJoy }
         }
-        if !tutorialDimmed.contains("pitch-wheel")    && winchRockerRect.contains(pt) { return .winchRocker }
+        if !tutorialDimmed.contains("pitch-wheel")    && (winchUpRect.contains(pt) || winchDownRect.contains(pt)) { return .winchRocker }
         if !tutorialDimmed.contains("deliver-toggle") && deliverRect.contains(pt)     { return .deliverBtn }
         return nil
     }
@@ -307,7 +363,7 @@ final class GameControlOverlay: UIView {
             case .rightJoy  where rightTouch  == nil: rightTouch  = t; rightJoy.active = true
             case .winchRocker where winchTouch == nil:
                 winchTouch = t; winch.active = true
-                winch.isUp = pt.x < winchRockerRect.midX
+                winch.isUp = winchUpRect.contains(pt)
             case .deliverBtn where deliverTouch == nil:
                 deliverTouch = t; deliverPressed = true
             default: break
@@ -325,7 +381,8 @@ final class GameControlOverlay: UIView {
                 rightJoy.dx = pt.x - rightCenter.x
                 rightJoy.dy = pt.y - rightCenter.y
             } else if t === winchTouch {
-                winch.isUp = pt.x < winchRockerRect.midX
+                if winchUpRect.contains(pt)   { winch.isUp = true  }
+                else if winchDownRect.contains(pt) { winch.isUp = false }
             }
         }
     }
@@ -370,7 +427,8 @@ final class GameControlOverlay: UIView {
             }
 
         case "pitch-wheel":
-            _drawRectPulse(winchRockerRect, ringW: ringW, ringA: ringA, blurR: blurR, glowA: glowA)
+            _drawRectPulse(winchUpRect,   ringW: ringW, ringA: ringA, blurR: blurR, glowA: glowA)
+            _drawRectPulse(winchDownRect, ringW: ringW, ringA: ringA, blurR: blurR, glowA: glowA)
         case "deliver-toggle":
             _drawRectPulse(deliverRect,     ringW: ringW, ringA: ringA, blurR: blurR, glowA: glowA)
         default: break

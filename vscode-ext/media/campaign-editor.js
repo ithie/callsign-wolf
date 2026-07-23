@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // editor-view/style.css
-  var style_default = "/* src/editor/style.css */\n:root {\n    --accent: #5f5;\n    --bg: #181818;\n}\n\nbody {\n    background: var(--bg);\n    color: #fff;\n    font-family: monospace;\n    margin: 0;\n    overflow: auto;\n}\n\ncanvas {\n    display: block;\n    image-rendering: pixelated;\n}\n\n/* \u2500\u2500 Canvas containers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n.canvas-container {\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n}\n\n.canvas-header {\n    background: #111;\n    color: var(--accent);\n    border: 2px solid var(--accent);\n    border-bottom: none;\n    padding: 5px 10px;\n    box-sizing: border-box;\n    font-weight: bold;\n    font-size: 12px;\n    display: flex;\n    justify-content: space-between;\n    align-items: center;\n}\n.header-2d { width: 604px; }\n.header-3d { width: 504px; }\n.canvas-hint { font-size: 10px; color: #aaa; font-weight: normal; }\n\n.editor-wrapper {\n    position: relative;\n    width: 600px;\n    height: 600px;\n    overflow: hidden;\n    border: 2px solid var(--accent);\n    background: #002244;\n    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);\n}\n\n/* Hide the native cursor on the editor canvas \u2014 replaced by JS custom cursor */\n#editorCanvas { cursor: none; }\n\n#previewCanvas {\n    border: 2px solid var(--accent);\n    background: #001122;\n    cursor: grab;\n}\n#previewCanvas:active { cursor: grabbing; }\n\n/* \u2500\u2500 Floating UI panels (Wind, Carrier, Pad, Boat) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n.floating-ui {\n    position: absolute;\n    background: rgba(10, 10, 10, 0.95);\n    border: 1px solid var(--accent);\n    padding: 12px;\n    font-size: 12px;\n    color: #fff;\n    border-radius: 4px;\n    z-index: 100;\n    backdrop-filter: blur(8px);\n    display: none;\n    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.8);\n}\n.floating-ui input,\n.floating-ui select {\n    background: #000;\n    color: var(--accent);\n    border: 1px solid #444;\n    font-family: monospace;\n    margin: 2px 0;\n}\n.close-btn {\n    float: right;\n    cursor: pointer;\n    color: #f55;\n    font-weight: bold;\n    font-size: 16px;\n    margin-top: -5px;\n}\n";
+  var style_default = "/* src/editor/style.css */\n:root {\n    --accent: #5f5;\n    --bg: #181818;\n}\n\nbody {\n    background: var(--bg);\n    color: #fff;\n    font-family: monospace;\n    margin: 0;\n    overflow: hidden;\n}\n\ncanvas {\n    display: block;\n    image-rendering: pixelated;\n}\n\n/* \u2500\u2500 Editor wrapper: fills the canvas area \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n.editor-wrapper {\n    position: relative;\n    width: 100%;\n    height: 100%;\n    overflow: hidden;\n    background: #002244;\n}\n\n/* Hide the native cursor on the editor canvas \u2014 replaced by JS custom cursor */\n#editorCanvas {\n    cursor: none;\n    position: absolute;\n    inset: 0;\n    width: 100%;\n    height: 100%;\n}\n\n#previewCanvas {\n    border: 2px solid var(--accent);\n    background: #001122;\n    cursor: grab;\n}\n#previewCanvas:active { cursor: grabbing; }\n\n/* \u2500\u2500 Object property panels (live in sidebar #ed-obj-panel) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */\n.floating-ui {\n    background: rgba(10, 10, 10, 0.0);\n    border-top: 1px solid #333;\n    padding: 10px 12px;\n    font-size: 12px;\n    color: #fff;\n    display: none;\n}\n.floating-ui input,\n.floating-ui select {\n    background: #000;\n    color: var(--accent);\n    border: 1px solid #444;\n    font-family: monospace;\n    margin: 2px 0;\n}\n.close-btn {\n    float: right;\n    cursor: pointer;\n    color: #f55;\n    font-weight: bold;\n    font-size: 16px;\n    margin-top: -5px;\n}\n";
 
   // editor-view/state.ts
   var createEmptyMission = (name = "Mission Alpha") => {
@@ -105,829 +105,166 @@
   };
 
   // editor-view/render.ts
-  var canvas = document.getElementById("editorCanvas");
-  var ctx = canvas.getContext("2d");
+  var BASE_HW = 14;
+  var HEIGHT_SCALE = 1.8;
+  var _canvas = () => document.getElementById("editorCanvas");
+  var isoHW = () => BASE_HW * state.zoom;
+  var isoHH = () => BASE_HW * state.zoom * 0.5;
+  var isoHS = () => HEIGHT_SCALE * state.zoom;
+  var _ox = (c) => c.width / 2 - (state.panX - state.panY) * isoHW();
+  var _oy = (c) => c.height * 0.35 - (state.panX + state.panY) * isoHH();
+  var screenToGrid = (sx, sy) => {
+    const c = _canvas();
+    const hw = isoHW(), hh = isoHH(), ox = _ox(c), oy = _oy(c);
+    const dx = sx - ox, dy = sy - oy;
+    return { gx: (dx / hw + dy / hh) / 2, gy: (dy / hh - dx / hw) / 2 };
+  };
+  var centerCamera = (gridSize) => {
+    const c = _canvas();
+    const fitW = c.width / (gridSize * 2 * BASE_HW * 1.05);
+    const fitH = c.height * 0.9 / (gridSize * BASE_HW * 1.05);
+    state.zoom = Math.min(fitW, fitH);
+    state.panX = gridSize / 2;
+    state.panY = gridSize / 2;
+  };
+  var initIsoCanvas = () => {
+    const canvas = _canvas();
+    const resize = () => {
+      const p = canvas.parentElement;
+      canvas.width = p.offsetWidth;
+      canvas.height = p.offsetHeight;
+      drawMap();
+    };
+    new ResizeObserver(resize).observe(canvas.parentElement ?? canvas);
+    resize();
+  };
+  var _showObjPanel = (id) => {
+    const panel = document.getElementById("ed-obj-panel");
+    const el = document.getElementById(id);
+    if (panel) panel.style.display = "block";
+    if (el) el.style.display = "block";
+  };
+  var _isoArrow = (ctx, cx, cy, angleDeg, hw, hh, len, color) => {
+    const rad = angleDeg * Math.PI / 180;
+    const wdx = Math.cos(rad), wdy = Math.sin(rad);
+    const sdx = (wdx - wdy) * hw, sdy = (wdx + wdy) * hh;
+    const mag = Math.hypot(sdx, sdy);
+    const nx = sdx / mag * len, ny = sdy / mag * len;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(1, hw * 0.15);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + nx, cy + ny);
+    ctx.stroke();
+    const head = len * 0.35, spread = 0.5;
+    ctx.beginPath();
+    ctx.moveTo(cx + nx, cy + ny);
+    ctx.lineTo(
+      cx + nx - Math.cos(Math.atan2(ny, nx) - spread) * head,
+      cy + ny - Math.sin(Math.atan2(ny, nx) - spread) * head
+    );
+    ctx.moveTo(cx + nx, cy + ny);
+    ctx.lineTo(
+      cx + nx - Math.cos(Math.atan2(ny, nx) + spread) * head,
+      cy + ny - Math.sin(Math.atan2(ny, nx) + spread) * head
+    );
+    ctx.stroke();
+  };
+  var _isoDiamond = (ctx, sx, sy, hw, hh, fill, stroke) => {
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(sx + hw, sy + hh);
+    ctx.lineTo(sx, sy + 2 * hh);
+    ctx.lineTo(sx - hw, sy + hh);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  };
+  var syncVesselUI = (obj, kind) => {
+    const prefix = kind === "carrier" ? "carrier" : kind === "submarine" ? "submarine" : "boat";
+    const g = (id) => document.getElementById(id);
+    const pathEl = g(`m_${prefix}_path`);
+    const speedEl = g(`m_${prefix}_speed`);
+    const radiusEl = g(`m_${prefix}_radius`);
+    const angleEl = g(`m_${prefix}_angle`);
+    const nameEl = g(`m_${prefix}_name`);
+    const exitEl = g(`m_${prefix}_exitWarning`);
+    const radioEl = g(`m_${prefix}_radioSilent`);
+    if (pathEl) pathEl.value = obj.path ?? "static";
+    if (speedEl) speedEl.value = (obj.speed ?? 0).toString();
+    if (radiusEl) radiusEl.value = (obj.radius ?? 40).toString();
+    if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
+    if (nameEl) nameEl.value = obj.vesselName ?? "";
+    if (exitEl) exitEl.checked = obj.exitWarning ?? false;
+    if (radioEl) radioEl.checked = !(obj.radioSilent ?? false);
+    if (kind === "boat") {
+      const radioRow = document.getElementById("m_boat_radioSilent_row");
+      if (radioRow) radioRow.style.display = obj.type === "frigate" ? "" : "none";
+    }
+  };
   var drawMap = () => {
+    const canvas = _canvas();
+    const ctx = canvas.getContext("2d");
     const m = getCurrentMission();
     if (!m) return;
-    ctx.clearRect(0, 0, 600, 600);
-    const tSize = 600 / m.gridSize * state.zoom;
-    const pUI = document.getElementById("ui_pad");
-    const cUI = document.getElementById("ui_carrier");
-    const bUI = document.getElementById("ui_boat");
-    const sUI = document.getElementById("ui_submarine");
-    const wUI = document.getElementById("ui_wind");
-    const wtUI = document.getElementById("ui_wt");
-    const pwUI = document.getElementById("ui_plane_wreck");
-    const sbUI = document.getElementById("ui_sailboat_broken");
-    const owUI = document.getElementById("ui_ornithopter_wreck");
-    const bwcUI = document.getElementById("ui_baywatch_car");
-    const bwhUI = document.getElementById("ui_baywatch_hq");
-    const bwtUI2 = document.getElementById("ui_baywatch_tower");
-    const csUI = document.getElementById("ui_concert_stage");
-    const ftUI = document.getElementById("ui_festival_tent");
-    const ftbUI = document.getElementById("ui_festival_tent_broken");
-    const fcUI = document.getElementById("ui_festival_car");
-    const xhUI = document.getElementById("ui_xmas_house");
-    const xlUI = document.getElementById("ui_xmas_lantern");
-    const slUI = document.getElementById("ui_sleigh");
-    const rdUI = document.getElementById("ui_reindeer");
-    if (pUI) pUI.style.display = "none";
-    if (cUI) cUI.style.display = "none";
-    if (bUI) bUI.style.display = "none";
-    if (sUI) sUI.style.display = "none";
-    if (wtUI) wtUI.style.display = "none";
-    if (wUI) wUI.style.display = "none";
-    if (pwUI) pwUI.style.display = "none";
-    if (sbUI) sbUI.style.display = "none";
-    if (owUI) owUI.style.display = "none";
-    if (bwcUI) bwcUI.style.display = "none";
-    if (bwhUI) bwhUI.style.display = "none";
-    if (bwtUI2) bwtUI2.style.display = "none";
-    if (csUI) csUI.style.display = "none";
-    if (ftUI) ftUI.style.display = "none";
-    if (ftbUI) ftbUI.style.display = "none";
-    if (fcUI) fcUI.style.display = "none";
-    if (xhUI) xhUI.style.display = "none";
-    if (xlUI) xlUI.style.display = "none";
-    if (slUI) slUI.style.display = "none";
-    if (rdUI) rdUI.style.display = "none";
+    const objPanel = document.getElementById("ed-obj-panel");
+    if (objPanel) objPanel.style.display = "none";
+    document.querySelectorAll(".floating-ui").forEach((el) => {
+      el.style.display = "none";
+    });
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const hw = isoHW(), hh = isoHH(), hs = isoHS();
+    const ox = _ox(canvas), oy = _oy(canvas);
+    const W = canvas.width, H = canvas.height;
+    const gs = m.gridSize;
+    const toSX = (gx, gy) => (gx - gy) * hw + ox;
+    const toSY = (gx, gy) => (gx + gy) * hh + oy;
     const wl = m.waterLevel ?? 0;
     const isSnow = !!m.snow;
-    for (let x = Math.floor(state.panX); x < Math.min(m.gridSize, state.panX + 600 / tSize + 1); x++) {
-      for (let y = Math.floor(state.panY); y < Math.min(m.gridSize, state.panY + 600 / tSize + 1); y++) {
-        const h = m.terrain[x][y];
-        const isSand = h > wl && (m.sand?.[x]?.[y] ?? 0) > 0;
-        const isPavement = h > wl && (m.pavement?.[x]?.[y] ?? 0) > 0;
-        const landColor = isSnow ? `rgb(${190 + Math.floor(h * 8)},${205 + Math.floor(h * 7)},${220 + Math.floor(h * 6)})` : getLandColor(h, false);
-        const waterColor = isSnow ? "#0a3060" : COLORS.water;
-        ctx.fillStyle = h <= wl ? waterColor : isPavement ? "#808088" : isSand ? getSandColor(h) : landColor;
-        ctx.fillRect((x - state.panX) * tSize, (y - state.panY) * tSize, tSize + 1.5, tSize + 1.5);
+    const corners = [[0, 0], [W, 0], [0, H], [W, H]].map(([sx, sy]) => {
+      const dx = sx - ox, dy = sy - oy;
+      return { gx: (dx / hw + dy / hh) / 2, gy: (dy / hh - dx / hw) / 2 };
+    });
+    const M = 3;
+    const x0 = Math.max(0, Math.floor(Math.min(...corners.map((c) => c.gx)) - M));
+    const x1 = Math.min(gs, Math.ceil(Math.max(...corners.map((c) => c.gx)) + M));
+    const y0 = Math.max(0, Math.floor(Math.min(...corners.map((c) => c.gy)) - M));
+    const y1 = Math.min(gs, Math.ceil(Math.max(...corners.map((c) => c.gy)) + M));
+    for (let d = x0 + y0; d <= x1 + y1 - 2; d++) {
+      for (let gx = Math.max(x0, d - (y1 - 1)); gx <= Math.min(x1 - 2, d - y0); gx++) {
+        const gy = d - gx;
+        if (gy < y0 || gy >= y1 - 1) continue;
+        const h0 = m.terrain[gx]?.[gy];
+        const h1 = m.terrain[gx + 1]?.[gy];
+        const h2 = m.terrain[gx + 1]?.[gy + 1];
+        const h3 = m.terrain[gx]?.[gy + 1];
+        if (h0 === void 0 || h1 === void 0 || h2 === void 0 || h3 === void 0) continue;
+        const isWater = h0 <= wl;
+        const isSand = !isWater && (m.sand?.[gx]?.[gy] ?? 0) > 0;
+        const isPave = !isWater && (m.pavement?.[gx]?.[gy] ?? 0) > 0;
+        const topColor = isWater ? isSnow ? "#0a3060" : COLORS.water : isPave ? "#6a6a72" : isSand ? getSandColor(h0) : isSnow ? `rgb(${190 + Math.floor(h0 * 8)},${205 + Math.floor(h0 * 7)},${220 + Math.floor(h0 * 6)})` : getLandColor(h0, false);
+        const sx = toSX(gx, gy);
+        const sy = toSY(gx, gy);
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - h0 * hs);
+        ctx.lineTo(sx + hw, sy + hh - h1 * hs);
+        ctx.lineTo(sx, sy + 2 * hh - h2 * hs);
+        ctx.lineTo(sx - hw, sy + hh - h3 * hs);
+        ctx.closePath();
+        ctx.fillStyle = topColor;
+        ctx.fill();
+        if (hw > 18) {
+          ctx.strokeStyle = "rgba(0,0,0,0.08)";
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+        }
       }
     }
-    m.objects.forEach((obj, idx) => {
-      const isSelected = state.selectedObjectIdx === idx;
-      const ox = (obj.x - state.panX) * tSize;
-      const oy = (obj.y - state.panY) * tSize;
-      if (obj.type === "pad") {
-        if (isSelected) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = COLORS.padStroke;
-        }
-        ctx.fillStyle = COLORS.padFill;
-        ctx.fillRect(ox, oy, 7 * tSize, 7 * tSize);
-        ctx.strokeStyle = COLORS.padStroke;
-        ctx.strokeRect(ox, oy, 7 * tSize, 7 * tSize);
-        ctx.fillStyle = COLORS.textLight;
-        ctx.beginPath();
-        ctx.arc(ox + 3.5 * tSize, oy + 3.5 * tSize, Math.max(4, tSize / 2), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        if (m.spawnObject === "pad") {
-          ctx.fillStyle = COLORS.uiHighlight;
-          ctx.font = "bold 12px monospace";
-          ctx.fillText("START", ox, oy - 5);
-        }
-        if (isSelected && pUI) {
-          pUI.style.display = "block";
-          pUI.style.left = Math.min(600 - 150, Math.max(0, ox + 8 * tSize + 10)) + "px";
-          pUI.style.top = Math.min(600 - 100, Math.max(0, oy)) + "px";
-          const btn = document.getElementById("btn_spawn_pad");
-          if (btn) btn.style.background = m.spawnObject === "pad" ? COLORS.uiHighlight : "var(--accent)";
-        }
-      } else if (obj.type === "carrier" || obj.type === "boat" || obj.type === "pilot_boat" || obj.type === "sar_boat" || obj.type === "salvage_tug" || obj.type === "supply_vessel" || obj.type === "frigate") {
-        const isCarrier = obj.type === "carrier";
-        const rad = obj.angle * Math.PI / 180;
-        ctx.save();
-        ctx.setLineDash([5, 5]);
-        ctx.strokeStyle = isCarrier ? COLORS.carrierPath : "#4af";
-        if (obj.path === "straight") {
-          ctx.beginPath();
-          ctx.moveTo(ox, oy);
-          ctx.lineTo(ox + Math.cos(rad) * 1e3, oy + Math.sin(rad) * 1e3);
-          ctx.stroke();
-        } else if (obj.path === "circle") {
-          const rX = obj.radius * tSize;
-          const rY = rX * 0.8;
-          const t0 = Math.atan2(-Math.cos(rad) / rX, Math.sin(rad) / rY);
-          const centerGridX = obj.x - Math.cos(t0) * obj.radius;
-          const centerGridY = obj.y - Math.sin(t0) * obj.radius * 0.8;
-          const c_px = (centerGridX - state.panX) * tSize;
-          const c_py = (centerGridY - state.panY) * tSize;
-          ctx.beginPath();
-          ctx.ellipse(c_px, c_py, rX, rY, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.fillStyle = isCarrier ? COLORS.carrierPath : "#4af";
-          ctx.fillRect(c_px - 3, c_py - 3, 6, 6);
-        }
-        ctx.restore();
-        ctx.save();
-        ctx.translate(ox, oy);
-        ctx.rotate(rad);
-        if (isSelected) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = COLORS.textLight;
-        }
-        if (isCarrier) {
-          ctx.fillStyle = COLORS.carrierBase;
-          ctx.fillRect(-8 * tSize, -3.5 * tSize, 16 * tSize, 7 * tSize);
-          ctx.fillStyle = COLORS.carrierAccent;
-          ctx.beginPath();
-          ctx.moveTo(8 * tSize, 0);
-          ctx.lineTo(5 * tSize, -3.5 * tSize);
-          ctx.lineTo(5 * tSize, 3.5 * tSize);
-          ctx.fill();
-        } else if (obj.type === "pilot_boat") {
-          ctx.fillStyle = "#ffcc00";
-          ctx.fillRect(-1.61 * tSize, -0.7 * tSize, 2.32 * tSize, 1.4 * tSize);
-          ctx.fillStyle = "#eebb00";
-          ctx.beginPath();
-          ctx.moveTo(0.71 * tSize, -0.7 * tSize);
-          ctx.lineTo(1.75 * tSize, 0);
-          ctx.lineTo(0.71 * tSize, 0.7 * tSize);
-          ctx.fill();
-          ctx.fillStyle = "#444";
-          ctx.fillRect(-0.56 * tSize, -0.42 * tSize, 0.84 * tSize, 0.84 * tSize);
-        } else if (obj.type === "sar_boat") {
-          ctx.fillStyle = "#d32f2f";
-          ctx.fillRect(-1.61 * tSize, -0.7 * tSize, 2.32 * tSize, 1.4 * tSize);
-          ctx.fillStyle = "#b71c1c";
-          ctx.beginPath();
-          ctx.moveTo(0.71 * tSize, -0.7 * tSize);
-          ctx.lineTo(1.75 * tSize, 0);
-          ctx.lineTo(0.71 * tSize, 0.7 * tSize);
-          ctx.fill();
-          ctx.fillStyle = "#e6e6e6";
-          ctx.fillRect(-0.56 * tSize, -0.28 * tSize, 0.91 * tSize, 0.56 * tSize);
-        } else if (obj.type === "salvage_tug") {
-          ctx.fillStyle = "#888";
-          ctx.fillRect(-2.5 * tSize, -1.2 * tSize, 5.7 * tSize, 2.4 * tSize);
-          ctx.fillStyle = "#aaa";
-          ctx.beginPath();
-          ctx.moveTo(3.2 * tSize, -1.2 * tSize);
-          ctx.lineTo(3.8 * tSize, 0);
-          ctx.lineTo(3.2 * tSize, 1.2 * tSize);
-          ctx.fill();
-          ctx.fillStyle = "#eee";
-          ctx.fillRect(1 * tSize, -0.8 * tSize, 1.2 * tSize, 1.6 * tSize);
-        } else if (obj.type === "supply_vessel") {
-          ctx.fillStyle = "#0d233a";
-          ctx.fillRect(-3.5 * tSize, -1.2 * tSize, 6.9 * tSize, 2.4 * tSize);
-          ctx.fillStyle = "#1a3050";
-          ctx.beginPath();
-          ctx.moveTo(3.2 * tSize, -1.2 * tSize);
-          ctx.lineTo(3.8 * tSize, 0);
-          ctx.lineTo(3.2 * tSize, 1.2 * tSize);
-          ctx.fill();
-          ctx.fillStyle = "#ffcd07";
-          ctx.fillRect(0.2 * tSize, -0.9 * tSize, 2.3 * tSize, 1.8 * tSize);
-        } else if (obj.type === "frigate") {
-          ctx.fillStyle = "#5a6673";
-          ctx.fillRect(-6 * tSize, -1.8 * tSize, 12 * tSize, 3.6 * tSize);
-          ctx.fillStyle = "#7a8899";
-          ctx.beginPath();
-          ctx.moveTo(6 * tSize, 0);
-          ctx.lineTo(4 * tSize, -1.8 * tSize);
-          ctx.lineTo(4 * tSize, 1.8 * tSize);
-          ctx.fill();
-          ctx.fillStyle = "#8899aa";
-          ctx.fillRect(0.3 * tSize, -1.4 * tSize, 2.5 * tSize, 2.8 * tSize);
-          ctx.strokeStyle = "#ffffff";
-          ctx.lineWidth = Math.max(1, tSize * 0.15);
-          ctx.strokeRect(-5 * tSize, -1 * tSize, 2.5 * tSize, 2 * tSize);
-        } else {
-          ctx.fillStyle = "#ddd";
-          ctx.beginPath();
-          ctx.moveTo(5 * tSize, 0);
-          ctx.lineTo(-4 * tSize, -2 * tSize);
-          ctx.lineTo(-4 * tSize, 2 * tSize);
-          ctx.closePath();
-          ctx.fill();
-          ctx.fillStyle = "#fff";
-          ctx.fillRect(-4 * tSize, -0.3 * tSize, 9 * tSize, 0.6 * tSize);
-          ctx.strokeStyle = "#bbb";
-          ctx.lineWidth = Math.max(1, tSize * 0.3);
-          ctx.beginPath();
-          ctx.moveTo(0, 0);
-          ctx.lineTo(0, -6 * tSize);
-          ctx.stroke();
-        }
-        ctx.shadowBlur = 0;
-        ctx.translate(0, 0);
-        ctx.rotate(-rad);
-        ctx.fillStyle = COLORS.textDark;
-        ctx.font = "bold 11px monospace";
-        ctx.fillText(obj.speed + "kn", -15, 4);
-        if (m.spawnObject === obj.type) {
-          ctx.fillStyle = COLORS.uiHighlight;
-          ctx.fillText("START", -15, -15);
-        }
-        ctx.restore();
-        if (isSelected) {
-          const panel = isCarrier ? cUI : bUI;
-          if (panel) {
-            panel.style.display = "block";
-            panel.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + "px";
-            panel.style.top = Math.min(600 - 200, Math.max(0, oy + 20)) + "px";
-            syncVesselUI(obj, isCarrier ? "carrier" : "boat");
-            if (isCarrier) {
-              const btn = document.getElementById("btn_spawn_carrier");
-              if (btn)
-                btn.style.background = m.spawnObject === "carrier" ? COLORS.uiHighlight : "var(--accent)";
-            }
-          }
-        }
-      } else if (obj.type === "submarine") {
-        const rad = obj.angle * Math.PI / 180;
-        ctx.save();
-        ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = "#666";
-        if (obj.path === "straight") {
-          ctx.beginPath();
-          ctx.moveTo(ox, oy);
-          ctx.lineTo(ox + Math.cos(rad) * 1e3, oy + Math.sin(rad) * 1e3);
-          ctx.stroke();
-        } else if (obj.path === "circle") {
-          const rX = obj.radius * tSize, rY = rX * 0.8;
-          const t0 = Math.atan2(-Math.cos(rad) / rX, Math.sin(rad) / rY);
-          const c_px = (obj.x - Math.cos(t0) * obj.radius - state.panX) * tSize;
-          const c_py = (obj.y - Math.sin(t0) * obj.radius * 0.8 - state.panY) * tSize;
-          ctx.beginPath();
-          ctx.ellipse(c_px, c_py, rX, rY, 0, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-        ctx.restore();
-        ctx.save();
-        ctx.translate(ox, oy);
-        ctx.rotate(rad);
-        if (isSelected) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "#aaa";
-        }
-        ctx.fillStyle = "#111";
-        ctx.beginPath();
-        ctx.moveTo(6 * tSize, 0);
-        ctx.lineTo(4 * tSize, -1.2 * tSize);
-        ctx.lineTo(-5 * tSize, -1.2 * tSize);
-        ctx.lineTo(-5.5 * tSize, 0);
-        ctx.lineTo(-5 * tSize, 1.2 * tSize);
-        ctx.lineTo(4 * tSize, 1.2 * tSize);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = "#222";
-        ctx.fillRect(0.5 * tSize, -0.5 * tSize, 1.8 * tSize, 1 * tSize);
-        ctx.shadowBlur = 0;
-        ctx.rotate(-rad);
-        ctx.fillStyle = "#999";
-        ctx.font = "bold 11px monospace";
-        ctx.fillText(obj.speed + "kn", -15, 4);
-        ctx.restore();
-        if (isSelected && sUI) {
-          sUI.style.display = "block";
-          sUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + "px";
-          sUI.style.top = Math.min(600 - 150, Math.max(0, oy + 20)) + "px";
-          syncVesselUI(obj, "submarine");
-        }
-      } else if (obj.type === "lighthouse") {
-        const lx = (obj.x + 0.5 - state.panX) * tSize;
-        const ly = (obj.y + 0.5 - state.panY) * tSize;
-        ctx.fillStyle = COLORS.lighthouseBase;
-        ctx.beginPath();
-        ctx.arc(lx, ly, tSize * 0.8, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = COLORS.lighthouseLight;
-        ctx.beginPath();
-        ctx.arc(lx, ly, tSize * 0.4, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (obj.type === "research_platform") {
-        const rx = (obj.x - state.panX) * tSize;
-        const ry = (obj.y - state.panY) * tSize;
-        if (isSelected) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "#4af";
-        }
-        ctx.fillStyle = "#ffcc00";
-        ctx.fillRect(rx - 0.4 * tSize, ry - 0.4 * tSize, 0.8 * tSize, 0.8 * tSize);
-        ctx.fillStyle = "#666";
-        ctx.fillRect(rx - 1.5 * tSize, ry - 1.5 * tSize, 3 * tSize, 3 * tSize);
-        ctx.fillStyle = "#2a8f2a";
-        ctx.fillRect(rx - 3.5 * tSize, ry - 1.2 * tSize, 2 * tSize, 2.4 * tSize);
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = Math.max(1, tSize * 0.2);
-        ctx.beginPath();
-        ctx.moveTo(rx - 3.1 * tSize, ry - 0.7 * tSize);
-        ctx.lineTo(rx - 3.1 * tSize, ry + 0.7 * tSize);
-        ctx.moveTo(rx - 2.4 * tSize, ry - 0.7 * tSize);
-        ctx.lineTo(rx - 2.4 * tSize, ry + 0.7 * tSize);
-        ctx.moveTo(rx - 3.1 * tSize, ry);
-        ctx.lineTo(rx - 2.4 * tSize, ry);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-      } else if (obj.type === "wind_turbine") {
-        const wx = (obj.x + 0.5 - state.panX) * tSize;
-        const wy = (obj.y + 0.5 - state.panY) * tSize;
-        if (isSelected) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "#4f4";
-        }
-        ctx.fillStyle = "#ccc";
-        ctx.beginPath();
-        ctx.arc(wx, wy, tSize * 0.25, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#eee";
-        ctx.lineWidth = Math.max(1, tSize * 0.15);
-        for (let i = 0; i < 3; i++) {
-          const a = i / 3 * Math.PI * 2;
-          ctx.beginPath();
-          ctx.moveTo(wx, wy);
-          ctx.lineTo(wx + Math.cos(a) * 3 * tSize, wy + Math.sin(a) * 3 * tSize);
-          ctx.stroke();
-        }
-        ctx.fillStyle = "#ff2200";
-        ctx.beginPath();
-        ctx.arc(wx, wy - tSize * 0.35, Math.max(2, tSize * 0.18), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        if (isSelected && wtUI) {
-          wtUI.style.display = "block";
-          wtUI.style.left = Math.min(600 - 140, Math.max(0, wx + 20)) + "px";
-          wtUI.style.top = Math.min(600 - 60, Math.max(0, wy + 20)) + "px";
-          const spinEl = document.getElementById("m_wt_spinning");
-          if (spinEl) spinEl.checked = !!obj.spinning;
-        }
-      } else if (obj.type === "plane_wreck") {
-        const pw = obj;
-        const ox2 = (pw.x + 0.5 - state.panX) * tSize;
-        const oy2 = (pw.y + 0.5 - state.panY) * tSize;
-        const rad = (pw.angle ?? 0) * Math.PI / 180;
-        if (isSelected) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "#fa0";
-        }
-        ctx.save();
-        ctx.translate(ox2, oy2);
-        ctx.rotate(rad);
-        ctx.fillStyle = "#1a1612";
-        ctx.beginPath();
-        ctx.ellipse(0.3 * tSize, 0, 1.2 * tSize, 0.7 * tSize, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#d4c022";
-        ctx.fillRect(-1.5 * tSize, -0.15 * tSize, 2.8 * tSize, 0.3 * tSize);
-        ctx.fillRect(-0.4 * tSize, -1.2 * tSize, 0.35 * tSize, 2.4 * tSize);
-        ctx.fillStyle = "#cc1e00";
-        ctx.fillRect(-1.5 * tSize, -0.35 * tSize, 0.5 * tSize, 0.7 * tSize);
-        ctx.restore();
-        ctx.shadowBlur = 0;
-        if (isSelected && pwUI) {
-          pwUI.style.display = "block";
-          pwUI.style.left = Math.min(600 - 130, Math.max(0, ox2 + 20)) + "px";
-          pwUI.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
-          const angleEl = document.getElementById("m_pw_angle");
-          if (angleEl) angleEl.value = (pw.angle ?? 0).toString();
-        }
-      } else if (obj.type === "sailboat_broken") {
-        const sb = obj;
-        const ox2 = (sb.x + 0.5 - state.panX) * tSize;
-        const oy2 = (sb.y + 0.5 - state.panY) * tSize;
-        const rad = (sb.angle ?? 0) * Math.PI / 180;
-        if (isSelected) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "#fa0";
-        }
-        ctx.save();
-        ctx.translate(ox2, oy2);
-        ctx.rotate(rad);
-        ctx.fillStyle = "#933";
-        ctx.beginPath();
-        ctx.moveTo(1.2 * tSize, 0);
-        ctx.lineTo(0.2 * tSize, -0.45 * tSize);
-        ctx.lineTo(-1 * tSize, -0.35 * tSize);
-        ctx.lineTo(-1 * tSize, 0.35 * tSize);
-        ctx.lineTo(0.2 * tSize, 0.45 * tSize);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = "#a85";
-        ctx.fillRect(-0.9 * tSize, -0.3 * tSize, 2 * tSize, 0.6 * tSize);
-        ctx.fillStyle = "#aaa";
-        ctx.fillRect(-0.35 * tSize, -0.05 * tSize, 0.1 * tSize, 0.1 * tSize);
-        ctx.strokeStyle = "#bbb";
-        ctx.lineWidth = Math.max(1, tSize * 0.08);
-        ctx.beginPath();
-        ctx.moveTo(-0.3 * tSize, 0);
-        ctx.lineTo(1.1 * tSize, 0.35 * tSize);
-        ctx.stroke();
-        ctx.restore();
-        ctx.shadowBlur = 0;
-        if (isSelected && sbUI) {
-          sbUI.style.display = "block";
-          sbUI.style.left = Math.min(600 - 130, Math.max(0, ox2 + 20)) + "px";
-          sbUI.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
-          const angleEl = document.getElementById("m_sb_angle");
-          if (angleEl) angleEl.value = (sb.angle ?? 0).toString();
-        }
-      } else if (obj.type === "ornithopter_wreck") {
-        const ow = obj;
-        const ox2 = (ow.x + 0.5 - state.panX) * tSize;
-        const oy2 = (ow.y + 0.5 - state.panY) * tSize;
-        const rad = (ow.angle ?? 0) * Math.PI / 180;
-        if (isSelected) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "#fa0";
-        }
-        ctx.save();
-        ctx.translate(ox2, oy2);
-        ctx.rotate(rad);
-        ctx.fillStyle = "#1a1612";
-        ctx.beginPath();
-        ctx.ellipse(0.3 * tSize, 0, 0.9 * tSize, 0.5 * tSize, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#d0d0d0";
-        ctx.fillRect(-1.4 * tSize, -0.2 * tSize, 2.1 * tSize, 0.4 * tSize);
-        ctx.fillStyle = "#c8c8c8";
-        ctx.beginPath();
-        ctx.moveTo(0.2 * tSize, -0.25 * tSize);
-        ctx.lineTo(-0.5 * tSize, -0.22 * tSize);
-        ctx.lineTo(-0.1 * tSize, -3 * tSize);
-        ctx.lineTo(0.1 * tSize, -3 * tSize);
-        ctx.closePath();
-        ctx.fill();
-        ctx.fillStyle = "#b8b8b8";
-        ctx.beginPath();
-        ctx.moveTo(0.2 * tSize, 0.25 * tSize);
-        ctx.lineTo(-0.3 * tSize, 0.22 * tSize);
-        ctx.lineTo(-0.1 * tSize, 0.55 * tSize);
-        ctx.lineTo(0.15 * tSize, 0.5 * tSize);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = "#888";
-        ctx.lineWidth = Math.max(1, tSize * 0.06);
-        ctx.beginPath();
-        ctx.moveTo(-0.3 * tSize, 0.22 * tSize);
-        ctx.lineTo(-0.22 * tSize, 0.38 * tSize);
-        ctx.lineTo(-0.1 * tSize, 0.55 * tSize);
-        ctx.stroke();
-        ctx.save();
-        ctx.translate(-0.2 * tSize, 1.6 * tSize);
-        ctx.rotate(0.4);
-        ctx.fillStyle = "#b8b8b8";
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-0.35 * tSize, 0.08 * tSize);
-        ctx.lineTo(-0.1 * tSize, 2 * tSize);
-        ctx.lineTo(0.12 * tSize, 1.8 * tSize);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
-        const cpx = 0.68 * tSize;
-        const cpy = 0;
-        ctx.strokeStyle = "#5a9db8";
-        ctx.lineWidth = Math.max(1, tSize * 0.07);
-        ctx.beginPath();
-        ctx.ellipse(cpx, cpy, 0.22 * tSize, 0.15 * tSize, 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.strokeStyle = "#7aadcc";
-        ctx.lineWidth = Math.max(1, tSize * 0.04);
-        [0.3, 1.1, 1.9, 2.9, 3.8, 4.7, 5.6].forEach((a) => {
-          ctx.beginPath();
-          ctx.moveTo(cpx, cpy);
-          ctx.lineTo(cpx + Math.cos(a) * 0.2 * tSize, cpy + Math.sin(a) * 0.13 * tSize);
-          ctx.stroke();
-        });
-        ctx.restore();
-        ctx.shadowBlur = 0;
-        if (isSelected && owUI) {
-          owUI.style.display = "block";
-          owUI.style.left = Math.min(600 - 130, Math.max(0, ox2 + 20)) + "px";
-          owUI.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
-          const angleEl = document.getElementById("m_ow_angle");
-          if (angleEl) angleEl.value = (ow.angle ?? 0).toString();
-        }
-      } else if (obj.type === "baywatch_car") {
-        const bc = obj;
-        const ox2 = (bc.x + 0.5 - state.panX) * tSize;
-        const oy2 = (bc.y + 0.5 - state.panY) * tSize;
-        const rad = (bc.angle ?? 0) * Math.PI / 180;
-        if (isSelected) {
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = "#f44";
-        }
-        ctx.save();
-        ctx.translate(ox2, oy2);
-        ctx.rotate(rad);
-        ctx.fillStyle = "#cc2200";
-        ctx.fillRect(-0.85 * tSize, -0.425 * tSize, 1.785 * tSize, 0.85 * tSize);
-        ctx.fillStyle = "#ff4422";
-        ctx.fillRect(-0.5 * tSize, -0.6 * tSize, 1 * tSize, 0.55 * tSize);
-        ctx.restore();
-        ctx.shadowBlur = 0;
-        if (isSelected && bwcUI) {
-          bwcUI.style.display = "block";
-          bwcUI.style.left = Math.min(600 - 140, Math.max(0, ox2 + 20)) + "px";
-          bwcUI.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
-          const el = document.getElementById("m_bwc_angle");
-          if (el) el.value = (obj.angle ?? 0).toString();
-        }
-      } else if (obj.type === "baywatch_hq") {
-        const bh = obj;
-        const ox2 = (bh.x + 0.5 - state.panX) * tSize;
-        const oy2 = (bh.y + 0.5 - state.panY) * tSize;
-        if (isSelected) {
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = "#f44";
-        }
-        ctx.fillStyle = "#cc2200";
-        ctx.fillRect(ox2 - 2.2 * tSize, oy2 - 1.44 * tSize, 4.84 * tSize, 2.88 * tSize);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(ox2 - 0.5 * tSize, oy2, 1 * tSize, 1.44 * tSize);
-        ctx.fillStyle = "#dd3300";
-        ctx.fillRect(ox2 - 2.2 * tSize, oy2 - 0.7 * tSize, 4.84 * tSize, 0.5 * tSize);
-        ctx.shadowBlur = 0;
-        if (isSelected && bwhUI) {
-          bwhUI.style.display = "block";
-          bwhUI.style.left = Math.min(600 - 140, Math.max(0, ox2 + 20)) + "px";
-          bwhUI.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
-        }
-      } else if (obj.type === "baywatch_tower") {
-        const bt = obj;
-        const ox2 = (bt.x + 0.5 - state.panX) * tSize;
-        const oy2 = (bt.y + 0.5 - state.panY) * tSize;
-        if (isSelected) {
-          ctx.shadowBlur = 8;
-          ctx.shadowColor = "#f44";
-        }
-        ctx.fillStyle = "#d8d0b8";
-        ctx.fillRect(ox2 - 1.1 * tSize, oy2 - 0.9 * tSize, 3.62 * tSize, 1.8 * tSize);
-        ctx.fillStyle = "#cc2200";
-        ctx.fillRect(ox2 - 0.6 * tSize, oy2 - 0.6 * tSize, 1.1 * tSize, 1.2 * tSize);
-        ctx.fillStyle = "#e8e8e8";
-        ctx.fillRect(ox2 - 0.5 * tSize, oy2 - 0.5 * tSize, 0.9 * tSize, 1 * tSize);
-        ctx.shadowBlur = 0;
-        if (isSelected && bwtUI2) {
-          bwtUI2.style.display = "block";
-          bwtUI2.style.left = Math.min(600 - 140, Math.max(0, ox2 + 20)) + "px";
-          bwtUI2.style.top = Math.min(600 - 60, Math.max(0, oy2)) + "px";
-        }
-      } else if (obj.type === "concert_stage") {
-        ctx.fillStyle = "#7a2aee";
-        ctx.fillRect(ox - 2 * tSize, oy - 2.5 * tSize, 4 * tSize, 5 * tSize);
-        ctx.fillStyle = "#2a1040";
-        ctx.fillRect(ox - 1.5 * tSize, oy - 2 * tSize, 3 * tSize, 4 * tSize);
-        ctx.shadowBlur = 0;
-        if (isSelected && csUI) {
-          csUI.style.display = "block";
-          csUI.style.left = Math.min(600 - 140, Math.max(0, ox + 20)) + "px";
-          csUI.style.top = Math.min(600 - 60, Math.max(0, oy)) + "px";
-        }
-      } else if (obj.type === "festival_tent") {
-        const _tentVariantColors = { red: "#bb3018", green: "#2a8030" };
-        ctx.fillStyle = _tentVariantColors[obj.colorVariant] ?? "#2266cc";
-        ctx.beginPath();
-        ctx.moveTo(ox, oy - 0.7 * tSize);
-        ctx.lineTo(ox - 0.55 * tSize, oy + 0.55 * tSize);
-        ctx.lineTo(ox + 0.55 * tSize, oy + 0.55 * tSize);
-        ctx.closePath();
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        if (isSelected && ftUI) {
-          const colorSel = document.getElementById("m_tent_color");
-          if (colorSel) colorSel.value = obj.colorVariant ?? "";
-          const angEl = document.getElementById("m_tent_angle");
-          if (angEl) angEl.value = String(obj.angle ?? 0);
-          ftUI.style.display = "block";
-          ftUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + "px";
-          ftUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + "px";
-        }
-      } else if (obj.type === "festival_tent_broken") {
-        const _tbVariantColors = { red: "#884422", green: "#335533" };
-        ctx.fillStyle = _tbVariantColors[obj.colorVariant] ?? "#6688aa";
-        ctx.beginPath();
-        ctx.moveTo(ox - 0.7 * tSize, oy);
-        ctx.lineTo(ox, oy - 0.25 * tSize);
-        ctx.lineTo(ox + 0.7 * tSize, oy);
-        ctx.lineTo(ox, oy + 0.15 * tSize);
-        ctx.closePath();
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        if (isSelected && ftbUI) {
-          const colorSel = document.getElementById("m_tent_broken_color");
-          if (colorSel) colorSel.value = obj.colorVariant ?? "";
-          const angEl = document.getElementById("m_tent_broken_angle");
-          if (angEl) angEl.value = String(obj.angle ?? 0);
-          ftbUI.style.display = "block";
-          ftbUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + "px";
-          ftbUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + "px";
-        }
-      } else if (obj.type === "festival_car") {
-        const _carVariantColors = {
-          red: "#cc2020",
-          blue: "#204499",
-          black: "#333",
-          yellow: "#cc9900"
-        };
-        ctx.fillStyle = _carVariantColors[obj.colorVariant] ?? "#9aabb5";
-        ctx.fillRect(ox - 0.9 * tSize, oy - 0.5 * tSize, 1.8 * tSize, tSize);
-        ctx.shadowBlur = 0;
-        if (isSelected && fcUI) {
-          const colorSel = document.getElementById("m_fcar_color");
-          if (colorSel) colorSel.value = obj.colorVariant ?? "";
-          const angleEl = document.getElementById("m_fcar_angle");
-          if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
-          fcUI.style.display = "block";
-          fcUI.style.left = Math.min(600 - 180, Math.max(0, ox + 20)) + "px";
-          fcUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + "px";
-        }
-      } else if (obj.type === "xmas_house_a" || obj.type === "xmas_house_b") {
-        const rad = (obj.angle ?? 0) * Math.PI / 180;
-        if (isSelected) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "#aaddff";
-        }
-        ctx.save();
-        ctx.translate(ox, oy);
-        ctx.rotate(rad);
-        ctx.fillStyle = obj.type === "xmas_house_a" ? "#aaddff" : "#88bbee";
-        ctx.fillRect(-tSize, -tSize * 1.2, tSize * 2, tSize * 1.2);
-        ctx.restore();
-        ctx.shadowBlur = 0;
-        if (isSelected && xhUI) {
-          const typeSel = document.getElementById("m_xmas_house_type");
-          if (typeSel) typeSel.value = obj.type;
-          const angleEl = document.getElementById("m_xmas_house_angle");
-          if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
-          xhUI.style.display = "block";
-          xhUI.style.left = Math.min(600 - 170, Math.max(0, ox + 20)) + "px";
-          xhUI.style.top = Math.min(600 - 90, Math.max(0, oy)) + "px";
-        }
-      } else if (obj.type === "xmas_lantern") {
-        const rad = (obj.angle ?? 0) * Math.PI / 180;
-        if (isSelected) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "#ffee88";
-        }
-        ctx.save();
-        ctx.translate(ox, oy);
-        ctx.rotate(rad);
-        ctx.fillStyle = "#ffee88";
-        ctx.beginPath();
-        ctx.arc(0, -0.4 * tSize, Math.max(4, tSize * 0.3), 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        ctx.shadowBlur = 0;
-        if (isSelected && xlUI) {
-          const angleEl = document.getElementById("m_xmas_lantern_angle");
-          if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
-          xlUI.style.display = "block";
-          xlUI.style.left = Math.min(600 - 160, Math.max(0, ox + 20)) + "px";
-          xlUI.style.top = Math.min(600 - 80, Math.max(0, oy)) + "px";
-        }
-      } else if (obj.type === "sleigh") {
-        const rad = (obj.angle ?? 0) * Math.PI / 180;
-        if (isSelected) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "#ee3300";
-        }
-        ctx.save();
-        ctx.translate(ox, oy);
-        ctx.rotate(rad);
-        ctx.fillStyle = "#ee3300";
-        ctx.fillRect(-tSize * 0.8, -0.3 * tSize, tSize * 1.6, tSize * 0.6);
-        ctx.restore();
-        ctx.shadowBlur = 0;
-        if (isSelected && slUI) {
-          const angleEl = document.getElementById("m_sleigh_angle");
-          if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
-          slUI.style.display = "block";
-          slUI.style.left = Math.min(600 - 160, Math.max(0, ox + 20)) + "px";
-          slUI.style.top = Math.min(600 - 80, Math.max(0, oy)) + "px";
-        }
-      } else if (obj.type === "reindeer") {
-        const rad = (obj.angle ?? 0) * Math.PI / 180;
-        if (isSelected) {
-          ctx.shadowBlur = 10;
-          ctx.shadowColor = "#cc8844";
-        }
-        ctx.save();
-        ctx.translate(ox, oy);
-        ctx.rotate(rad);
-        ctx.fillStyle = "#cc8844";
-        ctx.fillRect(-tSize * 0.6, -0.3 * tSize, tSize * 1.2, tSize * 0.6);
-        ctx.restore();
-        ctx.shadowBlur = 0;
-        if (isSelected && rdUI) {
-          const angleEl = document.getElementById("m_reindeer_angle");
-          if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
-          rdUI.style.display = "block";
-          rdUI.style.left = Math.min(600 - 160, Math.max(0, ox + 20)) + "px";
-          rdUI.style.top = Math.min(600 - 80, Math.max(0, oy)) + "px";
-        }
-      } else if (obj.type === "ring") {
-        const r = (obj.radius ?? 2.5) * tSize;
-        const angle = obj.angle ?? 0;
-        ctx.save();
-        if (isSelected) {
-          ctx.shadowBlur = 12;
-          ctx.shadowColor = "#FFD700";
-        }
-        ctx.strokeStyle = isSelected ? "#fff" : "#FFD700";
-        ctx.lineWidth = isSelected ? 2.5 : 1.5;
-        ctx.beginPath();
-        ctx.arc(ox, oy, r, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.strokeStyle = "#FFD700";
-        ctx.lineWidth = 1;
-        ctx.globalAlpha = 0.6;
-        ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        ctx.moveTo(ox - Math.cos(angle) * r, oy - Math.sin(angle) * r);
-        ctx.lineTo(ox + Math.cos(angle) * r, oy + Math.sin(angle) * r);
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.globalAlpha = 1;
-        ctx.shadowBlur = 0;
-        ctx.restore();
-      }
-    });
-    const payloads = m.payloads || [];
-    payloads.forEach((p, idx) => {
-      const px = (p.x + 0.5 - state.panX) * tSize;
-      const py = (p.y + 0.5 - state.panY) * tSize;
-      const r = Math.max(5, tSize * 0.7);
-      const isAttached = !!p.attachTo;
-      const isSelectedPayload = state.selectedPayloadIdx === idx;
-      if (isSelectedPayload) {
-        ctx.shadowBlur = 12;
-        ctx.shadowColor = "#fff";
-      }
-      if (p.type === "person") {
-        ctx.fillStyle = isAttached ? "#88ffcc" : "#ffe033";
-        ctx.beginPath();
-        ctx.arc(px, py, r * 0.45, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#ffe033";
-        ctx.beginPath();
-        ctx.arc(px, py - r * 0.65, r * 0.28, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#cc9900";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(px, py, r * 0.45, 0, Math.PI * 2);
-        ctx.stroke();
-      } else if (p.type === "rescuer") {
-        ctx.fillStyle = isAttached ? "#88ddff" : "#ff6600";
-        ctx.beginPath();
-        ctx.arc(px, py, r * 0.45, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = "#ffffff";
-        ctx.beginPath();
-        ctx.arc(px, py - r * 0.65, r * 0.28, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.strokeStyle = "#cc3300";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(px, py, r * 0.45, 0, Math.PI * 2);
-        ctx.stroke();
-      } else if (p.type === "reindeer") {
-        ctx.fillStyle = isAttached ? "#eebb88" : "#cc8844";
-        ctx.fillRect(px - r * 0.7, py - r * 0.3, r * 1.4, r * 0.6);
-        ctx.fillStyle = "#cc8844";
-        ctx.beginPath();
-        ctx.arc(px + r * 0.5, py - r * 0.4, r * 0.25, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (p.type === "crate") {
-        const s = r * 0.85;
-        ctx.fillStyle = isAttached ? "#44ccff" : "#ff8800";
-        ctx.fillRect(px - s / 2, py - s / 2, s, s);
-        ctx.strokeStyle = "#cc5500";
-        ctx.lineWidth = 1.5;
-        ctx.strokeRect(px - s / 2, py - s / 2, s, s);
-        ctx.beginPath();
-        ctx.moveTo(px - s / 2, py - s / 2);
-        ctx.lineTo(px + s / 2, py + s / 2);
-        ctx.moveTo(px + s / 2, py - s / 2);
-        ctx.lineTo(px - s / 2, py + s / 2);
-        ctx.strokeStyle = "#cc5500";
-        ctx.lineWidth = 1;
-        ctx.stroke();
-      }
-      ctx.shadowBlur = 0;
-      if (isSelectedPayload && state.moveMode) {
-        ctx.strokeStyle = "#fff";
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        ctx.arc(px, py, r * 1.2, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-      if (!p.npcTarget) {
-        ctx.fillStyle = "#fff";
-        ctx.font = `bold ${Math.max(8, tSize * 0.55)}px monospace`;
-        ctx.textAlign = "center";
-        ctx.fillText(String(idx + 1), px, py + r * 1.5);
-        ctx.textAlign = "left";
-      }
-    });
-    const foliage = m.foliage || [];
     const treeColors = {
       pine: "#1a5a1a",
       oak: "#2a6a1a",
@@ -940,101 +277,416 @@
       beach_person: "#e8c090",
       swimmer: "#1a88cc"
     };
+    const foliage = m.foliage || [];
     foliage.forEach((f) => {
-      const fx = (f.x - state.panX) * tSize;
-      const fy = (f.y - state.panY) * tSize;
-      const r = Math.max(3, tSize * 0.6 * (f.s || 1));
+      const { sx, sy } = { sx: toSX(f.x, f.y) + hw * 0.5, sy: toSY(f.x, f.y) + hh * 0.5 };
+      const r = Math.max(2, hw * 0.45 * (f.s || 1));
       ctx.fillStyle = treeColors[f.type] || "#1a5a1a";
       ctx.beginPath();
-      ctx.arc(fx, fy, r, 0, Math.PI * 2);
+      ctx.ellipse(sx, sy, r, r * 0.55, 0, 0, Math.PI * 2);
       ctx.fill();
-      if (f.type === "dead") {
-        ctx.strokeStyle = "#8a6a4a";
-        ctx.lineWidth = 1;
+    });
+    m.objects.forEach((obj, idx) => {
+      const isSel = state.selectedObjectIdx === idx;
+      const cx = toSX(obj.x + 0.5, obj.y + 0.5);
+      const cy = toSY(obj.x + 0.5, obj.y + 0.5);
+      if (isSel) {
+        ctx.shadowBlur = 14;
+        ctx.shadowColor = "#fff";
+      }
+      if (obj.type === "pad") {
+        const tl = { sx: toSX(obj.x, obj.y), sy: toSY(obj.x, obj.y) };
+        const tr = { sx: toSX(obj.x + 7, obj.y), sy: toSY(obj.x + 7, obj.y) };
+        const br = { sx: toSX(obj.x + 7, obj.y + 7), sy: toSY(obj.x + 7, obj.y + 7) };
+        const bl = { sx: toSX(obj.x, obj.y + 7), sy: toSY(obj.x, obj.y + 7) };
+        ctx.beginPath();
+        ctx.moveTo(tl.sx, tl.sy);
+        ctx.lineTo(tr.sx, tr.sy);
+        ctx.lineTo(br.sx, br.sy);
+        ctx.lineTo(bl.sx, bl.sy);
+        ctx.closePath();
+        ctx.fillStyle = COLORS.padFill + "cc";
+        ctx.fill();
+        ctx.strokeStyle = COLORS.padStroke;
+        ctx.lineWidth = 1.5;
         ctx.stroke();
+        ctx.fillStyle = "#fff";
+        ctx.font = `bold ${Math.max(9, hw * 1)}px monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        const midX = (tl.sx + br.sx) / 2, midY = (tl.sy + br.sy) / 2;
+        ctx.fillText("H", midX, midY);
+        ctx.textBaseline = "alphabetic";
+        ctx.textAlign = "left";
+        if (m.spawnObject === "pad") _drawDolphin(ctx, midX, midY, 0, hw, hh);
+        if (isSel) _showObjPanel("ui_pad");
+        if (isSel) {
+          const btn = document.getElementById("btn_spawn_pad");
+          if (btn) btn.style.background = m.spawnObject === "pad" ? COLORS.uiHighlight : "var(--accent)";
+        }
+      } else if (obj.type === "carrier" || obj.type === "boat" || obj.type === "pilot_boat" || obj.type === "sar_boat" || obj.type === "salvage_tug" || obj.type === "supply_vessel" || obj.type === "frigate") {
+        const isCarrier = obj.type === "carrier";
+        const color = isCarrier ? COLORS.carrierBase : obj.type === "pilot_boat" ? "#ffcc00" : obj.type === "sar_boat" ? "#d32f2f" : obj.type === "salvage_tug" ? "#888" : obj.type === "supply_vessel" ? "#0d233a" : obj.type === "frigate" ? "#5a6673" : "#ddd";
+        const rad = Math.max(4, hw * (isCarrier ? 1.4 : 0.8));
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rad, rad * 0.6, 0, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        if (isSel) {
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+        _isoArrow(ctx, cx, cy, obj.angle ?? 0, hw, hh, hw * 2.2, "#fff");
+        if (obj.path === "circle") {
+          const r = obj.radius ?? 40;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, r * hw, r * hh * 0.9, 0, 0, Math.PI * 2);
+          ctx.strokeStyle = isCarrier ? COLORS.carrierPath + "88" : "#4af8";
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+        if (m.spawnObject === obj.type) _drawDolphin(ctx, cx, cy, 0, hw, hh);
+        if (isSel) {
+          _showObjPanel(isCarrier ? "ui_carrier" : "ui_boat");
+          syncVesselUI(obj, isCarrier ? "carrier" : "boat");
+          if (isCarrier) {
+            const btn = document.getElementById("btn_spawn_carrier");
+            if (btn) btn.style.background = m.spawnObject === "carrier" ? COLORS.uiHighlight : "var(--accent)";
+          }
+        }
+      } else if (obj.type === "submarine") {
+        const rad = Math.max(3, hw * 0.7);
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, rad, rad * 0.55, 0, 0, Math.PI * 2);
+        ctx.fillStyle = "#111c";
+        ctx.fill();
+        if (isSel) {
+          ctx.strokeStyle = "#aaa";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+        _isoArrow(ctx, cx, cy, obj.angle ?? 0, hw, hh, hw * 1.8, "#888");
+        if (isSel) {
+          _showObjPanel("ui_submarine");
+          syncVesselUI(obj, "submarine");
+        }
+      } else if (obj.type === "lighthouse") {
+        ctx.beginPath();
+        ctx.arc(cx, cy, Math.max(3, hw * 0.7), 0, Math.PI * 2);
+        ctx.fillStyle = COLORS.lighthouseBase;
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(cx, cy, Math.max(2, hw * 0.35), 0, Math.PI * 2);
+        ctx.fillStyle = COLORS.lighthouseLight;
+        ctx.fill();
+      } else if (obj.type === "research_platform") {
+        const r = hw * 1.2;
+        _isoDiamond(ctx, cx - hw * 0.5, cy - hh * 0.5, r, r * 0.5, "#666", "#4af");
+        ctx.fillStyle = "#2a8f2a";
+        ctx.fillRect(cx - r, cy - hh * 0.3, r * 0.8, hh * 0.6);
+        ctx.fillStyle = "#fff";
+        ctx.font = `bold ${Math.max(7, hw * 0.55)}px monospace`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("H", cx - r * 0.6, cy);
+        ctx.textBaseline = "alphabetic";
+        ctx.textAlign = "left";
+      } else if (obj.type === "wind_turbine") {
+        ctx.beginPath();
+        ctx.arc(cx, cy, Math.max(2, hw * 0.22), 0, Math.PI * 2);
+        ctx.fillStyle = "#ccc";
+        ctx.fill();
+        ctx.strokeStyle = "#eee";
+        ctx.lineWidth = Math.max(1, hw * 0.12);
+        for (let i = 0; i < 3; i++) {
+          const a = i / 3 * Math.PI * 2;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(cx + Math.cos(a) * hw * 2.2, cy + Math.sin(a) * hh * 2.2);
+          ctx.stroke();
+        }
+        ctx.fillStyle = "#f22";
+        ctx.beginPath();
+        ctx.arc(cx, cy - hw * 0.3, Math.max(2, hw * 0.15), 0, Math.PI * 2);
+        ctx.fill();
+        if (isSel) {
+          _showObjPanel("ui_wt");
+          const spinEl = document.getElementById("m_wt_spinning");
+          if (spinEl) spinEl.checked = !!obj.spinning;
+        }
+      } else {
+        const typeColors = {
+          plane_wreck: "#d4c022",
+          sailboat_broken: "#933",
+          ornithopter_wreck: "#d0d0d0",
+          baywatch_car: "#cc2200",
+          baywatch_hq: "#cc2200",
+          baywatch_tower: "#d8d0b8",
+          concert_stage: "#7a2aee",
+          festival_tent: "#2266cc",
+          festival_tent_broken: "#6688aa",
+          festival_car: "#9aabb5",
+          xmas_house_a: "#aaddff",
+          xmas_house_b: "#88bbee",
+          xmas_lantern: "#ffee88",
+          sleigh: "#ee3300",
+          reindeer: "#cc8844",
+          ring: "#FFD700"
+        };
+        const color = typeColors[obj.type] || "#aaa";
+        const r = Math.max(3, hw * 0.65);
+        if (obj.type === "ring") {
+          const rr = (obj.radius ?? 2.5) * hw;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rr, rr * 0.55, 0, 0, Math.PI * 2);
+          ctx.strokeStyle = isSel ? "#fff" : color;
+          ctx.lineWidth = isSel ? 2.5 : 1.5;
+          ctx.stroke();
+        } else {
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, r, r * 0.55, 0, 0, Math.PI * 2);
+          ctx.fillStyle = color + "cc";
+          ctx.fill();
+          if (isSel) {
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+          if (obj.angle !== void 0) {
+            _isoArrow(ctx, cx, cy, obj.angle, hw, hh, hw * 1.6, "#fff");
+          }
+        }
+        const panelMap = {
+          plane_wreck: "ui_plane_wreck",
+          sailboat_broken: "ui_sailboat_broken",
+          ornithopter_wreck: "ui_ornithopter_wreck",
+          baywatch_car: "ui_baywatch_car",
+          baywatch_hq: "ui_baywatch_hq",
+          baywatch_tower: "ui_baywatch_tower",
+          concert_stage: "ui_concert_stage",
+          festival_tent: "ui_festival_tent",
+          festival_tent_broken: "ui_festival_tent_broken",
+          festival_car: "ui_festival_car",
+          xmas_house_a: "ui_xmas_house",
+          xmas_house_b: "ui_xmas_house",
+          xmas_lantern: "ui_xmas_lantern",
+          sleigh: "ui_sleigh",
+          reindeer: "ui_reindeer"
+        };
+        if (isSel && panelMap[obj.type]) {
+          _showObjPanel(panelMap[obj.type]);
+          const angleId = obj.type === "xmas_house_a" || obj.type === "xmas_house_b" ? "m_xmas_house_angle" : obj.type === "festival_tent" ? "m_tent_angle" : obj.type === "festival_tent_broken" ? "m_tent_broken_angle" : obj.type === "festival_car" ? "m_fcar_angle" : `m_${obj.type.replace("_wreck", "_wreck").replace("baywatch_car", "bwc").replace("baywatch_hq", "").replace("baywatch_tower", "")}_angle`;
+          const simpleId = {
+            plane_wreck: "m_pw_angle",
+            sailboat_broken: "m_sb_angle",
+            ornithopter_wreck: "m_ow_angle",
+            baywatch_car: "m_bwc_angle",
+            xmas_lantern: "m_xmas_lantern_angle",
+            sleigh: "m_sleigh_angle",
+            reindeer: "m_reindeer_angle"
+          };
+          const aEl = document.getElementById(simpleId[obj.type] || "");
+          if (aEl) aEl.value = (obj.angle ?? 0).toString();
+          if (obj.type === "xmas_house_a" || obj.type === "xmas_house_b") {
+            const typeSel = document.getElementById("m_xmas_house_type");
+            if (typeSel) typeSel.value = obj.type;
+          }
+          if (obj.type === "festival_tent" || obj.type === "festival_tent_broken") {
+            const cid = obj.type === "festival_tent" ? "m_tent_color" : "m_tent_broken_color";
+            const cEl = document.getElementById(cid);
+            if (cEl) cEl.value = obj.colorVariant ?? "";
+            const aEl2 = document.getElementById(obj.type === "festival_tent" ? "m_tent_angle" : "m_tent_broken_angle");
+            if (aEl2) aEl2.value = String(obj.angle ?? 0);
+          }
+          if (obj.type === "festival_car") {
+            const cEl = document.getElementById("m_fcar_color");
+            if (cEl) cEl.value = obj.colorVariant ?? "";
+            const aEl2 = document.getElementById("m_fcar_angle");
+            if (aEl2) aEl2.value = (obj.angle ?? 0).toString();
+          }
+        }
+      }
+      ctx.shadowBlur = 0;
+      if (hw > 10) {
+        ctx.fillStyle = isSel ? "#fff" : "rgba(255,255,255,0.65)";
+        ctx.font = `${Math.max(8, hw * 0.7)}px monospace`;
+        ctx.textAlign = "center";
+        ctx.fillText(obj.type, cx, cy - Math.max(6, hw * 0.9));
+        ctx.textAlign = "left";
       }
     });
+    const payloads = m.payloads || [];
+    payloads.forEach((p, idx) => {
+      const { sx: px, sy: py } = { sx: toSX(p.x + 0.5, p.y + 0.5), sy: toSY(p.x + 0.5, p.y + 0.5) };
+      const r = Math.max(4, hw * 0.6);
+      const isAtt = !!p.attachTo;
+      const isSel = state.selectedPayloadIdx === idx;
+      if (isSel) {
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#fff";
+      }
+      const colors = {
+        person: [isAtt ? "#88ffcc" : "#ffe033", "#cc9900"],
+        rescuer: [isAtt ? "#88ddff" : "#ff6600", "#cc3300"],
+        reindeer: [isAtt ? "#eebb88" : "#cc8844", "#aa6622"],
+        crate: [isAtt ? "#44ccff" : "#ff8800", "#cc5500"]
+      };
+      const [fill, stroke] = colors[p.type] || ["#aaa", "#888"];
+      ctx.beginPath();
+      ctx.ellipse(px, py, r * 0.8, r * 0.5, 0, 0, Math.PI * 2);
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+      if (!p.npcTarget) {
+        ctx.fillStyle = "#fff";
+        ctx.font = `bold ${Math.max(7, hw * 0.5)}px monospace`;
+        ctx.textAlign = "center";
+        ctx.fillText(String(idx + 1), px, py + r * 1.3);
+        ctx.textAlign = "left";
+      }
+      ctx.shadowBlur = 0;
+    });
     (m.particleEmitters || []).forEach((e) => {
-      const ex = (e.x - state.panX) * tSize;
-      const ey = (e.y - state.panY) * tSize;
-      const r = Math.max(4, tSize * 0.5);
+      const ex = toSX(e.x + 0.5, e.y + 0.5);
+      const ey = toSY(e.x + 0.5, e.y + 0.5);
+      const r = Math.max(4, hw * 0.45);
       const isFire = e.type === "fire";
       ctx.globalAlpha = 0.35;
-      ctx.fillStyle = isFire ? "#ff6600" : "#888888";
+      ctx.fillStyle = isFire ? "#ff6600" : "#888";
       ctx.beginPath();
-      ctx.arc(ex, ey, r * 1.8, 0, Math.PI * 2);
+      ctx.ellipse(ex, ey, r * 1.8, r, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
-      ctx.fillStyle = isFire ? "#ff4400" : "#666666";
+      ctx.fillStyle = isFire ? "#ff4400" : "#666";
       ctx.beginPath();
-      ctx.arc(ex, ey, r, 0, Math.PI * 2);
+      ctx.ellipse(ex, ey, r, r * 0.6, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = "#fff";
-      ctx.font = `bold ${Math.max(8, tSize * 0.6)}px monospace`;
+      ctx.font = `${Math.max(8, hw * 0.6)}px monospace`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(isFire ? "\u{1F525}" : "\u{1F4A8}", ex, ey);
       ctx.textAlign = "left";
       ctx.textBaseline = "alphabetic";
     });
-    const dirRad = m.windDir * Math.PI / 180;
-    if (state.selectedUI === "wind") {
-      ctx.shadowBlur = 10;
-      ctx.shadowColor = COLORS.windActive;
-    }
-    ctx.fillStyle = COLORS.shadow;
+    _drawWindCompass(ctx, m, W - 60, 50);
+    _drawMinimap(ctx, m, canvas, ox, oy, hw, hh);
+  };
+  var _drawDolphin = (ctx, cx, cy, _angleDeg, hw, hh) => {
+    const s = Math.max(4, hw * 1.2);
+    ctx.save();
+    ctx.translate(cx, cy - hh * 1.8);
     ctx.beginPath();
-    ctx.arc(50, 50, 30, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, s * 1.4, s * 0.8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(255,200,50,0.18)";
     ctx.fill();
-    ctx.strokeStyle = state.selectedUI === "wind" ? COLORS.windActive : COLORS.padStroke;
+    ctx.strokeStyle = "rgba(255,200,50,0.5)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(0, 0, s * 0.55, s * 0.28, 0, 0, Math.PI * 2);
+    ctx.fillStyle = "#f90";
+    ctx.fill();
+    ctx.fillStyle = "#e80";
+    ctx.fillRect(-s * 0.5, -s * 0.08, s * 0.45, s * 0.16);
+    ctx.restore();
+    ctx.setLineDash([3, 3]);
+    ctx.strokeStyle = "rgba(255,160,0,0.5)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - hh * 1.2);
+    ctx.lineTo(cx, cy);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  };
+  var _drawWindCompass = (ctx, m, x, y) => {
+    if (!m) return;
+    const dirRad = m.windDir * Math.PI / 180;
+    const isSelWind = state.selectedUI === "wind";
+    if (isSelWind) {
+      ctx.shadowBlur = 10;
+      ctx.shadowColor = COLORS.windActive ?? "#4fc";
+      if (document.getElementById("ui_wind"))
+        _showObjPanel("ui_wind");
+    }
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.beginPath();
+    ctx.arc(x, y, 26, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = isSelWind ? COLORS.windActive ?? "#4fc" : COLORS.padStroke;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
     ctx.shadowBlur = 0;
     if (m.windStr > 0) {
-      const maxStr = 10;
-      const str01 = Math.min(m.windStr, maxStr) / maxStr;
-      const arrowLen = 8 + Math.sqrt(str01) * 16;
-      const tipX = 50 + Math.cos(dirRad) * arrowLen;
-      const tipY = 50 + Math.sin(dirRad) * arrowLen;
+      const str01 = Math.min(m.windStr, 10) / 10;
+      const arrowL = 8 + Math.sqrt(str01) * 14;
+      const tipX = x + Math.cos(dirRad) * arrowL;
+      const tipY = y + Math.sin(dirRad) * arrowL;
       ctx.lineWidth = 1.5 + str01 * 2;
       ctx.beginPath();
-      ctx.moveTo(50, 50);
+      ctx.moveTo(x, y);
       ctx.lineTo(tipX, tipY);
       ctx.stroke();
-      const headLen = 5, spread = 0.4;
+      const hl = 5, spread = 0.4;
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.moveTo(tipX, tipY);
-      ctx.lineTo(tipX - Math.cos(dirRad - spread) * headLen, tipY - Math.sin(dirRad - spread) * headLen);
+      ctx.lineTo(tipX - Math.cos(dirRad - spread) * hl, tipY - Math.sin(dirRad - spread) * hl);
       ctx.moveTo(tipX, tipY);
-      ctx.lineTo(tipX - Math.cos(dirRad + spread) * headLen, tipY - Math.sin(dirRad + spread) * headLen);
+      ctx.lineTo(tipX - Math.cos(dirRad + spread) * hl, tipY - Math.sin(dirRad + spread) * hl);
       ctx.stroke();
-      ctx.fillStyle = state.selectedUI === "wind" ? COLORS.windActive : COLORS.padStroke;
+      ctx.fillStyle = isSelWind ? COLORS.windActive ?? "#4fc" : COLORS.padStroke;
       ctx.font = "bold 9px monospace";
-      ctx.fillText(`${m.windStr.toFixed(1)}`, 84, 54);
+      ctx.fillText(`${m.windStr.toFixed(1)}`, x - 22, y + 38);
     }
-    ctx.lineWidth = 1;
-    if (state.selectedUI === "wind" && wUI) wUI.style.display = "block";
   };
-  var syncVesselUI = (obj, kind) => {
-    const prefix = kind === "carrier" ? "carrier" : kind === "submarine" ? "submarine" : "boat";
-    const pathEl = document.getElementById(`m_${prefix}_path`);
-    const speedEl = document.getElementById(`m_${prefix}_speed`);
-    const radiusEl = document.getElementById(`m_${prefix}_radius`);
-    const angleEl = document.getElementById(`m_${prefix}_angle`);
-    const nameEl = document.getElementById(`m_${prefix}_name`);
-    const exitEl = document.getElementById(`m_${prefix}_exitWarning`);
-    const radioEl = document.getElementById(`m_${prefix}_radioSilent`);
-    if (pathEl) pathEl.value = obj.path ?? "static";
-    if (speedEl) speedEl.value = (obj.speed ?? 0).toString();
-    if (radiusEl) radiusEl.value = (obj.radius ?? 40).toString();
-    if (angleEl) angleEl.value = (obj.angle ?? 0).toString();
-    if (nameEl) nameEl.value = obj.vesselName ?? "";
-    if (exitEl) exitEl.checked = obj.exitWarning ?? false;
-    if (radioEl) radioEl.checked = !(obj.radioSilent ?? false);
-    if (kind === "boat") {
-      const radioRow = document.getElementById("m_boat_radioSilent_row");
-      if (radioRow) radioRow.style.display = obj.type === "frigate" ? "" : "none";
+  var _drawMinimap = (ctx, m, canvas, ox, oy, hw, hh) => {
+    if (!m) return;
+    const MW = 160, MH = 100;
+    const MX = canvas.width - MW - 8;
+    const MY = canvas.height - MH - 8;
+    ctx.fillStyle = "rgba(0,0,0,0.72)";
+    ctx.fillRect(MX - 1, MY - 1, MW + 2, MH + 2);
+    const gs = m.gridSize;
+    const ts = Math.min(MW / gs, MH / gs);
+    const wl = m.waterLevel ?? 0;
+    for (let gx = 0; gx < gs; gx++) {
+      for (let gy = 0; gy < gs; gy++) {
+        if (m.terrain[gx]?.[gy] === void 0) continue;
+        const h = m.terrain[gx]?.[gy];
+        if (h === void 0) continue;
+        ctx.fillStyle = h <= wl ? COLORS.water : getLandColor(h, false);
+        ctx.fillRect(MX + gx * ts, MY + gy * ts, ts + 0.5, ts + 0.5);
+      }
     }
+    m.objects.forEach((o) => {
+      const mx = MX + (o.x + 0.5) * ts, my = MY + (o.y + 0.5) * ts;
+      ctx.fillStyle = o.type === "pad" ? COLORS.padFill : o.type === "carrier" ? COLORS.carrierBase : "#4af";
+      ctx.fillRect(mx - 2, my - 2, 4, 4);
+    });
+    const W = canvas.width, H = canvas.height;
+    const corners = [[0, 0], [W, 0], [W, H], [0, H]].map(([sx, sy]) => {
+      const dx = sx - ox, dy = sy - oy;
+      return {
+        mx: MX + (dx / hw + dy / hh) / 2 * ts,
+        my: MY + (dy / hh - dx / hw) / 2 * ts
+      };
+    });
+    ctx.strokeStyle = "rgba(255,255,255,0.6)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(corners[0].mx, corners[0].my);
+    corners.forEach((c) => ctx.lineTo(c.mx, c.my));
+    ctx.closePath();
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(MX, MY, MW, MH);
   };
 
   // ../src/shared/utils.ts
@@ -1203,6 +855,7 @@
     getEl("m_npc_heli_type").value = m.npcHeliType ?? "random";
     state.selectedUI = null;
     state.selectedObjectIdx = null;
+    centerCamera(m.gridSize);
     renderMissionList();
     renderPayloadList();
     renderObjectList();
@@ -1215,12 +868,9 @@
   var clampCamera = () => {
     const m = getCurrentMission();
     if (!m) return;
-    const tSize = 600 / m.gridSize * state.zoom;
-    const viewGridW = 600 / tSize, viewGridH = 600 / tSize;
-    state.panX = Math.max(0, Math.min(state.panX, m.gridSize - viewGridW));
-    state.panY = Math.max(0, Math.min(state.panY, m.gridSize - viewGridH));
-    if (viewGridW >= m.gridSize) state.panX = 0;
-    if (viewGridH >= m.gridSize) state.panY = 0;
+    const margin = m.gridSize * 0.25;
+    state.panX = Math.max(-margin, Math.min(state.panX, m.gridSize + margin));
+    state.panY = Math.max(-margin, Math.min(state.panY, m.gridSize + margin));
   };
   var smoothCoast = (m, cx, cy, radius) => {
     for (let pass = 0; pass < 2; pass++) {
@@ -1283,11 +933,11 @@
   var paint = (e) => {
     const m = getCurrentMission();
     if (!m) return;
-    const canvas2 = getEl("editorCanvas");
-    const rect = canvas2.getBoundingClientRect();
-    const tSize = 600 / m.gridSize * state.zoom;
-    const gx = Math.floor((e.clientX - rect.left) / tSize + state.panX);
-    const gy = Math.floor((e.clientY - rect.top) / tSize + state.panY);
+    const canvas = getEl("editorCanvas");
+    const rect = canvas.getBoundingClientRect();
+    const { gx: _gx, gy: _gy } = screenToGrid(e.clientX - rect.left, e.clientY - rect.top);
+    const gx = Math.floor(_gx);
+    const gy = Math.floor(_gy);
     if (gx < 0 || gx >= m.gridSize || gy < 0 || gy >= m.gridSize) return;
     if (state.currentTool === "terrain") {
       const rad = Math.ceil(state.brushRadius);
@@ -2062,7 +1712,7 @@
       "m_sublines_de",
       "m_sublines_en"
     ].forEach((id) => getEl(id)?.addEventListener("input", syncToData));
-    const canvas2 = getEl("editorCanvas");
+    const canvas = getEl("editorCanvas");
     const cursorEl = document.createElement("canvas");
     cursorEl.id = "brush-cursor";
     cursorEl.style.cssText = "position:fixed;pointer-events:none;z-index:9999;display:none;";
@@ -2133,14 +1783,13 @@
       const tool = state.currentTool;
       if (tool === "move") {
         cursorEl.style.display = "none";
-        canvas2.style.cursor = "grab";
+        canvas.style.cursor = "grab";
         return;
       }
-      canvas2.style.cursor = "none";
+      canvas.style.cursor = "none";
       cursorEl.style.display = "block";
       if (PAINT_TOOLS.has(tool)) {
-        const tSize = 600 / m.gridSize * state.zoom;
-        const radiusPx = state.brushRadius * tSize;
+        const radiusPx = state.brushRadius * isoHW();
         const size = Math.ceil(radiusPx * 2 + 8);
         cursorEl.width = size;
         cursorEl.height = size;
@@ -2177,24 +1826,24 @@
         cursorCtx.fill();
       }
     };
-    canvas2.addEventListener("mousemove", (e) => {
+    canvas.addEventListener("mousemove", (e) => {
       const size = parseInt(cursorEl.width) || 32;
       cursorEl.style.left = e.clientX - size / 2 + "px";
       cursorEl.style.top = e.clientY - size / 2 + "px";
       updateCursor();
     });
-    canvas2.addEventListener("mouseenter", () => {
+    canvas.addEventListener("mouseenter", () => {
       if (state.currentTool !== "move") {
         cursorEl.style.display = "block";
         updateCursor();
       }
     });
-    canvas2.addEventListener("mouseleave", () => {
+    canvas.addEventListener("mouseleave", () => {
       cursorEl.style.display = "none";
     });
     const updateMoveCursor = () => {
       if (state.moveMode) {
-        canvas2.style.cursor = "crosshair";
+        canvas.style.cursor = "crosshair";
         cursorEl.style.display = "none";
       } else {
         updateCursor();
@@ -2208,6 +1857,35 @@
           updateMoveCursor();
           drawMap();
         }
+      }
+      const PAN_STEP = 1.5;
+      if (e.key === "ArrowLeft") {
+        state.panX -= PAN_STEP;
+        state.panY += PAN_STEP;
+        clampCamera();
+        drawMap();
+        e.preventDefault();
+      }
+      if (e.key === "ArrowRight") {
+        state.panX += PAN_STEP;
+        state.panY -= PAN_STEP;
+        clampCamera();
+        drawMap();
+        e.preventDefault();
+      }
+      if (e.key === "ArrowUp") {
+        state.panX -= PAN_STEP;
+        state.panY -= PAN_STEP;
+        clampCamera();
+        drawMap();
+        e.preventDefault();
+      }
+      if (e.key === "ArrowDown") {
+        state.panX += PAN_STEP;
+        state.panY += PAN_STEP;
+        clampCamera();
+        drawMap();
+        e.preventDefault();
       }
       if (e.key === "Escape") {
         if (state.isDraggingItem) {
@@ -2229,7 +1907,7 @@
         drawMap();
       }
     });
-    canvas2.addEventListener("contextmenu", (e) => e.preventDefault());
+    canvas.addEventListener("contextmenu", (e) => e.preventDefault());
     const ctxMenu = document.getElementById("ed-ctx-menu");
     let _ctxGx = 0, _ctxGy = 0;
     const hideCtxMenu = () => {
@@ -2456,13 +2134,13 @@
       document.addEventListener("mousedown", (ev) => {
         if (!ctxMenu.contains(ev.target)) hideCtxMenu();
       });
-      canvas2.addEventListener("dblclick", (ev) => {
+      canvas.addEventListener("dblclick", (ev) => {
         const m = getCurrentMission();
         if (!m) return;
-        const rect = canvas2.getBoundingClientRect();
-        const tSize = 600 / m.gridSize * state.zoom;
-        _ctxGx = Math.floor((ev.clientX - rect.left) / tSize + state.panX);
-        _ctxGy = Math.floor((ev.clientY - rect.top) / tSize + state.panY);
+        const rect = canvas.getBoundingClientRect();
+        const { gx: _cg, gy: _cd } = screenToGrid(ev.clientX - rect.left, ev.clientY - rect.top);
+        _ctxGx = Math.floor(_cg);
+        _ctxGy = Math.floor(_cd);
         if (_ctxGx < 0 || _ctxGx >= m.gridSize || _ctxGy < 0 || _ctxGy >= m.gridSize) return;
         state.selectedObjectIdx = null;
         state.selectedPayloadIdx = null;
@@ -2479,12 +2157,11 @@
         }, 0);
       });
     }
-    canvas2.onmousedown = (e) => {
-      const rect = canvas2.getBoundingClientRect();
+    canvas.onmousedown = (e) => {
+      const rect = canvas.getBoundingClientRect();
       const m = getCurrentMission();
-      const tSize = 600 / m.gridSize * state.zoom;
       const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-      const gx = mx / tSize + state.panX, gy = my / tSize + state.panY;
+      const { gx, gy } = screenToGrid(mx, my);
       if (Math.hypot(mx - 50, my - 50) < 30) {
         state.selectedUI = state.selectedUI === "wind" ? null : "wind";
         state.selectedObjectIdx = null;
@@ -2650,7 +2327,7 @@
         state.isEditorDragging = true;
         state.lastMX = e.clientX;
         state.lastMY = e.clientY;
-        canvas2.style.cursor = "grabbing";
+        canvas.style.cursor = "grabbing";
       } else {
         state.isDrawing = true;
         paint(e);
@@ -2661,10 +2338,8 @@
         if (Math.hypot(e.clientX - state.dragStartMX, e.clientY - state.dragStartMY) > 3) state.dragHasMoved = true;
         if (state.dragHasMoved) {
           const m = getCurrentMission();
-          const tSize = 600 / m.gridSize * state.zoom;
-          const rect = canvas2.getBoundingClientRect();
-          const gx = (e.clientX - rect.left) / tSize + state.panX;
-          const gy = (e.clientY - rect.top) / tSize + state.panY;
+          const rect = canvas.getBoundingClientRect();
+          const { gx, gy } = screenToGrid(e.clientX - rect.left, e.clientY - rect.top);
           if (state.dragItemType === "payload")
             Object.assign(m.payloads[state.dragItemIdx], { x: Math.round(gx), y: Math.round(gy) });
           else if (state.dragItemType === "object")
@@ -2673,15 +2348,17 @@
             const _em = m.particleEmitters?.[state.dragItemIdx];
             if (_em) Object.assign(_em, { x: Math.round(gx), y: Math.round(gy) });
           }
-          canvas2.style.cursor = "grabbing";
+          canvas.style.cursor = "grabbing";
           drawMap();
         }
         return;
       }
       if (state.isEditorDragging) {
-        const tSize = 600 / getCurrentMission().gridSize * state.zoom;
-        state.panX -= (e.clientX - state.lastMX) / tSize;
-        state.panY -= (e.clientY - state.lastMY) / tSize;
+        const dx = e.clientX - state.lastMX;
+        const dy = e.clientY - state.lastMY;
+        const hw = isoHW(), hh = isoHH();
+        state.panX -= (dx / hw + dy / hh) / 2;
+        state.panY -= (dy / hh - dx / hw) / 2;
         state.lastMX = e.clientX;
         state.lastMY = e.clientY;
         clampCamera();
@@ -2741,19 +2418,21 @@
         updateCursor();
       }
     });
-    canvas2.onwheel = (e) => {
+    canvas.onwheel = (e) => {
       e.preventDefault();
-      const rect = canvas2.getBoundingClientRect();
-      const m = getCurrentMission();
-      const tSize = 600 / m.gridSize * state.zoom;
+      const rect = canvas.getBoundingClientRect();
       const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-      const gx = mx / tSize + state.panX, gy = my / tSize + state.panY;
+      const { gx, gy } = screenToGrid(mx, my);
       const oldZoom = state.zoom;
-      state.zoom = Math.max(1, Math.min(state.zoom + (e.deltaY < 0 ? 0.5 : -0.5), 15));
+      const factor = e.shiftKey ? 0.08 : 0.12;
+      state.zoom = Math.max(0.2, Math.min(state.zoom * Math.exp(-e.deltaY * factor * 0.01), 20));
       if (state.zoom !== oldZoom) {
-        const nSize = 600 / m.gridSize * state.zoom;
-        state.panX = gx - mx / nSize;
-        state.panY = gy - my / nSize;
+        const hw = isoHW(), hh = isoHH();
+        const cx = canvas.width / 2, cy = canvas.height * 0.35;
+        const A = (cx - mx) / hw + (gx - gy);
+        const B = (cy - my) / hh + (gx + gy);
+        state.panX = (A + B) / 2;
+        state.panY = (B - A) / 2;
         clampCamera();
         drawMap();
       }
@@ -2832,6 +2511,7 @@
         alert("Import Fehler!\n\n" + e);
       }
     };
+    initIsoCanvas();
   };
 
   // editor-view-entry/campaign-editor-main.ts

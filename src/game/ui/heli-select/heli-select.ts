@@ -17,8 +17,10 @@ import { storageGet, storageSet } from '../../storage';
 let _G: any;
 let _drawHeli: (...args: any[]) => void;
 
-const _getPlayerColor = (): string =>
-    storageGet('z_heli_color') === 'blue' ? 'blue' : 'orange';
+const _getPlayerColor = (): string => {
+    const v = storageGet('z_heli_color');
+    return v === 'blue' ? 'blue' : v === 'sand' ? 'sand' : v === 'green' ? 'green' : 'orange';
+};
 
 export const init = (G: any, drawHeli: (...args: any[]) => void) => {
     _G = G;
@@ -106,7 +108,8 @@ const _heliPreviewLoop = () => {
             const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
                 iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
             _drawHeli(ht.id, 0, 0, 0, cardAngle, 0, 0, 0, 0, 0, {
-                targetCtx: cx, targetIso: offIso, scaleOverride: ht.previewScale, colorVariant: _getPlayerColor(),
+                targetCtx: cx, targetIso: offIso, scaleOverride: ht.previewScale,
+                colorVariant: ht.id === 'ornithopter' ? undefined : _getPlayerColor(),
             });
         }
 
@@ -122,7 +125,7 @@ const _heliPreviewLoop = () => {
                     iso(wx, wy, wz, camX, camY, { canvas: oc, tileW, tileH, stepH });
                 _drawHeli(ht.id, 0, 0, 0, _overlayAngle, 0, 0, _rotorPos, 0, 0, {
                     targetCtx: ocx, targetIso: overlayIso, scaleOverride: ht.previewScale * OVERLAY_SCALE_RATIO,
-                    colorVariant: _getPlayerColor(),
+                    colorVariant: ht.id === 'ornithopter' ? undefined : _getPlayerColor(),
                 });
             }
         }
@@ -187,6 +190,8 @@ const _buildOverlayDetail = (ht: HeliType, onSelect: (heliId: string) => void): 
     const _colorDefs: Array<{ key: string; cls: string; label: string }> = [
         { key: 'orange', cls: 'heli-color-swatch-orange', label: I18N.HELI_COLOR_ORANGE },
         { key: 'blue',   cls: 'heli-color-swatch-blue',   label: I18N.HELI_COLOR_BLUE },
+        { key: 'sand',   cls: 'heli-color-swatch-sand',   label: I18N.HELI_COLOR_SAND },
+        { key: 'green',  cls: 'heli-color-swatch-green',  label: I18N.HELI_COLOR_GREEN },
     ];
     const colorRow = document.createElement('div');
     colorRow.className = 'heli-color-row';
