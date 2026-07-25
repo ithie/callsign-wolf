@@ -28,8 +28,9 @@ private struct ParsedSong {
 final class ZsynthPlayer: NSObject {
     static let shared = ZsynthPlayer()
 
-    let engine  = AVAudioEngine()
-    private let mixer   = AVAudioMixerNode()
+    let engine   = AVAudioEngine()
+    let sfxMixer = AVAudioMixerNode()   // HeliSound connects here; capped at 0.80 to avoid hardware limiting
+    private let mixer = AVAudioMixerNode()
     private var voices: [AVAudioPlayerNode] = []
     private var voiceIdx = 0
 
@@ -78,6 +79,9 @@ final class ZsynthPlayer: NSObject {
         let fmt = AVAudioFormat(standardFormatWithSampleRate: _sr, channels: 2)!
         engine.attach(mixer)
         engine.connect(mixer, to: engine.mainMixerNode, format: fmt)
+        engine.attach(sfxMixer)
+        sfxMixer.outputVolume = 0.80
+        engine.connect(sfxMixer, to: engine.mainMixerNode, format: fmt)
 
         for _ in 0..<ZsynthPlayer.VOICES {
             let v = AVAudioPlayerNode()

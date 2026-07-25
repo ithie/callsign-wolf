@@ -156,14 +156,15 @@ final class HeliSoundPlayer {
         }
 
         let engine = ZsynthPlayer.shared.engine
+        let sfxMix = ZsynthPlayer.shared.sfxMixer
         engine.attach(source!)
-        engine.connect(source!, to: engine.mainMixerNode, format: fmt)
+        engine.connect(source!, to: sfxMix, format: fmt)
 
         let sfxFmt = AVAudioFormat(standardFormatWithSampleRate: Double(sr), channels: 2)!
         for _ in 0..<Self.SFX_VOICES {
             let v = AVAudioPlayerNode()
             engine.attach(v)
-            engine.connect(v, to: engine.mainMixerNode, format: sfxFmt)
+            engine.connect(v, to: sfxMix, format: sfxFmt)
             sfxVoices.append(v)
         }
 
@@ -180,8 +181,10 @@ final class HeliSoundPlayer {
 
     // MARK: - Public API
 
-    func initHeli(heliType: String, blades: Int = 4, clip: Float = 3.0, bpf: Float = 120, bpfQ: Float = 2.5) {
+    func initHeli(heliType: String, blades: Int = 4, clip: Float = 3.0,
+                  bpf: Float = 120, bpfQ: Float = 2.5, gain: Float = 1.5) {
         tVol = 0; tWind = 0
+        rotorGain = gain
         if heliType == "ornithopter" {
             isOrtho = true
             _computeBiquad(f: 700, q: 1.8)
@@ -200,7 +203,7 @@ final class HeliSoundPlayer {
         if isOrtho {
             tLFOFreq  = 1.1 * flapRate
             tLFODepth = 0.45 * max(0.1, rpm)
-            tVol = sfxEnabled ? (engineOn ? 1.5 * (0.08 + 0.35 * rpm) : 0.06 * rpm) : 0
+            tVol = sfxEnabled ? (engineOn ? 1.0 * (0.08 + 0.35 * rpm) : 0.04 * rpm) : 0
         } else {
             tFreq = max(1.0, (rpm * 220.0 / 60.0) * Float(_blades))
             tVol  = sfxEnabled ? (engineOn ? 0.8 * (0.2 + 0.8 * rpm) : 0.5 * rpm) : 0
@@ -270,7 +273,8 @@ final class HeliSoundHandler: NSObject, WKScriptMessageHandler {
             let clip     = (body["clip"]    as? Double).map(Float.init) ?? 3.0
             let bpf      = (body["bpf"]     as? Double).map(Float.init) ?? 120.0
             let bpfQ     = (body["bpfQ"]    as? Double).map(Float.init) ?? 2.5
-            HeliSoundPlayer.shared.initHeli(heliType: heliType, blades: blades, clip: clip, bpf: bpf, bpfQ: bpfQ)
+            let gain     = (body["gain"]    as? Double).map(Float.init) ?? 1.5
+            HeliSoundPlayer.shared.initHeli(heliType: heliType, blades: blades, clip: clip, bpf: bpf, bpfQ: bpfQ, gain: gain)
 
         case "update":
             let rpm      = (body["rpm"]       as? Double).map(Float.init) ?? 0

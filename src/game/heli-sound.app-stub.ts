@@ -4,8 +4,8 @@ const _post = (msg: Record<string, unknown>): void => {
     (window as any).webkit?.messageHandlers?.heliSound?.postMessage(msg);
 };
 
-const _PRESETS: Record<string, { blades: number; clip: number; bpf: number; bpfQ: number }> = {
-    dolphin:   { blades: 4, clip: 3.0, bpf: 120, bpfQ: 2.5 },
+const _PRESETS: Record<string, { blades: number; clip: number; bpf: number; bpfQ: number; gain?: number }> = {
+    dolphin:   { blades: 4, clip: 3.0, bpf: 120, bpfQ: 2.5, gain: 1.9 },
     coasthawk: { blades: 4, clip: 3.0, bpf: 110, bpfQ: 2.5 },
     atlas:     { blades: 3, clip: 4.0, bpf:  90, bpfQ: 3.0 },
 };
@@ -26,7 +26,7 @@ export const playSfx = (freq: number, duration: number, gain = 0.15, type: Oscil
 export const initHeliSound = (heliType: string): void => {
     const p = _PRESETS[heliType];
     if (p) {
-        _post({ action: 'init', heliType, blades: p.blades, clip: p.clip, bpf: p.bpf, bpfQ: p.bpfQ });
+        _post({ action: 'init', heliType, blades: p.blades, clip: p.clip, bpf: p.bpf, bpfQ: p.bpfQ, ...(p.gain !== undefined ? { gain: p.gain } : {}) });
     } else {
         _post({ action: 'init', heliType });
     }

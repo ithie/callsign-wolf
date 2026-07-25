@@ -461,9 +461,9 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     }
 
     // dust/snow burst on entering low-altitude particle zone (every descent)
-    const _particleThreshold = effectiveGroundH + 3.5;
+    const _particleThreshold = effectiveGroundH + 2.5;
     const _aboveParticleZone = G.heli.z >= _particleThreshold;
-    if (!_aboveParticleZone && _prevAboveParticleZone && inAir && !onCarrierDeck && !onFrigateDeck) {
+    if (!_aboveParticleZone && _prevAboveParticleZone && inAir && !onCarrierDeck && !onFrigateDeck && !onPadSurface && G.heli.vz < -0.4) {
         const _tx = Math.round(G.heli.x), _ty = Math.round(G.heli.y);
         const _onSand = (G.sandPoints[_tx]?.[_ty] ?? 0) > 0;
         const _isOverWater = groundH <= G.waterLevel + 0.1;

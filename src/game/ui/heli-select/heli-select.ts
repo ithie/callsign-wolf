@@ -215,7 +215,7 @@ const _buildOverlayDetail = (ht: HeliType, onSelect: (heliId: string) => void): 
         wrap.appendChild(lbl);
         colorRow.appendChild(wrap);
     });
-    statsCol.appendChild(colorRow);
+    if (ht.id !== 'ornithopter') statsCol.appendChild(colorRow);
 
     const spd = Math.min(100, Math.round(ht.accel / 0.00117 * 100));
     const agi = Math.min(100, Math.round(ht.tiltSpeed / 0.05 * 100));

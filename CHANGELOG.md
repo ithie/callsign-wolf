@@ -1,5 +1,29 @@
 # SAR: Callsign WOLF — Changelog
 
+## v30.3.0 — Controls Overhaul + Green Colour + Audio Fixes
+
+### Added
+
+- **Green helicopter colour** — New military green colour variant (`#4e8c38`) available in the hangar. Ornithopter excluded, consistent with other variants. Colour swatch grid rearranged to 2×2 layout.
+
+### Changed
+
+- **Winch split into two buttons** — Winch Up (↑) and Winch Down (↓) are now separate buttons with a gap between them. Highlight strip and LED indicator at the top of each button; raised-edge depth (top highlight + bottom shadow + border).
+- **Reverse button resized and repositioned** — Same width as each winch button, centred above the right joystick. Background becomes fully opaque orange when active.
+- **Button colour** — Winch and Reverse button backgrounds changed from solid black to translucent orange. LEDs fully opaque: lit = bright orange with glow, unlit = dark amber.
+- **Ornithopter colour swatch hidden** — Colour selection no longer shown when the ornithopter is selected in the hangar.
+- **Music volume during missions fixed** — HeliSound now routes through a dedicated sfxMixer node (outputVolume 0.80) before reaching the main mixer, preventing the iOS hardware limiter from making the music appear louder when the engine is turned off.
+- **Ornithopter sound level reduced** — Wing-beat volume multiplier lowered from 1.5× to 1.0× to match perceived rotor loudness.
+- **Per-helicopter rotor gain** — Dolphin now uses a higher rotorGain (1.9) to match the perceived loudness of the Coasthawk.
+
+### Fixed
+
+- **Carrier deck attachment race condition** — Deck-presence check now runs before `updateCarrierPos` so a frame spike cannot strand a landed helicopter.
+- **Downwash burst timing** — Particle burst now triggers at the same altitude as the normal ground-effect particles (groundH + 2.5 instead of + 3.5), only during fast descent (vz < −0.4), and never over a helipad.
+- **Sand helicopter colour** — New ocher/sand colour variant (`#c8a45a`) available in the hangar.
+
+---
+
 ## v30.2.1 — Sand Colour + Carrier Fix
 
 ### Added
