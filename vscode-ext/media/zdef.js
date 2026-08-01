@@ -299,11 +299,34 @@
       if (topNode.depthAnchor) {
         const [dx, dy] = topNode.depthAnchor;
         baseDepth = ix + dx * cosA - dy * sinA + (iy + dx * sinA + dy * cosA);
+        for (let fi = 0; fi < faces.length; fi++) {
+          renderer.add({ id: def.id, faces: [faces[fi]] }, { ...instanceProps, depth: baseDepth + fi * 1e-7 });
+        }
       } else {
         baseDepth = ix + iy;
-      }
-      for (let fi = 0; fi < faces.length; fi++) {
-        renderer.add({ id: def.id, faces: [faces[fi]] }, { ...instanceProps, depth: baseDepth + fi * 1e-7 });
+        const cApS = cosA + sinA, cAmS = cosA - sinA;
+        const sides = [];
+        const tops = [];
+        faces.forEach((face, fi) => {
+          if (face.normal) {
+            const verts = face.verts;
+            let lcx = 0, lcy = 0;
+            for (const v of verts) {
+              lcx += v[0];
+              lcy += v[1];
+            }
+            lcx /= verts.length;
+            lcy /= verts.length;
+            sides.push({ face, key: lcx * cApS + lcy * cAmS + fi * 1e-9 });
+          } else {
+            tops.push(face);
+          }
+        });
+        sides.sort((a, b) => a.key - b.key);
+        const allSorted = [...sides.map((e) => e.face), ...tops];
+        for (let si = 0; si < allSorted.length; si++) {
+          renderer.add({ id: def.id, faces: [allSorted[si]] }, { ...instanceProps, depth: baseDepth + si * 1e-7 });
+        }
       }
       if (drawCtx) {
         const { ctx: ctx2, isoFn, tileW } = drawCtx;
@@ -4307,10 +4330,10 @@
     nodes: [
       {
         faces: [
-          { id: "hull_bow", normal: [1, 0], verts: [[8.7, -2.52, 0], [8.7, 2.52, 0], [8.7, 4.2, 3.8], [8.7, -4.2, 3.8]], color: "#6e7a88" },
-          { id: "hull_starboard", normal: [0, 1], verts: [[8.7, 2.52, 0], [-8.7, 2.52, 0], [-8.7, 4.2, 3.8], [8.7, 4.2, 3.8]], color: "#8898a8" },
-          { id: "hull_stern", normal: [-1, 0], verts: [[-8.7, 2.52, 0], [-8.7, -2.52, 0], [-8.7, -4.2, 3.8], [-8.7, 4.2, 3.8]], color: "#6e7a88" },
-          { id: "hull_port", normal: [0, -1], verts: [[-8.7, -2.52, 0], [8.7, -2.52, 0], [8.7, -4.2, 3.8], [-8.7, -4.2, 3.8]], color: "#8898a8" },
+          { id: "hull_bow", normal: [1, 0], verts: [[8.7, -2.52, 0], [8.7, 2.52, 0], [8.7, 4.2, 3.8], [8.7, -4.2, 3.8]], color: "#7b8998" },
+          { id: "hull_starboard", normal: [0, 1], verts: [[8.7, 2.52, 0], [-8.7, 2.52, 0], [-8.7, 4.2, 3.8], [8.7, 4.2, 3.8]], color: "#7b8998" },
+          { id: "hull_stern", normal: [-1, 0], verts: [[-8.7, 2.52, 0], [-8.7, -2.52, 0], [-8.7, -4.2, 3.8], [-8.7, 4.2, 3.8]], color: "#7b8998" },
+          { id: "hull_port", normal: [0, -1], verts: [[-8.7, -2.52, 0], [8.7, -2.52, 0], [8.7, -4.2, 3.8], [-8.7, -4.2, 3.8]], color: "#7b8998" },
           { id: "deck_base", verts: [[8.7, -4.2, 3.8], [8.7, 4.2, 3.8], [-8.7, 4.2, 3.8], [-8.7, -4.2, 3.8]], color: "#222222" },
           { id: "deck_bow", normal: [1, 0], verts: [[8.7, -4.2, 3.8], [8.7, 4.2, 3.8], [8.7, 4.2, 4.2], [8.7, -4.2, 4.2]], color: "#222228" },
           { id: "deck_starboard", normal: [0, 1], verts: [[8.7, 4.2, 3.8], [-8.7, 4.2, 3.8], [-8.7, 4.2, 4.2], [8.7, 4.2, 4.2]], color: "#2a2a33" },

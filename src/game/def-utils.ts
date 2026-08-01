@@ -246,11 +246,30 @@ const renderNodes = (
         if (topNode.depthAnchor) {
             const [dx, dy] = topNode.depthAnchor;
             baseDepth = (ix + dx * cosA - dy * sinA) + (iy + dx * sinA + dy * cosA);
+            for (let fi = 0; fi < faces.length; fi++) {
+                renderer.add({ id: def.id, faces: [faces[fi]] } as DEF, { ...instanceProps, depth: baseDepth + fi * 1e-7 });
+            }
         } else {
             baseDepth = ix + iy;
-        }
-        for (let fi = 0; fi < faces.length; fi++) {
-            renderer.add({ id: def.id, faces: [faces[fi]] } as DEF, { ...instanceProps, depth: baseDepth + fi * 1e-7 });
+            const cApS = cosA + sinA, cAmS = cosA - sinA;
+            const sides: { face: DEFFace; key: number }[] = [];
+            const tops: DEFFace[] = [];
+            faces.forEach((face, fi) => {
+                if (face.normal) {
+                    const verts = face.verts;
+                    let lcx = 0, lcy = 0;
+                    for (const v of verts) { lcx += v[0]; lcy += v[1]; }
+                    lcx /= verts.length; lcy /= verts.length;
+                    sides.push({ face, key: lcx * cApS + lcy * cAmS + fi * 1e-9 });
+                } else {
+                    tops.push(face);
+                }
+            });
+            sides.sort((a, b) => a.key - b.key);
+            const allSorted = [...sides.map(e => e.face), ...tops];
+            for (let si = 0; si < allSorted.length; si++) {
+                renderer.add({ id: def.id, faces: [allSorted[si]] } as DEF, { ...instanceProps, depth: baseDepth + si * 1e-7 });
+            }
         }
 
         if (drawCtx) {

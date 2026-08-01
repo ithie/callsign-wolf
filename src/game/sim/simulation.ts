@@ -15,6 +15,7 @@ import { fuelTruck } from './vehicles/fuel-truck';
 import { updateParticles } from './particles';
 import { getHeliType } from '../heli-types';
 import { voiceEvents } from '../voice-events';
+import { playSfx } from '../heli-sound';
 
 export type { PhysicsCtx };
 
@@ -773,12 +774,18 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
             ring._lastD = d;
             if (prevD === 0) continue; // skip first frame (no sign to compare)
             if (Math.sign(d) === Math.sign(prevD)) continue; // no plane crossing
-            // check position in ring plane: tangential (horizontal) + vertical offsets
-            const dt2 = -dx * sinA + dy * cosA; // tangential component in ring plane
-            const dz2 = G.heli.z - ring.z;      // vertical component
+            // interpolate to the exact crossing point within this frame
+            const alpha = prevD / (prevD - d); // 0=prev frame pos, 1=current pos
+            const dx_c = dx - G.heli.vx * dt * (1 - alpha);
+            const dy_c = dy - G.heli.vy * dt * (1 - alpha);
+            const dz_c = (G.heli.z - ring.z) - G.heli.vz * dt * (1 - alpha);
+            const dt2 = -dx_c * sinA + dy_c * cosA;
+            const dz2 = dz_c;
             if (Math.sqrt(dt2 * dt2 + dz2 * dz2) < ring.radius * 0.85) {
                 ring.flown = true;
                 anyChanged = true;
+                playSfx(784, 0.55, 0.10, 'sine');
+                playSfx(1047, 0.45, 0.08, 'sine');
             }
         }
         if (anyChanged && G.RINGS.every(r => r.flown)) {

@@ -537,13 +537,12 @@ export const initRingsFromMission = () => {
     const objs = campaignHandler.getCurrentMissionData().objects || [];
     G.RINGS = (objs as any[])
         .filter(o => o.type === 'ring')
-        .map(o => ({
-            x: o.x as number,
-            y: o.y as number,
-            z: (o.z ?? 3) as number,
-            radius: (o.radius ?? 2.5) as number,
-            angle: (o.angle ?? 0) as number,
-            flown: false,
-            _lastD: 0,
-        }));
+        .map(o => {
+            const x = o.x as number;
+            const y = o.y as number;
+            const radius = (o.radius ?? 2.5) as number;
+            const groundZ = getGround(x, y, G.points, G.CARRIER);
+            const z = Math.max((o.z ?? 3) as number, groundZ + radius + 0.5);
+            return { x, y, z, radius, angle: (o.angle ?? 0) as number, flown: false, _lastD: 0 };
+        });
 };

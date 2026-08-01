@@ -242,7 +242,9 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
             SceneRenderer.add(null, {
                 x: 0, y: 0, depth: ring.x + ring.y,
                 drawFn: (cx: number, cy: number) => {
-                    ctx.lineWidth = Math.max(2, 3 * tileW / 64);
+                    const _rDist = Math.hypot(G.heli.x - ring.x, G.heli.y - ring.y, G.heli.z - ring.z);
+                    const _rProx = ring.flown ? 0 : Math.max(0, 1 - _rDist / 12);
+                    ctx.lineWidth = Math.max(2, 3 * tileW / 64) * (1 + _rProx * 0.6);
                     ctx.lineCap = 'butt';
                     // Ground shadow: projected outline of the tilted ring onto z=0
                     ctx.beginPath();

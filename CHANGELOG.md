@@ -1,5 +1,21 @@
 # SAR: Callsign WOLF — Changelog
 
+## v30.3.1 — ZDEF2 Depth Sorting + Ring Detection
+
+### Changed
+
+- **ZDEF2 depth sort** — Wall faces (those with a `normal` field) are now sorted by XY centroid depth per frame; flat top surfaces (no `normal`) always render after all walls. Eliminates deck-through-hull bleed on the carrier and generalises to all ZDEF2 models without model-specific code.
+- **Carrier hull unicolour** — All four hull faces now share a single base colour (`#7b8998`); ZDEF2 auto-shading differentiates them by light angle, removing the corner-seam artefact at the bow–starboard edge.
+
+### Fixed
+
+- **Ring passage detection** — Detection now interpolates to the exact crossing point within the physics frame (`alpha = prevD / (prevD − d)`, back-projected via `vx/vy/vz × dt`). Previously the post-crossing position was used, causing misses on oblique or fast approaches.
+- **Rings below terrain** — `initRingsFromMission` clamps each ring's Z to `getGround(x, y) + radius + 0.5`, ensuring the lowest point of every ring is always above the terrain surface.
+- **Ring proximity highlight** — Rings scale their stroke width up to 60% as the helicopter approaches within 12 units, making the opening easier to judge. Width returns to normal once flown.
+- **Ring passage sound** — A two-tone bell chord (G5 + C6, sine, ~500 ms decay) plays on each successful ring passage.
+
+---
+
 ## v30.3.0 — Controls Overhaul + Green Colour + Audio Fixes
 
 ### Added
