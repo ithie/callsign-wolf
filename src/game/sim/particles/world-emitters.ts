@@ -2,6 +2,8 @@ import type { EmitterParticle, ParticleEmitter, ParticleSystemArgs } from './ctx
 
 const CHIMNEY_SPAWN_INTERVAL = 6;
 const MAX_CHIMNEY_PARTICLES = 20;
+const WRECK_SPAWN_INTERVAL = 9;
+const MAX_WRECK_PARTICLES = 14;
 
 const _spawnChimney = (e: ParticleEmitter, ox: number, oy: number): EmitterParticle => {
     const gray = 90 + Math.floor(Math.random() * 40);
@@ -19,37 +21,44 @@ const _spawnChimney = (e: ParticleEmitter, ox: number, oy: number): EmitterParti
     };
 };
 
-const FIRE_SUB_R = 0.18;
-const SMOKE_SUB_R = 0.12;
-const FIRE_SUB: [number, number][] = [[0,0],[FIRE_SUB_R,0],[-FIRE_SUB_R,0],[0,FIRE_SUB_R],[0,-FIRE_SUB_R]];
-const SMOKE_SUB: [number, number][] = [[0,0],[SMOKE_SUB_R,0],[-SMOKE_SUB_R,0],[0,SMOKE_SUB_R],[0,-SMOKE_SUB_R]];
+// Random point uniformly distributed within a circle of given radius
+const _circleOffset = (r: number): [number, number] => {
+    const a = Math.random() * Math.PI * 2;
+    const d = Math.sqrt(Math.random()) * r;
+    return [Math.cos(a) * d, Math.sin(a) * d];
+};
 
 // Intervals in dt-units (dt≈1 at 30fps): one spawn every 4–5 frames
-// Fire steady-state: ~16 fire + ~34 smoke ≈ 50 particles
+// Fire steady-state: ~16 fire + ~34 smoke ≈ 50 particles per emitter
 // Smoke steady-state: ~27 smoke particles
 const FIRE_SPAWN_INTERVAL = 4;
 const SMOKE_SPAWN_INTERVAL = 5;
-// Hard cap per emitter — prevents runaway at low FPS (high dt)
 const MAX_PARTICLES = 60;
 
-// Scale factor to convert G.wind.rawStr into visible particle drift speed
 const WIND_PARTICLE_SCALE = 200;
-// Exponential convergence rate per frame (reaches ~63% of target after 1/CONV frames)
 const WIND_CONV = 0.08;
 
-const _spawnFire = (e: ParticleEmitter, ox: number, oy: number): EmitterParticle => ({
-    x: e.x + ox, y: e.y + oy,
-    z: e.gz + 0.05,
-    vx: (Math.random() - 0.5) * 0.006,
-    vy: (Math.random() - 0.5) * 0.006,
-    vz: 0.08 + Math.random() * 0.06,
-    life: 1.0 + Math.random() * 0.5,
-    maxLife: 1.5,
-    size: 1.2 + Math.random() * 1.0,
-    color: `${220 + Math.floor(Math.random() * 35)}, ${Math.floor(60 + Math.random() * 100)}, 0`,
-    isSmoke: false,
-    isFire: true,
-});
+const DEFAULT_FIRE_RADIUS = 0.18;
+
+const _spawnFire = (e: ParticleEmitter, ox: number, oy: number): EmitterParticle => {
+    const r = Math.random();
+    // Colour gradient: fresh (r≈1) = white-yellow → mid = orange → old (r≈0) = dark red
+    const red   = 255;
+    const green = Math.floor(r > 0.6 ? 200 + (r - 0.6) / 0.4 * 55 : r * (200 / 0.6));
+    return {
+        x: e.x + ox, y: e.y + oy,
+        z: e.gz + 0.05,
+        vx: (Math.random() - 0.5) * 0.008,
+        vy: (Math.random() - 0.5) * 0.008,
+        vz: 0.09 + Math.random() * 0.08,
+        life: r * 0.6 + 0.6 + Math.random() * 0.4,
+        maxLife: 1.6,
+        size: 1.2 + Math.random() * 1.0,
+        color: `${red}, ${green}, 0`,
+        isSmoke: false,
+        isFire: true,
+    };
+};
 
 const _spawnSmoke = (e: ParticleEmitter, ox: number, oy: number, isFire: boolean): EmitterParticle => ({
     x: e.x + ox, y: e.y + oy,
@@ -81,19 +90,25 @@ export const update = ({ ctx, dt }: ParticleSystemArgs) => {
                 e.particles.push(_spawnChimney(e, (Math.random() - 0.5) * 0.06, (Math.random() - 0.5) * 0.06));
             }
             if (e.particles.length >= MAX_CHIMNEY_PARTICLES) e.spawnTimer = 0;
+        } else if (e.type === 'wreck_smoke') {
+            while (e.spawnTimer >= WRECK_SPAWN_INTERVAL && e.particles.length < MAX_WRECK_PARTICLES) {
+                e.spawnTimer -= WRECK_SPAWN_INTERVAL;
+                const [ox, oy] = _circleOffset(e.radius ?? 0.12);
+                e.particles.push(_spawnSmoke(e, ox, oy, true)); // dark, smoldering
+            }
+            if (e.particles.length >= MAX_WRECK_PARTICLES) e.spawnTimer = 0;
         } else {
-        const isFire = e.type === 'fire';
-        const spawnInterval = isFire ? FIRE_SPAWN_INTERVAL : SMOKE_SPAWN_INTERVAL;
-        const sub = isFire ? FIRE_SUB : SMOKE_SUB;
+            const isFire = e.type === 'fire';
+            const spawnInterval = isFire ? FIRE_SPAWN_INTERVAL : SMOKE_SPAWN_INTERVAL;
+            const spawnR = (e.radius ?? DEFAULT_FIRE_RADIUS);
 
-        while (e.spawnTimer >= spawnInterval && e.particles.length < MAX_PARTICLES) {
-            e.spawnTimer -= spawnInterval;
-            const [ox, oy] = sub[Math.floor(Math.random() * sub.length)];
-            if (isFire) e.particles.push(_spawnFire(e, ox, oy));
-            e.particles.push(_spawnSmoke(e, ox, oy, isFire));
-        }
-        // Drain timer if cap was hit to avoid burst on uncap
-        if (e.particles.length >= MAX_PARTICLES) e.spawnTimer = 0;
+            while (e.spawnTimer >= spawnInterval && e.particles.length < MAX_PARTICLES) {
+                e.spawnTimer -= spawnInterval;
+                const [ox, oy] = _circleOffset(spawnR);
+                if (isFire) e.particles.push(_spawnFire(e, ox, oy));
+                e.particles.push(_spawnSmoke(e, ox, oy, isFire));
+            }
+            if (e.particles.length >= MAX_PARTICLES) e.spawnTimer = 0;
         }
 
         const isChimney = e.type === 'chimney';

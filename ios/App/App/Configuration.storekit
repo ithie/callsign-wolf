@@ -1,0 +1,79 @@
+{
+  "identifier" : "04236776-142A-4474-A06A-B02DD1770659",
+  "nonConsumableProducts" : [
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "D5DAD147-5C55-465E-8FC6-A057BF4026FA",
+      "localizations" : [
+        {
+          "description" : "Unlock all campaigns, scenarios, and rank progression.",
+          "displayName" : "Full Version",
+          "locale" : "en_US"
+        },
+        {
+          "description" : "Schaltet alle Kampagnen, Szenarien und die Rang-Progression frei.",
+          "displayName" : "Vollversion",
+          "locale" : "de_DE"
+        },
+        {
+          "description" : "Débloque toutes les campagnes, scénarios et la progression de rang.",
+          "displayName" : "Version complète",
+          "locale" : "fr_FR"
+        },
+        {
+          "description" : "Desbloquea todas las campañas, escenarios y la progresión de rango.",
+          "displayName" : "Versión completa",
+          "locale" : "es_ES"
+        },
+        {
+          "description" : "Desbloqueia todas as campanhas, cenários e a progressão de posto.",
+          "displayName" : "Versão completa",
+          "locale" : "pt_BR"
+        }
+      ],
+      "productID" : "i.thie.softworks.fullgame",
+      "referenceName" : "Full Version",
+      "type" : "NonConsumable"
+    }
+  ],
+  "products" : [],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_applicationUsername" : "",
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Restore Purchases"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Entitlement Revocation"
+      }
+    ]
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 2,
+    "minor" : 0
+  }
+}

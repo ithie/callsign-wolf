@@ -1,4 +1,5 @@
 export const STORAGE_KEY = 'z_session';
+export const UNLOCK_KEY = 'z_unlocked';
 
 import { storageGet, storageSet } from './storage';
 import { CAMPAIGN_TYPE } from '../shared/types';
@@ -38,6 +39,8 @@ const _default = (): PlayerSession => ({
     typeRatingBestTime: {},
     typeRatingSystemSince: 0,
 });
+
+export const isUnlocked = (): boolean => storageGet(UNLOCK_KEY) === '1';
 
 export const migrateSession = (s: PlayerSession): void => {
     if (!s.typeRatingSystemSince) {
@@ -98,6 +101,9 @@ export const isCampaignUnlocked = (
     // Cross-device import: highest reached campaign unlocks all up to that index
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return true;
 
+    // Paywall: non-tutorial, non-free-flight campaigns require full version
+    if (type !== CAMPAIGN_TYPE.FREE_FLIGHT && !isUnlocked()) return false;
+
     // Coast Hawk type rating is the gate for all non-tutorial content
     if (!s.typeRatings?.['coasthawk']) return false;
 
@@ -114,6 +120,20 @@ export const isCampaignUnlocked = (
     if (pos <= 0) return true;
     const prev = regular[pos - 1];
     return (s.highestUnlockedCampaignIndex ?? 0) > prev.i || !!s.campaignProgress[String(prev.i)]?.completed;
+};
+
+export const isCampaignPaywalled = (
+    campaigns: ReadonlyArray<{ type: string }>,
+    index: number
+): boolean => {
+    const type = campaigns[index]?.type;
+    if (!type || type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT) return false;
+    return !isUnlocked();
+};
+
+export const isMissionPaywalled = (campaignType: string, missionIndex: number): boolean => {
+    if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return missionIndex !== 1 && !isUnlocked();
+    return false;
 };
 
 export const isCampaignLockedByTutorial = (
@@ -141,7 +161,11 @@ export const isMissionUnlocked = (
     rankIndex = 0,
     missionMinRank = 0,
 ): boolean => {
-    if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return true;
+    if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) {
+        // Only mission index 1 (Seenotrettung) is free; all others require full version
+        if (missionIndex !== 1 && !isUnlocked()) return false;
+        return true;
+    }
     if (missionIndex === 0) return true;
     if (campaignType === CAMPAIGN_TYPE.TUTORIAL) {
         const tutorialDone = !!s.campaignProgress[campaignKey]?.missions[0]?.completed;

@@ -41,7 +41,7 @@ const _campaigns: CampaignExport[] = [
 /** Frischer Start: Tutorial verfügbar, alle regulären Kampagnen gesperrt. */
 export const FreshStart = () => {
     mount();
-    show({ session: _baseSession(), campaigns: _campaigns, onSelect: _noop, onBack: _noop });
+    show({ session: _baseSession(), campaigns: _campaigns, onSelect: _noop, onBack: _noop, onShowPaywall: _noop });
 };
 
 /** Tutorial abgeschlossen, erste reguläre Kampagne freigeschaltet. */
@@ -58,6 +58,7 @@ export const TutorialDone = () => {
         campaigns: _campaigns,
         onSelect: _noop,
         onBack: _noop,
+        onShowPaywall: _noop,
     });
 };
 
@@ -83,6 +84,7 @@ export const InProgress = () => {
         campaigns: _campaigns,
         onSelect: _noop,
         onBack: _noop,
+        onShowPaywall: _noop,
     });
 };
 
@@ -100,5 +102,6 @@ export const AllUnlocked = () => {
         campaigns: _campaigns,
         onSelect: _noop,
         onBack: _noop,
+        onShowPaywall: _noop,
     });
 };

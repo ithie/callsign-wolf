@@ -1,0 +1,55 @@
+/* ─── paywall screen ─────────────────────────────────────────────────────── */
+#paywall {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(5, 5, 5, 0.92);
+    display: none;
+    flex-direction: column;
+    justify-content: safe center;
+    align-items: center;
+    z-index: 200;
+    cursor: default;
+    gap: 12px;
+}
+#paywall .title {
+    font-size: 36px;
+    margin-bottom: 0;
+}
+#paywall .screen-body {
+    gap: 20px;
+    align-items: center;
+    text-align: center;
+    max-width: 340px;
+}
+
+#paywall-description {
+    color: #aaa;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    line-height: 1.7;
+    margin: 0;
+}
+
+#paywall-price {
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: #ffcc00;
+}
+
+#paywall-status {
+    min-height: 20px;
+    font-size: 13px;
+    letter-spacing: 3px;
+    text-align: center;
+}
+
+#paywall-status.success { color: #4f4; }
+#paywall-status.error   { color: #f44; }
+#paywall-status.pending { color: #888; }
+
+#paywall .paywall-divider {
+    width: 100%;
+    border: none;
+    border-top: 1px solid #1a1a2e;
+    margin: 0;
+}

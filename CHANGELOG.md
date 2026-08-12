@@ -1,5 +1,28 @@
 # SAR: Callsign WOLF — Changelog
 
+## v31.0.0 — Freemium
+
+### Added
+
+- **Paywall screen** — In-game screen (`/ui/paywall`) with content description, localised price fetched live from StoreKit, "Unlock" and "Restore Purchases" buttons, and inline status feedback. Accessible via locked campaign/mission cards and from the settings screen.
+- **"Restore Purchases" in settings** — Visible only when the full version is not yet active; hidden once unlocked.
+- **Paywall stamp** — Locked campaign and mission cards now show a purple "VOLLVERSION / FULL VERSION" stamp (distinct from the red training-required stamp). Tapping a paywall-locked card opens the paywall screen directly.
+
+### Changed
+
+- **Freemium model** — App is now free to download. Free tier includes the Tutorial and one Free Flight scenario ("Seenotrettung"). All other campaigns, scenarios, rank progression, and helicopter unlocks require the full version (1.99 €, one-time purchase, non-consumable).
+- **No rank progression in free tier** — `getRankMissions()` returns 0 when the full version is not active; rank is always Leutnant for free users.
+- **Promo tagline updated** — "No Ads. No Tracking. No Bullshit. Free to Play. Pay Once for the Full Campaign."
+- **Localisation** — All paywall strings fully localised in German, English, French, Spanish, Brazilian Portuguese, and European Portuguese.
+
+### Technical
+
+- `z_unlocked` storage key — set by Swift after verified purchase or restore; read by `isUnlocked()` in `session.ts`.
+- StoreKit 2 — `IAPHandler` in `ViewController.swift` handles purchase, restore, and live price loading. Entitlement check runs on every app launch.
+- Grandfathering — `originalApplicationVersion < "1.5"` (numeric version comparison) grants full access to users who purchased the app before the freemium conversion.
+
+---
+
 ## v30.3.1 — ZDEF2 Depth Sorting + Ring Detection
 
 ### Changed

@@ -1,5 +1,5 @@
 import { state, createEmptyMission, getCurrentMission } from './state';
-import { drawMap, screenToGrid, isoHW, isoHH, centerCamera, initIsoCanvas } from './render';
+import { drawMap, screenToGrid, isoHW, isoHH, centerCamera, fitCamera, initIsoCanvas } from './render';
 import { compressTerrain, decompressTerrain, compressFoliage, decompressFoliage } from '@/shared/utils';
 import { Mission } from '@/shared/types';
 
@@ -759,6 +759,69 @@ export const initUI = () => {
         popup.style.display = 'block';
     };
 
+    const showEmitterPopup = (idx: number, cx: number, cy: number) => {
+        const m = getCurrentMission()!;
+        const mAny = m as any;
+        const em = mAny.particleEmitters?.[idx];
+        if (!em) return;
+        const isFire = em.type === 'fire';
+        popup.innerHTML = '';
+
+        const header = document.createElement('div');
+        header.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px';
+        const title = document.createElement('span');
+        title.style.fontWeight = 'bold';
+        title.textContent = isFire ? '🔥 Feuer-Emitter' : '💨 Rauch-Emitter';
+        const closeBtn = document.createElement('span');
+        closeBtn.textContent = '×';
+        closeBtn.style.cssText = 'cursor:pointer;color:#f55;font-weight:bold;font-size:16px;margin-left:12px';
+        closeBtn.onclick = hidePopup;
+        header.append(title, closeBtn);
+        popup.appendChild(header);
+
+        const makeRow = (label: string, value: number, step: number, min: number, max: number, color: string, onChange: (v: number) => void) => {
+            const row = document.createElement('div');
+            row.style.cssText = 'margin:4px 0;display:flex;align-items:center;gap:6px';
+            const lbl = document.createElement('span');
+            lbl.style.cssText = `color:#aaa;min-width:60px;font-size:11px`;
+            lbl.textContent = label;
+            const inp = document.createElement('input');
+            inp.type = 'number';
+            inp.value = String(value);
+            inp.step = String(step);
+            inp.min = String(min);
+            inp.max = String(max);
+            inp.style.cssText = `flex:1;background:#111;color:${color};border:1px solid #444;font-family:monospace;font-size:11px;padding:2px 4px;width:60px`;
+            inp.oninput = () => { const v = parseFloat(inp.value); if (!isNaN(v)) onChange(v); };
+            row.append(lbl, inp);
+            return row;
+        };
+
+        popup.appendChild(makeRow('Z-Offset:', em.zOffset ?? 0, 0.25, -5, 20, '#8fa', v => {
+            em.zOffset = v || undefined; drawMap(); notifyWorkbench(); broadcastPreview();
+        }));
+
+        if (isFire) {
+            popup.appendChild(makeRow('Radius:', em.radius ?? 0.18, 0.1, 0.1, 5, '#ff9', v => {
+                em.radius = v; drawMap(); notifyWorkbench(); broadcastPreview();
+            }));
+        }
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '🗑 Emitter löschen';
+        delBtn.style.cssText = 'width:100%;background:#3a1a1a;border:1px solid #f55;color:#f55;font-size:11px;padding:5px;cursor:pointer;border-radius:3px;font-family:inherit;margin-top:8px';
+        delBtn.onclick = () => {
+            mAny.particleEmitters.splice(idx, 1);
+            hidePopup(); drawMap(); notifyWorkbench(); broadcastPreview();
+        };
+        popup.appendChild(delBtn);
+
+        const vw = window.innerWidth, vh = window.innerHeight;
+        popup.style.left = Math.min(cx + 6, vw - 200) + 'px';
+        popup.style.top = Math.min(cy + 6, vh - 180) + 'px';
+        popup.style.display = 'block';
+    };
+
     document.addEventListener('mousedown', e => {
         if (!popup.contains(e.target as Node)) hidePopup();
     });
@@ -828,9 +891,13 @@ export const initUI = () => {
         drawMap();
     };
     getEl('btn-zoom-out').onclick = () => {
-        state.zoom = Math.max(1.0, state.zoom - 0.5);
+        state.zoom = Math.max(0.2, state.zoom - 0.5);
         clampCamera();
         drawMap();
+    };
+    getEl('btn-fit').onclick = () => {
+        const m = getCurrentMission();
+        if (m) { fitCamera(m.gridSize); clampCamera(); drawMap(); }
     };
 
     getEl('btn-resize-map').onclick = () => {
@@ -965,6 +1032,13 @@ export const initUI = () => {
     safeClick('btn_spawn_pad', () => {
         getCurrentMission()!.spawnObject = 'pad';
         drawMap();
+    });
+    document.getElementById('pad_tower_variant')?.addEventListener('change', (e) => {
+        const m = getCurrentMission();
+        if (!m) return;
+        const pad = m.objects.find((o: any) => o.type === 'pad') as any;
+        if (pad) pad.towerVariant = (e.target as HTMLSelectElement).value as 'classic' | 'new';
+        notifyWorkbench();
     });
     safeClick('btn_spawn_carrier', () => {
         getCurrentMission()!.spawnObject = 'carrier';
@@ -1319,6 +1393,9 @@ export const initUI = () => {
                 if (!mAny.objectives.some((o: any) => o.type === 'ring_all'))
                     mAny.objectives.push({ type: 'ring_all' });
                 break;
+            case 'volleyball_court':
+                m.objects.push({ type: 'volleyball_court' as any, x: gx, y: gy, angle: 0 });
+                break;
         }
         renderObjectList();
         drawMap();
@@ -1357,6 +1434,7 @@ export const initUI = () => {
                 { v: 'festival_tent', l: '🎪 Zelt' },
                 { v: 'festival_tent_broken', l: '🎪 Zelt (kap.)' },
                 { v: 'festival_car', l: '🚙 Festival-Auto' },
+                { v: 'volleyball_court', l: '🏐 Volleyball' },
             ]},
             { cat: 'Load', emoji: '📦', items: [
                 { v: 'person', l: '🟡 Person' },
@@ -1522,13 +1600,15 @@ export const initUI = () => {
                 if (obj.type === 'pad') hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
                 else if (['carrier', 'boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'supply_vessel', 'frigate', 'submarine'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
-                else if (['lighthouse', 'research_platform', 'wind_turbine'].includes(obj.type))
+                else if (['lighthouse', 'research_platform', 'wind_turbine', 'buoy'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
                 else if (['plane_wreck', 'sailboat_broken', 'ornithopter_wreck', 'baywatch_car', 'baywatch_hq', 'baywatch_tower',
                     'concert_stage',
                     'festival_tent', 'festival_tent_broken', 'festival_car',
                     'xmas_house_a', 'xmas_house_b', 'sleigh', 'reindeer'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
+                else if (obj.type === 'volleyball_court')
+                    hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
                 else if (obj.type === 'xmas_lantern')
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 2.5;
                 else if ((obj as any).type === 'ring')
@@ -1704,6 +1784,8 @@ export const initUI = () => {
                 const clickedObj = getCurrentMission()?.objects[state.dragItemIdx] as any;
                 if (clickedObj?.type === 'ring')
                     showRingPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
+            } else if (!state.dragHasMoved && state.dragItemType === 'emitter' && state.dragItemIdx !== null) {
+                showEmitterPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
             }
             state.isDraggingItem = false;
             state.dragItemType = null;

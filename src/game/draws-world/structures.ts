@@ -7,6 +7,7 @@ import PLANE_WRECK_DEF from '../models/objects/plane_wreck.zdef';
 import SAILBOAT_BROKEN_DEF from '../models/objects/sailboat_broken.zdef';
 import HANGAR_DEF from '../models/objects/hangar.zdef';
 import TOWER_DEF from '../models/objects/tower.zdef';
+import HANGAR_TOWER_DEF from '../models/objects/hangar_tower.zdef';
 import LIGHTHOUSE_DEF from '../models/objects/lighthouse.zdef';
 import BAYWATCH_CAR_DEF from '../models/objects/baywatch_car.zdef';
 import BAYWATCH_HQ_DEF from '../models/objects/baywatch_hq.zdef';
@@ -74,8 +75,10 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
     };
 
     const _drawHangar = () => {
-        SceneRenderer.add(HANGAR_DEF, { x: G.PAD.xMax - 3, y: G.PAD.yMin - 1, z: G.PAD.z, angle: Math.PI / 2 });
-        SceneRenderer.add(TOWER_DEF, { x: G.PAD.xMax - 0.5, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 });
+        SceneRenderer.add(HANGAR_DEF, { x: G.PAD.xMax - 3, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 });
+        const towerDef = G.PAD.towerVariant === 'new' ? HANGAR_TOWER_DEF : TOWER_DEF;
+        const towerX = G.PAD.towerVariant === 'new' ? G.PAD.xMax : G.PAD.xMax - 0.5;
+        SceneRenderer.add(towerDef, { x: towerX, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 });
     };
 
     const _renderWindsock = (

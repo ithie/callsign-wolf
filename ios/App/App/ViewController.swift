@@ -88,6 +88,27 @@ private final class ControlsHandler: NSObject, WKScriptMessageHandler {
     }
 }
 
+// MARK: - IAP bridge
+
+private let kProductID = "i.thie.softworks.fullgame"
+private let kConversionVersion = "1.5" // First version where app is free — prior buyers are grandfathered
+
+private final class IAPHandler: NSObject, WKScriptMessageHandler {
+    weak var vc: ViewController?
+
+    func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
+        guard let body = message.body as? [String: String],
+              let action = body["action"],
+              let vc else { return }
+        switch action {
+        case "purchase":  Task { await vc.iapPurchase() }
+        case "restore":   Task { await vc.iapRestore() }
+        case "loadPrice": Task { await vc.iapLoadPrice() }
+        default: break
+        }
+    }
+}
+
 // MARK: - ViewController
 
 class ViewController: UIViewController {
@@ -95,6 +116,7 @@ class ViewController: UIViewController {
     private var webView: WKWebView!
     private var controlsOverlay: GameControlOverlay!
     private let controlsHandler = ControlsHandler()
+    private let iapHandler = IAPHandler()
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -114,6 +136,8 @@ class ViewController: UIViewController {
         ucc.add(controlsHandler,    name: "controls")
         ucc.add(ZsynthHandler(),    name: "zsynthPlayer")
         ucc.add(HeliSoundHandler(), name: "heliSound")
+        iapHandler.vc = self
+        ucc.add(iapHandler,         name: "iap")
 
         webView = WKWebView(frame: view.bounds, configuration: config)
         webView.autoresizingMask           = [.flexibleWidth, .flexibleHeight]
@@ -140,6 +164,8 @@ class ViewController: UIViewController {
             fatalError("[SAR] index.html not found in bundle")
         }
         webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+
+        Task { await checkEntitlementsOnLaunch() }
     }
 
     // MARK: - Audio resume
@@ -151,7 +177,7 @@ class ViewController: UIViewController {
 
     // MARK: - Storage helpers
 
-    private let storageKeys = ["z_session", "z_lang", "z_music", "z_sfx"]
+    private let storageKeys = ["z_session", "z_lang", "z_music", "z_sfx", "z_unlocked"]
 
     private func migrateSession(_ raw: String) -> String {
         guard var session = (try? JSONSerialization.jsonObject(with: Data(raw.utf8))) as? [String: Any],
@@ -209,6 +235,101 @@ class ViewController: UIViewController {
                 injectionTime: .atDocumentStart,
                 forMainFrameOnly: true
             ))
+        }
+    }
+
+    // MARK: - IAP helpers
+
+    private func _compareVersions(_ a: String, _ b: String) -> ComparisonResult {
+        let aParts = a.split(separator: ".").compactMap { Int($0) }
+        let bParts = b.split(separator: ".").compactMap { Int($0) }
+        let len = max(aParts.count, bParts.count)
+        for i in 0..<len {
+            let av = i < aParts.count ? aParts[i] : 0
+            let bv = i < bParts.count ? bParts[i] : 0
+            if av < bv { return .orderedAscending }
+            if av > bv { return .orderedDescending }
+        }
+        return .orderedSame
+    }
+
+    func setUnlocked() {
+        UserDefaults.standard.set("1", forKey: "z_unlocked")
+        DispatchQueue.main.async {
+            self.webView.evaluateJavaScript("window.__iapResult && window.__iapResult('success')")
+        }
+    }
+
+    func checkEntitlementsOnLaunch() async {
+        // Already unlocked in storage — nothing to do
+        if UserDefaults.standard.string(forKey: "z_unlocked") == "1" { return }
+
+        // 1. Grandfathering: original purchase was before the freemium conversion (v1.5)
+        if case .verified(let appTx) = await AppTransaction.shared {
+            if _compareVersions(appTx.originalApplicationVersion, kConversionVersion) == .orderedAscending {
+                UserDefaults.standard.set("1", forKey: "z_unlocked")
+                return
+            }
+        }
+
+        // 2. Active entitlement via StoreKit 2
+        for await result in Transaction.currentEntitlements {
+            if case .verified(let tx) = result, tx.productID == kProductID {
+                UserDefaults.standard.set("1", forKey: "z_unlocked")
+                return
+            }
+        }
+    }
+
+    func iapLoadPrice() async {
+        guard let product = try? await Product.products(for: [kProductID]).first else { return }
+        let price = product.displayPrice
+        DispatchQueue.main.async {
+            self.webView.evaluateJavaScript("window.__iapPrice && window.__iapPrice('\(price)')")
+        }
+    }
+
+    func iapPurchase() async {
+        guard let product = try? await Product.products(for: [kProductID]).first else {
+            _iapCallback("error"); return
+        }
+        guard let result = try? await product.purchase() else {
+            _iapCallback("error"); return
+        }
+        switch result {
+        case .success(let verification):
+            if case .verified(let tx) = verification {
+                await tx.finish()
+                UserDefaults.standard.set("1", forKey: "z_unlocked")
+                _iapCallback("success")
+            } else {
+                _iapCallback("error")
+            }
+        case .userCancelled:
+            _iapCallback("cancelled")
+        case .pending:
+            _iapCallback("cancelled")
+        @unknown default:
+            _iapCallback("error")
+        }
+    }
+
+    func iapRestore() async {
+        try? await AppStore.sync()
+        var found = false
+        for await result in Transaction.currentEntitlements {
+            if case .verified(let tx) = result, tx.productID == kProductID {
+                UserDefaults.standard.set("1", forKey: "z_unlocked")
+                found = true
+                break
+            }
+        }
+        _iapCallback(found ? "success" : "already")
+    }
+
+    private func _iapCallback(_ result: String) {
+        DispatchQueue.main.async {
+            self.webView.evaluateJavaScript("window.__iapResult && window.__iapResult('\(result)')")
         }
     }
 

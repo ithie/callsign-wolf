@@ -347,6 +347,7 @@ describe('mission-select', () => {
             rankIndex: 0,
             onSelect: vi.fn(),
             onBack: vi.fn(),
+            onShowPaywall: vi.fn(),
         });
         snap('mission-select');
     });
@@ -370,6 +371,7 @@ describe('mission-select', () => {
             rankIndex: 0,
             onSelect: vi.fn(),
             onBack: vi.fn(),
+            onShowPaywall: vi.fn(),
         });
         expect(document.getElementById('mission-select')!.innerHTML).toContain('mission-done');
     });

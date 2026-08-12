@@ -691,6 +691,13 @@
                                 <span class="close-btn" id="close-pad">✖</span>
                                 <strong style="color: #5f5">🚁 BASE PAD</strong><br />
                                 <button id="btn_spawn_pad" style="width: 100%; margin: 5px 0">Set Start Point</button>
+                                <div style="margin-top:6px">
+                                  <label style="font-size:10px;color:#aaa">Tower:</label><br>
+                                  <select id="pad_tower_variant" style="width:100%;margin-top:2px;background:var(--bg3);color:var(--text);border:1px solid var(--border);font-size:11px;padding:2px 4px">
+                                    <option value="classic">Klassisch</option>
+                                    <option value="new">Neu (Hangar-Tower)</option>
+                                  </select>
+                                </div>
                             </div>
             </div><!-- end #ed-obj-panel -->
         </div>
@@ -774,6 +781,7 @@
             <button id="btn-resize-map">Resize</button>
             <button id="btn-zoom-in">+</button>
             <button id="btn-zoom-out">-</button>
+            <button id="btn-fit">Fit</button>
 
             <input type="text" id="m_headline_de" value="Phase 1" />
             <input type="text" id="m_headline_en" value="" />

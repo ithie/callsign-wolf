@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2724CBA730095B9A00DDC142 /* PrivacyInfo 2.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2724CBA630095B9A00DDC142 /* PrivacyInfo 2.xcprivacy */; };
+		2724CBA730095B9A00DDC142 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2724CBA630095B9A00DDC142 /* PrivacyInfo.xcprivacy */; };
 		27C2DD74300A06D600C7E3BC /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 27C2DD72300A06D600C7E3BC /* InfoPlist.strings */; };
 		27D455E62FD80EBF0042D988 /* ZsynthPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D455E52FD80EBF0042D988 /* ZsynthPlayer.swift */; };
 		27F496252FD9A3E000E7ECD1 /* HeliSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27F496242FD9A3E000E7ECD1 /* HeliSound.swift */; };
@@ -22,7 +22,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		2724CBA630095B9A00DDC142 /* PrivacyInfo 2.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "PrivacyInfo 2.xcprivacy"; sourceTree = "<group>"; };
+		2724CBA630095B9A00DDC142 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		27C2DD73300A06D600C7E3BC /* pt */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = pt; path = pt.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		27C2DD77300A06F300C7E3BC /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		27C2DD78300A070000C7E3BC /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
@@ -40,6 +40,7 @@
 		A1C4E8F1B3D56A7890123456 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		C7CCF1112FC8BC3600F6FDE8 /* GameControlOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameControlOverlay.swift; sourceTree = "<group>"; };
 		C7CCF1122FC8BC3600F6FDE8 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		B09A4E8F2FCA1E0042D98800 /* Configuration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Configuration.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -83,8 +84,9 @@
 				50B271D01FEDC1A000F3C39B /* public */,
 				27D455E52FD80EBF0042D988 /* ZsynthPlayer.swift */,
 				27F496242FD9A3E000E7ECD1 /* HeliSound.swift */,
-				2724CBA630095B9A00DDC142 /* PrivacyInfo 2.xcprivacy */,
+				2724CBA630095B9A00DDC142 /* PrivacyInfo.xcprivacy */,
 				27C2DD72300A06D600C7E3BC /* InfoPlist.strings */,
+				B09A4E8F2FCA1E0042D98800 /* Configuration.storekit */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -161,7 +163,7 @@
 				27C2DD74300A06D600C7E3BC /* InfoPlist.strings in Resources */,
 				50B271D11FEDC1A000F3C39B /* public in Resources */,
 				504EC30F1FED79650016851F /* Assets.xcassets in Resources */,
-				2724CBA730095B9A00DDC142 /* PrivacyInfo 2.xcprivacy in Resources */,
+				2724CBA730095B9A00DDC142 /* PrivacyInfo.xcprivacy in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -350,7 +352,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.5;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = i.thie.softworks;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -374,7 +376,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.5;
 				PRODUCT_BUNDLE_IDENTIFIER = i.thie.softworks;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";

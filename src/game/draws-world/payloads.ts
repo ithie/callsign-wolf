@@ -54,6 +54,16 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
                 payload.outfitColors,
                 inWater,
             );
+            if (inWater && payload.type === PAYLOAD.PERSON) {
+                const pulse = 0.5 + 0.45 * Math.abs(Math.sin(Date.now() / 380));
+                const br = Math.max(1.5, tileW * 0.045);
+                ctx.globalAlpha = pulse;
+                ctx.fillStyle = '#ff8800';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y - tileW * 0.28, br, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
             if (payload.z < 0) {
                 ctx.strokeStyle = '#aaf';
                 ctx.beginPath();

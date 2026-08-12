@@ -4,7 +4,7 @@
 
 import { campaignHandler, soundHandler } from './main';
 import { G, zstate } from './state';
-import { loadSession, saveSession, getRank, RANKS, type PlayerSession } from './session';
+import { loadSession, saveSession, getRank, RANKS, isUnlocked, type PlayerSession } from './session';
 import { getHeliType, HELI_TYPES } from './heli-types';
 import { initHeliSound, stopHeliSound } from './heli-sound';
 import { getGround, initGrid, generateTerrain } from './sim/terrain';
@@ -36,6 +36,7 @@ import * as HeliSelect from './ui/heli-select/heli-select';
 import { initMinimapTerrain } from './ui/minimap/minimap';
 import * as CampaignSelect from './ui/campaign-select/campaign-select';
 import * as MissionSelect from './ui/mission-select/mission-select';
+import * as Paywall from './ui/paywall/paywall';
 import * as MissionFailedScreen from './ui/mission-failed-screen/mission-failed-screen';
 import * as MissionSuccessScreen from './ui/mission-success-screen/mission-success-screen';
 import * as CampaignCompleteScreen from './ui/campaign-complete-screen/campaign-complete-screen';
@@ -101,6 +102,7 @@ export const initFlow = (deps: FlowDeps): void => {
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 export const getRankMissions = (): number => {
+    if (!isUnlocked()) return 0;
     const tutorialKeys = new Set(
         campaignHandler
             .getCampaigns()
@@ -224,7 +226,7 @@ export const retryMission = (): void => {
     campaignHandler.campaign.setActiveMission(selectedMissionIndex);
     const { gridSize, objects: selObjects } = campaignHandler.getCurrentMissionData();
     const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
-    G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5 };
+    G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant };
     G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
     initGrid(gridSize, G.points);
     startGame(heliType);
@@ -363,7 +365,7 @@ export const missionComplete = (): void => {
         campaignHandler.campaign.setActiveMission(nextMissionIndex);
         const { gridSize, objects: selObjects } = campaignHandler.getCurrentMissionData();
         const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
-        G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5 };
+        G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant };
         G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
         initGrid(gridSize, G.points);
         startGame(heliType);
@@ -424,12 +426,17 @@ export const onBoatTurbineCollision = (boatIdx: number, wtIdx: number): void => 
 
 // ─── Navigation ───────────────────────────────────────────────────────────────
 
+const _openPaywall = (returnFn: () => void): void => {
+    Paywall.show(returnFn);
+};
+
 const _openCampaignSelect = (): void => {
     CampaignSelect.show({
         session,
         campaigns: campaignHandler.getCampaigns(),
         onSelect: idx => _doSelectCampaign(Number(idx)),
         onBack: toMainMenu,
+        onShowPaywall: () => _openPaywall(_openCampaignSelect),
     });
 };
 
@@ -469,6 +476,7 @@ const _openMissionSelect = (): void => {
         rankIndex: RANKS.indexOf(getRank(session.rankOverride ?? 0, getRankMissions())),
         onSelect: selectMission,
         onBack: toCampaignSelect,
+        onShowPaywall: () => _openPaywall(_openMissionSelect),
     });
 };
 
@@ -478,7 +486,7 @@ export const selectMission = (missionIndex: number): void => {
 
     const { gridSize, objects: selObjects, campaignType } = campaignHandler.getCurrentMissionData();
     const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
-    G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5 };
+    G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant };
     G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
     initGrid(gridSize, G.points);
 
@@ -537,6 +545,7 @@ export const startGame = (type: string): void => {
 const _tick = (): Promise<void> => new Promise(r => setTimeout(r, 0));
 
 const _maybeSpawnOrniWreck = (): void => {
+    if (!isUnlocked()) return;
     const _orniRankIdx = RANKS.indexOf(getRank(session.rankOverride ?? 0, getRankMissions()));
     if (_orniRankIdx >= RANKS.length - 1) return;
     if (session.typeRatings?.['ornithopter']) return;

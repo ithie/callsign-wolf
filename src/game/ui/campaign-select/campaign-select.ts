@@ -1,6 +1,6 @@
 import '@/ui/nav-screens.css';
 import { I18N, localize } from '../../i18n';
-import { isCampaignUnlocked, isCampaignLockedByTutorial, type PlayerSession } from '../../session';
+import { isCampaignUnlocked, isCampaignLockedByTutorial, isCampaignPaywalled, type PlayerSession } from '../../session';
 import type { CampaignExport } from '../../../shared/types';
 import { ensureEl } from '@/ui/dom-helpers';
 import { showScreenCrtEnter } from '../nav';
@@ -15,6 +15,7 @@ type CampaignSelectDeps = {
     campaigns: CampaignExport[];
     onSelect: (index: number) => void;
     onBack: () => void;
+    onShowPaywall: () => void;
 };
 
 type CampaignItem = CampaignExport & { index: number };
@@ -24,7 +25,7 @@ export const mount = () => {
 };
 
 export const show = (deps: CampaignSelectDeps) => {
-    const { session, campaigns, onSelect, onBack } = deps;
+    const { session, campaigns, onSelect, onBack, onShowPaywall } = deps;
 
     const body = mountScreenShell('campaign-select', I18N.CAMPAIGN_SELECT_TITLE, onBack);
 
@@ -38,6 +39,9 @@ export const show = (deps: CampaignSelectDeps) => {
         isLocked: c => !isCampaignUnlocked(session, campaigns, c.index),
         renderStamp: (c, locked) => {
             if (!locked) return null;
+            if (isCampaignPaywalled(campaigns, c.index)) {
+                return addStamp(I18N.FULL_VERSION_BADGE, '#8850cc');
+            }
             const needsTutorial = isCampaignLockedByTutorial(session, campaigns, c.index);
             return addStamp(needsTutorial ? I18N.TRAINING_REQUIRED : I18N.NOT_UNLOCKED,
                             needsTutorial ? '#ff4400' : '#7a1a1a');
@@ -68,6 +72,9 @@ export const show = (deps: CampaignSelectDeps) => {
             return card;
         },
         onTap: c => onSelect(c.index),
+        onLockedTap: c => {
+            if (isCampaignPaywalled(campaigns, c.index)) onShowPaywall();
+        },
         haptic: () => hapticImpact(ImpactStyle.Light),
     });
 

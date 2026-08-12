@@ -7,6 +7,7 @@ export const NAV_SCREENS = [
     'credits-screen',
     'settings-screen',
     'legal-screen',
+    'paywall',
 ] as const;
 
 export type NavScreen = (typeof NAV_SCREENS)[number];

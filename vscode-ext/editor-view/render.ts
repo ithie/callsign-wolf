@@ -1,5 +1,65 @@
 import { state, getCurrentMission } from './state';
 import { COLORS, getLandColor, getSandColor } from '@/shared/constants';
+import { createSceneRenderer } from '../../src/game/scene-renderer';
+import { createIsoFn } from '../../src/game/render';
+import { renderNodes, applyParts } from '../../src/game/def-utils';
+import type { DEF, DEF2 } from '../../src/game/defs';
+
+import LIGHTHOUSE_RAW        from '../../src/game/models/objects/lighthouse.zdef';
+import WIND_TURBINE_RAW      from '../../src/game/models/objects/wind_turbine.zdef';
+import BUOY_RAW              from '../../src/game/models/objects/buoy.zdef';
+import BAYWATCH_CAR_RAW      from '../../src/game/models/objects/baywatch_car.zdef';
+import BAYWATCH_HQ_RAW       from '../../src/game/models/objects/baywatch_hq.zdef';
+import BAYWATCH_TOWER_RAW    from '../../src/game/models/objects/baywatch_tower.zdef';
+import CONCERT_STAGE_RAW     from '../../src/game/models/objects/concert_stage.zdef';
+import FESTIVAL_TENT_RAW     from '../../src/game/models/objects/festival_tent.zdef';
+import FESTIVAL_TENT_BRK_RAW from '../../src/game/models/objects/festival_tent_broken.zdef';
+import FESTIVAL_CAR_RAW      from '../../src/game/models/objects/festival_car.zdef';
+import XMAS_HOUSE_A_RAW      from '../../src/game/models/objects/xmas_house_a.zdef';
+import XMAS_HOUSE_B_RAW      from '../../src/game/models/objects/xmas_house_b.zdef';
+import XMAS_LANTERN_RAW      from '../../src/game/models/objects/xmas_lantern.zdef';
+import SLEIGH_RAW            from '../../src/game/models/objects/sleigh.zdef';
+import REINDEER_RAW          from '../../src/game/models/objects/reindeer.zdef';
+import VOLLEYBALL_COURT_RAW  from '../../src/game/models/objects/volleyball_court.zdef';
+import HANGAR_TOWER_RAW      from '../../src/game/models/objects/hangar_tower.zdef';
+import PLANE_WRECK_RAW       from '../../src/game/models/objects/plane_wreck.zdef';
+import SAILBOAT_BROKEN_RAW   from '../../src/game/models/objects/sailboat_broken.zdef';
+import RESEARCH_PLATFORM_RAW from '../../src/game/models/research_platform.zdef';
+import SUBMARINE_RAW         from '../../src/game/models/submarine.zdef';
+import CARRIER_RAW           from '../../src/game/models/carrier.zdef';
+import FRIGATE_RAW           from '../../src/game/models/frigate.zdef';
+import SUPPLY_VESSEL_RAW     from '../../src/game/models/supply_vessel.zdef';
+import SAR_BOAT_RAW          from '../../src/game/models/sar_boat.zdef';
+import PILOT_BOAT_RAW        from '../../src/game/models/pilot_boat.zdef';
+
+const _DEF_MAP: Record<string, { def: unknown; v2: boolean }> = {
+    lighthouse:           { def: LIGHTHOUSE_RAW,        v2: false },
+    wind_turbine:         { def: WIND_TURBINE_RAW,      v2: false },
+    buoy:                 { def: BUOY_RAW,              v2: false },
+    baywatch_car:         { def: BAYWATCH_CAR_RAW,      v2: false },
+    baywatch_hq:          { def: BAYWATCH_HQ_RAW,       v2: false },
+    baywatch_tower:       { def: BAYWATCH_TOWER_RAW,    v2: false },
+    concert_stage:        { def: CONCERT_STAGE_RAW,     v2: false },
+    festival_tent:        { def: FESTIVAL_TENT_RAW,     v2: false },
+    festival_tent_broken: { def: FESTIVAL_TENT_BRK_RAW, v2: false },
+    festival_car:         { def: FESTIVAL_CAR_RAW,      v2: false },
+    xmas_house_a:         { def: XMAS_HOUSE_A_RAW,      v2: false },
+    xmas_house_b:         { def: XMAS_HOUSE_B_RAW,      v2: false },
+    xmas_lantern:         { def: XMAS_LANTERN_RAW,      v2: false },
+    sleigh:               { def: SLEIGH_RAW,             v2: false },
+    reindeer:             { def: REINDEER_RAW,           v2: false },
+    volleyball_court:     { def: VOLLEYBALL_COURT_RAW,  v2: false },
+    hangar_tower:         { def: HANGAR_TOWER_RAW,       v2: false },
+    plane_wreck:          { def: PLANE_WRECK_RAW,        v2: false },
+    sailboat_broken:      { def: SAILBOAT_BROKEN_RAW,   v2: false },
+    research_platform:    { def: RESEARCH_PLATFORM_RAW, v2: false },
+    submarine:            { def: SUBMARINE_RAW,          v2: false },
+    carrier:              { def: CARRIER_RAW,            v2: true  },
+    frigate:              { def: FRIGATE_RAW,            v2: true  },
+    supply_vessel:        { def: SUPPLY_VESSEL_RAW,      v2: true  },
+    sar_boat:             { def: SAR_BOAT_RAW,           v2: true  },
+    pilot_boat:           { def: PILOT_BOAT_RAW,         v2: true  },
+};
 
 // ── ISO Camera ────────────────────────────────────────────────────────────────
 export const BASE_HW = 14;          // half-tile width at zoom=1
@@ -32,8 +92,15 @@ export const screenToGrid = (sx: number, sy: number): { gx: number; gy: number }
     return { gx: (dx / hw + dy / hh) / 2, gy: (dy / hh - dx / hw) / 2 };
 };
 
-// Fit entire map into view and center camera
+// Center camera at game-native zoom (tileW/2 = 16px on Mac → zoom ≈ 1.14)
 export const centerCamera = (gridSize: number): void => {
+    state.zoom = 16 / BASE_HW;
+    state.panX = gridSize / 2;
+    state.panY = gridSize / 2;
+};
+
+// Fit entire map into view
+export const fitCamera = (gridSize: number): void => {
     const c = _canvas();
     const fitW = c.width  / (gridSize * 2 * BASE_HW * 1.05);
     const fitH = (c.height * 0.9) / (gridSize * BASE_HW * 1.05);
@@ -162,6 +229,23 @@ export const drawMap = (): void => {
     const wl     = (m as any).waterLevel ?? 0;
     const isSnow = !!(m as any).snow;
 
+    // ── DEF model rendering — uses the game's own createIsoFn ─────────────────
+    const defTW   = hw * 2;
+    const defIso  = createIsoFn({ canvas, tileW: defTW, tileH: hh * 2, stepH: hw * 0.78 });
+    const defCamX = canvas.width  / 2 - ox;
+    const defCamY = canvas.height / 2 - oy;
+    const defDrawCtx = { ctx, isoFn: defIso, tileW: defTW };
+
+    const _renderDEF = (def: unknown, v2: boolean, wx: number, wy: number, wz: number, angle: number, colors?: Record<string, string>): void => {
+        const sr = createSceneRenderer(ctx, defIso);
+        if (v2) {
+            renderNodes(def as DEF2, {}, { x: wx, y: wy, z: wz, angle }, sr, defCamX, defCamY, defDrawCtx);
+        } else {
+            sr.add(def as DEF, { x: wx, y: wy, z: wz, angle, colors });
+        }
+        sr.flush(defCamX, defCamY);
+    };
+
     // ── Visible range (4 corners → grid coords) ───────────────────────────────
     const corners = [[0,0],[W,0],[0,H],[W,H]].map(([sx,sy]) => {
         const dx = sx - ox, dy = sy - oy;
@@ -240,6 +324,9 @@ export const drawMap = (): void => {
         const isSel = state.selectedObjectIdx === idx;
         const cx    = toSX(obj.x + 0.5, obj.y + 0.5);
         const cy    = toSY(obj.x + 0.5, obj.y + 0.5);
+        const objAngle    = (obj as any).angle ?? 0;           // degrees — for _isoArrow
+        const objAngleRad = objAngle * Math.PI / 180;          // radians — for _renderDEF
+        const defEntry = obj.type !== 'pad' ? _DEF_MAP[obj.type] : undefined;
 
         if (isSel) { ctx.shadowBlur = 14; ctx.shadowColor = '#fff'; }
 
@@ -274,6 +361,8 @@ export const drawMap = (): void => {
             if (isSel) {
                 const btn = document.getElementById('btn_spawn_pad');
                 if (btn) btn.style.background = m.spawnObject === 'pad' ? COLORS.uiHighlight : 'var(--accent)';
+                const tvSel = document.getElementById('pad_tower_variant') as HTMLSelectElement | null;
+                if (tvSel) tvSel.value = (obj as any).towerVariant ?? 'classic';
             }
 
         } else if (
@@ -282,22 +371,23 @@ export const drawMap = (): void => {
             obj.type === 'frigate'
         ) {
             const isCarrier = obj.type === 'carrier';
-            const color     = isCarrier ? COLORS.carrierBase :
-                              obj.type === 'pilot_boat'  ? '#ffcc00' :
-                              obj.type === 'sar_boat'    ? '#d32f2f' :
-                              obj.type === 'salvage_tug' ? '#888' :
-                              obj.type === 'supply_vessel' ? '#0d233a' :
-                              obj.type === 'frigate' ? '#5a6673' : '#ddd';
+            if (defEntry) {
+                _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, wl, objAngleRad);
+            } else {
+                const color = obj.type === 'pilot_boat'   ? '#ffcc00' :
+                              obj.type === 'sar_boat'     ? '#d32f2f' :
+                              obj.type === 'salvage_tug'  ? '#888' :
+                              obj.type === 'supply_vessel'? '#0d233a' :
+                              obj.type === 'frigate'      ? '#5a6673' : '#ddd';
+                const rad = Math.max(4, hw * 0.8);
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, rad, rad * 0.6, 0, 0, Math.PI * 2);
+                ctx.fillStyle = color;
+                ctx.fill();
+                if (isSel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
+            }
 
-            // Circle + direction arrow
-            const rad = Math.max(4, hw * (isCarrier ? 1.4 : 0.8));
-            ctx.beginPath();
-            ctx.ellipse(cx, cy, rad, rad * 0.6, 0, 0, Math.PI * 2);
-            ctx.fillStyle = color;
-            ctx.fill();
-            if (isSel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
-
-            _isoArrow(ctx, cx, cy, (obj as any).angle ?? 0, hw, hh, hw * 2.2, '#fff');
+            _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 2.2, '#fff');
 
             // Path preview
             if ((obj as any).path === 'circle') {
@@ -322,54 +412,35 @@ export const drawMap = (): void => {
             }
 
         } else if (obj.type === 'submarine') {
-            const rad = Math.max(3, hw * 0.7);
-            ctx.beginPath();
-            ctx.ellipse(cx, cy, rad, rad * 0.55, 0, 0, Math.PI * 2);
-            ctx.fillStyle = '#111c';
-            ctx.fill();
-            if (isSel) { ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1.5; ctx.stroke(); }
-            _isoArrow(ctx, cx, cy, (obj as any).angle ?? 0, hw, hh, hw * 1.8, '#888');
+            if (defEntry) {
+                _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, wl, objAngleRad);
+            } else {
+                const rad = Math.max(3, hw * 0.7);
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, rad, rad * 0.55, 0, 0, Math.PI * 2);
+                ctx.fillStyle = '#111c';
+                ctx.fill();
+                if (isSel) { ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1.5; ctx.stroke(); }
+            }
+            _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.8, '#888');
             if (isSel) { _showObjPanel('ui_submarine'); syncVesselUI(obj, 'submarine'); }
 
         } else if (obj.type === 'lighthouse') {
-            ctx.beginPath();
-            ctx.arc(cx, cy, Math.max(3, hw * 0.7), 0, Math.PI * 2);
-            ctx.fillStyle = COLORS.lighthouseBase;
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(cx, cy, Math.max(2, hw * 0.35), 0, Math.PI * 2);
-            ctx.fillStyle = COLORS.lighthouseLight;
-            ctx.fill();
+            if (defEntry) {
+                _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, 0, objAngleRad);
+            }
 
         } else if (obj.type === 'research_platform') {
-            const r = hw * 1.2;
-            _isoDiamond(ctx, cx - hw*0.5, cy - hh*0.5, r, r*0.5, '#666', '#4af');
-            ctx.fillStyle = '#2a8f2a';
-            ctx.fillRect(cx - r, cy - hh * 0.3, r * 0.8, hh * 0.6);
-            ctx.fillStyle = '#fff';
-            ctx.font = `bold ${Math.max(7, hw * 0.55)}px monospace`;
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-            ctx.fillText('H', cx - r * 0.6, cy);
-            ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+            if (defEntry) {
+                _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, 0, objAngleRad);
+            }
 
         } else if (obj.type === 'wind_turbine') {
-            ctx.beginPath();
-            ctx.arc(cx, cy, Math.max(2, hw * 0.22), 0, Math.PI * 2);
-            ctx.fillStyle = '#ccc';
-            ctx.fill();
-            ctx.strokeStyle = '#eee';
-            ctx.lineWidth = Math.max(1, hw * 0.12);
-            for (let i = 0; i < 3; i++) {
-                const a = (i / 3) * Math.PI * 2;
-                ctx.beginPath();
-                ctx.moveTo(cx, cy);
-                ctx.lineTo(cx + Math.cos(a) * hw * 2.2, cy + Math.sin(a) * hh * 2.2);
-                ctx.stroke();
+            if (defEntry) {
+                const d = defEntry.def as DEF;
+                const baked = d.parts?.length ? applyParts(d, {}) : d;
+                _renderDEF(baked, false, obj.x, obj.y, 0, objAngleRad);
             }
-            ctx.fillStyle = '#f22';
-            ctx.beginPath();
-            ctx.arc(cx, cy - hw * 0.3, Math.max(2, hw * 0.15), 0, Math.PI * 2);
-            ctx.fill();
             if (isSel) {
                 _showObjPanel('ui_wt');
                 const spinEl = document.getElementById('m_wt_spinning') as HTMLInputElement | null;
@@ -377,47 +448,6 @@ export const drawMap = (): void => {
             }
 
         } else {
-            // Generic marker for all other types
-            const typeColors: Record<string, string> = {
-                plane_wreck:        '#d4c022',
-                sailboat_broken:    '#933',
-                ornithopter_wreck:  '#d0d0d0',
-                baywatch_car:       '#cc2200',
-                baywatch_hq:        '#cc2200',
-                baywatch_tower:     '#d8d0b8',
-                concert_stage:      '#7a2aee',
-                festival_tent:      '#2266cc',
-                festival_tent_broken: '#6688aa',
-                festival_car:       '#9aabb5',
-                xmas_house_a:       '#aaddff',
-                xmas_house_b:       '#88bbee',
-                xmas_lantern:       '#ffee88',
-                sleigh:             '#ee3300',
-                reindeer:           '#cc8844',
-                ring:               '#FFD700',
-            };
-            const color = typeColors[obj.type] || '#aaa';
-            const r     = Math.max(3, hw * 0.65);
-
-            if (obj.type === 'ring') {
-                const rr = ((obj as any).radius ?? 2.5) * hw;
-                ctx.beginPath();
-                ctx.ellipse(cx, cy, rr, rr * 0.55, 0, 0, Math.PI * 2);
-                ctx.strokeStyle = isSel ? '#fff' : color;
-                ctx.lineWidth   = isSel ? 2.5 : 1.5;
-                ctx.stroke();
-            } else {
-                ctx.beginPath();
-                ctx.ellipse(cx, cy, r, r * 0.55, 0, 0, Math.PI * 2);
-                ctx.fillStyle = color + 'cc';
-                ctx.fill();
-                if (isSel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
-                if ((obj as any).angle !== undefined) {
-                    _isoArrow(ctx, cx, cy, (obj as any).angle, hw, hh, hw * 1.6, '#fff');
-                }
-            }
-
-            // Show obj-section panel when selected
             const panelMap: Record<string, string> = {
                 plane_wreck: 'ui_plane_wreck', sailboat_broken: 'ui_sailboat_broken',
                 ornithopter_wreck: 'ui_ornithopter_wreck', baywatch_car: 'ui_baywatch_car',
@@ -427,15 +457,42 @@ export const drawMap = (): void => {
                 xmas_house_a: 'ui_xmas_house', xmas_house_b: 'ui_xmas_house',
                 xmas_lantern: 'ui_xmas_lantern', sleigh: 'ui_sleigh', reindeer: 'ui_reindeer',
             };
+
+            if (obj.type === 'ring') {
+                const rr = ((obj as any).radius ?? 2.5) * hw;
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, rr, rr * 0.55, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = isSel ? '#fff' : '#FFD700';
+                ctx.lineWidth   = isSel ? 2.5 : 1.5;
+                ctx.stroke();
+            } else if (defEntry) {
+                const colors: Record<string, string> | undefined =
+                    (defEntry.def as any).palettes && (obj as any).colorVariant
+                        ? (defEntry.def as any).palettes[(obj as any).colorVariant]
+                        : undefined;
+                _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, 0, objAngleRad, colors);
+                if ((obj as any).angle !== undefined) {
+                    _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.6, 'rgba(255,255,255,0.5)');
+                }
+            } else {
+                // Fallback colored circle for types without a DEF model
+                const typeColors: Record<string, string> = {
+                    ornithopter_wreck: '#d0d0d0',
+                };
+                const color = typeColors[obj.type] || '#aaa';
+                const r     = Math.max(3, hw * 0.65);
+                ctx.beginPath();
+                ctx.ellipse(cx, cy, r, r * 0.55, 0, 0, Math.PI * 2);
+                ctx.fillStyle = color + 'cc';
+                ctx.fill();
+                if (isSel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
+                if ((obj as any).angle !== undefined) {
+                    _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.6, '#fff');
+                }
+            }
+
             if (isSel && panelMap[obj.type]) {
                 _showObjPanel(panelMap[obj.type]);
-                // Sync angle fields
-                const angleId = obj.type === 'xmas_house_a' || obj.type === 'xmas_house_b'
-                    ? 'm_xmas_house_angle'
-                    : obj.type === 'festival_tent' ? 'm_tent_angle'
-                    : obj.type === 'festival_tent_broken' ? 'm_tent_broken_angle'
-                    : obj.type === 'festival_car' ? 'm_fcar_angle'
-                    : `m_${obj.type.replace('_wreck','_wreck').replace('baywatch_car','bwc').replace('baywatch_hq','').replace('baywatch_tower','')}_angle`;
                 const simpleId: Record<string, string> = {
                     plane_wreck: 'm_pw_angle', sailboat_broken: 'm_sb_angle',
                     ornithopter_wreck: 'm_ow_angle', baywatch_car: 'm_bwc_angle',
@@ -517,6 +574,20 @@ export const drawMap = (): void => {
         const ey = toSY(e.x + 0.5, e.y + 0.5);
         const r  = Math.max(4, hw * 0.45);
         const isFire = e.type === 'fire';
+
+        // Radius ring for fire emitters
+        if (isFire && (e.radius ?? 0) > 0) {
+            const fireR = (e.radius as number) * hw;
+            ctx.globalAlpha = 0.4;
+            ctx.strokeStyle = '#ff8800';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.ellipse(ex, ey, fireR, fireR * 0.5, 0, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
         ctx.globalAlpha = 0.35;
         ctx.fillStyle   = isFire ? '#ff6600' : '#888';
         ctx.beginPath();

@@ -2,7 +2,7 @@ import './mission-select.css';
 import '@/ui/nav-screens.css';
 import { I18N, localize } from '../../i18n';
 import { ensureEl } from '@/ui/dom-helpers';
-import { isMissionUnlocked, type PlayerSession } from '../../session';
+import { isMissionUnlocked, isMissionPaywalled, type PlayerSession } from '../../session';
 import type { CampaignExport } from '../../../shared/types';
 import { HELI_TYPES } from '../../heli-types';
 import { showScreenCrtEnter } from '../nav';
@@ -18,6 +18,7 @@ type MissionSelectDeps = {
     rankIndex: number;
     onSelect: (missionIndex: number) => void;
     onBack: () => void;
+    onShowPaywall: () => void;
 };
 
 type MissionItem = {
@@ -33,7 +34,7 @@ export const mount = () => {
 };
 
 export const show = (deps: MissionSelectDeps) => {
-    const { campaign, campaignIndex, session, rankIndex, onSelect, onBack } = deps;
+    const { campaign, campaignIndex, session, rankIndex, onSelect, onBack, onShowPaywall } = deps;
     const key = String(campaignIndex);
     const cp = session.campaignProgress[key];
 
@@ -62,7 +63,11 @@ export const show = (deps: MissionSelectDeps) => {
     const carousel = createSwipeCarousel<MissionItem>({
         items: missionItems,
         isLocked: m => !m.unlocked,
-        renderStamp: (_m, locked) => locked ? addStamp(I18N.NOT_UNLOCKED, '#7a1a1a') : null,
+        renderStamp: (m, locked) => {
+            if (!locked) return null;
+            if (isMissionPaywalled(campaign.type, m.index)) return addStamp(I18N.FULL_VERSION_BADGE, '#8850cc');
+            return addStamp(I18N.NOT_UNLOCKED, '#7a1a1a');
+        },
         renderCard: (m) => {
             const card = document.createElement('div');
             let content = `<div class="box-label${m.done ? ' mission-done' : ''}">${localize(m.level.headline)}</div>`;
@@ -82,6 +87,9 @@ export const show = (deps: MissionSelectDeps) => {
             return card;
         },
         onTap: m => onSelect(m.index),
+        onLockedTap: m => {
+            if (isMissionPaywalled(campaign.type, m.index)) onShowPaywall();
+        },
         haptic: () => hapticImpact(ImpactStyle.Light),
     });
 

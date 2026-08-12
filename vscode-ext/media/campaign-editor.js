@@ -104,7 +104,12520 @@
     return `rgb(${r}, ${g}, ${b})`;
   };
 
+  // ../src/game/scene-renderer.ts
+  var _POOL_SIZE = 512;
+  var _makeInst = () => ({
+    def: null,
+    x: 0,
+    y: 0,
+    z: 0,
+    angle: 0,
+    colors: void 0,
+    depth: 0,
+    drawFn: null
+  });
+  var _scratchPts = Array.from({ length: 64 }, () => ({ x: 0, y: 0 }));
+  var createSceneRenderer = (ctx, iso2) => {
+    const _instances = [];
+    const _pool = Array.from({ length: _POOL_SIZE }, _makeInst);
+    let _poolNext = 0;
+    const _drawCollisionBox = (camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color) => {
+      const cosA = Math.cos(angle), sinA = Math.sin(angle);
+      const wp = (lx, ly, lz) => ({
+        x: wX + lx * cosA - ly * sinA,
+        y: wY + lx * sinA + ly * cosA,
+        z: lz
+      });
+      const corners = [
+        wp(xMin, yMin, zMin),
+        wp(xMax, yMin, zMin),
+        wp(xMax, yMax, zMin),
+        wp(xMin, yMax, zMin),
+        wp(xMin, yMin, zMax),
+        wp(xMax, yMin, zMax),
+        wp(xMax, yMax, zMax),
+        wp(xMin, yMax, zMax)
+      ];
+      const sc = corners.map((p) => iso2(p.x, p.y, p.z, camX, camY));
+      const edges = [
+        [0, 1],
+        [1, 2],
+        [2, 3],
+        [3, 0],
+        [4, 5],
+        [5, 6],
+        [6, 7],
+        [7, 4],
+        [0, 4],
+        [1, 5],
+        [2, 6],
+        [3, 7]
+      ];
+      ctx.save();
+      ctx.strokeStyle = color ?? "rgba(0,255,100,0.85)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.shadowColor = color ?? "#00ff66";
+      ctx.shadowBlur = 4;
+      edges.forEach(([a, b]) => {
+        ctx.beginPath();
+        ctx.moveTo(sc[a].x, sc[a].y);
+        ctx.lineTo(sc[b].x, sc[b].y);
+        ctx.stroke();
+      });
+      ctx.setLineDash([]);
+      ctx.restore();
+    };
+    const renderer = {
+      drawCollisionBox(camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color) {
+        _drawCollisionBox(camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color);
+      },
+      add(def, { x, y, z = 0, angle = 0, colors, drawFn, depth: depthOverride } = {}) {
+        const inst = _poolNext < _POOL_SIZE ? _pool[_poolNext++] : _makeInst();
+        inst.def = def;
+        inst.x = x;
+        inst.y = y;
+        inst.z = z;
+        inst.angle = angle;
+        inst.colors = colors;
+        inst.depth = depthOverride ?? x + y;
+        inst.drawFn = drawFn ?? null;
+        _instances.push(inst);
+      },
+      flush(camX, camY) {
+        _instances.sort((a, b) => a.depth - b.depth);
+        for (const inst of _instances) {
+          if (inst.def) {
+            const def = inst.def;
+            const pivot = def.pivot ?? [0, 0, 0];
+            const cosA = Math.cos(inst.angle), sinA = Math.sin(inst.angle);
+            const p0 = pivot[0], p1 = pivot[1], p2 = pivot[2];
+            for (const face of def.faces) {
+              if (face.normal) {
+                const [nx, ny] = face.normal;
+                if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;
+              }
+              const verts = face.verts;
+              for (let i = 0; i < verts.length; i++) {
+                const lx = verts[i][0], ly = verts[i][1], lz = verts[i][2];
+                const dx = lx - p0, dy = ly - p1;
+                iso2(
+                  dx * cosA - dy * sinA + inst.x,
+                  dx * sinA + dy * cosA + inst.y,
+                  lz - p2 + inst.z,
+                  camX,
+                  camY,
+                  _scratchPts[i]
+                );
+              }
+              let _fcx = 0, _fcy = 0;
+              const _fn = verts.length;
+              for (let i = 0; i < _fn; i++) {
+                _fcx += _scratchPts[i].x;
+                _fcy += _scratchPts[i].y;
+              }
+              _fcx /= _fn;
+              _fcy /= _fn;
+              ctx.beginPath();
+              for (let i = 0; i < _fn; i++) {
+                const _dx = _scratchPts[i].x - _fcx, _dy = _scratchPts[i].y - _fcy;
+                const _d = Math.hypot(_dx, _dy) || 1;
+                const _ex = _fcx + _dx * (1 + 0.5 / _d);
+                const _ey = _fcy + _dy * (1 + 0.5 / _d);
+                i === 0 ? ctx.moveTo(_ex, _ey) : ctx.lineTo(_ex, _ey);
+              }
+              ctx.closePath();
+              ctx.fillStyle = (inst.colors && inst.colors[face.id]) ?? face.color;
+              ctx.fill();
+              if (face.stroke) {
+                ctx.strokeStyle = face.stroke;
+                ctx.lineWidth = face.strokeWidth ?? 1;
+                ctx.stroke();
+              }
+            }
+          }
+          if (inst.drawFn) inst.drawFn(camX, camY);
+        }
+        _instances.length = 0;
+        _poolNext = 0;
+      }
+    };
+    return renderer;
+  };
+
+  // ../src/game/render.ts
+  var iso = (vx, vy, h, cx, cy, { canvas, tileW, tileH, stepH }, out) => {
+    let cv = canvas || document.getElementById("gameCanvas");
+    const px = cv.width / 2 + (vx - vy) * (tileW / 2) - cx;
+    const py = cv.height / 2 + (vx + vy) * (tileH / 2) - h * stepH - cy;
+    if (out) {
+      out.x = px;
+      out.y = py;
+      return out;
+    }
+    return { x: px, y: py };
+  };
+  var createIsoFn = (config) => (wx, wy, wz, cx, cy, out) => iso(wx, wy, wz, cx, cy, config, out);
+
+  // ../src/game/def-utils.ts
+  var _rotateVerts = (verts, pivot, axis, angle) => {
+    const [px, py, pz] = pivot;
+    const [ax, ay, az] = axis;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const t = 1 - cos;
+    return verts.map(([x, y, z]) => {
+      const dx = x - px, dy = y - py, dz = z - pz;
+      const dot = ax * dx + ay * dy + az * dz;
+      return [
+        px + dx * cos + (ay * dz - az * dy) * sin + ax * dot * t,
+        py + dy * cos + (az * dx - ax * dz) * sin + ay * dot * t,
+        pz + dz * cos + (ax * dy - ay * dx) * sin + az * dot * t
+      ];
+    });
+  };
+  var _buildRotFnCache = (def, params) => {
+    const partMap = new Map(def.parts.map((p) => [p.id, p]));
+    const cache = /* @__PURE__ */ new Map();
+    const getRotFn = (partId) => {
+      if (cache.has(partId)) return cache.get(partId);
+      const part = partMap.get(partId);
+      if (!part) {
+        const identity = (v) => v;
+        cache.set(partId, identity);
+        return identity;
+      }
+      let fn;
+      if (part.parent) {
+        const parentFn = getRotFn(part.parent);
+        if (part.rotate) {
+          const angle = params[part.rotate.param] ?? 0;
+          const tPivot = parentFn([part.rotate.pivot])[0];
+          const { axis } = part.rotate;
+          fn = (verts) => _rotateVerts(parentFn(verts), tPivot, axis, angle);
+        } else {
+          fn = parentFn;
+        }
+      } else if (part.rotate) {
+        const angle = params[part.rotate.param] ?? 0;
+        const { pivot, axis } = part.rotate;
+        fn = (verts) => _rotateVerts(verts, pivot, axis, angle);
+      } else {
+        fn = (verts) => verts;
+      }
+      cache.set(partId, fn);
+      return fn;
+    };
+    return getRotFn;
+  };
+  var applyParts = (def, params, opts) => {
+    const extraFaces = [];
+    if (def.parts?.length) {
+      const getRotFn = _buildRotFnCache(def, params);
+      for (const part of def.parts) {
+        if (opts?.only && !opts.only.includes(part.id)) continue;
+        const rotFn = getRotFn(part.id);
+        for (const face of part.faces) {
+          extraFaces.push({ ...face, verts: rotFn(face.verts) });
+        }
+      }
+    }
+    if (def.rotateNodes?.length) {
+      for (const node of def.rotateNodes) {
+        const angle = params[node.param] ?? 0;
+        for (const face of node.faces) {
+          extraFaces.push({ ...face, verts: _rotateVerts(face.verts, node.pivot, node.axis, angle) });
+        }
+      }
+    }
+    return { ...def, faces: [...def.faces, ...extraFaces] };
+  };
+  var _id2 = (v) => v;
+  var _LIGHT = [-0.267, 0.535, 0.802];
+  var _SHADE_AMB = 0.82;
+  var _SHADE_DIFF = 0.18;
+  var _autoShade = (verts) => {
+    if (verts.length < 3) return 1;
+    const ax = verts[1][0] - verts[0][0], ay = verts[1][1] - verts[0][1], az = verts[1][2] - verts[0][2];
+    const bx = verts[2][0] - verts[0][0], by = verts[2][1] - verts[0][1], bz = verts[2][2] - verts[0][2];
+    const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+    const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    if (len < 1e-9) return 1;
+    const dot = (nx * _LIGHT[0] + ny * _LIGHT[1] + nz * _LIGHT[2]) / len;
+    return _SHADE_AMB + _SHADE_DIFF * Math.max(0, dot);
+  };
+  var _applyShade = (hex, shade) => {
+    if (Math.abs(shade - 1) < 2e-3) return hex;
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.min(255, Math.round((n >> 16 & 255) * shade));
+    const g = Math.min(255, Math.round((n >> 8 & 255) * shade));
+    const b = Math.min(255, Math.round((n & 255) * shade));
+    return "#" + (r << 16 | g << 8 | b).toString(16).padStart(6, "0");
+  };
+  var _rotNorm = (n, rotFn) => {
+    const [[ox, oy], [nx, ny]] = rotFn([[0, 0, 0], [n[0], n[1], 0]]);
+    const dx = nx - ox, dy = ny - oy;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    return len > 1e-9 ? [dx / len, dy / len] : n;
+  };
+  var _makeRotFn2 = (node, params, parentFn) => {
+    const r = node.rotate;
+    let angle;
+    if (r.animate) {
+      const t = Date.now() * r.animate.speed;
+      angle = r.animate.type === "oscillate" ? (r.animate.amplitude ?? 1) * Math.sin(t) : t;
+    } else {
+      angle = params[r.param ?? ""] ?? 0;
+    }
+    const tPivot = parentFn([r.pivot])[0];
+    return (verts) => _rotateVerts(parentFn(verts), tPivot, r.axis, angle);
+  };
+  var _collectNode = (node, params, parentFn, outFaces, outSpecial) => {
+    const rotFn = node.rotate ? _makeRotFn2(node, params, parentFn) : parentFn;
+    for (const face of node.faces ?? []) {
+      if (face.type === "line") {
+        const [v0, v1] = rotFn([face.verts[0], face.verts[1]]);
+        outSpecial.push({ kind: "line", v0, v1, face });
+      } else {
+        const rotVerts = rotFn(face.verts);
+        const shade = face.shade ?? _autoShade(rotVerts);
+        const color = _applyShade(face.color, shade);
+        const normal = face.normal ? _rotNorm(face.normal, rotFn) : void 0;
+        outFaces.push({ ...face, verts: rotVerts, color, ...normal !== void 0 ? { normal } : {} });
+      }
+    }
+    for (const light of node.lights ?? []) {
+      const [rl] = rotFn([[light.x, light.y, light.z]]);
+      outSpecial.push({ kind: "light", lx: rl[0], ly: rl[1], lz: rl[2], light });
+    }
+    for (const child of node.children ?? []) {
+      _collectNode(child, params, rotFn, outFaces, outSpecial);
+    }
+  };
+  var renderNodes = (def, params, instanceProps, renderer, camX, camY, drawCtx, onBeforeFlush) => {
+    const { x: ix, y: iy, z: iz = 0, angle: iAngle = 0 } = instanceProps;
+    const cosA = Math.cos(iAngle), sinA = Math.sin(iAngle);
+    for (const topNode of def.nodes) {
+      const faces = [];
+      const special = [];
+      _collectNode(topNode, params, _id2, faces, special);
+      let baseDepth;
+      if (topNode.depthAnchor) {
+        const [dx, dy] = topNode.depthAnchor;
+        baseDepth = ix + dx * cosA - dy * sinA + (iy + dx * sinA + dy * cosA);
+        for (let fi = 0; fi < faces.length; fi++) {
+          renderer.add({ id: def.id, faces: [faces[fi]] }, { ...instanceProps, depth: baseDepth + fi * 1e-7 });
+        }
+      } else {
+        baseDepth = ix + iy;
+        const cApS = cosA + sinA, cAmS = cosA - sinA;
+        const sides = [];
+        const tops = [];
+        faces.forEach((face, fi) => {
+          if (face.normal) {
+            const verts = face.verts;
+            let lcx = 0, lcy = 0;
+            for (const v of verts) {
+              lcx += v[0];
+              lcy += v[1];
+            }
+            lcx /= verts.length;
+            lcy /= verts.length;
+            sides.push({ face, key: lcx * cApS + lcy * cAmS + fi * 1e-9 });
+          } else {
+            tops.push(face);
+          }
+        });
+        sides.sort((a, b) => a.key - b.key);
+        const allSorted = [...sides.map((e) => e.face), ...tops];
+        for (let si = 0; si < allSorted.length; si++) {
+          renderer.add({ id: def.id, faces: [allSorted[si]] }, { ...instanceProps, depth: baseDepth + si * 1e-7 });
+        }
+      }
+      if (drawCtx) {
+        const { ctx, isoFn, tileW } = drawCtx;
+        for (const item of special) {
+          if (item.kind === "light") {
+            const { lx, ly, lz, light } = item;
+            const wx = ix + lx * cosA - ly * sinA;
+            const wy = iy + lx * sinA + ly * cosA;
+            const wz = iz + lz;
+            const blink = light.blink ?? false;
+            const radius = light.radius ?? 2;
+            renderer.add(null, {
+              x: wx,
+              y: wy,
+              z: wz,
+              drawFn: (cx, cy) => {
+                const isOn = !blink || Math.floor(Date.now() / 500) % 2 === 0;
+                const p = isoFn(wx, wy, wz, cx, cy);
+                ctx.fillStyle = isOn ? light.color : light.colorOff ?? light.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, Math.max(1.2, radius * tileW / 64), 0, 7);
+                ctx.fill();
+              }
+            });
+          } else {
+            const { v0, v1, face } = item;
+            const wx0 = ix + v0[0] * cosA - v0[1] * sinA, wy0 = iy + v0[0] * sinA + v0[1] * cosA, wz0 = iz + v0[2];
+            const wx1 = ix + v1[0] * cosA - v1[1] * sinA, wy1 = iy + v1[0] * sinA + v1[1] * cosA, wz1 = iz + v1[2];
+            renderer.add(null, {
+              x: (wx0 + wx1) / 2,
+              y: (wy0 + wy1) / 2,
+              z: (wz0 + wz1) / 2,
+              drawFn: (cx, cy) => {
+                const p0 = isoFn(wx0, wy0, wz0, cx, cy);
+                const p1 = isoFn(wx1, wy1, wz1, cx, cy);
+                ctx.strokeStyle = face.color;
+                ctx.lineWidth = face.lineWidth ?? 1;
+                ctx.lineCap = "round";
+                ctx.beginPath();
+                ctx.moveTo(p0.x, p0.y);
+                ctx.lineTo(p1.x, p1.y);
+                ctx.stroke();
+              }
+            });
+          }
+        }
+      }
+      if (onBeforeFlush) onBeforeFlush(def.nodes.indexOf(topNode));
+      renderer.flush(camX, camY);
+    }
+  };
+
+  // ../src/game/models/objects/lighthouse.zdef
+  var lighthouse_default = {
+    id: "lighthouse",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    collisionBoxes: [
+      {
+        id: "base",
+        xMin: -1,
+        xMax: 1,
+        yMin: -1,
+        yMax: 1,
+        zMin: 0,
+        zMax: 0.4
+      },
+      {
+        id: "tower",
+        xMin: -0.45,
+        xMax: 0.45,
+        yMin: -0.45,
+        yMax: 0.45,
+        zMin: 0.4,
+        zMax: 8.5
+      }
+    ],
+    faces: [
+      {
+        id: "rock_e",
+        verts: [
+          [
+            1,
+            -0.2,
+            0.14
+          ],
+          [
+            2.2,
+            -0.5,
+            0.14
+          ],
+          [
+            2.5,
+            0.05,
+            0.14
+          ],
+          [
+            2.1,
+            0.65,
+            0.14
+          ],
+          [
+            1.55,
+            1,
+            0.14
+          ],
+          [
+            0.95,
+            0.5,
+            0.14
+          ]
+        ],
+        color: "#585858",
+        stroke: null
+      },
+      {
+        id: "rock_ne",
+        verts: [
+          [
+            0.5,
+            0.9,
+            0.11
+          ],
+          [
+            1,
+            1.4,
+            0.11
+          ],
+          [
+            0.5,
+            2.3,
+            0.11
+          ],
+          [
+            -0.1,
+            1.9,
+            0.11
+          ],
+          [
+            -0.2,
+            1.1,
+            0.11
+          ]
+        ],
+        color: "#5a5a5a",
+        stroke: null
+      },
+      {
+        id: "rock_ne2",
+        verts: [
+          [
+            0.85,
+            1,
+            0.17
+          ],
+          [
+            1.5,
+            1.05,
+            0.17
+          ],
+          [
+            1.7,
+            1.7,
+            0.17
+          ],
+          [
+            1,
+            2,
+            0.17
+          ],
+          [
+            0.55,
+            1.6,
+            0.17
+          ]
+        ],
+        color: "#626262",
+        stroke: null
+      },
+      {
+        id: "rock_n",
+        verts: [
+          [
+            -0.2,
+            0.95,
+            0.12
+          ],
+          [
+            -0.05,
+            1.85,
+            0.12
+          ],
+          [
+            -0.7,
+            2.4,
+            0.12
+          ],
+          [
+            -1.5,
+            2,
+            0.12
+          ],
+          [
+            -1.6,
+            1.35,
+            0.12
+          ],
+          [
+            -0.9,
+            0.85,
+            0.12
+          ]
+        ],
+        color: "#505050",
+        stroke: null
+      },
+      {
+        id: "rock_nw1",
+        verts: [
+          [
+            -0.85,
+            0.6,
+            0.07
+          ],
+          [
+            -1.8,
+            0.7,
+            0.07
+          ],
+          [
+            -2.2,
+            0.2,
+            0.07
+          ],
+          [
+            -1.95,
+            -0.2,
+            0.07
+          ],
+          [
+            -1.1,
+            0.1,
+            0.07
+          ]
+        ],
+        color: "#484848",
+        stroke: null
+      },
+      {
+        id: "rock_nw2",
+        verts: [
+          [
+            -1,
+            0.3,
+            0.15
+          ],
+          [
+            -1.7,
+            0.5,
+            0.15
+          ],
+          [
+            -2.3,
+            -0.05,
+            0.15
+          ],
+          [
+            -2,
+            -0.7,
+            0.15
+          ],
+          [
+            -1.35,
+            -0.6,
+            0.15
+          ],
+          [
+            -0.9,
+            -0.3,
+            0.15
+          ]
+        ],
+        color: "#565656",
+        stroke: null
+      },
+      {
+        id: "rock_w",
+        verts: [
+          [
+            -0.95,
+            -0.35,
+            0.09
+          ],
+          [
+            -2,
+            -0.3,
+            0.09
+          ],
+          [
+            -2.4,
+            -0.6,
+            0.09
+          ],
+          [
+            -2.1,
+            -1.1,
+            0.09
+          ],
+          [
+            -1.3,
+            -0.8,
+            0.09
+          ],
+          [
+            -0.9,
+            -0.55,
+            0.09
+          ]
+        ],
+        color: "#4e4e4e",
+        stroke: null
+      },
+      {
+        id: "rock_sw1",
+        verts: [
+          [
+            -0.7,
+            -0.6,
+            0.16
+          ],
+          [
+            -1.35,
+            -0.9,
+            0.16
+          ],
+          [
+            -1.85,
+            -1.5,
+            0.16
+          ],
+          [
+            -1.3,
+            -2,
+            0.16
+          ],
+          [
+            -0.6,
+            -1.7,
+            0.16
+          ],
+          [
+            -0.1,
+            -1,
+            0.16
+          ]
+        ],
+        color: "#5c5c5c",
+        stroke: null
+      },
+      {
+        id: "rock_sw2",
+        verts: [
+          [
+            -1,
+            -1.4,
+            0.2
+          ],
+          [
+            -1.5,
+            -1.35,
+            0.2
+          ],
+          [
+            -1.6,
+            -1.9,
+            0.2
+          ],
+          [
+            -1,
+            -2,
+            0.2
+          ],
+          [
+            -0.7,
+            -1.6,
+            0.2
+          ]
+        ],
+        color: "#646464",
+        stroke: null
+      },
+      {
+        id: "rock_s",
+        verts: [
+          [
+            0.1,
+            -1,
+            0.1
+          ],
+          [
+            0.6,
+            -1.6,
+            0.1
+          ],
+          [
+            1,
+            -2.2,
+            0.1
+          ],
+          [
+            1.5,
+            -1.7,
+            0.1
+          ],
+          [
+            1.2,
+            -1.05,
+            0.1
+          ],
+          [
+            0.7,
+            -0.85,
+            0.1
+          ]
+        ],
+        color: "#4c4c4c",
+        stroke: null
+      },
+      {
+        id: "rock_se",
+        verts: [
+          [
+            0.9,
+            -0.75,
+            0.13
+          ],
+          [
+            1.7,
+            -0.65,
+            0.13
+          ],
+          [
+            2.3,
+            -1.1,
+            0.13
+          ],
+          [
+            1.8,
+            -1.9,
+            0.13
+          ],
+          [
+            0.9,
+            -1.7,
+            0.13
+          ],
+          [
+            0.6,
+            -1.1,
+            0.13
+          ]
+        ],
+        color: "#545454",
+        stroke: null
+      },
+      {
+        id: "rock_ese",
+        verts: [
+          [
+            1.05,
+            -0.35,
+            0.08
+          ],
+          [
+            1.8,
+            -0.4,
+            0.08
+          ],
+          [
+            1.75,
+            -0.9,
+            0.08
+          ],
+          [
+            1.2,
+            -0.85,
+            0.08
+          ]
+        ],
+        color: "#5e5e5e",
+        stroke: null
+      },
+      {
+        id: "rock_na",
+        verts: [
+          [
+            -0.5,
+            0.95,
+            0.22
+          ],
+          [
+            -0.35,
+            1.55,
+            0.22
+          ],
+          [
+            -0.75,
+            1.65,
+            0.22
+          ],
+          [
+            -1.05,
+            1.2,
+            0.22
+          ]
+        ],
+        color: "#686868",
+        stroke: null
+      },
+      {
+        id: "rock_et",
+        verts: [
+          [
+            0.85,
+            0.55,
+            0.08
+          ],
+          [
+            1.6,
+            0.5,
+            0.08
+          ],
+          [
+            1.7,
+            1.15,
+            0.08
+          ],
+          [
+            1.05,
+            1.3,
+            0.08
+          ],
+          [
+            0.7,
+            0.85,
+            0.08
+          ]
+        ],
+        color: "#4a4a4a",
+        stroke: null
+      },
+      {
+        id: "cap_z0.4",
+        verts: [
+          [
+            1,
+            0,
+            0.4
+          ],
+          [
+            0.98079,
+            0.19509,
+            0.4
+          ],
+          [
+            0.92388,
+            0.38268,
+            0.4
+          ],
+          [
+            0.83147,
+            0.55557,
+            0.4
+          ],
+          [
+            0.70711,
+            0.70711,
+            0.4
+          ],
+          [
+            0.55557,
+            0.83147,
+            0.4
+          ],
+          [
+            0.38268,
+            0.92388,
+            0.4
+          ],
+          [
+            0.19509,
+            0.98079,
+            0.4
+          ],
+          [
+            0,
+            1,
+            0.4
+          ],
+          [
+            -0.19509,
+            0.98079,
+            0.4
+          ],
+          [
+            -0.38268,
+            0.92388,
+            0.4
+          ],
+          [
+            -0.55557,
+            0.83147,
+            0.4
+          ],
+          [
+            -0.70711,
+            0.70711,
+            0.4
+          ],
+          [
+            -0.83147,
+            0.55557,
+            0.4
+          ],
+          [
+            -0.92388,
+            0.38268,
+            0.4
+          ],
+          [
+            -0.98079,
+            0.19509,
+            0.4
+          ],
+          [
+            -1,
+            0,
+            0.4
+          ],
+          [
+            -0.98079,
+            -0.19509,
+            0.4
+          ],
+          [
+            -0.92388,
+            -0.38268,
+            0.4
+          ],
+          [
+            -0.83147,
+            -0.55557,
+            0.4
+          ],
+          [
+            -0.70711,
+            -0.70711,
+            0.4
+          ],
+          [
+            -0.55557,
+            -0.83147,
+            0.4
+          ],
+          [
+            -0.38268,
+            -0.92388,
+            0.4
+          ],
+          [
+            -0.19509,
+            -0.98079,
+            0.4
+          ],
+          [
+            0,
+            -1,
+            0.4
+          ],
+          [
+            0.19509,
+            -0.98079,
+            0.4
+          ],
+          [
+            0.38268,
+            -0.92388,
+            0.4
+          ],
+          [
+            0.55557,
+            -0.83147,
+            0.4
+          ],
+          [
+            0.70711,
+            -0.70711,
+            0.4
+          ],
+          [
+            0.83147,
+            -0.55557,
+            0.4
+          ],
+          [
+            0.92388,
+            -0.38268,
+            0.4
+          ],
+          [
+            0.98079,
+            -0.19509,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_0_z0",
+        verts: [
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            0.98079,
+            0.19509,
+            0
+          ],
+          [
+            0.98079,
+            0.19509,
+            0.4
+          ],
+          [
+            1,
+            0,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_1_z0",
+        verts: [
+          [
+            0.98079,
+            0.19509,
+            0
+          ],
+          [
+            0.92388,
+            0.38268,
+            0
+          ],
+          [
+            0.92388,
+            0.38268,
+            0.4
+          ],
+          [
+            0.98079,
+            0.19509,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_2_z0",
+        verts: [
+          [
+            0.92388,
+            0.38268,
+            0
+          ],
+          [
+            0.83147,
+            0.55557,
+            0
+          ],
+          [
+            0.83147,
+            0.55557,
+            0.4
+          ],
+          [
+            0.92388,
+            0.38268,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_3_z0",
+        verts: [
+          [
+            0.83147,
+            0.55557,
+            0
+          ],
+          [
+            0.70711,
+            0.70711,
+            0
+          ],
+          [
+            0.70711,
+            0.70711,
+            0.4
+          ],
+          [
+            0.83147,
+            0.55557,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_4_z0",
+        verts: [
+          [
+            0.70711,
+            0.70711,
+            0
+          ],
+          [
+            0.55557,
+            0.83147,
+            0
+          ],
+          [
+            0.55557,
+            0.83147,
+            0.4
+          ],
+          [
+            0.70711,
+            0.70711,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_5_z0",
+        verts: [
+          [
+            0.55557,
+            0.83147,
+            0
+          ],
+          [
+            0.38268,
+            0.92388,
+            0
+          ],
+          [
+            0.38268,
+            0.92388,
+            0.4
+          ],
+          [
+            0.55557,
+            0.83147,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_6_z0",
+        verts: [
+          [
+            0.38268,
+            0.92388,
+            0
+          ],
+          [
+            0.19509,
+            0.98079,
+            0
+          ],
+          [
+            0.19509,
+            0.98079,
+            0.4
+          ],
+          [
+            0.38268,
+            0.92388,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_7_z0",
+        verts: [
+          [
+            0.19509,
+            0.98079,
+            0
+          ],
+          [
+            0,
+            1,
+            0
+          ],
+          [
+            0,
+            1,
+            0.4
+          ],
+          [
+            0.19509,
+            0.98079,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_8_z0",
+        verts: [
+          [
+            0,
+            1,
+            0
+          ],
+          [
+            -0.19509,
+            0.98079,
+            0
+          ],
+          [
+            -0.19509,
+            0.98079,
+            0.4
+          ],
+          [
+            0,
+            1,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_9_z0",
+        verts: [
+          [
+            -0.19509,
+            0.98079,
+            0
+          ],
+          [
+            -0.38268,
+            0.92388,
+            0
+          ],
+          [
+            -0.38268,
+            0.92388,
+            0.4
+          ],
+          [
+            -0.19509,
+            0.98079,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_10_z0",
+        verts: [
+          [
+            -0.38268,
+            0.92388,
+            0
+          ],
+          [
+            -0.55557,
+            0.83147,
+            0
+          ],
+          [
+            -0.55557,
+            0.83147,
+            0.4
+          ],
+          [
+            -0.38268,
+            0.92388,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_11_z0",
+        verts: [
+          [
+            -0.55557,
+            0.83147,
+            0
+          ],
+          [
+            -0.70711,
+            0.70711,
+            0
+          ],
+          [
+            -0.70711,
+            0.70711,
+            0.4
+          ],
+          [
+            -0.55557,
+            0.83147,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_28_z0",
+        verts: [
+          [
+            0.70711,
+            -0.70711,
+            0
+          ],
+          [
+            0.83147,
+            -0.55557,
+            0
+          ],
+          [
+            0.83147,
+            -0.55557,
+            0.4
+          ],
+          [
+            0.70711,
+            -0.70711,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_29_z0",
+        verts: [
+          [
+            0.83147,
+            -0.55557,
+            0
+          ],
+          [
+            0.92388,
+            -0.38268,
+            0
+          ],
+          [
+            0.92388,
+            -0.38268,
+            0.4
+          ],
+          [
+            0.83147,
+            -0.55557,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_30_z0",
+        verts: [
+          [
+            0.92388,
+            -0.38268,
+            0
+          ],
+          [
+            0.98079,
+            -0.19509,
+            0
+          ],
+          [
+            0.98079,
+            -0.19509,
+            0.4
+          ],
+          [
+            0.92388,
+            -0.38268,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "side_31_z0",
+        verts: [
+          [
+            0.98079,
+            -0.19509,
+            0
+          ],
+          [
+            1,
+            0,
+            0
+          ],
+          [
+            1,
+            0,
+            0.4
+          ],
+          [
+            0.98079,
+            -0.19509,
+            0.4
+          ]
+        ],
+        color: "#404040",
+        stroke: null
+      },
+      {
+        id: "cap_z3",
+        verts: [
+          [
+            0.45,
+            0,
+            3
+          ],
+          [
+            0.41575,
+            0.17221,
+            3
+          ],
+          [
+            0.3182,
+            0.3182,
+            3
+          ],
+          [
+            0.17221,
+            0.41575,
+            3
+          ],
+          [
+            0,
+            0.45,
+            3
+          ],
+          [
+            -0.17221,
+            0.41575,
+            3
+          ],
+          [
+            -0.3182,
+            0.3182,
+            3
+          ],
+          [
+            -0.41575,
+            0.17221,
+            3
+          ],
+          [
+            -0.45,
+            0,
+            3
+          ],
+          [
+            -0.41575,
+            -0.17221,
+            3
+          ],
+          [
+            -0.3182,
+            -0.3182,
+            3
+          ],
+          [
+            -0.17221,
+            -0.41575,
+            3
+          ],
+          [
+            0,
+            -0.45,
+            3
+          ],
+          [
+            0.17221,
+            -0.41575,
+            3
+          ],
+          [
+            0.3182,
+            -0.3182,
+            3
+          ],
+          [
+            0.41575,
+            -0.17221,
+            3
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_0_z0.4",
+        verts: [
+          [
+            0.45,
+            0,
+            0.4
+          ],
+          [
+            0.41575,
+            0.17221,
+            0.4
+          ],
+          [
+            0.41575,
+            0.17221,
+            3
+          ],
+          [
+            0.45,
+            0,
+            3
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_1_z0.4",
+        verts: [
+          [
+            0.41575,
+            0.17221,
+            0.4
+          ],
+          [
+            0.3182,
+            0.3182,
+            0.4
+          ],
+          [
+            0.3182,
+            0.3182,
+            3
+          ],
+          [
+            0.41575,
+            0.17221,
+            3
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_2_z0.4",
+        verts: [
+          [
+            0.3182,
+            0.3182,
+            0.4
+          ],
+          [
+            0.17221,
+            0.41575,
+            0.4
+          ],
+          [
+            0.17221,
+            0.41575,
+            3
+          ],
+          [
+            0.3182,
+            0.3182,
+            3
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_3_z0.4",
+        verts: [
+          [
+            0.17221,
+            0.41575,
+            0.4
+          ],
+          [
+            0,
+            0.45,
+            0.4
+          ],
+          [
+            0,
+            0.45,
+            3
+          ],
+          [
+            0.17221,
+            0.41575,
+            3
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_4_z0.4",
+        verts: [
+          [
+            0,
+            0.45,
+            0.4
+          ],
+          [
+            -0.17221,
+            0.41575,
+            0.4
+          ],
+          [
+            -0.17221,
+            0.41575,
+            3
+          ],
+          [
+            0,
+            0.45,
+            3
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_5_z0.4",
+        verts: [
+          [
+            -0.17221,
+            0.41575,
+            0.4
+          ],
+          [
+            -0.3182,
+            0.3182,
+            0.4
+          ],
+          [
+            -0.3182,
+            0.3182,
+            3
+          ],
+          [
+            -0.17221,
+            0.41575,
+            3
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_14_z0.4",
+        verts: [
+          [
+            0.3182,
+            -0.3182,
+            0.4
+          ],
+          [
+            0.41575,
+            -0.17221,
+            0.4
+          ],
+          [
+            0.41575,
+            -0.17221,
+            3
+          ],
+          [
+            0.3182,
+            -0.3182,
+            3
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_15_z0.4",
+        verts: [
+          [
+            0.41575,
+            -0.17221,
+            0.4
+          ],
+          [
+            0.45,
+            0,
+            0.4
+          ],
+          [
+            0.45,
+            0,
+            3
+          ],
+          [
+            0.41575,
+            -0.17221,
+            3
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "cap_z6",
+        verts: [
+          [
+            0.45,
+            0,
+            6
+          ],
+          [
+            0.41575,
+            0.17221,
+            6
+          ],
+          [
+            0.3182,
+            0.3182,
+            6
+          ],
+          [
+            0.17221,
+            0.41575,
+            6
+          ],
+          [
+            0,
+            0.45,
+            6
+          ],
+          [
+            -0.17221,
+            0.41575,
+            6
+          ],
+          [
+            -0.3182,
+            0.3182,
+            6
+          ],
+          [
+            -0.41575,
+            0.17221,
+            6
+          ],
+          [
+            -0.45,
+            0,
+            6
+          ],
+          [
+            -0.41575,
+            -0.17221,
+            6
+          ],
+          [
+            -0.3182,
+            -0.3182,
+            6
+          ],
+          [
+            -0.17221,
+            -0.41575,
+            6
+          ],
+          [
+            0,
+            -0.45,
+            6
+          ],
+          [
+            0.17221,
+            -0.41575,
+            6
+          ],
+          [
+            0.3182,
+            -0.3182,
+            6
+          ],
+          [
+            0.41575,
+            -0.17221,
+            6
+          ]
+        ],
+        color: "#eeeeee",
+        stroke: null
+      },
+      {
+        id: "side_0_z3",
+        verts: [
+          [
+            0.45,
+            0,
+            3
+          ],
+          [
+            0.41575,
+            0.17221,
+            3
+          ],
+          [
+            0.41575,
+            0.17221,
+            6
+          ],
+          [
+            0.45,
+            0,
+            6
+          ]
+        ],
+        color: "#eeeeee",
+        stroke: null
+      },
+      {
+        id: "side_1_z3",
+        verts: [
+          [
+            0.41575,
+            0.17221,
+            3
+          ],
+          [
+            0.3182,
+            0.3182,
+            3
+          ],
+          [
+            0.3182,
+            0.3182,
+            6
+          ],
+          [
+            0.41575,
+            0.17221,
+            6
+          ]
+        ],
+        color: "#eeeeee",
+        stroke: null
+      },
+      {
+        id: "side_2_z3",
+        verts: [
+          [
+            0.3182,
+            0.3182,
+            3
+          ],
+          [
+            0.17221,
+            0.41575,
+            3
+          ],
+          [
+            0.17221,
+            0.41575,
+            6
+          ],
+          [
+            0.3182,
+            0.3182,
+            6
+          ]
+        ],
+        color: "#eeeeee",
+        stroke: null
+      },
+      {
+        id: "side_3_z3",
+        verts: [
+          [
+            0.17221,
+            0.41575,
+            3
+          ],
+          [
+            0,
+            0.45,
+            3
+          ],
+          [
+            0,
+            0.45,
+            6
+          ],
+          [
+            0.17221,
+            0.41575,
+            6
+          ]
+        ],
+        color: "#eeeeee",
+        stroke: null
+      },
+      {
+        id: "side_4_z3",
+        verts: [
+          [
+            0,
+            0.45,
+            3
+          ],
+          [
+            -0.17221,
+            0.41575,
+            3
+          ],
+          [
+            -0.17221,
+            0.41575,
+            6
+          ],
+          [
+            0,
+            0.45,
+            6
+          ]
+        ],
+        color: "#eeeeee",
+        stroke: null
+      },
+      {
+        id: "side_5_z3",
+        verts: [
+          [
+            -0.17221,
+            0.41575,
+            3
+          ],
+          [
+            -0.3182,
+            0.3182,
+            3
+          ],
+          [
+            -0.3182,
+            0.3182,
+            6
+          ],
+          [
+            -0.17221,
+            0.41575,
+            6
+          ]
+        ],
+        color: "#eeeeee",
+        stroke: null
+      },
+      {
+        id: "side_14_z3",
+        verts: [
+          [
+            0.3182,
+            -0.3182,
+            3
+          ],
+          [
+            0.41575,
+            -0.17221,
+            3
+          ],
+          [
+            0.41575,
+            -0.17221,
+            6
+          ],
+          [
+            0.3182,
+            -0.3182,
+            6
+          ]
+        ],
+        color: "#eeeeee",
+        stroke: null
+      },
+      {
+        id: "side_15_z3",
+        verts: [
+          [
+            0.41575,
+            -0.17221,
+            3
+          ],
+          [
+            0.45,
+            0,
+            3
+          ],
+          [
+            0.45,
+            0,
+            6
+          ],
+          [
+            0.41575,
+            -0.17221,
+            6
+          ]
+        ],
+        color: "#eeeeee",
+        stroke: null
+      },
+      {
+        id: "cap_z7",
+        verts: [
+          [
+            0.45,
+            0,
+            7
+          ],
+          [
+            0.41575,
+            0.17221,
+            7
+          ],
+          [
+            0.3182,
+            0.3182,
+            7
+          ],
+          [
+            0.17221,
+            0.41575,
+            7
+          ],
+          [
+            0,
+            0.45,
+            7
+          ],
+          [
+            -0.17221,
+            0.41575,
+            7
+          ],
+          [
+            -0.3182,
+            0.3182,
+            7
+          ],
+          [
+            -0.41575,
+            0.17221,
+            7
+          ],
+          [
+            -0.45,
+            0,
+            7
+          ],
+          [
+            -0.41575,
+            -0.17221,
+            7
+          ],
+          [
+            -0.3182,
+            -0.3182,
+            7
+          ],
+          [
+            -0.17221,
+            -0.41575,
+            7
+          ],
+          [
+            0,
+            -0.45,
+            7
+          ],
+          [
+            0.17221,
+            -0.41575,
+            7
+          ],
+          [
+            0.3182,
+            -0.3182,
+            7
+          ],
+          [
+            0.41575,
+            -0.17221,
+            7
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_0_z6",
+        verts: [
+          [
+            0.45,
+            0,
+            6
+          ],
+          [
+            0.41575,
+            0.17221,
+            6
+          ],
+          [
+            0.41575,
+            0.17221,
+            7
+          ],
+          [
+            0.45,
+            0,
+            7
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_1_z6",
+        verts: [
+          [
+            0.41575,
+            0.17221,
+            6
+          ],
+          [
+            0.3182,
+            0.3182,
+            6
+          ],
+          [
+            0.3182,
+            0.3182,
+            7
+          ],
+          [
+            0.41575,
+            0.17221,
+            7
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_2_z6",
+        verts: [
+          [
+            0.3182,
+            0.3182,
+            6
+          ],
+          [
+            0.17221,
+            0.41575,
+            6
+          ],
+          [
+            0.17221,
+            0.41575,
+            7
+          ],
+          [
+            0.3182,
+            0.3182,
+            7
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_3_z6",
+        verts: [
+          [
+            0.17221,
+            0.41575,
+            6
+          ],
+          [
+            0,
+            0.45,
+            6
+          ],
+          [
+            0,
+            0.45,
+            7
+          ],
+          [
+            0.17221,
+            0.41575,
+            7
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_4_z6",
+        verts: [
+          [
+            0,
+            0.45,
+            6
+          ],
+          [
+            -0.17221,
+            0.41575,
+            6
+          ],
+          [
+            -0.17221,
+            0.41575,
+            7
+          ],
+          [
+            0,
+            0.45,
+            7
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_5_z6",
+        verts: [
+          [
+            -0.17221,
+            0.41575,
+            6
+          ],
+          [
+            -0.3182,
+            0.3182,
+            6
+          ],
+          [
+            -0.3182,
+            0.3182,
+            7
+          ],
+          [
+            -0.17221,
+            0.41575,
+            7
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_14_z6",
+        verts: [
+          [
+            0.3182,
+            -0.3182,
+            6
+          ],
+          [
+            0.41575,
+            -0.17221,
+            6
+          ],
+          [
+            0.41575,
+            -0.17221,
+            7
+          ],
+          [
+            0.3182,
+            -0.3182,
+            7
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "side_15_z6",
+        verts: [
+          [
+            0.41575,
+            -0.17221,
+            6
+          ],
+          [
+            0.45,
+            0,
+            6
+          ],
+          [
+            0.45,
+            0,
+            7
+          ],
+          [
+            0.41575,
+            -0.17221,
+            7
+          ]
+        ],
+        color: "#cc2222",
+        stroke: null
+      },
+      {
+        id: "cap_z8",
+        verts: [
+          [
+            0.45,
+            0,
+            8
+          ],
+          [
+            0.41575,
+            0.17221,
+            8
+          ],
+          [
+            0.3182,
+            0.3182,
+            8
+          ],
+          [
+            0.17221,
+            0.41575,
+            8
+          ],
+          [
+            0,
+            0.45,
+            8
+          ],
+          [
+            -0.17221,
+            0.41575,
+            8
+          ],
+          [
+            -0.3182,
+            0.3182,
+            8
+          ],
+          [
+            -0.41575,
+            0.17221,
+            8
+          ],
+          [
+            -0.45,
+            0,
+            8
+          ],
+          [
+            -0.41575,
+            -0.17221,
+            8
+          ],
+          [
+            -0.3182,
+            -0.3182,
+            8
+          ],
+          [
+            -0.17221,
+            -0.41575,
+            8
+          ],
+          [
+            0,
+            -0.45,
+            8
+          ],
+          [
+            0.17221,
+            -0.41575,
+            8
+          ],
+          [
+            0.3182,
+            -0.3182,
+            8
+          ],
+          [
+            0.41575,
+            -0.17221,
+            8
+          ]
+        ],
+        color: "#ffff88",
+        stroke: null
+      },
+      {
+        id: "side_0_z7",
+        verts: [
+          [
+            0.45,
+            0,
+            7
+          ],
+          [
+            0.41575,
+            0.17221,
+            7
+          ],
+          [
+            0.41575,
+            0.17221,
+            8
+          ],
+          [
+            0.45,
+            0,
+            8
+          ]
+        ],
+        color: "#ffff88",
+        stroke: null
+      },
+      {
+        id: "side_1_z7",
+        verts: [
+          [
+            0.41575,
+            0.17221,
+            7
+          ],
+          [
+            0.3182,
+            0.3182,
+            7
+          ],
+          [
+            0.3182,
+            0.3182,
+            8
+          ],
+          [
+            0.41575,
+            0.17221,
+            8
+          ]
+        ],
+        color: "#ffff88",
+        stroke: null
+      },
+      {
+        id: "side_2_z7",
+        verts: [
+          [
+            0.3182,
+            0.3182,
+            7
+          ],
+          [
+            0.17221,
+            0.41575,
+            7
+          ],
+          [
+            0.17221,
+            0.41575,
+            8
+          ],
+          [
+            0.3182,
+            0.3182,
+            8
+          ]
+        ],
+        color: "#ffff88",
+        stroke: null
+      },
+      {
+        id: "side_3_z7",
+        verts: [
+          [
+            0.17221,
+            0.41575,
+            7
+          ],
+          [
+            0,
+            0.45,
+            7
+          ],
+          [
+            0,
+            0.45,
+            8
+          ],
+          [
+            0.17221,
+            0.41575,
+            8
+          ]
+        ],
+        color: "#ffff88",
+        stroke: null
+      },
+      {
+        id: "side_4_z7",
+        verts: [
+          [
+            0,
+            0.45,
+            7
+          ],
+          [
+            -0.17221,
+            0.41575,
+            7
+          ],
+          [
+            -0.17221,
+            0.41575,
+            8
+          ],
+          [
+            0,
+            0.45,
+            8
+          ]
+        ],
+        color: "#ffff88",
+        stroke: null
+      },
+      {
+        id: "side_5_z7",
+        verts: [
+          [
+            -0.17221,
+            0.41575,
+            7
+          ],
+          [
+            -0.3182,
+            0.3182,
+            7
+          ],
+          [
+            -0.3182,
+            0.3182,
+            8
+          ],
+          [
+            -0.17221,
+            0.41575,
+            8
+          ]
+        ],
+        color: "#ffff88",
+        stroke: null
+      },
+      {
+        id: "side_14_z7",
+        verts: [
+          [
+            0.3182,
+            -0.3182,
+            7
+          ],
+          [
+            0.41575,
+            -0.17221,
+            7
+          ],
+          [
+            0.41575,
+            -0.17221,
+            8
+          ],
+          [
+            0.3182,
+            -0.3182,
+            8
+          ]
+        ],
+        color: "#ffff88",
+        stroke: null
+      },
+      {
+        id: "side_15_z7",
+        verts: [
+          [
+            0.41575,
+            -0.17221,
+            7
+          ],
+          [
+            0.45,
+            0,
+            7
+          ],
+          [
+            0.45,
+            0,
+            8
+          ],
+          [
+            0.41575,
+            -0.17221,
+            8
+          ]
+        ],
+        color: "#ffff88",
+        stroke: null
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/wind_turbine.zdef
+  var wind_turbine_default = {
+    id: "wind_turbine",
+    label: "wind_turbine",
+    static: true,
+    movementType: "none",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    faces: [
+      {
+        id: "p_base_1",
+        verts: [
+          [
+            0.12,
+            0.05,
+            0
+          ],
+          [
+            0.12,
+            -0.05,
+            0
+          ],
+          [
+            0.12,
+            -0.05,
+            2
+          ],
+          [
+            0.12,
+            0.05,
+            2
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "p_base_2",
+        verts: [
+          [
+            0.12,
+            -0.05,
+            0
+          ],
+          [
+            0.05,
+            -0.12,
+            0
+          ],
+          [
+            0.05,
+            -0.12,
+            2
+          ],
+          [
+            0.12,
+            -0.05,
+            2
+          ]
+        ],
+        color: "#eebb00"
+      },
+      {
+        id: "p_base_3",
+        verts: [
+          [
+            0.05,
+            -0.12,
+            0
+          ],
+          [
+            -0.05,
+            -0.12,
+            0
+          ],
+          [
+            -0.05,
+            -0.12,
+            2
+          ],
+          [
+            0.05,
+            -0.12,
+            2
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "p_base_4",
+        verts: [
+          [
+            -0.05,
+            -0.12,
+            0
+          ],
+          [
+            -0.12,
+            -0.05,
+            0
+          ],
+          [
+            -0.12,
+            -0.05,
+            2
+          ],
+          [
+            -0.05,
+            -0.12,
+            2
+          ]
+        ],
+        color: "#eebb00"
+      },
+      {
+        id: "p_base_5",
+        verts: [
+          [
+            -0.12,
+            -0.05,
+            0
+          ],
+          [
+            -0.12,
+            0.05,
+            0
+          ],
+          [
+            -0.12,
+            0.05,
+            2
+          ],
+          [
+            -0.12,
+            -0.05,
+            2
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "p_base_6",
+        verts: [
+          [
+            -0.12,
+            0.05,
+            0
+          ],
+          [
+            -0.05,
+            0.12,
+            0
+          ],
+          [
+            -0.05,
+            0.12,
+            2
+          ],
+          [
+            -0.12,
+            0.05,
+            2
+          ]
+        ],
+        color: "#eebb00"
+      },
+      {
+        id: "p_base_7",
+        verts: [
+          [
+            -0.05,
+            0.12,
+            0
+          ],
+          [
+            0.05,
+            0.12,
+            0
+          ],
+          [
+            0.05,
+            0.12,
+            2
+          ],
+          [
+            -0.05,
+            0.12,
+            2
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "p_base_8",
+        verts: [
+          [
+            0.05,
+            0.12,
+            0
+          ],
+          [
+            0.12,
+            0.05,
+            0
+          ],
+          [
+            0.12,
+            0.05,
+            2
+          ],
+          [
+            0.05,
+            0.12,
+            2
+          ]
+        ],
+        color: "#eebb00"
+      }
+    ],
+    collisionBoxes: [
+      {
+        id: "pole",
+        xMin: -0.15,
+        xMax: 0.15,
+        yMin: -0.15,
+        yMax: 0.15,
+        zMin: 0,
+        zMax: 12
+      },
+      {
+        id: "nacelle",
+        xMin: -0.3,
+        xMax: 0.5,
+        yMin: -0.15,
+        yMax: 0.15,
+        zMin: 12,
+        zMax: 12.35
+      },
+      {
+        id: "rotor",
+        xMin: 0.4,
+        xMax: 0.65,
+        yMin: -3.6,
+        yMax: 3.6,
+        zMin: 8.2,
+        zMax: 16.2
+      }
+    ],
+    parts: [
+      {
+        id: "pole",
+        rotate: {
+          pivot: [
+            0,
+            0,
+            2
+          ],
+          axis: [
+            0,
+            1,
+            0
+          ],
+          param: "poleAngle"
+        },
+        faces: [
+          {
+            id: "p_main_1",
+            verts: [
+              [
+                0.12,
+                0.05,
+                2
+              ],
+              [
+                0.12,
+                -0.05,
+                2
+              ],
+              [
+                0.12,
+                -0.05,
+                12
+              ],
+              [
+                0.12,
+                0.05,
+                12
+              ]
+            ],
+            color: "#ffffff"
+          },
+          {
+            id: "p_main_2",
+            verts: [
+              [
+                0.12,
+                -0.05,
+                2
+              ],
+              [
+                0.05,
+                -0.12,
+                2
+              ],
+              [
+                0.05,
+                -0.12,
+                12
+              ],
+              [
+                0.12,
+                -0.05,
+                12
+              ]
+            ],
+            color: "#f2f2f2"
+          },
+          {
+            id: "p_main_3",
+            verts: [
+              [
+                0.05,
+                -0.12,
+                2
+              ],
+              [
+                -0.05,
+                -0.12,
+                2
+              ],
+              [
+                -0.05,
+                -0.12,
+                12
+              ],
+              [
+                0.05,
+                -0.12,
+                12
+              ]
+            ],
+            color: "#ffffff"
+          },
+          {
+            id: "p_main_4",
+            verts: [
+              [
+                -0.05,
+                -0.12,
+                2
+              ],
+              [
+                -0.12,
+                -0.05,
+                2
+              ],
+              [
+                -0.12,
+                -0.05,
+                12
+              ],
+              [
+                -0.05,
+                -0.12,
+                12
+              ]
+            ],
+            color: "#f2f2f2"
+          },
+          {
+            id: "p_main_5",
+            verts: [
+              [
+                -0.12,
+                -0.05,
+                2
+              ],
+              [
+                -0.12,
+                0.05,
+                2
+              ],
+              [
+                -0.12,
+                0.05,
+                12
+              ],
+              [
+                -0.12,
+                -0.05,
+                12
+              ]
+            ],
+            color: "#ffffff"
+          },
+          {
+            id: "p_main_6",
+            verts: [
+              [
+                -0.12,
+                0.05,
+                2
+              ],
+              [
+                -0.05,
+                0.12,
+                2
+              ],
+              [
+                -0.05,
+                0.12,
+                12
+              ],
+              [
+                -0.12,
+                0.05,
+                12
+              ]
+            ],
+            color: "#f2f2f2"
+          },
+          {
+            id: "p_main_7",
+            verts: [
+              [
+                -0.05,
+                0.12,
+                2
+              ],
+              [
+                0.05,
+                0.12,
+                2
+              ],
+              [
+                0.05,
+                0.12,
+                12
+              ],
+              [
+                -0.05,
+                0.12,
+                12
+              ]
+            ],
+            color: "#ffffff"
+          },
+          {
+            id: "p_main_8",
+            verts: [
+              [
+                0.05,
+                0.12,
+                2
+              ],
+              [
+                0.12,
+                0.05,
+                2
+              ],
+              [
+                0.12,
+                0.05,
+                12
+              ],
+              [
+                0.05,
+                0.12,
+                12
+              ]
+            ],
+            color: "#f2f2f2"
+          }
+        ]
+      },
+      {
+        id: "nacelle",
+        parent: "pole",
+        rotate: {
+          pivot: [
+            0.1,
+            0,
+            12
+          ],
+          axis: [
+            0,
+            1,
+            0
+          ],
+          param: "nacelleAngle"
+        },
+        faces: [
+          {
+            id: "n_top",
+            verts: [
+              [
+                0.5,
+                0.12,
+                12.3
+              ],
+              [
+                0.5,
+                -0.12,
+                12.3
+              ],
+              [
+                -0.3,
+                -0.12,
+                12.3
+              ],
+              [
+                -0.3,
+                0.12,
+                12.3
+              ]
+            ],
+            color: "#ffffff"
+          },
+          {
+            id: "n_front",
+            normal: [
+              1,
+              0
+            ],
+            verts: [
+              [
+                0.5,
+                -0.12,
+                12
+              ],
+              [
+                0.5,
+                0.12,
+                12
+              ],
+              [
+                0.5,
+                0.12,
+                12.3
+              ],
+              [
+                0.5,
+                -0.12,
+                12.3
+              ]
+            ],
+            color: "#ffffff"
+          },
+          {
+            id: "n_back",
+            normal: [
+              -1,
+              0
+            ],
+            verts: [
+              [
+                -0.3,
+                0.12,
+                12
+              ],
+              [
+                -0.3,
+                -0.12,
+                12
+              ],
+              [
+                -0.3,
+                -0.12,
+                12.3
+              ],
+              [
+                -0.3,
+                0.12,
+                12.3
+              ]
+            ],
+            color: "#cccccc"
+          },
+          {
+            id: "n_L",
+            normal: [
+              0,
+              1
+            ],
+            verts: [
+              [
+                -0.3,
+                0.12,
+                12
+              ],
+              [
+                0.5,
+                0.12,
+                12
+              ],
+              [
+                0.5,
+                0.12,
+                12.3
+              ],
+              [
+                -0.3,
+                0.12,
+                12.3
+              ]
+            ],
+            color: "#f2f2f2"
+          },
+          {
+            id: "n_R",
+            normal: [
+              0,
+              -1
+            ],
+            verts: [
+              [
+                0.5,
+                -0.12,
+                12
+              ],
+              [
+                -0.3,
+                -0.12,
+                12
+              ],
+              [
+                -0.3,
+                -0.12,
+                12.3
+              ],
+              [
+                0.5,
+                -0.12,
+                12.3
+              ]
+            ],
+            color: "#e6e6e6"
+          }
+        ]
+      },
+      {
+        id: "rotor_assembly",
+        parent: "nacelle",
+        rotate: {
+          pivot: [
+            0.51,
+            0,
+            12.15
+          ],
+          axis: [
+            1,
+            0,
+            0
+          ],
+          param: "rotorAngle"
+        },
+        faces: [
+          {
+            id: "b1",
+            verts: [
+              [
+                0.51,
+                0.02,
+                12.15
+              ],
+              [
+                0.51,
+                -0.02,
+                12.15
+              ],
+              [
+                0.51,
+                -0.02,
+                16.15
+              ],
+              [
+                0.51,
+                0.02,
+                16.15
+              ]
+            ],
+            color: "#ffffff"
+          },
+          {
+            id: "b2",
+            verts: [
+              [
+                0.51,
+                0.02,
+                12.15
+              ],
+              [
+                0.51,
+                -0.02,
+                12.15
+              ],
+              [
+                0.51,
+                3.4,
+                10.15
+              ],
+              [
+                0.51,
+                3.5,
+                10.15
+              ]
+            ],
+            color: "#ffffff"
+          },
+          {
+            id: "b3",
+            verts: [
+              [
+                0.51,
+                0.02,
+                12.15
+              ],
+              [
+                0.51,
+                -0.02,
+                12.15
+              ],
+              [
+                0.51,
+                -3.5,
+                10.15
+              ],
+              [
+                0.51,
+                -3.4,
+                10.15
+              ]
+            ],
+            color: "#ffffff"
+          }
+        ]
+      }
+    ],
+    rescueZones: [
+      {
+        x: 0.1,
+        y: 0,
+        w: 0.6,
+        h: 0.2,
+        role: "both",
+        z: 12.15,
+        dz: 2
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/buoy.zdef
+  var buoy_default = {
+    id: "buoy",
+    pivot: [0, 0, 0],
+    faces: [
+      { id: "body_f", normal: [1, 0], verts: [[0.14, -0.14, 0], [0.14, 0.14, 0], [0.05, 0.05, 0.44], [0.05, -0.05, 0.44]], color: "#dd3300" },
+      { id: "body_r", normal: [0, 1], verts: [[-0.14, 0.14, 0], [0.14, 0.14, 0], [0.05, 0.05, 0.44], [-0.05, 0.05, 0.44]], color: "#cc2200" },
+      { id: "stripe_f", normal: [1, 0], verts: [[0.142, -0.12, 0.14], [0.142, 0.12, 0.14], [0.142, 0.12, 0.22], [0.142, -0.12, 0.22]], color: "#ffffff" },
+      { id: "stripe_r", normal: [0, 1], verts: [[-0.12, 0.142, 0.14], [0.12, 0.142, 0.14], [0.12, 0.142, 0.22], [-0.12, 0.142, 0.22]], color: "#eeeeee" },
+      { id: "cap", verts: [[-0.05, -0.05, 0.44], [0.05, -0.05, 0.44], [0.05, 0.05, 0.44], [-0.05, 0.05, 0.44]], color: "#ffcc00" },
+      { id: "tip_f", normal: [1, 0], verts: [[0.05, -0.05, 0.44], [0.05, 0.05, 0.44], [0.01, 0.01, 0.58], [0.01, -0.01, 0.58]], color: "#ffcc00" },
+      { id: "tip_r", normal: [0, 1], verts: [[-0.05, 0.05, 0.44], [0.05, 0.05, 0.44], [0.01, 0.01, 0.58], [-0.01, 0.01, 0.58]], color: "#ffaa00" }
+    ]
+  };
+
+  // ../src/game/models/objects/baywatch_car.zdef
+  var baywatch_car_default = {
+    id: "baywatch_pickup",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    collisionBoxes: [
+      {
+        id: "chassis",
+        xMin: -0.85,
+        xMax: 0.935,
+        yMin: -0.425,
+        yMax: 0.425,
+        zMin: 0,
+        zMax: 0.8075
+      }
+    ],
+    faces: [
+      {
+        id: "base_bottom",
+        verts: [
+          [
+            -0.85,
+            -0.408,
+            0.085
+          ],
+          [
+            0.935,
+            -0.408,
+            0.085
+          ],
+          [
+            0.935,
+            0.408,
+            0.085
+          ],
+          [
+            -0.85,
+            0.408,
+            0.085
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "side_low_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -0.85,
+            -0.408,
+            0.085
+          ],
+          [
+            0.935,
+            -0.408,
+            0.085
+          ],
+          [
+            0.935,
+            -0.408,
+            0.187
+          ],
+          [
+            -0.85,
+            -0.408,
+            0.187
+          ]
+        ],
+        color: "#aa1a00"
+      },
+      {
+        id: "side_low_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.935,
+            0.408,
+            0.085
+          ],
+          [
+            -0.85,
+            0.408,
+            0.085
+          ],
+          [
+            -0.85,
+            0.408,
+            0.187
+          ],
+          [
+            0.935,
+            0.408,
+            0.187
+          ]
+        ],
+        color: "#991400"
+      },
+      {
+        id: "bumper_f",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.935,
+            -0.408,
+            0.068
+          ],
+          [
+            0.935,
+            0.408,
+            0.068
+          ],
+          [
+            0.935,
+            0.408,
+            0.17
+          ],
+          [
+            0.935,
+            -0.408,
+            0.17
+          ]
+        ],
+        color: "#222222"
+      },
+      {
+        id: "bumper_b",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            -0.85,
+            0.408,
+            0.068
+          ],
+          [
+            -0.85,
+            -0.408,
+            0.068
+          ],
+          [
+            -0.85,
+            -0.408,
+            0.17
+          ],
+          [
+            -0.85,
+            -0.408,
+            0.17
+          ]
+        ],
+        color: "#222222"
+      },
+      {
+        id: "wh_rl_o",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -0.68,
+            -0.425,
+            0
+          ],
+          [
+            -0.425,
+            -0.425,
+            0
+          ],
+          [
+            -0.425,
+            -0.425,
+            0.204
+          ],
+          [
+            -0.68,
+            -0.425,
+            0.204
+          ]
+        ],
+        color: "#222222"
+      },
+      {
+        id: "wh_rr_o",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            -0.425,
+            0.425,
+            0
+          ],
+          [
+            -0.68,
+            0.425,
+            0
+          ],
+          [
+            -0.68,
+            0.425,
+            0.204
+          ],
+          [
+            -0.425,
+            0.425,
+            0.204
+          ]
+        ],
+        color: "#1a1a1a"
+      },
+      {
+        id: "wh_fl_o",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            0.425,
+            -0.425,
+            0
+          ],
+          [
+            0.68,
+            -0.425,
+            0
+          ],
+          [
+            0.68,
+            -0.425,
+            0.204
+          ],
+          [
+            0.425,
+            -0.425,
+            0.204
+          ]
+        ],
+        color: "#222222"
+      },
+      {
+        id: "wh_fr_o",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.68,
+            0.425,
+            0
+          ],
+          [
+            0.425,
+            0.425,
+            0
+          ],
+          [
+            0.425,
+            0.425,
+            0.204
+          ],
+          [
+            0.68,
+            0.425,
+            0.204
+          ]
+        ],
+        color: "#1a1a1a"
+      },
+      {
+        id: "hood_top",
+        verts: [
+          [
+            0.255,
+            -0.408,
+            0.442
+          ],
+          [
+            0.85,
+            -0.408,
+            0.408
+          ],
+          [
+            0.85,
+            0.408,
+            0.408
+          ],
+          [
+            0.255,
+            0.408,
+            0.442
+          ]
+        ],
+        color: "#f5c400"
+      },
+      {
+        id: "grill_front",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.85,
+            -0.408,
+            0.187
+          ],
+          [
+            0.85,
+            0.408,
+            0.187
+          ],
+          [
+            0.85,
+            0.408,
+            0.408
+          ],
+          [
+            0.85,
+            -0.408,
+            0.408
+          ]
+        ],
+        color: "#e0b300"
+      },
+      {
+        id: "grill_mesh",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.85085,
+            -0.323,
+            0.221
+          ],
+          [
+            0.85085,
+            0.323,
+            0.221
+          ],
+          [
+            0.85085,
+            0.323,
+            0.357
+          ],
+          [
+            0.85085,
+            -0.323,
+            0.357
+          ]
+        ],
+        color: "#222222"
+      },
+      {
+        id: "headlight_l",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.85085,
+            -0.391,
+            0.289
+          ],
+          [
+            0.85085,
+            -0.3315,
+            0.289
+          ],
+          [
+            0.85085,
+            -0.3315,
+            0.357
+          ],
+          [
+            0.85085,
+            -0.391,
+            0.357
+          ]
+        ],
+        color: "#fffebb"
+      },
+      {
+        id: "headlight_r",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.85085,
+            0.3315,
+            0.289
+          ],
+          [
+            0.85085,
+            0.391,
+            0.289
+          ],
+          [
+            0.85085,
+            0.391,
+            0.357
+          ],
+          [
+            0.85085,
+            0.3315,
+            0.357
+          ]
+        ],
+        color: "#fffebb"
+      },
+      {
+        id: "body_side_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            0.255,
+            -0.408,
+            0.187
+          ],
+          [
+            0.85,
+            -0.408,
+            0.187
+          ],
+          [
+            0.85,
+            -0.408,
+            0.408
+          ],
+          [
+            0.255,
+            -0.408,
+            0.442
+          ]
+        ],
+        color: "#f5c400"
+      },
+      {
+        id: "body_side_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.85,
+            0.408,
+            0.187
+          ],
+          [
+            0.255,
+            0.408,
+            0.187
+          ],
+          [
+            0.255,
+            0.408,
+            0.442
+          ],
+          [
+            0.85,
+            0.408,
+            0.408
+          ]
+        ],
+        color: "#d6ab00"
+      },
+      {
+        id: "bed_floor",
+        verts: [
+          [
+            -0.8075,
+            -0.357,
+            0.204
+          ],
+          [
+            0.255,
+            -0.357,
+            0.204
+          ],
+          [
+            0.255,
+            0.357,
+            0.204
+          ],
+          [
+            -0.8075,
+            0.357,
+            0.204
+          ]
+        ],
+        color: "#333333"
+      },
+      {
+        id: "bed_wall_f",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.255,
+            -0.357,
+            0.204
+          ],
+          [
+            0.255,
+            0.357,
+            0.204
+          ],
+          [
+            0.255,
+            0.357,
+            0.442
+          ],
+          [
+            0.255,
+            -0.357,
+            0.442
+          ]
+        ],
+        color: "#d6ab00"
+      },
+      {
+        id: "bed_side_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -0.85,
+            -0.408,
+            0.187
+          ],
+          [
+            0.255,
+            -0.408,
+            0.187
+          ],
+          [
+            0.255,
+            -0.408,
+            0.442
+          ],
+          [
+            -0.85,
+            -0.408,
+            0.442
+          ]
+        ],
+        color: "#f5c400"
+      },
+      {
+        id: "bed_side_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.255,
+            0.408,
+            0.187
+          ],
+          [
+            -0.85,
+            0.408,
+            0.187
+          ],
+          [
+            -0.85,
+            0.408,
+            0.442
+          ],
+          [
+            0.255,
+            0.408,
+            0.442
+          ]
+        ],
+        color: "#d6ab00"
+      },
+      {
+        id: "bed_tailgate",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            -0.85,
+            0.408,
+            0.187
+          ],
+          [
+            -0.85,
+            -0.408,
+            0.187
+          ],
+          [
+            -0.85,
+            -0.408,
+            0.442
+          ],
+          [
+            -0.85,
+            0.408,
+            0.442
+          ]
+        ],
+        color: "#c29b00"
+      },
+      {
+        id: "cab_back",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            -0.425,
+            0.3825,
+            0.442
+          ],
+          [
+            -0.425,
+            -0.3825,
+            0.442
+          ],
+          [
+            -0.425,
+            -0.3825,
+            0.748
+          ],
+          [
+            -0.425,
+            0.3825,
+            0.748
+          ]
+        ],
+        color: "#c29b00"
+      },
+      {
+        id: "cab_side_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -0.425,
+            -0.3825,
+            0.442
+          ],
+          [
+            0.255,
+            -0.3825,
+            0.442
+          ],
+          [
+            0.17,
+            -0.3825,
+            0.748
+          ],
+          [
+            -0.425,
+            -0.3825,
+            0.748
+          ]
+        ],
+        color: "#f5c400"
+      },
+      {
+        id: "cab_side_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.255,
+            0.3825,
+            0.442
+          ],
+          [
+            -0.425,
+            0.3825,
+            0.442
+          ],
+          [
+            -0.425,
+            0.3825,
+            0.748
+          ],
+          [
+            0.17,
+            0.3825,
+            0.748
+          ]
+        ],
+        color: "#d6ab00"
+      },
+      {
+        id: "cab_roof",
+        verts: [
+          [
+            -0.425,
+            -0.3825,
+            0.748
+          ],
+          [
+            0.17,
+            -0.3825,
+            0.748
+          ],
+          [
+            0.17,
+            0.3825,
+            0.748
+          ],
+          [
+            -0.425,
+            0.3825,
+            0.748
+          ]
+        ],
+        color: "#f5c400"
+      },
+      {
+        id: "windshield",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.255,
+            -0.357,
+            0.442
+          ],
+          [
+            0.255,
+            0.357,
+            0.442
+          ],
+          [
+            0.17,
+            0.357,
+            0.731
+          ],
+          [
+            0.17,
+            -0.357,
+            0.731
+          ]
+        ],
+        color: "#223344"
+      },
+      {
+        id: "win_left",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -0.34,
+            -0.38335,
+            0.493
+          ],
+          [
+            0.1275,
+            -0.38335,
+            0.493
+          ],
+          [
+            0.085,
+            -0.38335,
+            0.714
+          ],
+          [
+            -0.34,
+            -0.38335,
+            0.714
+          ]
+        ],
+        color: "#223344"
+      },
+      {
+        id: "win_right",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.1275,
+            0.38335,
+            0.493
+          ],
+          [
+            -0.34,
+            0.38335,
+            0.493
+          ],
+          [
+            -0.34,
+            0.38335,
+            0.714
+          ],
+          [
+            0.085,
+            0.38335,
+            0.714
+          ]
+        ],
+        color: "#1c2a38"
+      },
+      {
+        id: "bar_base",
+        verts: [
+          [
+            -0.17,
+            -0.2975,
+            0.7565
+          ],
+          [
+            -0.085,
+            -0.2975,
+            0.7565
+          ],
+          [
+            -0.085,
+            0.2975,
+            0.7565
+          ],
+          [
+            -0.17,
+            0.2975,
+            0.7565
+          ]
+        ],
+        color: "#222222"
+      },
+      {
+        id: "light_l",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            -0.085,
+            -0.2125,
+            0.7565
+          ],
+          [
+            -0.085,
+            -0.0425,
+            0.7565
+          ],
+          [
+            -0.085,
+            -0.0425,
+            0.799
+          ],
+          [
+            -0.085,
+            -0.2125,
+            0.799
+          ]
+        ],
+        color: "#ff3300"
+      },
+      {
+        id: "light_r",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            -0.085,
+            0.0425,
+            0.7565
+          ],
+          [
+            -0.085,
+            0.2125,
+            0.7565
+          ],
+          [
+            -0.085,
+            0.2125,
+            0.799
+          ],
+          [
+            -0.085,
+            0.0425,
+            0.799
+          ]
+        ],
+        color: "#ffee00"
+      },
+      {
+        id: "surf1_top",
+        verts: [
+          [
+            -0.765,
+            -0.272,
+            0.8075
+          ],
+          [
+            0.425,
+            -0.272,
+            0.8075
+          ],
+          [
+            0.425,
+            -0.068,
+            0.8075
+          ],
+          [
+            -0.765,
+            -0.068,
+            0.8075
+          ]
+        ],
+        color: "#ee2200",
+        stroke: "#ff4422"
+      },
+      {
+        id: "surf2_top",
+        verts: [
+          [
+            -0.765,
+            0.068,
+            0.8075
+          ],
+          [
+            0.425,
+            0.068,
+            0.8075
+          ],
+          [
+            0.425,
+            0.272,
+            0.8075
+          ],
+          [
+            -0.765,
+            0.272,
+            0.8075
+          ]
+        ],
+        color: "#ee2200",
+        stroke: "#ff4422"
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/baywatch_hq.zdef
+  var baywatch_hq_default = {
+    id: "baywatch_hq",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    collisionBoxes: [
+      {
+        id: "main",
+        xMin: -2.2,
+        xMax: 2.64,
+        yMin: -1.44,
+        yMax: 1.44,
+        zMin: 0,
+        zMax: 2.56
+      }
+    ],
+    faces: [
+      {
+        id: "wall_f",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            2.2,
+            -1.36,
+            0.24
+          ],
+          [
+            2.2,
+            1.36,
+            0.24
+          ],
+          [
+            2.2,
+            1.36,
+            2.48
+          ],
+          [
+            2.2,
+            -1.36,
+            2.48
+          ]
+        ],
+        color: "#ece8dc"
+      },
+      {
+        id: "wall_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -2.2,
+            -1.36,
+            0.24
+          ],
+          [
+            2.2,
+            -1.36,
+            0.24
+          ],
+          [
+            2.2,
+            -1.36,
+            2.48
+          ],
+          [
+            -2.2,
+            -1.36,
+            2.48
+          ]
+        ],
+        color: "#dcd8cc"
+      },
+      {
+        id: "wall_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            2.2,
+            1.36,
+            0.24
+          ],
+          [
+            -2.2,
+            1.36,
+            0.24
+          ],
+          [
+            -2.2,
+            1.36,
+            2.48
+          ],
+          [
+            2.2,
+            1.36,
+            2.48
+          ]
+        ],
+        color: "#d0ccc0"
+      },
+      {
+        id: "wall_b",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            -2.2,
+            1.36,
+            0.24
+          ],
+          [
+            -2.2,
+            -1.36,
+            0.24
+          ],
+          [
+            -2.2,
+            -1.36,
+            2.48
+          ],
+          [
+            -2.2,
+            1.36,
+            2.48
+          ]
+        ],
+        color: "#ccc8bc"
+      },
+      {
+        id: "stripe_f",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            2.202,
+            -1.36,
+            1.58
+          ],
+          [
+            2.202,
+            1.36,
+            1.58
+          ],
+          [
+            2.202,
+            1.36,
+            1.96
+          ],
+          [
+            2.202,
+            -1.36,
+            1.96
+          ]
+        ],
+        color: "#cc2200"
+      },
+      {
+        id: "stripe_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -2.2,
+            -1.362,
+            1.58
+          ],
+          [
+            2.2,
+            -1.362,
+            1.58
+          ],
+          [
+            2.2,
+            -1.362,
+            1.96
+          ],
+          [
+            -2.2,
+            -1.362,
+            1.96
+          ]
+        ],
+        color: "#aa1800"
+      },
+      {
+        id: "stripe_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            2.2,
+            1.362,
+            1.58
+          ],
+          [
+            -2.2,
+            1.362,
+            1.58
+          ],
+          [
+            -2.2,
+            1.362,
+            1.96
+          ],
+          [
+            2.2,
+            1.362,
+            1.96
+          ]
+        ],
+        color: "#aa1800"
+      },
+      {
+        id: "roof",
+        verts: [
+          [
+            -2.28,
+            -1.44,
+            2.48
+          ],
+          [
+            2.28,
+            -1.44,
+            2.48
+          ],
+          [
+            2.28,
+            1.44,
+            2.48
+          ],
+          [
+            -2.28,
+            1.44,
+            2.48
+          ]
+        ],
+        color: "#888880"
+      },
+      {
+        id: "roof_f",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            2.28,
+            -1.44,
+            2.36
+          ],
+          [
+            2.28,
+            1.44,
+            2.36
+          ],
+          [
+            2.28,
+            1.44,
+            2.48
+          ],
+          [
+            2.28,
+            -1.44,
+            2.48
+          ]
+        ],
+        color: "#777870"
+      },
+      {
+        id: "roof_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -2.28,
+            -1.44,
+            2.36
+          ],
+          [
+            2.28,
+            -1.44,
+            2.36
+          ],
+          [
+            2.28,
+            -1.44,
+            2.48
+          ],
+          [
+            -2.28,
+            -1.44,
+            2.48
+          ]
+        ],
+        color: "#666860"
+      },
+      {
+        id: "win_fl",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            2.202,
+            -1.24,
+            0.56
+          ],
+          [
+            2.202,
+            -0.64,
+            0.56
+          ],
+          [
+            2.202,
+            -0.64,
+            1.46
+          ],
+          [
+            2.202,
+            -1.24,
+            1.46
+          ]
+        ],
+        color: "#223344"
+      },
+      {
+        id: "win_fr",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            2.202,
+            0.64,
+            0.56
+          ],
+          [
+            2.202,
+            1.24,
+            0.56
+          ],
+          [
+            2.202,
+            1.24,
+            1.46
+          ],
+          [
+            2.202,
+            0.64,
+            1.46
+          ]
+        ],
+        color: "#223344"
+      },
+      {
+        id: "door",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            2.202,
+            -0.36,
+            0.24
+          ],
+          [
+            2.202,
+            0.36,
+            0.24
+          ],
+          [
+            2.202,
+            0.36,
+            1.52
+          ],
+          [
+            2.202,
+            -0.36,
+            1.52
+          ]
+        ],
+        color: "#7a5030"
+      },
+      {
+        id: "awning",
+        verts: [
+          [
+            2.2,
+            -0.52,
+            1.58
+          ],
+          [
+            2.64,
+            -0.52,
+            1.4
+          ],
+          [
+            2.64,
+            0.52,
+            1.4
+          ],
+          [
+            2.2,
+            0.52,
+            1.58
+          ]
+        ],
+        color: "#cc2200"
+      },
+      {
+        id: "awning_f",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            2.64,
+            -0.52,
+            1.26
+          ],
+          [
+            2.64,
+            0.52,
+            1.26
+          ],
+          [
+            2.64,
+            0.52,
+            1.4
+          ],
+          [
+            2.64,
+            -0.52,
+            1.4
+          ]
+        ],
+        color: "#aa1800"
+      },
+      {
+        id: "win_rl",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            -1.1,
+            1.362,
+            0.56
+          ],
+          [
+            1.1,
+            1.362,
+            0.56
+          ],
+          [
+            1.1,
+            1.362,
+            1.46
+          ],
+          [
+            -1.1,
+            1.362,
+            1.46
+          ]
+        ],
+        color: "#223344"
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/baywatch_tower.zdef
+  var baywatch_tower_default = {
+    id: "baywatch_tower",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    collisionBoxes: [
+      {
+        id: "base",
+        xMin: -1.1,
+        xMax: 2.52,
+        yMin: -0.9,
+        yMax: 0.9,
+        zMin: 0,
+        zMax: 2.2
+      },
+      {
+        id: "cabin",
+        xMin: -0.6,
+        xMax: 0.5,
+        yMin: -0.6,
+        yMax: 0.6,
+        zMin: 2.2,
+        zMax: 3.9
+      }
+    ],
+    faces: [
+      {
+        id: "p_fl_1",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.92,
+            -0.86,
+            0.04
+          ],
+          [
+            0.92,
+            -0.66,
+            0.04
+          ],
+          [
+            0.92,
+            -0.66,
+            2.2
+          ],
+          [
+            0.92,
+            -0.86,
+            2.2
+          ]
+        ],
+        color: "#2a2a2a"
+      },
+      {
+        id: "p_fl_2",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.72,
+            -0.66,
+            0.04
+          ],
+          [
+            0.92,
+            -0.66,
+            0.04
+          ],
+          [
+            0.92,
+            -0.66,
+            2.2
+          ],
+          [
+            0.72,
+            -0.66,
+            2.2
+          ]
+        ],
+        color: "#2a2a2a"
+      },
+      {
+        id: "p_fr_1",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.92,
+            0.66,
+            0.04
+          ],
+          [
+            0.92,
+            0.86,
+            0.04
+          ],
+          [
+            0.92,
+            0.86,
+            2.2
+          ],
+          [
+            0.92,
+            0.66,
+            2.2
+          ]
+        ],
+        color: "#2a2a2a"
+      },
+      {
+        id: "p_fr_2",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.72,
+            0.86,
+            0.04
+          ],
+          [
+            0.92,
+            0.86,
+            0.04
+          ],
+          [
+            0.92,
+            0.86,
+            2.2
+          ],
+          [
+            0.72,
+            0.86,
+            2.2
+          ]
+        ],
+        color: "#2a2a2a"
+      },
+      {
+        id: "p_bl_1",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            -0.72,
+            -0.86,
+            0.04
+          ],
+          [
+            -0.72,
+            -0.66,
+            0.04
+          ],
+          [
+            -0.72,
+            -0.66,
+            2.2
+          ],
+          [
+            -0.72,
+            -0.86,
+            2.2
+          ]
+        ],
+        color: "#2a2a2a"
+      },
+      {
+        id: "p_bl_2",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            -0.92,
+            -0.66,
+            0.04
+          ],
+          [
+            -0.72,
+            -0.66,
+            0.04
+          ],
+          [
+            -0.72,
+            -0.66,
+            2.2
+          ],
+          [
+            -0.92,
+            -0.66,
+            2.2
+          ]
+        ],
+        color: "#2a2a2a"
+      },
+      {
+        id: "p_br_1",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            -0.72,
+            0.66,
+            0.04
+          ],
+          [
+            -0.72,
+            0.86,
+            0.04
+          ],
+          [
+            -0.72,
+            0.86,
+            2.2
+          ],
+          [
+            -0.72,
+            0.66,
+            2.2
+          ]
+        ],
+        color: "#2a2a2a"
+      },
+      {
+        id: "p_br_2",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            -0.92,
+            0.86,
+            0.04
+          ],
+          [
+            -0.72,
+            0.86,
+            0.04
+          ],
+          [
+            -0.72,
+            0.86,
+            2.2
+          ],
+          [
+            -0.92,
+            0.86,
+            2.2
+          ]
+        ],
+        color: "#2a2a2a"
+      },
+      {
+        id: "plank1",
+        verts: [
+          [
+            -1,
+            -0.9,
+            2.2
+          ],
+          [
+            -0.6,
+            -0.9,
+            2.2
+          ],
+          [
+            -0.6,
+            0.9,
+            2.2
+          ],
+          [
+            -1,
+            0.9,
+            2.2
+          ]
+        ],
+        color: "#8a8070"
+      },
+      {
+        id: "plank2",
+        verts: [
+          [
+            -0.56,
+            -0.9,
+            2.2
+          ],
+          [
+            -0.16,
+            -0.9,
+            2.2
+          ],
+          [
+            -0.16,
+            0.9,
+            2.2
+          ],
+          [
+            -0.56,
+            0.9,
+            2.2
+          ]
+        ],
+        color: "#827868"
+      },
+      {
+        id: "plank3",
+        verts: [
+          [
+            -0.12,
+            -0.9,
+            2.2
+          ],
+          [
+            0.28,
+            -0.9,
+            2.2
+          ],
+          [
+            0.28,
+            0.9,
+            2.2
+          ],
+          [
+            -0.12,
+            0.9,
+            2.2
+          ]
+        ],
+        color: "#8a8070"
+      },
+      {
+        id: "plank4",
+        verts: [
+          [
+            0.32,
+            -0.9,
+            2.2
+          ],
+          [
+            0.72,
+            -0.9,
+            2.2
+          ],
+          [
+            0.72,
+            0.9,
+            2.2
+          ],
+          [
+            0.32,
+            0.9,
+            2.2
+          ]
+        ],
+        color: "#827868"
+      },
+      {
+        id: "plank5",
+        verts: [
+          [
+            0.76,
+            -0.9,
+            2.2
+          ],
+          [
+            1.2,
+            -0.9,
+            2.2
+          ],
+          [
+            1.2,
+            0.9,
+            2.2
+          ],
+          [
+            0.76,
+            0.9,
+            2.2
+          ]
+        ],
+        color: "#8a8070"
+      },
+      {
+        id: "deck_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -1,
+            -0.9,
+            2.08
+          ],
+          [
+            1.2,
+            -0.9,
+            2.08
+          ],
+          [
+            1.2,
+            -0.9,
+            2.2
+          ],
+          [
+            -1,
+            -0.9,
+            2.2
+          ]
+        ],
+        color: "#7a7060"
+      },
+      {
+        id: "deck_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            1.2,
+            0.9,
+            2.08
+          ],
+          [
+            -1,
+            0.9,
+            2.08
+          ],
+          [
+            -1,
+            0.9,
+            2.2
+          ],
+          [
+            1.2,
+            0.9,
+            2.2
+          ]
+        ],
+        color: "#7a7060"
+      },
+      {
+        id: "deck_f",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            1.2,
+            -0.9,
+            2.08
+          ],
+          [
+            1.2,
+            0.9,
+            2.08
+          ],
+          [
+            1.2,
+            0.9,
+            2.2
+          ],
+          [
+            1.2,
+            -0.9,
+            2.2
+          ]
+        ],
+        color: "#7a7060"
+      },
+      {
+        id: "deck_b",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            -1,
+            -0.9,
+            2.08
+          ],
+          [
+            -1,
+            0.9,
+            2.08
+          ],
+          [
+            -1,
+            0.9,
+            2.2
+          ],
+          [
+            -1,
+            -0.9,
+            2.2
+          ]
+        ],
+        color: "#7a7060"
+      },
+      {
+        id: "stair_side_r",
+        verts: [
+          [
+            1.2,
+            0.3,
+            2.2
+          ],
+          [
+            1.36,
+            0.3,
+            2.2
+          ],
+          [
+            1.36,
+            0.3,
+            1.92
+          ],
+          [
+            1.52,
+            0.3,
+            1.92
+          ],
+          [
+            1.52,
+            0.3,
+            1.64
+          ],
+          [
+            1.68,
+            0.3,
+            1.64
+          ],
+          [
+            1.68,
+            0.3,
+            1.36
+          ],
+          [
+            1.84,
+            0.3,
+            1.36
+          ],
+          [
+            1.84,
+            0.3,
+            1.08
+          ],
+          [
+            2,
+            0.3,
+            1.08
+          ],
+          [
+            2,
+            0.3,
+            0.8
+          ],
+          [
+            2.16,
+            0.3,
+            0.8
+          ],
+          [
+            2.16,
+            0.3,
+            0.52
+          ],
+          [
+            2.32,
+            0.3,
+            0.52
+          ],
+          [
+            2.32,
+            0.3,
+            0.24
+          ],
+          [
+            2.48,
+            0.3,
+            0.24
+          ],
+          [
+            2.48,
+            0.3,
+            0.16
+          ],
+          [
+            1.2,
+            0.3,
+            0.16
+          ]
+        ],
+        color: "#8a8070"
+      },
+      {
+        id: "stair_side_l",
+        verts: [
+          [
+            1.2,
+            -0.3,
+            2.2
+          ],
+          [
+            1.36,
+            -0.3,
+            2.2
+          ],
+          [
+            1.36,
+            -0.3,
+            1.92
+          ],
+          [
+            1.52,
+            -0.3,
+            1.92
+          ],
+          [
+            1.52,
+            -0.3,
+            1.64
+          ],
+          [
+            1.68,
+            -0.3,
+            1.64
+          ],
+          [
+            1.68,
+            -0.3,
+            1.36
+          ],
+          [
+            1.84,
+            -0.3,
+            1.36
+          ],
+          [
+            1.84,
+            -0.3,
+            1.08
+          ],
+          [
+            2,
+            -0.3,
+            1.08
+          ],
+          [
+            2,
+            -0.3,
+            0.8
+          ],
+          [
+            2.16,
+            -0.3,
+            0.8
+          ],
+          [
+            2.16,
+            -0.3,
+            0.52
+          ],
+          [
+            2.32,
+            -0.3,
+            0.52
+          ],
+          [
+            2.32,
+            -0.3,
+            0.24
+          ],
+          [
+            2.48,
+            -0.3,
+            0.24
+          ],
+          [
+            2.48,
+            -0.3,
+            0.16
+          ],
+          [
+            1.2,
+            -0.3,
+            0.16
+          ]
+        ],
+        color: "#8a8070"
+      },
+      {
+        id: "step8_t",
+        verts: [
+          [
+            1.2,
+            -0.3,
+            2.2
+          ],
+          [
+            1.36,
+            -0.3,
+            2.2
+          ],
+          [
+            1.36,
+            0.3,
+            2.2
+          ],
+          [
+            1.2,
+            0.3,
+            2.2
+          ]
+        ],
+        color: "#9a9080"
+      },
+      {
+        id: "step8_f",
+        verts: [
+          [
+            1.36,
+            -0.3,
+            2.12
+          ],
+          [
+            1.36,
+            0.3,
+            2.12
+          ],
+          [
+            1.36,
+            0.3,
+            2.2
+          ],
+          [
+            1.36,
+            -0.3,
+            2.2
+          ]
+        ],
+        color: "#7a7060"
+      },
+      {
+        id: "step7_t",
+        verts: [
+          [
+            1.36,
+            -0.3,
+            1.92
+          ],
+          [
+            1.52,
+            -0.3,
+            1.92
+          ],
+          [
+            1.52,
+            0.3,
+            1.92
+          ],
+          [
+            1.36,
+            0.3,
+            1.92
+          ]
+        ],
+        color: "#9a9080"
+      },
+      {
+        id: "step7_f",
+        verts: [
+          [
+            1.52,
+            -0.3,
+            1.84
+          ],
+          [
+            1.52,
+            0.3,
+            1.84
+          ],
+          [
+            1.52,
+            0.3,
+            1.92
+          ],
+          [
+            1.52,
+            -0.3,
+            1.92
+          ]
+        ],
+        color: "#7a7060"
+      },
+      {
+        id: "step6_t",
+        verts: [
+          [
+            1.52,
+            -0.3,
+            1.64
+          ],
+          [
+            1.68,
+            -0.3,
+            1.64
+          ],
+          [
+            1.68,
+            0.3,
+            1.64
+          ],
+          [
+            1.52,
+            0.3,
+            1.64
+          ]
+        ],
+        color: "#9a9080"
+      },
+      {
+        id: "step6_f",
+        verts: [
+          [
+            1.68,
+            -0.3,
+            1.56
+          ],
+          [
+            1.68,
+            0.3,
+            1.56
+          ],
+          [
+            1.68,
+            0.3,
+            1.64
+          ],
+          [
+            1.68,
+            -0.3,
+            1.64
+          ]
+        ],
+        color: "#7a7060"
+      },
+      {
+        id: "step5_t",
+        verts: [
+          [
+            1.68,
+            -0.3,
+            1.36
+          ],
+          [
+            1.84,
+            -0.3,
+            1.36
+          ],
+          [
+            1.84,
+            0.3,
+            1.36
+          ],
+          [
+            1.68,
+            0.3,
+            1.36
+          ]
+        ],
+        color: "#9a9080"
+      },
+      {
+        id: "step5_f",
+        verts: [
+          [
+            1.84,
+            -0.3,
+            1.28
+          ],
+          [
+            1.84,
+            0.3,
+            1.28
+          ],
+          [
+            1.84,
+            0.3,
+            1.36
+          ],
+          [
+            1.84,
+            -0.3,
+            1.36
+          ]
+        ],
+        color: "#7a7060"
+      },
+      {
+        id: "step4_t",
+        verts: [
+          [
+            1.84,
+            -0.3,
+            1.08
+          ],
+          [
+            2,
+            -0.3,
+            1.08
+          ],
+          [
+            2,
+            0.3,
+            1.08
+          ],
+          [
+            1.84,
+            0.3,
+            1.08
+          ]
+        ],
+        color: "#9a9080"
+      },
+      {
+        id: "step4_f",
+        verts: [
+          [
+            2,
+            -0.3,
+            1
+          ],
+          [
+            2,
+            0.3,
+            1
+          ],
+          [
+            2,
+            0.3,
+            1.08
+          ],
+          [
+            2,
+            -0.3,
+            1.08
+          ]
+        ],
+        color: "#7a7060"
+      },
+      {
+        id: "step3_t",
+        verts: [
+          [
+            2,
+            -0.3,
+            0.8
+          ],
+          [
+            2.16,
+            -0.3,
+            0.8
+          ],
+          [
+            2.16,
+            0.3,
+            0.8
+          ],
+          [
+            2,
+            0.3,
+            0.8
+          ]
+        ],
+        color: "#9a9080"
+      },
+      {
+        id: "step3_f",
+        verts: [
+          [
+            2.16,
+            -0.3,
+            0.72
+          ],
+          [
+            2.16,
+            0.3,
+            0.72
+          ],
+          [
+            2.16,
+            0.3,
+            0.8
+          ],
+          [
+            2.16,
+            -0.3,
+            0.8
+          ]
+        ],
+        color: "#7a7060"
+      },
+      {
+        id: "step2_t",
+        verts: [
+          [
+            2.16,
+            -0.3,
+            0.52
+          ],
+          [
+            2.32,
+            -0.3,
+            0.52
+          ],
+          [
+            2.32,
+            0.3,
+            0.52
+          ],
+          [
+            2.16,
+            0.3,
+            0.52
+          ]
+        ],
+        color: "#9a9080"
+      },
+      {
+        id: "step2_f",
+        verts: [
+          [
+            2.32,
+            -0.3,
+            0.44
+          ],
+          [
+            2.32,
+            0.3,
+            0.44
+          ],
+          [
+            2.32,
+            0.3,
+            0.52
+          ],
+          [
+            2.32,
+            -0.3,
+            0.52
+          ]
+        ],
+        color: "#7a7060"
+      },
+      {
+        id: "step1_t",
+        verts: [
+          [
+            2.32,
+            -0.3,
+            0.24
+          ],
+          [
+            2.48,
+            -0.3,
+            0.24
+          ],
+          [
+            2.48,
+            0.3,
+            0.24
+          ],
+          [
+            2.32,
+            0.3,
+            0.24
+          ]
+        ],
+        color: "#9a9080"
+      },
+      {
+        id: "step1_f",
+        verts: [
+          [
+            2.48,
+            -0.3,
+            0.16
+          ],
+          [
+            2.48,
+            0.3,
+            0.16
+          ],
+          [
+            2.48,
+            0.3,
+            0.24
+          ],
+          [
+            2.48,
+            -0.3,
+            0.24
+          ]
+        ],
+        color: "#7a7060"
+      },
+      {
+        id: "rail_solid_l",
+        verts: [
+          [
+            -1,
+            -0.9,
+            2.2
+          ],
+          [
+            1.2,
+            -0.9,
+            2.2
+          ],
+          [
+            1.2,
+            -0.9,
+            2.48
+          ],
+          [
+            -1,
+            -0.9,
+            2.48
+          ]
+        ],
+        color: "#aa1800"
+      },
+      {
+        id: "rail_solid_r",
+        verts: [
+          [
+            1.2,
+            0.9,
+            2.2
+          ],
+          [
+            -1,
+            0.9,
+            2.2
+          ],
+          [
+            -1,
+            0.9,
+            2.48
+          ],
+          [
+            1.2,
+            0.9,
+            2.48
+          ]
+        ],
+        color: "#aa1800"
+      },
+      {
+        id: "rail_f_left",
+        verts: [
+          [
+            1.2,
+            -0.9,
+            2.2
+          ],
+          [
+            1.2,
+            -0.3,
+            2.2
+          ],
+          [
+            1.2,
+            -0.3,
+            2.48
+          ],
+          [
+            1.2,
+            -0.9,
+            2.48
+          ]
+        ],
+        color: "#aa1800"
+      },
+      {
+        id: "rail_f_right",
+        verts: [
+          [
+            1.2,
+            0.3,
+            2.2
+          ],
+          [
+            1.2,
+            0.9,
+            2.2
+          ],
+          [
+            1.2,
+            0.9,
+            2.48
+          ],
+          [
+            1.2,
+            0.3,
+            2.48
+          ]
+        ],
+        color: "#aa1800"
+      },
+      {
+        id: "rail_b",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            -1,
+            -0.9,
+            2.2
+          ],
+          [
+            -1,
+            0.9,
+            2.2
+          ],
+          [
+            -1,
+            0.9,
+            2.48
+          ],
+          [
+            -1,
+            -0.9,
+            2.48
+          ]
+        ],
+        color: "#aa1800"
+      },
+      {
+        id: "cab_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -0.6,
+            -0.6,
+            2.2
+          ],
+          [
+            0.5,
+            -0.6,
+            2.2
+          ],
+          [
+            0.5,
+            -0.6,
+            3.04
+          ],
+          [
+            -0.6,
+            -0.6,
+            3.04
+          ]
+        ],
+        color: "#dcd8cc"
+      },
+      {
+        id: "cab_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.5,
+            0.6,
+            2.2
+          ],
+          [
+            -0.6,
+            0.6,
+            2.2
+          ],
+          [
+            -0.6,
+            0.6,
+            3.04
+          ],
+          [
+            0.5,
+            0.6,
+            3.04
+          ]
+        ],
+        color: "#ccc8bc"
+      },
+      {
+        id: "cab_f",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.5,
+            -0.6,
+            2.2
+          ],
+          [
+            0.5,
+            0.6,
+            2.2
+          ],
+          [
+            0.5,
+            0.6,
+            3.04
+          ],
+          [
+            0.5,
+            -0.6,
+            3.04
+          ]
+        ],
+        color: "#ece8dc"
+      },
+      {
+        id: "door",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.502,
+            -0.2,
+            2.2
+          ],
+          [
+            0.502,
+            0.2,
+            2.2
+          ],
+          [
+            0.502,
+            0.2,
+            2.76
+          ],
+          [
+            0.502,
+            -0.2,
+            2.76
+          ]
+        ],
+        color: "#7a5030"
+      },
+      {
+        id: "win_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            -0.2,
+            0.602,
+            2.44
+          ],
+          [
+            0.3,
+            0.602,
+            2.44
+          ],
+          [
+            0.3,
+            0.602,
+            2.84
+          ],
+          [
+            -0.2,
+            0.602,
+            2.84
+          ]
+        ],
+        color: "#223344"
+      },
+      {
+        id: "buoy_body",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.3,
+            0.605,
+            2.42
+          ],
+          [
+            0.5,
+            0.605,
+            2.42
+          ],
+          [
+            0.5,
+            0.605,
+            2.78
+          ],
+          [
+            0.3,
+            0.605,
+            2.78
+          ]
+        ],
+        color: "#ff5500"
+      },
+      {
+        id: "buoy_strap",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.3,
+            0.607,
+            2.57
+          ],
+          [
+            0.5,
+            0.607,
+            2.57
+          ],
+          [
+            0.5,
+            0.607,
+            2.63
+          ],
+          [
+            0.3,
+            0.607,
+            2.63
+          ]
+        ],
+        color: "#222222"
+      },
+      {
+        id: "roof",
+        verts: [
+          [
+            -0.7,
+            -0.7,
+            3.04
+          ],
+          [
+            0.7,
+            -0.7,
+            3.04
+          ],
+          [
+            0.7,
+            0.7,
+            3.04
+          ],
+          [
+            -0.7,
+            0.7,
+            3.04
+          ]
+        ],
+        color: "#cc2200"
+      },
+      {
+        id: "pole",
+        verts: [
+          [
+            -0.4,
+            -0.01,
+            3.04
+          ],
+          [
+            -0.4,
+            0.01,
+            3.04
+          ],
+          [
+            -0.4,
+            0.01,
+            3.88
+          ],
+          [
+            -0.4,
+            -0.01,
+            3.88
+          ]
+        ],
+        color: "#cccccc"
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/concert_stage.zdef
+  var concert_stage_default = {
+    id: "concert_stage",
+    pivot: [0, 0, 0],
+    collisionBoxes: [
+      { id: "platform", xMin: -1.5, xMax: 1.5, yMin: -2.5, yMax: 2.5, zMin: 0, zMax: 0.5 },
+      { id: "backwall", xMin: 1.2, xMax: 1.6, yMin: -2.5, yMax: 2.5, zMin: 0.5, zMax: 4.5 },
+      { id: "spk_l", xMin: -2, xMax: -1.4, yMin: -3, yMax: -2.5, zMin: 0.5, zMax: 2.6 },
+      { id: "spk_r", xMin: -2, xMax: -1.4, yMin: 2.5, yMax: 3, zMin: 0.5, zMax: 2.6 }
+    ],
+    faces: [
+      { id: "plat_top", verts: [[1.5, -2.5, 0.5], [1.5, 2.5, 0.5], [-1.5, 2.5, 0.5], [-1.5, -2.5, 0.5]], color: "#1e0e2a" },
+      { id: "plat_front", normal: [-1, 0], verts: [[-1.5, -2.5, 0], [-1.5, 2.5, 0], [-1.5, 2.5, 0.5], [-1.5, -2.5, 0.5]], color: "#2a1040" },
+      { id: "plat_side_l", normal: [0, -1], verts: [[-1.5, -2.5, 0], [1.5, -2.5, 0], [1.5, -2.5, 0.5], [-1.5, -2.5, 0.5]], color: "#1e0e30" },
+      { id: "plat_side_r", normal: [0, 1], verts: [[1.5, 2.5, 0], [-1.5, 2.5, 0], [-1.5, 2.5, 0.5], [1.5, 2.5, 0.5]], color: "#200e34" },
+      { id: "plat_back", normal: [1, 0], verts: [[1.5, 2.5, 0], [1.5, -2.5, 0], [1.5, -2.5, 0.5], [1.5, 2.5, 0.5]], color: "#1a0c28" },
+      { id: "floor_a", verts: [[1.5, -2.3, 0.51], [1.5, -0.1, 0.51], [-1.5, -0.1, 0.51], [-1.5, -2.3, 0.51]], color: "#180a22" },
+      { id: "floor_b", verts: [[1.5, 0.1, 0.51], [1.5, 2.3, 0.51], [-1.5, 2.3, 0.51], [-1.5, 0.1, 0.51]], color: "#180a22" },
+      { id: "floor_mid", verts: [[1.5, -0.1, 0.51], [1.5, 0.1, 0.51], [-1.5, 0.1, 0.51], [-1.5, -0.1, 0.51]], color: "#2a1a3a" },
+      { id: "mon_l", verts: [[-1.5, -2.4, 0.5], [-1.5, -1.8, 0.5], [-1.1, -1.8, 0.62], [-1.1, -2.4, 0.62]], color: "#0e0e16" },
+      { id: "mon_l_f", normal: [-1, 0], verts: [[-1.5, -2.4, 0.5], [-1.1, -2.4, 0.62], [-1.1, -2.4, 0.5], [-1.5, -2.4, 0.5]], color: "#1a1a28" },
+      { id: "mon_c", verts: [[-1.5, -0.3, 0.5], [-1.5, 0.3, 0.5], [-1.1, 0.3, 0.62], [-1.1, -0.3, 0.62]], color: "#0e0e16" },
+      { id: "mon_r", verts: [[-1.5, 1.8, 0.5], [-1.5, 2.4, 0.5], [-1.1, 2.4, 0.62], [-1.1, 1.8, 0.62]], color: "#0e0e16" },
+      { id: "col_fl_top", verts: [[-1.4, -2.6, 4.2], [-1.4, -2.4, 4.2], [-1.6, -2.4, 4.2], [-1.6, -2.6, 4.2]], color: "#2a3548" },
+      { id: "col_fl_f", normal: [-1, 0], verts: [[-1.6, -2.6, 0.5], [-1.6, -2.4, 0.5], [-1.6, -2.4, 4.2], [-1.6, -2.6, 4.2]], color: "#3a4a5e" },
+      { id: "col_fl_s", normal: [0, -1], verts: [[-1.6, -2.6, 0.5], [-1.4, -2.6, 0.5], [-1.4, -2.6, 4.2], [-1.6, -2.6, 4.2]], color: "#2f3f52" },
+      { id: "col_fr_top", verts: [[-1.4, 2.4, 4.2], [-1.4, 2.6, 4.2], [-1.6, 2.6, 4.2], [-1.6, 2.4, 4.2]], color: "#2a3548" },
+      { id: "col_fr_f", normal: [-1, 0], verts: [[-1.6, 2.4, 0.5], [-1.6, 2.6, 0.5], [-1.6, 2.6, 4.2], [-1.6, 2.4, 4.2]], color: "#3a4a5e" },
+      { id: "col_fr_s", normal: [0, 1], verts: [[-1.4, 2.6, 0.5], [-1.6, 2.6, 0.5], [-1.6, 2.6, 4.2], [-1.4, 2.6, 4.2]], color: "#2f3f52" },
+      { id: "col_bl_top", verts: [[1.4, -2.6, 4.2], [1.4, -2.4, 4.2], [1.6, -2.4, 4.2], [1.6, -2.6, 4.2]], color: "#2a3548" },
+      { id: "col_bl_f", normal: [1, 0], verts: [[1.6, -2.4, 0.5], [1.6, -2.6, 0.5], [1.6, -2.6, 4.2], [1.6, -2.4, 4.2]], color: "#1e2d40" },
+      { id: "col_bl_s", normal: [0, -1], verts: [[1.4, -2.6, 0.5], [1.6, -2.6, 0.5], [1.6, -2.6, 4.2], [1.4, -2.6, 4.2]], color: "#2f3f52" },
+      { id: "col_br_top", verts: [[1.4, 2.4, 4.2], [1.4, 2.6, 4.2], [1.6, 2.6, 4.2], [1.6, 2.4, 4.2]], color: "#2a3548" },
+      { id: "col_br_f", normal: [1, 0], verts: [[1.6, 2.6, 0.5], [1.6, 2.4, 0.5], [1.6, 2.4, 4.2], [1.6, 2.6, 4.2]], color: "#1e2d40" },
+      { id: "col_br_s", normal: [0, 1], verts: [[1.6, 2.6, 0.5], [1.4, 2.6, 0.5], [1.4, 2.6, 4.2], [1.6, 2.6, 4.2]], color: "#2f3f52" },
+      { id: "back_face", normal: [1, 0], verts: [[1.6, 2.5, 0.5], [1.6, -2.5, 0.5], [1.6, -2.5, 4.5], [1.6, 2.5, 4.5]], color: "#0c0016" },
+      { id: "back_inner", normal: [-1, 0], verts: [[1.5, -2.5, 0.5], [1.5, 2.5, 0.5], [1.5, 2.5, 4.5], [1.5, -2.5, 4.5]], color: "#12003a" },
+      { id: "back_top", verts: [[1.5, -2.5, 4.5], [1.5, 2.5, 4.5], [1.6, 2.5, 4.5], [1.6, -2.5, 4.5]], color: "#2a3548" },
+      { id: "back_side_l", normal: [0, -1], verts: [[1.5, -2.5, 0.5], [1.6, -2.5, 0.5], [1.6, -2.5, 4.5], [1.5, -2.5, 4.5]], color: "#2a3548" },
+      { id: "back_side_r", normal: [0, 1], verts: [[1.6, 2.5, 0.5], [1.5, 2.5, 0.5], [1.5, 2.5, 4.5], [1.6, 2.5, 4.5]], color: "#2a3548" },
+      { id: "truss_f_top", verts: [[-1.6, -2.6, 4.2], [-1.6, 2.6, 4.2], [-1.4, 2.6, 4.2], [-1.4, -2.6, 4.2]], color: "#2a3548" },
+      { id: "truss_f_f", normal: [-1, 0], verts: [[-1.6, -2.6, 4.1], [-1.6, 2.6, 4.1], [-1.6, 2.6, 4.2], [-1.6, -2.6, 4.2]], color: "#3a4a5e" },
+      { id: "truss_m_top", verts: [[-0.1, -2.6, 4.2], [-0.1, 2.6, 4.2], [0.1, 2.6, 4.2], [0.1, -2.6, 4.2]], color: "#2a3548" },
+      { id: "truss_b_top", verts: [[1.4, -2.6, 4.2], [1.4, 2.6, 4.2], [1.6, 2.6, 4.2], [1.6, -2.6, 4.2]], color: "#2a3548" },
+      { id: "roof_top", verts: [[-2, -2.7, 4.3], [-2, 2.7, 4.3], [1.6, 2.7, 4.3], [1.6, -2.7, 4.3]], color: "#1a1a28" },
+      { id: "roof_front", normal: [-1, 0], verts: [[-2, -2.7, 4.2], [-2, 2.7, 4.2], [-2, 2.7, 4.3], [-2, -2.7, 4.3]], color: "#222238" },
+      { id: "roof_side_l", normal: [0, -1], verts: [[-2, -2.7, 4.2], [1.6, -2.7, 4.2], [1.6, -2.7, 4.3], [-2, -2.7, 4.3]], color: "#1e1e30" },
+      { id: "roof_side_r", normal: [0, 1], verts: [[1.6, 2.7, 4.2], [-2, 2.7, 4.2], [-2, 2.7, 4.3], [1.6, 2.7, 4.3]], color: "#1e1e30" },
+      { id: "spk_l_top", verts: [[-2, -3, 2.6], [-2, -2.5, 2.6], [-1.4, -2.5, 2.6], [-1.4, -3, 2.6]], color: "#111118" },
+      { id: "spk_l_f", normal: [-1, 0], verts: [[-2, -3, 0.5], [-2, -2.5, 0.5], [-2, -2.5, 2.6], [-2, -3, 2.6]], color: "#1a1a28" },
+      { id: "spk_l_s", normal: [0, -1], verts: [[-2, -3, 0.5], [-1.4, -3, 0.5], [-1.4, -3, 2.6], [-2, -3, 2.6]], color: "#141420" },
+      { id: "spk_l_grill", normal: [-1, 0], verts: [[-2.01, -2.9, 0.8], [-2.01, -2.6, 0.8], [-2.01, -2.6, 2.3], [-2.01, -2.9, 2.3]], color: "#2a2a3a" },
+      { id: "spk_r_top", verts: [[-2, 2.5, 2.6], [-2, 3, 2.6], [-1.4, 3, 2.6], [-1.4, 2.5, 2.6]], color: "#111118" },
+      { id: "spk_r_f", normal: [-1, 0], verts: [[-2, 2.5, 0.5], [-2, 3, 0.5], [-2, 3, 2.6], [-2, 2.5, 2.6]], color: "#1a1a28" },
+      { id: "spk_r_s", normal: [0, 1], verts: [[-1.4, 3, 0.5], [-2, 3, 0.5], [-2, 3, 2.6], [-1.4, 3, 2.6]], color: "#141420" },
+      { id: "spk_r_inner", normal: [0, -1], verts: [[-2, 2.5, 0.5], [-1.4, 2.5, 0.5], [-1.4, 2.5, 2.6], [-2, 2.5, 2.6]], color: "#141420" },
+      { id: "spk_r_grill", normal: [-1, 0], verts: [[-2.01, 2.6, 0.8], [-2.01, 2.9, 0.8], [-2.01, 2.9, 2.3], [-2.01, 2.6, 2.3]], color: "#2a2a3a" }
+    ]
+  };
+
+  // ../src/game/models/objects/festival_tent.zdef
+  var festival_tent_default = {
+    id: "festival_tent",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: -0.55,
+        xMax: 0.55,
+        yMin: -0.7,
+        yMax: 0.7,
+        zMin: 0,
+        zMax: 1
+      }
+    ],
+    palettes: {
+      red: {
+        slope_f: "#bb3018",
+        slope_b: "#9a2412",
+        gable_l: "#aa2a14",
+        gable_r: "#aa2a14"
+      },
+      green: {
+        slope_f: "#2a8030",
+        slope_b: "#1e6624",
+        gable_l: "#247028",
+        gable_r: "#247028"
+      }
+    },
+    faces: [
+      {
+        id: "floor",
+        verts: [
+          [
+            0.55,
+            -0.7,
+            0.01
+          ],
+          [
+            0.55,
+            0.7,
+            0.01
+          ],
+          [
+            -0.55,
+            0.7,
+            0.01
+          ],
+          [
+            -0.55,
+            -0.7,
+            0.01
+          ]
+        ],
+        color: "#2a3820"
+      },
+      {
+        id: "slope_f",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            0,
+            -0.7,
+            1
+          ],
+          [
+            -0.55,
+            -0.7,
+            0
+          ],
+          [
+            -0.55,
+            0.7,
+            0
+          ],
+          [
+            0,
+            0.7,
+            1
+          ]
+        ],
+        color: "#2255aa"
+      },
+      {
+        id: "slope_b",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0,
+            -0.7,
+            1
+          ],
+          [
+            0.55,
+            -0.7,
+            0
+          ],
+          [
+            0.55,
+            0.7,
+            0
+          ],
+          [
+            0,
+            0.7,
+            1
+          ]
+        ],
+        color: "#1a4488"
+      },
+      {
+        id: "gable_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            0,
+            -0.7,
+            1
+          ],
+          [
+            -0.55,
+            -0.7,
+            0
+          ],
+          [
+            0.55,
+            -0.7,
+            0
+          ]
+        ],
+        color: "#1e4a99"
+      },
+      {
+        id: "gable_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0,
+            0.7,
+            1
+          ],
+          [
+            0.55,
+            0.7,
+            0
+          ],
+          [
+            -0.55,
+            0.7,
+            0
+          ]
+        ],
+        color: "#1e4a99"
+      },
+      {
+        id: "ridge",
+        verts: [
+          [
+            -0.03,
+            -0.7,
+            1
+          ],
+          [
+            0.03,
+            -0.7,
+            1
+          ],
+          [
+            0.03,
+            0.7,
+            1
+          ],
+          [
+            -0.03,
+            0.7,
+            1
+          ]
+        ],
+        color: "#dddddd"
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/festival_tent_broken.zdef
+  var festival_tent_broken_default = {
+    id: "festival_tent_broken",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: -0.7,
+        xMax: 0.7,
+        yMin: -0.7,
+        yMax: 0.7,
+        zMin: 0,
+        zMax: 0.28
+      }
+    ],
+    palettes: {
+      red: {
+        sheet_fl: "#aa2c18",
+        sheet_fr: "#8c2010",
+        sheet_bl: "#8c2010",
+        sheet_br: "#aa2c18",
+        ridge: "#ddddaa"
+      },
+      green: {
+        sheet_fl: "#267830",
+        sheet_fr: "#1a6022",
+        sheet_bl: "#1a6022",
+        sheet_br: "#267830",
+        ridge: "#aaddaa"
+      }
+    },
+    faces: [
+      {
+        id: "ground",
+        verts: [
+          [
+            0.7,
+            -0.7,
+            0.02
+          ],
+          [
+            0.7,
+            0.7,
+            0.02
+          ],
+          [
+            -0.7,
+            0.7,
+            0.02
+          ],
+          [
+            -0.7,
+            -0.7,
+            0.02
+          ]
+        ],
+        color: "#2a2e1e"
+      },
+      {
+        id: "sheet_fl",
+        verts: [
+          [
+            -0.15,
+            -0.7,
+            0.25
+          ],
+          [
+            -0.15,
+            0,
+            0.25
+          ],
+          [
+            -0.7,
+            0,
+            0.04
+          ],
+          [
+            -0.7,
+            -0.7,
+            0.04
+          ]
+        ],
+        color: "#2050a0"
+      },
+      {
+        id: "sheet_fr",
+        verts: [
+          [
+            -0.15,
+            0,
+            0.25
+          ],
+          [
+            -0.15,
+            0.7,
+            0.25
+          ],
+          [
+            -0.7,
+            0.7,
+            0.04
+          ],
+          [
+            -0.7,
+            0,
+            0.04
+          ]
+        ],
+        color: "#1a4080"
+      },
+      {
+        id: "sheet_bl",
+        verts: [
+          [
+            0.7,
+            -0.7,
+            0.04
+          ],
+          [
+            0.7,
+            0,
+            0.04
+          ],
+          [
+            -0.15,
+            0,
+            0.25
+          ],
+          [
+            -0.15,
+            -0.7,
+            0.25
+          ]
+        ],
+        color: "#1a4080"
+      },
+      {
+        id: "sheet_br",
+        verts: [
+          [
+            0.7,
+            0,
+            0.04
+          ],
+          [
+            0.7,
+            0.7,
+            0.04
+          ],
+          [
+            -0.15,
+            0.7,
+            0.25
+          ],
+          [
+            -0.15,
+            0,
+            0.25
+          ]
+        ],
+        color: "#2050a0"
+      },
+      {
+        id: "ridge",
+        verts: [
+          [
+            -0.17,
+            -0.7,
+            0.27
+          ],
+          [
+            -0.13,
+            -0.7,
+            0.27
+          ],
+          [
+            -0.13,
+            0.7,
+            0.27
+          ],
+          [
+            -0.17,
+            0.7,
+            0.27
+          ]
+        ],
+        color: "#cccccc"
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/festival_car.zdef
+  var festival_car_default = {
+    id: "festival_car",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    collisionBoxes: [
+      {
+        id: "chassis",
+        xMin: -0.9,
+        xMax: 0.9,
+        yMin: -0.45,
+        yMax: 0.45,
+        zMin: 0,
+        zMax: 0.78
+      }
+    ],
+    palettes: {
+      black: {
+        hood_top: "#1c1c24",
+        grill: "#1c1c24",
+        body_side_l: "#141420",
+        body_side_r: "#181820",
+        trunk: "#141420",
+        trunk_r: "#181820",
+        tailgate: "#141420",
+        cab_back: "#141420",
+        cab_side_l: "#141420",
+        cab_side_r: "#181820",
+        cab_roof: "#202028"
+      },
+      blue: {
+        hood_top: "#1a4a8a",
+        grill: "#1a4a8a",
+        body_side_l: "#153d78",
+        body_side_r: "#184484",
+        trunk: "#153d78",
+        trunk_r: "#184484",
+        tailgate: "#153d78",
+        cab_back: "#153d78",
+        cab_side_l: "#153d78",
+        cab_side_r: "#184484",
+        cab_roof: "#1e5298"
+      },
+      red: {
+        hood_top: "#c02020",
+        grill: "#c02020",
+        body_side_l: "#a81c1c",
+        body_side_r: "#b81e1e",
+        trunk: "#a81c1c",
+        trunk_r: "#b81e1e",
+        tailgate: "#a81c1c",
+        cab_back: "#a81c1c",
+        cab_side_l: "#a81c1c",
+        cab_side_r: "#b81e1e",
+        cab_roof: "#c82222"
+      },
+      yellow: {
+        hood_top: "#d4a020",
+        grill: "#d4a020",
+        body_side_l: "#be9018",
+        body_side_r: "#ca9a1c",
+        trunk: "#be9018",
+        trunk_r: "#ca9a1c",
+        tailgate: "#be9018",
+        cab_back: "#be9018",
+        cab_side_l: "#be9018",
+        cab_side_r: "#ca9a1c",
+        cab_roof: "#daa822"
+      }
+    },
+    faces: [
+      {
+        id: "base_bottom",
+        verts: [
+          [
+            -0.9,
+            -0.42,
+            0.09
+          ],
+          [
+            0.9,
+            -0.42,
+            0.09
+          ],
+          [
+            0.9,
+            0.42,
+            0.09
+          ],
+          [
+            -0.9,
+            0.42,
+            0.09
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "side_low_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -0.9,
+            -0.42,
+            0.09
+          ],
+          [
+            0.9,
+            -0.42,
+            0.09
+          ],
+          [
+            0.9,
+            -0.42,
+            0.19
+          ],
+          [
+            -0.9,
+            -0.42,
+            0.19
+          ]
+        ],
+        color: "#222222"
+      },
+      {
+        id: "side_low_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.9,
+            0.42,
+            0.09
+          ],
+          [
+            -0.9,
+            0.42,
+            0.09
+          ],
+          [
+            -0.9,
+            0.42,
+            0.19
+          ],
+          [
+            0.9,
+            0.42,
+            0.19
+          ]
+        ],
+        color: "#1a1a1a"
+      },
+      {
+        id: "bumper_f",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.9,
+            -0.42,
+            0.07
+          ],
+          [
+            0.9,
+            0.42,
+            0.07
+          ],
+          [
+            0.9,
+            0.42,
+            0.18
+          ],
+          [
+            0.9,
+            -0.42,
+            0.18
+          ]
+        ],
+        color: "#222222"
+      },
+      {
+        id: "bumper_b",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            -0.9,
+            0.42,
+            0.07
+          ],
+          [
+            -0.9,
+            -0.42,
+            0.07
+          ],
+          [
+            -0.9,
+            -0.42,
+            0.18
+          ],
+          [
+            -0.9,
+            0.42,
+            0.18
+          ]
+        ],
+        color: "#222222"
+      },
+      {
+        id: "wh_rl_o",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -0.72,
+            -0.45,
+            0
+          ],
+          [
+            -0.44,
+            -0.45,
+            0
+          ],
+          [
+            -0.44,
+            -0.45,
+            0.22
+          ],
+          [
+            -0.72,
+            -0.45,
+            0.22
+          ]
+        ],
+        color: "#1e1e1e"
+      },
+      {
+        id: "wh_rr_o",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            -0.44,
+            0.45,
+            0
+          ],
+          [
+            -0.72,
+            0.45,
+            0
+          ],
+          [
+            -0.72,
+            0.45,
+            0.22
+          ],
+          [
+            -0.44,
+            0.45,
+            0.22
+          ]
+        ],
+        color: "#181818"
+      },
+      {
+        id: "wh_fl_o",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            0.44,
+            -0.45,
+            0
+          ],
+          [
+            0.72,
+            -0.45,
+            0
+          ],
+          [
+            0.72,
+            -0.45,
+            0.22
+          ],
+          [
+            0.44,
+            -0.45,
+            0.22
+          ]
+        ],
+        color: "#1e1e1e"
+      },
+      {
+        id: "wh_fr_o",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.72,
+            0.45,
+            0
+          ],
+          [
+            0.44,
+            0.45,
+            0
+          ],
+          [
+            0.44,
+            0.45,
+            0.22
+          ],
+          [
+            0.72,
+            0.45,
+            0.22
+          ]
+        ],
+        color: "#181818"
+      },
+      {
+        id: "hood_top",
+        verts: [
+          [
+            0.3,
+            -0.42,
+            0.44
+          ],
+          [
+            0.85,
+            -0.42,
+            0.4
+          ],
+          [
+            0.85,
+            0.42,
+            0.4
+          ],
+          [
+            0.3,
+            0.42,
+            0.44
+          ]
+        ],
+        color: "#a0aab5"
+      },
+      {
+        id: "grill",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.9,
+            -0.42,
+            0.18
+          ],
+          [
+            0.9,
+            0.42,
+            0.18
+          ],
+          [
+            0.9,
+            0.42,
+            0.4
+          ],
+          [
+            0.9,
+            -0.42,
+            0.4
+          ]
+        ],
+        color: "#a0aab5"
+      },
+      {
+        id: "grill_mesh",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.901,
+            -0.33,
+            0.23
+          ],
+          [
+            0.901,
+            0.33,
+            0.23
+          ],
+          [
+            0.901,
+            0.33,
+            0.36
+          ],
+          [
+            0.901,
+            -0.33,
+            0.36
+          ]
+        ],
+        color: "#222222"
+      },
+      {
+        id: "hdl",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.901,
+            -0.4,
+            0.28
+          ],
+          [
+            0.901,
+            -0.34,
+            0.28
+          ],
+          [
+            0.901,
+            -0.34,
+            0.36
+          ],
+          [
+            0.901,
+            -0.4,
+            0.36
+          ]
+        ],
+        color: "#fffebb"
+      },
+      {
+        id: "hdr",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.901,
+            0.34,
+            0.28
+          ],
+          [
+            0.901,
+            0.4,
+            0.28
+          ],
+          [
+            0.901,
+            0.4,
+            0.36
+          ],
+          [
+            0.901,
+            0.34,
+            0.36
+          ]
+        ],
+        color: "#fffebb"
+      },
+      {
+        id: "body_side_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            0.3,
+            -0.42,
+            0.19
+          ],
+          [
+            0.85,
+            -0.42,
+            0.19
+          ],
+          [
+            0.85,
+            -0.42,
+            0.4
+          ],
+          [
+            0.3,
+            -0.42,
+            0.44
+          ]
+        ],
+        color: "#8a949f"
+      },
+      {
+        id: "body_side_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.85,
+            0.42,
+            0.19
+          ],
+          [
+            0.3,
+            0.42,
+            0.19
+          ],
+          [
+            0.3,
+            0.42,
+            0.44
+          ],
+          [
+            0.85,
+            0.42,
+            0.4
+          ]
+        ],
+        color: "#95a0aa"
+      },
+      {
+        id: "trunk",
+        verts: [
+          [
+            -0.85,
+            -0.42,
+            0.19
+          ],
+          [
+            0.3,
+            -0.42,
+            0.19
+          ],
+          [
+            0.3,
+            -0.42,
+            0.44
+          ],
+          [
+            -0.85,
+            -0.42,
+            0.44
+          ]
+        ],
+        color: "#8a949f"
+      },
+      {
+        id: "trunk_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.3,
+            0.42,
+            0.19
+          ],
+          [
+            -0.85,
+            0.42,
+            0.19
+          ],
+          [
+            -0.85,
+            0.42,
+            0.44
+          ],
+          [
+            0.3,
+            0.42,
+            0.44
+          ]
+        ],
+        color: "#95a0aa"
+      },
+      {
+        id: "tailgate",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            -0.9,
+            0.42,
+            0.19
+          ],
+          [
+            -0.9,
+            -0.42,
+            0.19
+          ],
+          [
+            -0.9,
+            -0.42,
+            0.46
+          ],
+          [
+            -0.9,
+            0.42,
+            0.46
+          ]
+        ],
+        color: "#8a949f"
+      },
+      {
+        id: "cab_back",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            -0.4,
+            0.39,
+            0.44
+          ],
+          [
+            -0.4,
+            -0.39,
+            0.44
+          ],
+          [
+            -0.4,
+            -0.39,
+            0.75
+          ],
+          [
+            -0.4,
+            0.39,
+            0.75
+          ]
+        ],
+        color: "#8a949f"
+      },
+      {
+        id: "cab_side_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -0.4,
+            -0.42,
+            0.44
+          ],
+          [
+            0.3,
+            -0.42,
+            0.44
+          ],
+          [
+            0.22,
+            -0.42,
+            0.75
+          ],
+          [
+            -0.4,
+            -0.42,
+            0.75
+          ]
+        ],
+        color: "#8a949f"
+      },
+      {
+        id: "cab_side_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.3,
+            0.42,
+            0.44
+          ],
+          [
+            -0.4,
+            0.42,
+            0.44
+          ],
+          [
+            -0.4,
+            0.42,
+            0.75
+          ],
+          [
+            0.22,
+            0.42,
+            0.75
+          ]
+        ],
+        color: "#95a0aa"
+      },
+      {
+        id: "cab_roof",
+        verts: [
+          [
+            -0.4,
+            -0.39,
+            0.75
+          ],
+          [
+            0.22,
+            -0.39,
+            0.75
+          ],
+          [
+            0.22,
+            0.39,
+            0.75
+          ],
+          [
+            -0.4,
+            0.39,
+            0.75
+          ]
+        ],
+        color: "#aab4be"
+      },
+      {
+        id: "windshield",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.3,
+            -0.39,
+            0.44
+          ],
+          [
+            0.3,
+            0.39,
+            0.44
+          ],
+          [
+            0.22,
+            0.39,
+            0.73
+          ],
+          [
+            0.22,
+            -0.39,
+            0.73
+          ]
+        ],
+        color: "#1e2d3e"
+      },
+      {
+        id: "win_l",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -0.35,
+            -0.4,
+            0.49
+          ],
+          [
+            0.18,
+            -0.4,
+            0.49
+          ],
+          [
+            0.1,
+            -0.4,
+            0.7
+          ],
+          [
+            -0.35,
+            -0.4,
+            0.7
+          ]
+        ],
+        color: "#1e2d3e"
+      },
+      {
+        id: "win_r",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.18,
+            0.4,
+            0.49
+          ],
+          [
+            -0.35,
+            0.4,
+            0.49
+          ],
+          [
+            -0.35,
+            0.4,
+            0.7
+          ],
+          [
+            0.1,
+            0.4,
+            0.7
+          ]
+        ],
+        color: "#1a2838"
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/xmas_house_a.zdef
+  var xmas_house_a_default = {
+    id: "xmas_house_a",
+    pivot: [0, 0, 0],
+    chimneyPos: { x: 0.3, y: 0.075, z: 2.45 },
+    rescueZones: [{ x: 0.3, y: 0.075, w: 0.3, h: 0.3, role: "deliver" }],
+    faces: [
+      { id: "rw_wall", normal: [1, 0], verts: [[0.75, -0.5, 0], [0.75, 0.5, 0], [0.75, 0.5, 1.25], [0.75, -0.5, 1.25]], color: "#c8a870" },
+      { id: "rw_gable", verts: [[0.75, -0.5, 1.25], [0.75, 0.5, 1.25], [0.75, 0, 2]], color: "#c0a068" },
+      { id: "rw_win", verts: [[0.755, -0.22, 0.45], [0.755, 0.22, 0.45], [0.755, 0.22, 0.9], [0.755, -0.22, 0.9]], color: "#ffe080" },
+      { id: "sw_wall", normal: [0, 1], verts: [[-0.75, 0.5, 0], [0.75, 0.5, 0], [0.75, 0.5, 1.25], [-0.75, 0.5, 1.25]], color: "#e8d4a0" },
+      { id: "sw_gable", verts: [[-0.75, 0.5, 1.25], [0.75, 0.5, 1.25], [0, 0.5, 2]], color: "#e0ca95" },
+      { id: "sw_win", verts: [[-0.18, 0.505, 0.45], [0.18, 0.505, 0.45], [0.18, 0.505, 0.9], [-0.18, 0.505, 0.9]], color: "#ffe080" },
+      { id: "sw_door", verts: [[-0.1, 0.505, 0], [0.1, 0.505, 0], [0.1, 0.505, 0.45], [-0.1, 0.505, 0.45]], color: "#6b3a1f" },
+      { id: "roof_r", verts: [[0, -0.5, 2], [0, 0.5, 2], [0.75, 0.5, 1.25], [0.75, -0.5, 1.25]], color: "#8b3030" },
+      { id: "roof_l", verts: [[0, -0.5, 2], [-0.75, -0.5, 1.25], [-0.75, 0.5, 1.25], [0, 0.5, 2]], color: "#7a2828" },
+      { id: "snow_r", verts: [[0, -0.525, 2], [0, 0.525, 2], [0.775, 0.525, 1.24], [0.775, -0.525, 1.24]], color: "#dde8f5" },
+      { id: "snow_l", verts: [[0, -0.525, 2], [-0.775, -0.525, 1.24], [-0.775, 0.525, 1.24], [0, 0.525, 2]], color: "#d8e5f2" },
+      { id: "ch_right", normal: [1, 0], verts: [[0.4, 0, 1.65], [0.4, 0.15, 1.65], [0.4, 0.15, 2.45], [0.4, 0, 2.45]], color: "#777777" },
+      { id: "ch_south", normal: [0, 1], verts: [[0.2, 0.15, 1.65], [0.4, 0.15, 1.65], [0.4, 0.15, 2.45], [0.2, 0.15, 2.45]], color: "#888888" },
+      { id: "ch_top", verts: [[0.2, 0, 2.45], [0.4, 0, 2.45], [0.4, 0.15, 2.45], [0.2, 0.15, 2.45]], color: "#999999" }
+    ],
+    lights: [
+      { id: "win_r", pos: [0.76, 0, 0.68], color: "#ffe080", glowColor: "rgba(255,220,80,0.18)", radius: 0.4, glowRadius: 1.2 },
+      { id: "win_s", pos: [0, 0.51, 0.68], color: "#ffe080", glowColor: "rgba(255,220,80,0.18)", radius: 0.4, glowRadius: 1.2 }
+    ]
+  };
+
+  // ../src/game/models/objects/xmas_house_b.zdef
+  var xmas_house_b_default = {
+    id: "xmas_house_b",
+    pivot: [0, 0, 0],
+    chimneyPos: { x: 0.4, y: 0.1, z: 2.75 },
+    rescueZones: [{ x: 0.4, y: 0.1, w: 0.3, h: 0.3, role: "deliver" }],
+    faces: [
+      { id: "rw_wall", normal: [1, 0], verts: [[0.95, -0.65, 0], [0.95, 0.65, 0], [0.95, 0.65, 1.5], [0.95, -0.65, 1.5]], color: "#b8ccd8" },
+      { id: "rw_gable", verts: [[0.95, -0.65, 1.5], [0.95, 0.65, 1.5], [0.95, 0, 2.4]], color: "#a8bcc8" },
+      { id: "rw_win1", verts: [[0.955, -0.45, 0.5], [0.955, -0.15, 0.5], [0.955, -0.15, 1], [0.955, -0.45, 1]], color: "#ffe0a0" },
+      { id: "rw_win2", verts: [[0.955, 0.15, 0.5], [0.955, 0.45, 0.5], [0.955, 0.45, 1], [0.955, 0.15, 1]], color: "#ffe0a0" },
+      { id: "sw_wall", normal: [0, 1], verts: [[-0.95, 0.65, 0], [0.95, 0.65, 0], [0.95, 0.65, 1.5], [-0.95, 0.65, 1.5]], color: "#d4e0e8" },
+      { id: "sw_gable", verts: [[-0.95, 0.65, 1.5], [0.95, 0.65, 1.5], [0, 0.65, 2.4]], color: "#ccd8e0" },
+      { id: "sw_win", verts: [[-0.2, 0.655, 0.5], [0.2, 0.655, 0.5], [0.2, 0.655, 1], [-0.2, 0.655, 1]], color: "#ffe0a0" },
+      { id: "sw_door", verts: [[-0.125, 0.655, 0], [0.125, 0.655, 0], [0.125, 0.655, 0.55], [-0.125, 0.655, 0.55]], color: "#4a2810" },
+      { id: "sw_step", verts: [[-0.2, 0.7, 0], [0.2, 0.7, 0], [0.2, 0.65, 0.075], [-0.2, 0.65, 0.075]], color: "#aaaaaa" },
+      { id: "roof_r", verts: [[0, -0.65, 2.4], [0, 0.65, 2.4], [0.95, 0.65, 1.5], [0.95, -0.65, 1.5]], color: "#2c5020" },
+      { id: "roof_l", verts: [[0, -0.65, 2.4], [-0.95, -0.65, 1.5], [-0.95, 0.65, 1.5], [0, 0.65, 2.4]], color: "#243f18" },
+      { id: "snow_r", verts: [[0, -0.675, 2.4], [0, 0.675, 2.4], [0.975, 0.675, 1.49], [0.975, -0.675, 1.49]], color: "#dde8f5" },
+      { id: "snow_l", verts: [[0, -0.675, 2.4], [-0.975, -0.675, 1.49], [-0.975, 0.675, 1.49], [0, 0.675, 2.4]], color: "#d8e5f2" },
+      { id: "ch_right", normal: [1, 0], verts: [[0.5, 0, 1.75], [0.5, 0.2, 1.75], [0.5, 0.2, 2.75], [0.5, 0, 2.75]], color: "#666666" },
+      { id: "ch_south", normal: [0, 1], verts: [[0.3, 0.2, 1.75], [0.5, 0.2, 1.75], [0.5, 0.2, 2.75], [0.3, 0.2, 2.75]], color: "#777777" },
+      { id: "ch_top", verts: [[0.3, 0, 2.75], [0.5, 0, 2.75], [0.5, 0.2, 2.75], [0.3, 0.2, 2.75]], color: "#888888" }
+    ],
+    lights: [
+      { id: "win_r1", pos: [0.96, -0.3, 0.75], color: "#ffe0a0", glowColor: "rgba(255,220,120,0.15)", radius: 0.35, glowRadius: 1.1 },
+      { id: "win_r2", pos: [0.96, 0.3, 0.75], color: "#ffe0a0", glowColor: "rgba(255,220,120,0.15)", radius: 0.35, glowRadius: 1.1 },
+      { id: "win_s", pos: [0, 0.66, 0.75], color: "#ffe0a0", glowColor: "rgba(255,220,120,0.15)", radius: 0.35, glowRadius: 1.1 }
+    ]
+  };
+
+  // ../src/game/models/objects/xmas_lantern.zdef
+  var xmas_lantern_default = {
+    id: "xmas_lantern",
+    pivot: [0, 0, 0],
+    faces: [
+      { id: "pole_r", normal: [1, 0], verts: [[0.05, -0.05, 0], [0.05, 0.05, 0], [0.05, 0.05, 2.4], [0.05, -0.05, 2.4]], color: "#334455" },
+      { id: "pole_f", normal: [0, -1], verts: [[-0.05, -0.05, 0], [0.05, -0.05, 0], [0.05, -0.05, 2.4], [-0.05, -0.05, 2.4]], color: "#445566" },
+      { id: "head_r", normal: [1, 0], verts: [[0.18, -0.18, 2.4], [0.18, 0.18, 2.4], [0.18, 0.18, 2.85], [0.18, -0.18, 2.85]], color: "#334455" },
+      { id: "head_f", normal: [0, -1], verts: [[-0.18, -0.18, 2.4], [0.18, -0.18, 2.4], [0.18, -0.18, 2.85], [-0.18, -0.18, 2.85]], color: "#445566" },
+      { id: "head_t", verts: [[-0.18, -0.18, 2.85], [0.18, -0.18, 2.85], [0.18, 0.18, 2.85], [-0.18, 0.18, 2.85]], color: "#223344" },
+      { id: "glass", verts: [[-0.14, -0.14, 2.42], [0.14, -0.14, 2.42], [0.14, 0.14, 2.42], [-0.14, 0.14, 2.42]], color: "#ffe8a0" },
+      { id: "base", verts: [[-0.12, -0.12, 0], [0.12, -0.12, 0], [0.12, 0.12, 0], [-0.12, 0.12, 0]], color: "#223344" }
+    ],
+    lights: [
+      { id: "glow", pos: [0, 0, 2.62], color: "#ffdd88", glowColor: "rgba(255,210,80,0.35)", radius: 1, glowRadius: 4, blinkHz: 0 }
+    ]
+  };
+
+  // ../src/game/models/objects/sleigh.zdef
+  var sleigh_default = {
+    id: "sleigh",
+    pivot: [0, 0, 0],
+    faces: [
+      { id: "run_top", verts: [[0.7, -0.35, 0.05], [0.7, 0.35, 0.05], [-0.7, 0.35, 0.05], [-0.7, -0.35, 0.05]], color: "#4a2c0a" },
+      { id: "run_south", normal: [0, 1], verts: [[-0.7, 0.35, 0], [0.7, 0.35, 0], [0.7, 0.35, 0.05], [-0.7, 0.35, 0.05]], color: "#3a200a" },
+      { id: "run_east", normal: [1, 0], verts: [[0.7, -0.35, 0], [0.7, 0.35, 0], [0.7, 0.35, 0.05], [0.7, -0.35, 0.05]], color: "#3a200a" },
+      { id: "body_east", normal: [1, 0], verts: [[0.5, -0.3, 0.05], [0.5, 0.3, 0.05], [0.5, 0.3, 0.55], [0.5, -0.3, 0.55]], color: "#cc2222" },
+      { id: "body_south", normal: [0, 1], verts: [[-0.5, 0.3, 0.05], [0.5, 0.3, 0.05], [0.5, 0.3, 0.55], [-0.5, 0.3, 0.55]], color: "#ee3333" },
+      { id: "body_top", verts: [[-0.5, -0.3, 0.55], [0.5, -0.3, 0.55], [0.5, 0.3, 0.55], [-0.5, 0.3, 0.55]], color: "#882020" },
+      { id: "back_wall", verts: [[-0.5, -0.3, 0.05], [-0.5, 0.3, 0.05], [-0.5, 0.3, 0.55], [-0.5, -0.3, 0.55]], color: "#aa1818" },
+      { id: "trim_east", verts: [[0.505, -0.31, 0.52], [0.505, 0.31, 0.52], [0.505, 0.31, 0.58], [0.505, -0.31, 0.58]], color: "#ddaa00" },
+      { id: "trim_south", verts: [[-0.505, 0.31, 0.52], [0.505, 0.31, 0.52], [0.505, 0.31, 0.58], [-0.505, 0.31, 0.58]], color: "#ddaa00" },
+      { id: "seat", verts: [[-0.4, -0.25, 0.52], [0.4, -0.25, 0.52], [0.4, 0.25, 0.52], [-0.4, 0.25, 0.52]], color: "#5c3010" },
+      { id: "curl_s", verts: [[-0.5, 0.35, 0.05], [-0.7, 0.35, 0.05], [-0.75, 0.35, 0.18], [-0.55, 0.35, 0.19]], color: "#3a200a" },
+      { id: "curl_n", verts: [[-0.5, -0.35, 0.05], [-0.7, -0.35, 0.05], [-0.75, -0.35, 0.18], [-0.55, -0.35, 0.19]], color: "#3a200a" }
+    ]
+  };
+
+  // ../src/game/models/objects/reindeer.zdef
+  var reindeer_default = {
+    id: "reindeer",
+    pivot: [0, 0, 0],
+    rescueZones: [{ x: 0, y: 0, w: 0.6, h: 0.4, role: "pickup" }],
+    faces: [
+      { id: "body_east", normal: [1, 0], verts: [[0.45, -0.18, 0.18], [0.45, 0.18, 0.18], [0.45, 0.18, 0.48], [0.45, -0.18, 0.48]], color: "#7a4520" },
+      { id: "body_south", normal: [0, 1], verts: [[-0.45, 0.18, 0.18], [0.45, 0.18, 0.18], [0.45, 0.18, 0.48], [-0.45, 0.18, 0.48]], color: "#8b5228" },
+      { id: "body_top", verts: [[-0.45, -0.18, 0.48], [0.45, -0.18, 0.48], [0.45, 0.18, 0.48], [-0.45, 0.18, 0.48]], color: "#7a4520" },
+      { id: "belly", verts: [[-0.45, -0.18, 0.18], [0.45, -0.18, 0.18], [0.45, 0.18, 0.18], [-0.45, 0.18, 0.18]], color: "#c8906a" },
+      { id: "leg_rf", verts: [[0.3, -0.15, 0], [0.38, -0.15, 0], [0.38, -0.15, 0.19], [0.3, -0.15, 0.19]], color: "#6a3818" },
+      { id: "leg_lf", verts: [[0.3, 0.15, 0], [0.38, 0.15, 0], [0.38, 0.15, 0.19], [0.3, 0.15, 0.19]], color: "#6a3818" },
+      { id: "leg_rb", verts: [[-0.3, -0.15, 0], [-0.22, -0.15, 0], [-0.22, -0.15, 0.19], [-0.3, -0.15, 0.19]], color: "#6a3818" },
+      { id: "leg_lb", verts: [[-0.3, 0.15, 0], [-0.22, 0.15, 0], [-0.22, 0.15, 0.19], [-0.3, 0.15, 0.19]], color: "#6a3818" },
+      { id: "neck", verts: [[0.45, -0.12, 0.35], [0.45, 0.12, 0.35], [0.58, 0.1, 0.45], [0.58, -0.1, 0.45]], color: "#7a4520" },
+      { id: "head_east", normal: [1, 0], verts: [[0.55, -0.1, 0.43], [0.55, 0.1, 0.43], [0.55, 0.1, 0.58], [0.55, -0.1, 0.58]], color: "#7a4520" },
+      { id: "head_south", normal: [0, 1], verts: [[0.45, 0.1, 0.43], [0.55, 0.1, 0.43], [0.55, 0.1, 0.58], [0.45, 0.1, 0.58]], color: "#8b5228" },
+      { id: "snout", verts: [[0.55, -0.08, 0.44], [0.68, -0.06, 0.44], [0.68, 0.06, 0.44], [0.55, 0.08, 0.44]], color: "#c87050" },
+      { id: "nose", verts: [[0.67, -0.04, 0.45], [0.72, -0.04, 0.45], [0.72, 0.04, 0.45], [0.67, 0.04, 0.45]], color: "#dd2020" },
+      { id: "ant_r1", verts: [[0.52, -0.05, 0.58], [0.52, -0.05, 0.75], [0.62, -0.05, 0.82], [0.62, -0.05, 0.65]], color: "#5a3010" },
+      { id: "ant_r2", verts: [[0.6, -0.05, 0.7], [0.6, -0.05, 0.8], [0.7, -0.05, 0.78], [0.7, -0.05, 0.68]], color: "#5a3010" },
+      { id: "ant_l1", verts: [[0.52, 0.05, 0.58], [0.52, 0.05, 0.75], [0.62, 0.05, 0.82], [0.62, 0.05, 0.65]], color: "#5a3010" },
+      { id: "ant_l2", verts: [[0.6, 0.05, 0.7], [0.6, 0.05, 0.8], [0.7, 0.05, 0.78], [0.7, 0.05, 0.68]], color: "#5a3010" }
+    ]
+  };
+
+  // ../src/game/models/objects/volleyball_court.zdef
+  var volleyball_court_default = {
+    id: "volleyball_court",
+    pivot: [0, 0, 0],
+    faces: [
+      {
+        id: "sand",
+        verts: [
+          [-3, -1.5, 0],
+          [3, -1.5, 0],
+          [3, 1.5, 0],
+          [-3, 1.5, 0]
+        ],
+        color: "#c8a56a",
+        stroke: "#e8e4d0",
+        strokeWidth: 1.5
+      },
+      {
+        id: "center_line",
+        verts: [
+          [-0.06, -1.5, 0.01],
+          [0.06, -1.5, 0.01],
+          [0.06, 1.5, 0.01],
+          [-0.06, 1.5, 0.01]
+        ],
+        color: "#d4c090",
+        stroke: null
+      },
+      {
+        id: "net",
+        normal: [1, 0],
+        verts: [
+          [0.06, -1.8, 0],
+          [0.06, 1.8, 0],
+          [0.06, 1.8, 1.6],
+          [0.06, -1.8, 1.6]
+        ],
+        color: "#b8b8b8",
+        stroke: null
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/hangar_tower.zdef
+  var hangar_tower_default = {
+    id: "hangar_tower",
+    pivot: [0, 0, 0],
+    faces: [
+      { id: "base_front", normal: [1, 0], verts: [[0.675, -0.675, 0], [0.675, 0.675, 0], [0.675, 0.675, 0.375], [0.675, -0.675, 0.375]], color: "#888888" },
+      { id: "base_left", normal: [0, 1], verts: [[-0.675, 0.675, 0], [0.675, 0.675, 0], [0.675, 0.675, 0.375], [-0.675, 0.675, 0.375]], color: "#999999" },
+      { id: "base_top", verts: [[-0.675, -0.675, 0.375], [0.675, -0.675, 0.375], [0.675, 0.675, 0.375], [-0.675, 0.675, 0.375]], color: "#aaaaaa" },
+      { id: "shaft_front", normal: [1, 0], verts: [[0.21, -0.21, 0.375], [0.21, 0.21, 0.375], [0.21, 0.21, 3.825], [0.21, -0.21, 3.825]], color: "#999999" },
+      { id: "shaft_left", normal: [0, 1], verts: [[-0.21, 0.21, 0.375], [0.21, 0.21, 0.375], [0.21, 0.21, 3.825], [-0.21, 0.21, 3.825]], color: "#aaaaaa" },
+      { id: "cab_front", normal: [1, 0], verts: [[0.21, -0.21, 3.825], [0.21, 0.21, 3.825], [0.57, 0.57, 4.875], [0.57, -0.57, 4.875]], color: "#888888" },
+      { id: "cab_win_front_a", normal: [1, 0], verts: [[0.3435, -0.33, 4.2], [0.3435, -0.09, 4.2], [0.4725, -0.09, 4.575], [0.4725, -0.33, 4.575]], color: "#2a4e7a" },
+      { id: "cab_win_front_b", normal: [1, 0], verts: [[0.3435, 0.09, 4.2], [0.3435, 0.33, 4.2], [0.4725, 0.33, 4.575], [0.4725, 0.09, 4.575]], color: "#2a4e7a" },
+      { id: "cab_left", normal: [0, 1], verts: [[-0.21, 0.21, 3.825], [0.21, 0.21, 3.825], [0.57, 0.57, 4.875], [-0.57, 0.57, 4.875]], color: "#999999" },
+      { id: "cab_win_left_a", normal: [0, 1], verts: [[-0.33, 0.3435, 4.2], [-0.09, 0.3435, 4.2], [-0.09, 0.4725, 4.575], [-0.33, 0.4725, 4.575]], color: "#2a4e7a" },
+      { id: "cab_win_left_b", normal: [0, 1], verts: [[0.09, 0.3435, 4.2], [0.33, 0.3435, 4.2], [0.33, 0.4725, 4.575], [0.09, 0.4725, 4.575]], color: "#2a4e7a" },
+      { id: "cab_top", verts: [[-0.57, -0.57, 4.875], [0.57, -0.57, 4.875], [0.57, 0.57, 4.875], [-0.57, 0.57, 4.875]], color: "#aaaaaa" },
+      { id: "roof_front", normal: [1, 0], verts: [[0.645, -0.645, 4.875], [0.645, 0.645, 4.875], [0.645, 0.645, 4.995], [0.645, -0.645, 4.995]], color: "#666666" },
+      { id: "roof_left", normal: [0, 1], verts: [[-0.645, 0.645, 4.875], [0.645, 0.645, 4.875], [0.645, 0.645, 4.995], [-0.645, 0.645, 4.995]], color: "#777777" },
+      { id: "roof_top", verts: [[-0.645, -0.645, 4.995], [0.645, -0.645, 4.995], [0.645, 0.645, 4.995], [-0.645, 0.645, 4.995]], color: "#777777" },
+      { id: "antenna_front", normal: [1, 0], verts: [[0.03, -0.03, 4.995], [0.03, 0.03, 4.995], [0.03, 0.03, 5.775], [0.03, -0.03, 5.775]], color: "#555555" },
+      { id: "antenna_left", normal: [0, 1], verts: [[-0.03, 0.03, 4.995], [0.03, 0.03, 4.995], [0.03, 0.03, 5.775], [-0.03, 0.03, 5.775]], color: "#555555" },
+      { id: "beacon", verts: [[-0.06, -0.06, 5.775], [0.06, -0.06, 5.775], [0.06, 0.06, 5.775], [-0.06, 0.06, 5.775]], color: "#ff2020" }
+    ]
+  };
+
+  // ../src/game/models/objects/plane_wreck.zdef
+  var plane_wreck_default = {
+    id: "plane_wreck",
+    pivot: [0, 0, 0],
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: -1.6,
+        xMax: 1.4,
+        yMin: -2.5,
+        yMax: 2.4,
+        zMin: 0,
+        zMax: 0.65
+      }
+    ],
+    faces: [
+      {
+        id: "scorch_main",
+        verts: [
+          [1.6, -1, 1e-3],
+          [1.6, 0.5, 1e-3],
+          [-0.5, 0.3, 1e-3],
+          [-0.5, -1.2, 1e-3]
+        ],
+        color: "#1a1612"
+      },
+      {
+        id: "scorch_trail",
+        verts: [
+          [-0.3, -1.8, 1e-3],
+          [0.5, -2.2, 1e-3],
+          [0.7, -1.5, 1e-3],
+          [-0.1, -1.1, 1e-3]
+        ],
+        color: "#201e1a"
+      },
+      {
+        id: "wing_left",
+        verts: [
+          [-0.05, 0.3, 0.01],
+          [-0.45, 0.35, 0.01],
+          [-0.7, 2.3, 0.01],
+          [-0.15, 2.25, 0.01]
+        ],
+        color: "#d4c020"
+      },
+      {
+        id: "wing_left_tip",
+        verts: [
+          [-0.15, 2.25, 0.012],
+          [-0.7, 2.3, 0.012],
+          [-0.85, 2.65, 0.012],
+          [-0.1, 2.6, 0.012]
+        ],
+        color: "#cc1e00"
+      },
+      {
+        id: "wing_right_inner",
+        verts: [
+          [-0.05, -0.3, 0.45],
+          [-0.45, -0.35, 0.42],
+          [-0.5, -1.2, 0.2],
+          [-0.08, -1.1, 0.22]
+        ],
+        color: "#d4c020"
+      },
+      {
+        id: "wing_right_outer",
+        verts: [
+          [-0.08, -1.1, 0.22],
+          [-0.5, -1.2, 0.2],
+          [-0.65, -2.5, 5e-3],
+          [-0.08, -2.45, 5e-3]
+        ],
+        color: "#bfad18"
+      },
+      {
+        id: "engine_cowling",
+        verts: [
+          [1.35, 0.12, 0.04],
+          [1.35, -0.12, 0.04],
+          [1, -0.22, 0.3],
+          [1, 0.22, 0.3]
+        ],
+        color: "#2a2a2a"
+      },
+      {
+        id: "fwd_fuselage",
+        verts: [
+          [1, 0.22, 0.3],
+          [1, -0.22, 0.3],
+          [-0.15, -0.27, 0.44],
+          [-0.15, 0.27, 0.44]
+        ],
+        color: "#d6c822"
+      },
+      {
+        id: "fwd_fuselage_side",
+        verts: [
+          [1, -0.22, 0.08],
+          [1, -0.22, 0.3],
+          [-0.15, -0.27, 0.44],
+          [-0.15, -0.27, 0.1]
+        ],
+        color: "#c2b41c"
+      },
+      {
+        id: "canopy",
+        verts: [
+          [0.85, 0.15, 0.44],
+          [0.85, -0.15, 0.44],
+          [-0.08, -0.25, 0.44],
+          [-0.08, 0.25, 0.44]
+        ],
+        color: "#1a3350"
+      },
+      {
+        id: "stripe",
+        verts: [
+          [0.85, -0.27, 0.28],
+          [-0.1, -0.27, 0.28],
+          [-0.1, -0.27, 0.36],
+          [0.85, -0.27, 0.36]
+        ],
+        color: "#cc1e00"
+      },
+      {
+        id: "rear_fuselage",
+        verts: [
+          [-0.15, 0.27, 0.44],
+          [-0.15, -0.27, 0.44],
+          [-1.5, -0.42, 0.26],
+          [-1.5, 0.12, 0.26]
+        ],
+        color: "#d0c41e"
+      },
+      {
+        id: "rear_fuselage_side",
+        verts: [
+          [-0.15, -0.27, 0.1],
+          [-0.15, -0.27, 0.44],
+          [-1.5, -0.42, 0.26],
+          [-1.5, -0.42, 0.1]
+        ],
+        color: "#b8a41a"
+      },
+      {
+        id: "tail_fin",
+        verts: [
+          [-1.05, -0.4, 0.26],
+          [-1.5, -0.42, 0.26],
+          [-1.5, -0.42, 0.66],
+          [-1.05, -0.4, 0.5]
+        ],
+        color: "#cc1e00"
+      },
+      {
+        id: "h_stab_l",
+        verts: [
+          [-1.1, -0.41, 0.27],
+          [-1.4, -0.41, 0.27],
+          [-1.4, -1, 0.27],
+          [-1.1, -0.92, 0.27]
+        ],
+        color: "#d0c41e"
+      },
+      {
+        id: "h_stab_r",
+        verts: [
+          [-1.1, 0.1, 0.27],
+          [-1.4, 0.1, 0.27],
+          [-1.4, 0.62, 0.27],
+          [-1.1, 0.52, 0.27]
+        ],
+        color: "#d0c41e"
+      },
+      {
+        id: "prop_blade",
+        verts: [
+          [1.42, 0.04, 3e-3],
+          [1.42, -0.04, 3e-3],
+          [1, -0.04, 3e-3],
+          [0.95, 0.65, 3e-3]
+        ],
+        color: "#555"
+      },
+      {
+        id: "debris",
+        verts: [
+          [0.4, -1.1, 3e-3],
+          [0, -1.4, 3e-3],
+          [-0.1, -1.1, 3e-3],
+          [0.3, -0.9, 3e-3]
+        ],
+        color: "#b8a41a"
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/sailboat_broken.zdef
+  var sailboat_broken_default = {
+    id: "sailboat_broken",
+    pivot: [0, 0, 0],
+    collisionBoxes: [
+      {
+        id: "hull",
+        xMin: -1.1,
+        xMax: 1.3,
+        yMin: -0.45,
+        yMax: 0.45,
+        zMin: 0,
+        zMax: 0.35
+      }
+    ],
+    faces: [
+      {
+        id: "keel",
+        verts: [
+          [1.3, 0, 0],
+          [0.2, -0.45, 0],
+          [-1.1, -0.35, 0],
+          [-1.1, 0.35, 0],
+          [0.2, 0.45, 0]
+        ],
+        color: "#622"
+      },
+      {
+        id: "stern",
+        normal: [-1, 0],
+        verts: [
+          [-1.1, -0.35, 0],
+          [-1.1, 0.35, 0],
+          [-1.1, 0.35, 0.35],
+          [-1.1, -0.35, 0.35]
+        ],
+        color: "#bbb"
+      },
+      {
+        id: "stbd_lower_bow",
+        normal: [0, -1],
+        verts: [
+          [1.3, 0, 0],
+          [0.2, -0.45, 0],
+          [0.2, -0.45, 0.1],
+          [1.3, 0, 0.1]
+        ],
+        color: "#933"
+      },
+      {
+        id: "stbd_lower_mid",
+        normal: [0, -1],
+        verts: [
+          [0.2, -0.45, 0],
+          [-1.1, -0.35, 0],
+          [-1.1, -0.35, 0.1],
+          [0.2, -0.45, 0.1]
+        ],
+        color: "#822"
+      },
+      {
+        id: "stbd_upper_bow",
+        normal: [0, -1],
+        verts: [
+          [1.3, 0, 0.1],
+          [0.2, -0.45, 0.1],
+          [0.2, -0.45, 0.35],
+          [1.3, 0, 0.35]
+        ],
+        color: "#ddd"
+      },
+      {
+        id: "stbd_upper_mid",
+        normal: [0, -1],
+        verts: [
+          [0.2, -0.45, 0.1],
+          [-1.1, -0.35, 0.1],
+          [-1.1, -0.35, 0.35],
+          [0.2, -0.45, 0.35]
+        ],
+        color: "#ccc"
+      },
+      {
+        id: "port_bow",
+        normal: [0, 1],
+        verts: [
+          [1.3, 0, 0],
+          [0.2, 0.45, 0],
+          [0.2, 0.45, 0.35],
+          [1.3, 0, 0.35]
+        ],
+        color: "#ddd"
+      },
+      {
+        id: "port_mid",
+        normal: [0, 1],
+        verts: [
+          [0.2, 0.45, 0],
+          [-1.1, 0.35, 0],
+          [-1.1, 0.35, 0.35],
+          [0.2, 0.45, 0.35]
+        ],
+        color: "#ccc"
+      },
+      {
+        id: "deck",
+        verts: [
+          [1.3, 0, 0.35],
+          [0.2, -0.45, 0.35],
+          [-1.1, -0.35, 0.35],
+          [-1.1, 0.35, 0.35],
+          [0.2, 0.45, 0.35]
+        ],
+        color: "#a85",
+        stroke: "#643"
+      },
+      {
+        id: "mast_stump",
+        verts: [
+          [-0.34, -0.04, 0.35],
+          [-0.26, -0.04, 0.35],
+          [-0.26, -0.04, 0.65],
+          [-0.34, -0.04, 0.65]
+        ],
+        color: "#aaa"
+      },
+      {
+        id: "fallen_mast",
+        verts: [
+          [-0.34, -0.04, 0.35],
+          [-0.26, -0.04, 0.35],
+          [1.2, 0.35, 0.35],
+          [1.28, 0.35, 0.35]
+        ],
+        color: "#bbb"
+      },
+      {
+        id: "collapsed_sail",
+        verts: [
+          [-0.3, 0, 0.35],
+          [0.9, 0.3, 0.35],
+          [0.7, 0.42, 0.35],
+          [-0.6, 0.15, 0.35]
+        ],
+        color: "rgba(230,230,220,0.7)",
+        stroke: "#ccc"
+      }
+    ]
+  };
+
+  // ../src/game/models/research_platform.zdef
+  var research_platform_default = {
+    id: "research_platform",
+    label: "research_platform",
+    static: true,
+    movementType: "none",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    faces: [
+      {
+        id: "pyl_F",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.4,
+            -0.4,
+            0
+          ],
+          [
+            0.4,
+            0.4,
+            0
+          ],
+          [
+            0.4,
+            0.4,
+            6
+          ],
+          [
+            0.4,
+            -0.4,
+            6
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "pyl_B",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            -0.4,
+            0.4,
+            0
+          ],
+          [
+            -0.4,
+            -0.4,
+            0
+          ],
+          [
+            -0.4,
+            -0.4,
+            6
+          ],
+          [
+            -0.4,
+            0.4,
+            6
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "pyl_L",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            -0.4,
+            0.4,
+            0
+          ],
+          [
+            0.4,
+            0.4,
+            0
+          ],
+          [
+            0.4,
+            0.4,
+            6
+          ],
+          [
+            -0.4,
+            0.4,
+            6
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "pyl_R",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            0.4,
+            -0.4,
+            0
+          ],
+          [
+            -0.4,
+            -0.4,
+            0
+          ],
+          [
+            -0.4,
+            -0.4,
+            6
+          ],
+          [
+            0.4,
+            -0.4,
+            6
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "deck_top",
+        verts: [
+          [
+            1.5,
+            1.5,
+            6.5
+          ],
+          [
+            1.5,
+            -1.5,
+            6.5
+          ],
+          [
+            -1.5,
+            -1.5,
+            6.5
+          ],
+          [
+            -1.5,
+            1.5,
+            6.5
+          ]
+        ],
+        color: "#808080"
+      },
+      {
+        id: "deck_F",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            1.5,
+            -1.5,
+            6
+          ],
+          [
+            1.5,
+            1.5,
+            6
+          ],
+          [
+            1.5,
+            1.5,
+            6.5
+          ],
+          [
+            1.5,
+            -1.5,
+            6.5
+          ]
+        ],
+        color: "#808080"
+      },
+      {
+        id: "deck_B",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            -1.5,
+            1.5,
+            6
+          ],
+          [
+            -1.5,
+            -1.5,
+            6
+          ],
+          [
+            -1.5,
+            -1.5,
+            6.5
+          ],
+          [
+            -1.5,
+            1.5,
+            6.5
+          ]
+        ],
+        color: "#808080"
+      },
+      {
+        id: "deck_L",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            -1.5,
+            1.5,
+            6
+          ],
+          [
+            1.5,
+            1.5,
+            6
+          ],
+          [
+            1.5,
+            1.5,
+            6.5
+          ],
+          [
+            -1.5,
+            1.5,
+            6.5
+          ]
+        ],
+        color: "#808080"
+      },
+      {
+        id: "deck_R",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            1.5,
+            -1.5,
+            6
+          ],
+          [
+            -1.5,
+            -1.5,
+            6
+          ],
+          [
+            -1.5,
+            -1.5,
+            6.5
+          ],
+          [
+            1.5,
+            -1.5,
+            6.5
+          ]
+        ],
+        color: "#808080"
+      },
+      {
+        id: "deck_bottom",
+        verts: [
+          [
+            1.5,
+            1.5,
+            6
+          ],
+          [
+            1.5,
+            -1.5,
+            6
+          ],
+          [
+            -1.5,
+            -1.5,
+            6
+          ],
+          [
+            -1.5,
+            1.5,
+            6
+          ]
+        ],
+        color: "#808080"
+      },
+      {
+        id: "heli_top",
+        verts: [
+          [
+            -1.5,
+            1.2,
+            6.51
+          ],
+          [
+            -1.5,
+            -1.2,
+            6.51
+          ],
+          [
+            -3.5,
+            -1.2,
+            6.51
+          ],
+          [
+            -3.5,
+            1.2,
+            6.51
+          ]
+        ],
+        color: "#2a8f2a"
+      },
+      {
+        id: "h_v1",
+        verts: [
+          [
+            -2.2,
+            0.5,
+            6.52
+          ],
+          [
+            -2.2,
+            -0.5,
+            6.52
+          ],
+          [
+            -2.4,
+            -0.5,
+            6.52
+          ],
+          [
+            -2.4,
+            0.5,
+            6.52
+          ]
+        ],
+        color: "#ffffff"
+      },
+      {
+        id: "h_v2",
+        verts: [
+          [
+            -2.6,
+            0.5,
+            6.52
+          ],
+          [
+            -2.6,
+            -0.5,
+            6.52
+          ],
+          [
+            -2.8,
+            -0.5,
+            6.52
+          ],
+          [
+            -2.8,
+            0.5,
+            6.52
+          ]
+        ],
+        color: "#ffffff"
+      },
+      {
+        id: "h_bar",
+        verts: [
+          [
+            -2.2,
+            0.1,
+            6.53
+          ],
+          [
+            -2.2,
+            -0.1,
+            6.53
+          ],
+          [
+            -2.8,
+            -0.1,
+            6.53
+          ],
+          [
+            -2.8,
+            0.1,
+            6.53
+          ]
+        ],
+        color: "#ffffff"
+      },
+      {
+        id: "m_F1",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            1.1,
+            -0.1,
+            6.5
+          ],
+          [
+            1.1,
+            0.1,
+            6.5
+          ],
+          [
+            1.1,
+            0.1,
+            8.5
+          ],
+          [
+            1.1,
+            -0.1,
+            8.5
+          ]
+        ],
+        color: "#ffffff"
+      },
+      {
+        id: "m_F2",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            1.1,
+            -0.1,
+            8.5
+          ],
+          [
+            1.1,
+            0.1,
+            8.5
+          ],
+          [
+            1.1,
+            0.1,
+            10.5
+          ],
+          [
+            1.1,
+            -0.1,
+            10.5
+          ]
+        ],
+        color: "#ff0000"
+      },
+      {
+        id: "m_F3",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            1.1,
+            -0.1,
+            10.5
+          ],
+          [
+            1.1,
+            0.1,
+            10.5
+          ],
+          [
+            1.1,
+            0.1,
+            12.5
+          ],
+          [
+            1.1,
+            -0.1,
+            12.5
+          ]
+        ],
+        color: "#ffffff"
+      },
+      {
+        id: "m_F4",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            1.1,
+            -0.1,
+            12.5
+          ],
+          [
+            1.1,
+            0.1,
+            12.5
+          ],
+          [
+            1.1,
+            0.1,
+            15
+          ],
+          [
+            1.1,
+            -0.1,
+            15
+          ]
+        ],
+        color: "#ff0000"
+      },
+      {
+        id: "m_B1",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            0.9,
+            0.1,
+            6.5
+          ],
+          [
+            0.9,
+            -0.1,
+            6.5
+          ],
+          [
+            0.9,
+            -0.1,
+            8.5
+          ],
+          [
+            0.9,
+            0.1,
+            8.5
+          ]
+        ],
+        color: "#ffffff"
+      },
+      {
+        id: "m_B2",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            0.9,
+            0.1,
+            8.5
+          ],
+          [
+            0.9,
+            -0.1,
+            8.5
+          ],
+          [
+            0.9,
+            -0.1,
+            10.5
+          ],
+          [
+            0.9,
+            0.1,
+            10.5
+          ]
+        ],
+        color: "#ff0000"
+      },
+      {
+        id: "m_B3",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            0.9,
+            0.1,
+            10.5
+          ],
+          [
+            0.9,
+            -0.1,
+            10.5
+          ],
+          [
+            0.9,
+            -0.1,
+            12.5
+          ],
+          [
+            0.9,
+            0.1,
+            12.5
+          ]
+        ],
+        color: "#ffffff"
+      },
+      {
+        id: "m_B4",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            0.9,
+            0.1,
+            12.5
+          ],
+          [
+            0.9,
+            -0.1,
+            12.5
+          ],
+          [
+            0.9,
+            -0.1,
+            15
+          ],
+          [
+            0.9,
+            0.1,
+            15
+          ]
+        ],
+        color: "#ff0000"
+      },
+      {
+        id: "m_L1",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.9,
+            0.1,
+            6.5
+          ],
+          [
+            1.1,
+            0.1,
+            6.5
+          ],
+          [
+            1.1,
+            0.1,
+            8.5
+          ],
+          [
+            0.9,
+            0.1,
+            8.5
+          ]
+        ],
+        color: "#ffffff"
+      },
+      {
+        id: "m_L2",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.9,
+            0.1,
+            8.5
+          ],
+          [
+            1.1,
+            0.1,
+            8.5
+          ],
+          [
+            1.1,
+            0.1,
+            10.5
+          ],
+          [
+            0.9,
+            0.1,
+            10.5
+          ]
+        ],
+        color: "#ff0000"
+      },
+      {
+        id: "m_L3",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.9,
+            0.1,
+            10.5
+          ],
+          [
+            1.1,
+            0.1,
+            10.5
+          ],
+          [
+            1.1,
+            0.1,
+            12.5
+          ],
+          [
+            0.9,
+            0.1,
+            12.5
+          ]
+        ],
+        color: "#ffffff"
+      },
+      {
+        id: "m_L4",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.9,
+            0.1,
+            12.5
+          ],
+          [
+            1.1,
+            0.1,
+            12.5
+          ],
+          [
+            1.1,
+            0.1,
+            15
+          ],
+          [
+            0.9,
+            0.1,
+            15
+          ]
+        ],
+        color: "#ff0000"
+      },
+      {
+        id: "m_R1",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            1.1,
+            -0.1,
+            6.5
+          ],
+          [
+            0.9,
+            -0.1,
+            6.5
+          ],
+          [
+            0.9,
+            -0.1,
+            8.5
+          ],
+          [
+            1.1,
+            -0.1,
+            8.5
+          ]
+        ],
+        color: "#ffffff"
+      },
+      {
+        id: "m_R2",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            1.1,
+            -0.1,
+            8.5
+          ],
+          [
+            0.9,
+            -0.1,
+            8.5
+          ],
+          [
+            0.9,
+            -0.1,
+            10.5
+          ],
+          [
+            1.1,
+            -0.1,
+            10.5
+          ]
+        ],
+        color: "#ff0000"
+      },
+      {
+        id: "m_R3",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            1.1,
+            -0.1,
+            10.5
+          ],
+          [
+            0.9,
+            -0.1,
+            10.5
+          ],
+          [
+            0.9,
+            -0.1,
+            12.5
+          ],
+          [
+            1.1,
+            -0.1,
+            12.5
+          ]
+        ],
+        color: "#ffffff"
+      },
+      {
+        id: "m_R4",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            1.1,
+            -0.1,
+            12.5
+          ],
+          [
+            0.9,
+            -0.1,
+            12.5
+          ],
+          [
+            0.9,
+            -0.1,
+            15
+          ],
+          [
+            1.1,
+            -0.1,
+            15
+          ]
+        ],
+        color: "#ff0000"
+      },
+      {
+        id: "m_top",
+        verts: [
+          [
+            1.1,
+            0.1,
+            15
+          ],
+          [
+            1.1,
+            -0.1,
+            15
+          ],
+          [
+            0.9,
+            -0.1,
+            15
+          ],
+          [
+            0.9,
+            0.1,
+            15
+          ]
+        ],
+        color: "#ffffff"
+      }
+    ],
+    collisionBoxes: [
+      {
+        id: "pylon",
+        xMin: -0.4,
+        xMax: 0.4,
+        yMin: -0.4,
+        yMax: 0.4,
+        zMin: 0,
+        zMax: 6
+      },
+      {
+        id: "deck",
+        xMin: -1.5,
+        xMax: 1.5,
+        yMin: -1.5,
+        yMax: 1.5,
+        zMin: 6,
+        zMax: 6.5
+      },
+      {
+        id: "tower",
+        xMin: 0.8,
+        xMax: 1.2,
+        yMin: -0.2,
+        yMax: 0.2,
+        zMin: 6.5,
+        zMax: 15
+      }
+    ],
+    rescueZones: [
+      {
+        x: -2.4,
+        y: 0.1,
+        w: 1.1,
+        h: 1.2,
+        role: "both",
+        z: 0
+      }
+    ],
+    landingZone: {
+      x: -2.5,
+      y: 0,
+      w: 1,
+      h: 1.2,
+      z: 6.65
+    }
+  };
+
+  // ../src/game/models/submarine.zdef
+  var submarine_default = {
+    id: "submarine",
+    label: "submarine",
+    static: true,
+    movementType: "none",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    faces: [
+      {
+        id: "keel",
+        verts: [
+          [
+            -4.5,
+            -0.6,
+            0
+          ],
+          [
+            4.5,
+            -0.6,
+            0
+          ],
+          [
+            4.5,
+            0.6,
+            0
+          ],
+          [
+            -4.5,
+            0.6,
+            0
+          ]
+        ],
+        color: "#020202"
+      },
+      {
+        id: "deck_main",
+        verts: [
+          [
+            -4.5,
+            -0.7,
+            0.25
+          ],
+          [
+            4.5,
+            -0.7,
+            0.25
+          ],
+          [
+            4.5,
+            0.7,
+            0.25
+          ],
+          [
+            -4.5,
+            0.7,
+            0.25
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "deck_bow",
+        verts: [
+          [
+            4.5,
+            -0.7,
+            0.25
+          ],
+          [
+            5.3,
+            -0.28,
+            0.25
+          ],
+          [
+            5.6,
+            0,
+            0.25
+          ],
+          [
+            5.3,
+            0.28,
+            0.25
+          ],
+          [
+            4.5,
+            0.7,
+            0.25
+          ]
+        ],
+        color: "#0e0e0e"
+      },
+      {
+        id: "deck_stern",
+        verts: [
+          [
+            -4.5,
+            0.7,
+            0.25
+          ],
+          [
+            -4.5,
+            -0.7,
+            0.25
+          ],
+          [
+            -5.2,
+            -0.2,
+            0.25
+          ],
+          [
+            -5.2,
+            0.2,
+            0.25
+          ]
+        ],
+        color: "#0e0e0e"
+      },
+      {
+        id: "hull_starboard",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            4.5,
+            0.7,
+            0
+          ],
+          [
+            -4.5,
+            0.7,
+            0
+          ],
+          [
+            -4.5,
+            0.7,
+            0.25
+          ],
+          [
+            4.5,
+            0.7,
+            0.25
+          ]
+        ],
+        color: "#090909"
+      },
+      {
+        id: "hull_port",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -4.5,
+            -0.7,
+            0
+          ],
+          [
+            4.5,
+            -0.7,
+            0
+          ],
+          [
+            4.5,
+            -0.7,
+            0.25
+          ],
+          [
+            -4.5,
+            -0.7,
+            0.25
+          ]
+        ],
+        color: "#060606"
+      },
+      {
+        id: "bow_starboard",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            4.5,
+            0.7,
+            0
+          ],
+          [
+            5.6,
+            0,
+            0
+          ],
+          [
+            5.6,
+            0,
+            0.25
+          ],
+          [
+            4.5,
+            0.7,
+            0.25
+          ]
+        ],
+        color: "#0b0b0b"
+      },
+      {
+        id: "bow_port",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            5.6,
+            0,
+            0
+          ],
+          [
+            4.5,
+            -0.7,
+            0
+          ],
+          [
+            4.5,
+            -0.7,
+            0.25
+          ],
+          [
+            5.6,
+            0,
+            0.25
+          ]
+        ],
+        color: "#080808"
+      },
+      {
+        id: "stern_starboard",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            -4.5,
+            0.7,
+            0
+          ],
+          [
+            -5.2,
+            0.2,
+            0
+          ],
+          [
+            -5.2,
+            0.2,
+            0.25
+          ],
+          [
+            -4.5,
+            0.7,
+            0.25
+          ]
+        ],
+        color: "#060606"
+      },
+      {
+        id: "stern_port",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            -5.2,
+            -0.2,
+            0
+          ],
+          [
+            -4.5,
+            -0.7,
+            0
+          ],
+          [
+            -4.5,
+            -0.7,
+            0.25
+          ],
+          [
+            -5.2,
+            -0.2,
+            0.25
+          ]
+        ],
+        color: "#050505"
+      },
+      {
+        id: "tower_top",
+        verts: [
+          [
+            0.8,
+            -0.32,
+            2.4
+          ],
+          [
+            2.3,
+            -0.32,
+            2.4
+          ],
+          [
+            2.3,
+            0.32,
+            2.4
+          ],
+          [
+            0.8,
+            0.32,
+            2.4
+          ]
+        ],
+        color: "#181818"
+      },
+      {
+        id: "tower_bow",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            2.3,
+            -0.32,
+            0.25
+          ],
+          [
+            2.3,
+            0.32,
+            0.25
+          ],
+          [
+            2.3,
+            0.32,
+            2.4
+          ],
+          [
+            2.3,
+            -0.32,
+            2.4
+          ]
+        ],
+        color: "#0e0e0e"
+      },
+      {
+        id: "tower_starboard",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            2.3,
+            0.32,
+            0.25
+          ],
+          [
+            0.8,
+            0.32,
+            0.25
+          ],
+          [
+            0.8,
+            0.32,
+            2.4
+          ],
+          [
+            2.3,
+            0.32,
+            2.4
+          ]
+        ],
+        color: "#0c0c0c"
+      },
+      {
+        id: "tower_stern",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            0.8,
+            0.32,
+            0.25
+          ],
+          [
+            0.8,
+            -0.32,
+            0.25
+          ],
+          [
+            0.8,
+            -0.32,
+            2.4
+          ],
+          [
+            0.8,
+            0.32,
+            2.4
+          ]
+        ],
+        color: "#090909"
+      },
+      {
+        id: "tower_port",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            0.8,
+            -0.32,
+            0.25
+          ],
+          [
+            2.3,
+            -0.32,
+            0.25
+          ],
+          [
+            2.3,
+            -0.32,
+            2.4
+          ],
+          [
+            0.8,
+            -0.32,
+            2.4
+          ]
+        ],
+        color: "#0b0b0b"
+      },
+      {
+        id: "periscope",
+        verts: [
+          [
+            1.49,
+            -0.03,
+            2.4
+          ],
+          [
+            1.51,
+            -0.03,
+            2.4
+          ],
+          [
+            1.51,
+            -0.03,
+            3.1
+          ],
+          [
+            1.49,
+            -0.03,
+            3.1
+          ]
+        ],
+        color: "#222222"
+      }
+    ],
+    collisionBoxes: [
+      {
+        id: "hull",
+        xMin: -5.2,
+        xMax: 5.6,
+        yMin: -0.7,
+        yMax: 0.7,
+        zMin: 0,
+        zMax: 0.3
+      },
+      {
+        id: "tower",
+        xMin: 0.8,
+        xMax: 2.3,
+        yMin: -0.32,
+        yMax: 0.32,
+        zMin: 0.3,
+        zMax: 2.4
+      }
+    ],
+    rescueZones: [
+      {
+        x: -1.6,
+        y: 0,
+        w: 2,
+        h: 0.7,
+        z: 0.15,
+        role: "both"
+      }
+    ]
+  };
+
+  // ../src/game/models/carrier.zdef
+  var carrier_default = {
+    version: 2,
+    id: "carrier",
+    collisionBoxes: [
+      { id: "hull", xMin: -8.7, xMax: 8.7, yMin: -4.2, yMax: 4.2, zMin: 0, zMax: 4.2 },
+      { id: "tower", xMin: -5.5, xMax: -1, yMin: 2.6, yMax: 4.1, zMin: 4.2, zMax: 6.7 }
+    ],
+    landingZone: { x: 0, y: 0, w: 16, h: 7, z: 4.2 },
+    nodes: [
+      {
+        faces: [
+          { id: "hull_bow", normal: [1, 0], verts: [[8.7, -2.52, 0], [8.7, 2.52, 0], [8.7, 4.2, 3.8], [8.7, -4.2, 3.8]], color: "#7b8998" },
+          { id: "hull_starboard", normal: [0, 1], verts: [[8.7, 2.52, 0], [-8.7, 2.52, 0], [-8.7, 4.2, 3.8], [8.7, 4.2, 3.8]], color: "#7b8998" },
+          { id: "hull_stern", normal: [-1, 0], verts: [[-8.7, 2.52, 0], [-8.7, -2.52, 0], [-8.7, -4.2, 3.8], [-8.7, 4.2, 3.8]], color: "#7b8998" },
+          { id: "hull_port", normal: [0, -1], verts: [[-8.7, -2.52, 0], [8.7, -2.52, 0], [8.7, -4.2, 3.8], [-8.7, -4.2, 3.8]], color: "#7b8998" },
+          { id: "deck_base", verts: [[8.7, -4.2, 3.8], [8.7, 4.2, 3.8], [-8.7, 4.2, 3.8], [-8.7, -4.2, 3.8]], color: "#222222" },
+          { id: "deck_bow", normal: [1, 0], verts: [[8.7, -4.2, 3.8], [8.7, 4.2, 3.8], [8.7, 4.2, 4.2], [8.7, -4.2, 4.2]], color: "#222228" },
+          { id: "deck_starboard", normal: [0, 1], verts: [[8.7, 4.2, 3.8], [-8.7, 4.2, 3.8], [-8.7, 4.2, 4.2], [8.7, 4.2, 4.2]], color: "#2a2a33" },
+          { id: "deck_stern", normal: [-1, 0], verts: [[-8.7, 4.2, 3.8], [-8.7, -4.2, 3.8], [-8.7, -4.2, 4.2], [-8.7, 4.2, 4.2]], color: "#222228" },
+          { id: "deck_port", normal: [0, -1], verts: [[-8.7, -4.2, 3.8], [8.7, -4.2, 3.8], [8.7, -4.2, 4.2], [-8.7, -4.2, 4.2]], color: "#2a2a33" },
+          { id: "flight_deck", verts: [[8.7, -4.2, 4.2], [8.7, 4.2, 4.2], [-8.7, 4.2, 4.2], [-8.7, -4.2, 4.2]], color: "#3a3a44" },
+          { id: "pad_bow", verts: [[5.9, -3.7, 4.21], [5.9, -0.9, 4.21], [3.1, -0.9, 4.21], [3.1, -3.7, 4.21]], color: "#52526a" },
+          { id: "pad_mid", verts: [[1.4, -3.7, 4.21], [1.4, -0.9, 4.21], [-1.4, -0.9, 4.21], [-1.4, -3.7, 4.21]], color: "#52526a" },
+          { id: "pad_stern", verts: [[-3.1, -3.7, 4.21], [-3.1, -0.9, 4.21], [-5.9, -0.9, 4.21], [-5.9, -3.7, 4.21]], color: "#52526a" }
+        ]
+      },
+      {
+        depthAnchor: [-3.25, 3.35],
+        faces: [
+          { id: "tower_bow", normal: [1, 0], verts: [[-1, 2.6, 4.2], [-1, 4.1, 4.2], [-1, 4.1, 6.7], [-1, 2.6, 6.7]], color: "#6e7a88" },
+          { id: "tower_starboard", normal: [0, 1], verts: [[-1, 4.1, 4.2], [-5.5, 4.1, 4.2], [-5.5, 4.1, 6.7], [-1, 4.1, 6.7]], color: "#8898a8" },
+          { id: "tower_stern", normal: [-1, 0], verts: [[-5.5, 2.6, 4.2], [-5.5, 4.1, 4.2], [-5.5, 4.1, 6.7], [-5.5, 2.6, 6.7]], color: "#6e7a88" },
+          { id: "tower_port", normal: [0, -1], verts: [[-1, 2.6, 4.2], [-5.5, 2.6, 4.2], [-5.5, 2.6, 6.7], [-1, 2.6, 6.7]], color: "#8898a8" },
+          { id: "tower_roof", verts: [[-1, 2.6, 6.7], [-1, 4.1, 6.7], [-5.5, 4.1, 6.7], [-5.5, 2.6, 6.7]], color: "#222222" }
+        ],
+        lights: [
+          { x: -8.7, y: -4.2, z: 4.25, blink: true, color: "#ff0000", colorOff: "#550000", radius: 3 },
+          { x: 8.7, y: -4.2, z: 4.25, blink: true, color: "#ff0000", colorOff: "#550000", radius: 3 },
+          { x: 8.7, y: 4.2, z: 4.25, blink: true, color: "#ff0000", colorOff: "#550000", radius: 3 },
+          { x: -8.7, y: 4.2, z: 4.25, blink: true, color: "#ff0000", colorOff: "#550000", radius: 3 }
+        ],
+        children: [
+          {
+            faces: [
+              { id: "radar_mast", verts: [[-3.25, 3.335, 6.7], [-3.25, 3.365, 6.7], [-3.25, 3.365, 6.88], [-3.25, 3.335, 6.88]], color: "#888888" }
+            ],
+            children: [
+              {
+                faces: [
+                  { id: "radar_arm", verts: [[-3.245, 3.13, 6.88], [-3.245, 3.57, 6.88], [-3.255, 3.57, 6.88], [-3.255, 3.13, 6.88]], color: "#cccccc" }
+                ],
+                rotate: {
+                  pivot: [-3.25, 3.35, 6.88],
+                  axis: [0, 0, 1],
+                  animate: { type: "spin", speed: 2e-3 }
+                }
+              }
+            ]
+          },
+          {
+            faces: [
+              { type: "line", verts: [[-3.25, 2.975, 6.7], [-3.25, 2.975, 7.3]], color: "#aaaaaa", lineWidth: 1.5 }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  // ../src/game/models/frigate.zdef
+  var frigate_default = {
+    version: 2,
+    id: "frigate",
+    label: "Fregatte",
+    static: false,
+    movementType: "ship",
+    pivot: [0, 0, 0],
+    collisionBoxes: [
+      { id: "hull", xMin: -8.5, xMax: 7, yMin: -2, yMax: 2, zMin: 0, zMax: 2 },
+      { id: "superstructure", xMin: 0.5, xMax: 2.5, yMin: -1.4, yMax: 1.4, zMin: 2, zMax: 4 },
+      { id: "hangar", xMin: -3.5, xMax: 0.5, yMin: -1.3, yMax: 1.3, zMin: 2, zMax: 3.3 },
+      { id: "mast", xMin: 1.95, xMax: 2.05, yMin: -0.05, yMax: 0.05, zMin: 4, zMax: 6.5 }
+    ],
+    landingZone: { x: -6.1, y: 0, w: 4.5, h: 3.8, z: 2 },
+    nodes: [
+      {
+        faces: [
+          { id: "hull_bottom", verts: [[7, 0, 0], [2.5, 2, 0], [-8.5, 2, 0], [-8.5, -2, 0], [2.5, -2, 0]], color: "#5a6673" },
+          { id: "hull_stern", normal: [-1, 0], verts: [[-8.5, 2, 0], [-8.5, -2, 0], [-8.5, -2, 2], [-8.5, 2, 2]], color: "#5a6673" },
+          { id: "hull_starboard", normal: [0, 1], verts: [[2.5, 2, 0], [-8.5, 2, 0], [-8.5, 2, 2], [2.5, 2, 2]], color: "#5a6673" },
+          { id: "hull_port", normal: [0, -1], verts: [[-8.5, -2, 0], [2.5, -2, 0], [2.5, -2, 2], [-8.5, -2, 2]], color: "#5a6673" },
+          { id: "hull_bow_starboard", normal: [1, 0], verts: [[7, 0, 0], [2.5, 2, 0], [2.5, 2, 2], [7, 0, 2]], color: "#5a6673" },
+          { id: "hull_bow_port", normal: [1, 0], verts: [[2.5, -2, 0], [7, 0, 0], [7, 0, 2], [2.5, -2, 2]], color: "#5a6673" },
+          { id: "foredeck_bow", verts: [[7, 0, 2], [2.5, 2, 2], [2.5, -2, 2]], color: "#2a2a33" },
+          { id: "deck", verts: [[2.5, 2, 2], [-8.5, 2, 2], [-8.5, -2, 2], [2.5, -2, 2]], color: "#2a2a33" },
+          { id: "helipad_N", verts: [[-3.85, 1.9, 2.01], [-8.35, 1.9, 2.01], [-8.35, 1.7, 2.01], [-3.85, 1.7, 2.01]], color: "#ffffff" },
+          { id: "helipad_S", verts: [[-3.85, -1.7, 2.01], [-8.35, -1.7, 2.01], [-8.35, -1.9, 2.01], [-3.85, -1.9, 2.01]], color: "#ffffff" },
+          { id: "helipad_W", verts: [[-8.15, 1.9, 2.01], [-8.15, -1.9, 2.01], [-8.35, -1.9, 2.01], [-8.35, 1.9, 2.01]], color: "#ffffff" },
+          { id: "helipad_E", verts: [[-3.85, 1.9, 2.01], [-3.85, -1.9, 2.01], [-4.05, -1.9, 2.01], [-4.05, 1.9, 2.01]], color: "#ffffff" }
+        ]
+      },
+      {
+        faces: [
+          { id: "bridge_front", normal: [1, 0], verts: [[2.5, -1.4, 2], [2.5, 1.4, 2], [2.5, 1.4, 4], [2.5, -1.4, 4]], color: "#5a6673" },
+          { id: "superstructure_starboard", normal: [0, 1], verts: [[2.5, 1.4, 2], [0.5, 1.4, 2], [0.5, 1.4, 4], [2.5, 1.4, 4]], color: "#5a6673" },
+          { id: "superstructure_port", normal: [0, -1], verts: [[0.5, -1.4, 2], [2.5, -1.4, 2], [2.5, -1.4, 4], [0.5, -1.4, 4]], color: "#5a6673" },
+          { id: "superstructure_back", normal: [-1, 0], verts: [[0.5, 1.4, 2], [0.5, -1.4, 2], [0.5, -1.4, 4], [0.5, 1.4, 4]], color: "#5a6673" },
+          { id: "hangar_wall_back_L", normal: [-1, 0], verts: [[-3.5, 1.3, 3.3], [-3.5, 1, 3.3], [-3.5, 1, 2], [-3.5, 1.3, 2]], color: "#5a6673" },
+          { id: "hangar_wall_back_R", normal: [-1, 0], verts: [[-3.5, -1, 3.3], [-3.5, -1.3, 3.3], [-3.5, -1.3, 2], [-3.5, -1, 2]], color: "#5a6673" },
+          { id: "hangar_door", normal: [-1, 0], verts: [[-3.5, 1, 2], [-3.5, -1, 2], [-3.5, -1, 2.85], [-3.5, 1, 2.85]], color: "#111116" },
+          { id: "hangar_door_interior", normal: [1, 0], verts: [[-3.4, -1, 2], [-3.4, 1, 2], [-3.4, 1, 2.85], [-3.4, -1, 2.85]], color: "#2a3038" },
+          { id: "hangar_roof_lip", normal: [-1, 0], verts: [[-3.5, 1, 2.85], [-3.5, -1, 2.85], [-3.5, -1, 3.3], [-3.5, 1, 3.3]], color: "#5a6673" },
+          { id: "hangar_starboard", normal: [0, 1], verts: [[0.5, 1.3, 2], [-3.5, 1.3, 2], [-3.5, 1.3, 3.3], [0.5, 1.3, 3.3]], color: "#5a6673" },
+          { id: "hangar_port", normal: [0, -1], verts: [[-3.5, -1.3, 2], [0.5, -1.3, 2], [0.5, -1.3, 3.3], [-3.5, -1.3, 3.3]], color: "#5a6673" },
+          { id: "hangar_roof", verts: [[0.5, -1.3, 3.3], [0.5, 1.3, 3.3], [-3.5, 1.3, 3.3], [-3.5, -1.3, 3.3]], color: "#222228" },
+          { id: "superstructure_roof", verts: [[2.5, -1.4, 4], [2.5, 1.4, 4], [0.5, 1.4, 4], [0.5, -1.4, 4]], color: "#222228" },
+          { id: "mast_fwd", verts: [[2.05, -0.05, 4], [2.05, 0.05, 4], [2.05, 0.05, 6.5], [2.05, -0.05, 6.5]], color: "#7a8898" },
+          { id: "mast_stbd", verts: [[2.05, 0.05, 4], [1.95, 0.05, 4], [1.95, 0.05, 6.5], [2.05, 0.05, 6.5]], color: "#7a8898" },
+          { id: "mast_port", verts: [[1.95, -0.05, 4], [2.05, -0.05, 4], [2.05, -0.05, 6.5], [1.95, -0.05, 6.5]], color: "#7a8898" },
+          { id: "mast_aft", verts: [[1.95, 0.05, 4], [1.95, -0.05, 4], [1.95, -0.05, 6.5], [1.95, 0.05, 6.5]], color: "#7a8898" },
+          { id: "mast_top", verts: [[2.05, -0.05, 6.5], [2.05, 0.05, 6.5], [1.95, 0.05, 6.5], [1.95, -0.05, 6.5]], color: "#7a8898" },
+          { id: "hangar_mast_a_fwd", verts: [[0, 0.35, 3.4], [0, 0.5, 3.4], [0, 0.5, 4.3], [0, 0.35, 4.3]], color: "#7a8898" },
+          { id: "hangar_mast_a_stbd", verts: [[0, 0.5, 3.4], [-0.2, 0.5, 3.4], [-0.2, 0.5, 4.3], [0, 0.5, 4.3]], color: "#7a8898" },
+          { id: "hangar_mast_a_port", verts: [[-0.2, 0.35, 3.4], [0, 0.35, 3.4], [0, 0.35, 4.3], [-0.2, 0.35, 4.3]], color: "#7a8898" },
+          { id: "hangar_mast_a_aft", verts: [[-0.2, 0.5, 3.4], [-0.2, 0.35, 3.4], [-0.2, 0.35, 4.3], [-0.2, 0.5, 4.3]], color: "#7a8898" },
+          { id: "hangar_mast_a_top", verts: [[0, 0.35, 4.3], [0, 0.5, 4.3], [-0.2, 0.5, 4.3], [-0.2, 0.35, 4.3]], color: "#7a8898" },
+          { id: "hangar_mast_b_fwd", verts: [[-1.4, -0.5, 3.4], [-1.4, -0.35, 3.4], [-1.4, -0.35, 4.3], [-1.4, -0.5, 4.3]], color: "#7a8898" },
+          { id: "hangar_mast_b_stbd", verts: [[-1.4, -0.35, 3.4], [-1.6, -0.35, 3.4], [-1.6, -0.35, 4.3], [-1.4, -0.35, 4.3]], color: "#7a8898" },
+          { id: "hangar_mast_b_port", verts: [[-1.6, -0.5, 3.4], [-1.4, -0.5, 3.4], [-1.4, -0.5, 4.3], [-1.6, -0.5, 4.3]], color: "#7a8898" },
+          { id: "hangar_mast_b_aft", verts: [[-1.6, -0.35, 3.4], [-1.6, -0.5, 3.4], [-1.6, -0.5, 4.3], [-1.6, -0.35, 4.3]], color: "#7a8898" },
+          { id: "hangar_mast_b_top", verts: [[-1.4, -0.5, 4.3], [-1.4, -0.35, 4.3], [-1.6, -0.35, 4.3], [-1.6, -0.5, 4.3]], color: "#7a8898" },
+          { id: "bridge_windows", normal: [1, 0], verts: [[2.51, -1.4, 3.2], [2.51, 1.4, 3.2], [2.51, 1.4, 3.65], [2.51, -1.4, 3.65]], color: "#1a2530" }
+        ]
+      }
+    ]
+  };
+
+  // ../src/game/models/supply_vessel.zdef
+  var supply_vessel_default = {
+    version: 2,
+    id: "offshore_supply_vessel_v11_true_flat",
+    collisionBoxes: [
+      {
+        id: "hull",
+        xMin: -2.5,
+        xMax: 3.2,
+        yMin: -1.2,
+        yMax: 1.2,
+        zMin: 0,
+        zMax: 1.2
+      },
+      {
+        id: "superstructure",
+        xMin: 1,
+        xMax: 2.2,
+        yMin: -0.8,
+        yMax: 0.8,
+        zMin: 1.2,
+        zMax: 3.2
+      }
+    ],
+    rescueZones: [
+      { x: -0.7, y: 0, w: 1.8, h: 1, role: "pickup" }
+    ],
+    nodes: [
+      {
+        faces: [
+          {
+            id: "hull_bottom",
+            verts: [
+              [-3.5, 0, 0],
+              [-3.2, 1.2, 0],
+              [1, 1.2, 0],
+              [2.2, 0.9, 0],
+              [3, 0.4, 0],
+              [3.4, 0, 0],
+              [3, -0.4, 0],
+              [2.2, -0.9, 0],
+              [1, -1.2, 0],
+              [-3.2, -1.2, 0]
+            ],
+            color: "#0d233a"
+          },
+          {
+            id: "stern_mid",
+            verts: [
+              [
+                -3.5,
+                0,
+                1.2
+              ],
+              [
+                -3.5,
+                0,
+                0
+              ],
+              [
+                -3.2,
+                -1.2,
+                0
+              ],
+              [
+                -3.2,
+                -1.2,
+                1.2
+              ]
+            ],
+            color: "#0d233a"
+          },
+          {
+            id: "stern_L",
+            verts: [
+              [
+                -3.2,
+                1.2,
+                1.2
+              ],
+              [
+                -3.2,
+                1.2,
+                0
+              ],
+              [
+                -3.5,
+                0,
+                0
+              ],
+              [
+                -3.5,
+                0,
+                1.2
+              ]
+            ],
+            color: "#0d233a"
+          },
+          {
+            id: "hull_L_main",
+            verts: [
+              [
+                -3.2,
+                1.2,
+                0
+              ],
+              [
+                1,
+                1.2,
+                0
+              ],
+              [
+                1,
+                1.2,
+                1.2
+              ],
+              [
+                -3.2,
+                1.2,
+                1.2
+              ]
+            ],
+            color: "#0d233a"
+          },
+          {
+            id: "hull_R_main",
+            verts: [
+              [
+                1,
+                -1.2,
+                0
+              ],
+              [
+                -3.2,
+                -1.2,
+                0
+              ],
+              [
+                -3.2,
+                -1.2,
+                1.2
+              ],
+              [
+                1,
+                -1.2,
+                1.2
+              ]
+            ],
+            color: "#0d233a"
+          },
+          {
+            id: "bow_L_seg1",
+            verts: [
+              [
+                1,
+                1.2,
+                0
+              ],
+              [
+                2.2,
+                0.9,
+                0
+              ],
+              [
+                2.2,
+                0.9,
+                1.4
+              ],
+              [
+                1,
+                1.2,
+                1.2
+              ]
+            ],
+            color: "#0d233a"
+          },
+          {
+            id: "bow_R_seg1",
+            verts: [
+              [
+                2.2,
+                -0.9,
+                0
+              ],
+              [
+                1,
+                -1.2,
+                0
+              ],
+              [
+                1,
+                -1.2,
+                1.2
+              ],
+              [
+                2.2,
+                -0.9,
+                1.4
+              ]
+            ],
+            color: "#0d233a"
+          },
+          {
+            id: "bow_L_seg2",
+            verts: [
+              [
+                2.2,
+                0.9,
+                0
+              ],
+              [
+                3,
+                0.4,
+                0
+              ],
+              [
+                3,
+                0.4,
+                1.7
+              ],
+              [
+                2.2,
+                0.9,
+                1.4
+              ]
+            ],
+            color: "#0d233a"
+          },
+          {
+            id: "bow_R_seg2",
+            verts: [
+              [
+                3,
+                -0.4,
+                0
+              ],
+              [
+                2.2,
+                -0.9,
+                0
+              ],
+              [
+                2.2,
+                -0.9,
+                1.4
+              ],
+              [
+                3,
+                -0.4,
+                1.7
+              ]
+            ],
+            color: "#0d233a"
+          },
+          {
+            id: "bow_nose_L",
+            verts: [
+              [
+                3,
+                0.4,
+                0
+              ],
+              [
+                3.4,
+                0,
+                0
+              ],
+              [
+                3,
+                0,
+                2
+              ],
+              [
+                3,
+                0.4,
+                1.7
+              ]
+            ],
+            color: "#0d233a"
+          },
+          {
+            id: "bow_nose_R",
+            verts: [
+              [
+                3.4,
+                0,
+                0
+              ],
+              [
+                3,
+                -0.4,
+                0
+              ],
+              [
+                3,
+                -0.4,
+                1.7
+              ],
+              [
+                3,
+                0,
+                2
+              ]
+            ],
+            color: "#0d233a"
+          },
+          {
+            id: "cargo_deck",
+            verts: [
+              [
+                -3.2,
+                1.2,
+                1.2
+              ],
+              [
+                1,
+                1.2,
+                1.2
+              ],
+              [
+                1,
+                -1.2,
+                1.2
+              ],
+              [
+                -3.2,
+                -1.2,
+                1.2
+              ]
+            ],
+            color: "#4a4a4a"
+          },
+          {
+            id: "deck_border_L",
+            verts: [
+              [
+                1,
+                1.2,
+                1.2
+              ],
+              [
+                2.2,
+                0.9,
+                1.4
+              ],
+              [
+                3,
+                0.4,
+                1.7
+              ],
+              [
+                3,
+                0,
+                2
+              ],
+              [
+                3,
+                -0.4,
+                1.7
+              ],
+              [
+                2.2,
+                -0.9,
+                1.4
+              ],
+              [
+                1,
+                -1.2,
+                1.2
+              ]
+            ],
+            color: "#3a3a3a"
+          },
+          {
+            id: "cab_front_L",
+            normal: [
+              1,
+              0.5
+            ],
+            verts: [
+              [
+                2.5,
+                0,
+                3.2
+              ],
+              [
+                2.1,
+                0.5,
+                3.2
+              ],
+              [
+                2.1,
+                0.5,
+                1.43
+              ],
+              [
+                2.5,
+                0,
+                1.78
+              ]
+            ],
+            color: "#f4f4f4"
+          },
+          {
+            id: "cab_front_R",
+            normal: [
+              1,
+              -0.5
+            ],
+            verts: [
+              [
+                2.1,
+                -0.5,
+                3.2
+              ],
+              [
+                2.5,
+                0,
+                3.2
+              ],
+              [
+                2.5,
+                0,
+                1.78
+              ],
+              [
+                2.1,
+                -0.5,
+                1.43
+              ]
+            ],
+            color: "#f4f4f4"
+          },
+          {
+            id: "cab_side_L_1",
+            normal: [
+              0.5,
+              1
+            ],
+            verts: [
+              [
+                2.1,
+                0.5,
+                3.2
+              ],
+              [
+                1.4,
+                0.9,
+                3.2
+              ],
+              [
+                1.4,
+                0.9,
+                1.25
+              ],
+              [
+                2.1,
+                0.5,
+                1.43
+              ]
+            ],
+            color: "#ebebeb"
+          },
+          {
+            id: "cab_side_R_1",
+            normal: [
+              0.5,
+              -1
+            ],
+            verts: [
+              [
+                1.4,
+                -0.9,
+                3.2
+              ],
+              [
+                2.1,
+                -0.5,
+                3.2
+              ],
+              [
+                2.1,
+                -0.5,
+                1.43
+              ],
+              [
+                1.4,
+                -0.9,
+                1.25
+              ]
+            ],
+            color: "#ebebeb"
+          },
+          {
+            id: "cab_wall_L",
+            normal: [
+              0,
+              1
+            ],
+            verts: [
+              [
+                1.4,
+                0.9,
+                3.2
+              ],
+              [
+                0.2,
+                0.9,
+                3.2
+              ],
+              [
+                0.2,
+                0.9,
+                1.2
+              ],
+              [
+                1.4,
+                0.9,
+                1.25
+              ]
+            ],
+            color: "#e2e2e2"
+          },
+          {
+            id: "cab_wall_R",
+            normal: [
+              0,
+              -1
+            ],
+            verts: [
+              [
+                0.2,
+                -0.9,
+                3.2
+              ],
+              [
+                1.4,
+                -0.9,
+                3.2
+              ],
+              [
+                1.4,
+                -0.9,
+                1.25
+              ],
+              [
+                0.2,
+                -0.9,
+                1.2
+              ]
+            ],
+            color: "#e2e2e2"
+          },
+          {
+            id: "cab_back",
+            normal: [
+              -1,
+              0
+            ],
+            verts: [
+              [
+                0.2,
+                -0.9,
+                3.2
+              ],
+              [
+                0.2,
+                0.9,
+                3.2
+              ],
+              [
+                0.2,
+                0.9,
+                1.2
+              ],
+              [
+                0.2,
+                -0.9,
+                1.2
+              ]
+            ],
+            color: "#d5d5d5"
+          },
+          {
+            id: "win_front_L",
+            normal: [
+              1,
+              0.5
+            ],
+            verts: [
+              [
+                2.45,
+                0,
+                2.7
+              ],
+              [
+                2.12,
+                0.45,
+                2.7
+              ],
+              [
+                2.12,
+                0.45,
+                2.95
+              ],
+              [
+                2.45,
+                0,
+                2.95
+              ]
+            ],
+            color: "#1a2a3a"
+          },
+          {
+            id: "win_front_R",
+            normal: [
+              1,
+              -0.5
+            ],
+            verts: [
+              [
+                2.12,
+                -0.45,
+                2.7
+              ],
+              [
+                2.45,
+                0,
+                2.7
+              ],
+              [
+                2.45,
+                0,
+                2.95
+              ],
+              [
+                2.12,
+                -0.45,
+                2.95
+              ]
+            ],
+            color: "#1a2a3a"
+          },
+          {
+            id: "win_side_L",
+            normal: [
+              0.5,
+              1
+            ],
+            verts: [
+              [
+                2.08,
+                0.48,
+                2.7
+              ],
+              [
+                1.42,
+                0.88,
+                2.7
+              ],
+              [
+                1.42,
+                0.88,
+                2.95
+              ],
+              [
+                2.08,
+                0.48,
+                2.95
+              ]
+            ],
+            color: "#1a2a3a"
+          },
+          {
+            id: "win_side_R",
+            normal: [
+              0.5,
+              -1
+            ],
+            verts: [
+              [
+                1.42,
+                -0.88,
+                2.7
+              ],
+              [
+                2.08,
+                -0.48,
+                2.7
+              ],
+              [
+                2.08,
+                -0.48,
+                2.95
+              ],
+              [
+                1.42,
+                -0.88,
+                2.95
+              ]
+            ],
+            color: "#1a2a3a"
+          },
+          {
+            id: "cab_roof",
+            verts: [
+              [
+                2.5,
+                0,
+                3.2
+              ],
+              [
+                2.1,
+                0.5,
+                3.2
+              ],
+              [
+                1.4,
+                0.9,
+                3.2
+              ],
+              [
+                0.2,
+                0.9,
+                3.2
+              ],
+              [
+                0.2,
+                -0.9,
+                3.2
+              ],
+              [
+                1.4,
+                -0.9,
+                3.2
+              ],
+              [
+                2.1,
+                -0.5,
+                3.2
+              ]
+            ],
+            color: "#ffcd07"
+          },
+          {
+            id: "exhaust_L",
+            normal: [
+              -1,
+              0
+            ],
+            verts: [
+              [
+                0.1,
+                0.5,
+                1.2
+              ],
+              [
+                0.1,
+                0.7,
+                1.2
+              ],
+              [
+                0.1,
+                0.7,
+                3.8
+              ],
+              [
+                0.1,
+                0.5,
+                3.8
+              ]
+            ],
+            color: "#f9c907"
+          },
+          {
+            id: "exhaust_R",
+            normal: [
+              -1,
+              0
+            ],
+            verts: [
+              [
+                0.1,
+                -0.7,
+                1.2
+              ],
+              [
+                0.1,
+                -0.5,
+                1.2
+              ],
+              [
+                0.1,
+                -0.5,
+                3.8
+              ],
+              [
+                0.1,
+                -0.7,
+                3.8
+              ]
+            ],
+            color: "#f9c907"
+          }
+        ],
+        children: [
+          {
+            rotate: {
+              pivot: [
+                0.95,
+                0,
+                3.2
+              ],
+              axis: [
+                0,
+                0,
+                1
+              ],
+              animate: {
+                type: "spin",
+                speed: 2e-3
+              }
+            },
+            faces: [
+              {
+                id: "radar_blade",
+                verts: [
+                  [
+                    1,
+                    -0.4,
+                    3.4
+                  ],
+                  [
+                    1,
+                    0.4,
+                    3.4
+                  ],
+                  [
+                    0.9,
+                    0.4,
+                    3.4
+                  ],
+                  [
+                    0.9,
+                    -0.4,
+                    3.4
+                  ]
+                ],
+                color: "#ffffff"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  // ../src/game/models/sar_boat.zdef
+  var sar_boat_default = {
+    version: 2,
+    id: "pilot_boat_evo",
+    collisionBoxes: [
+      {
+        id: "hull",
+        xMin: -1.127,
+        xMax: 1.225,
+        yMin: -0.49,
+        yMax: 0.49,
+        zMin: 0,
+        zMax: 0.49
+      },
+      {
+        id: "cabin",
+        xMin: -0.392,
+        xMax: 0.245,
+        yMin: -0.196,
+        yMax: 0.196,
+        zMin: 0.49,
+        zMax: 0.98
+      }
+    ],
+    nodes: [
+      {
+        faces: [
+          {
+            id: "stern_mid_under",
+            verts: [
+              [
+                -1.127,
+                0,
+                0.245
+              ],
+              [
+                -1.127,
+                0,
+                0
+              ],
+              [
+                -0.98,
+                -0.294,
+                0
+              ],
+              [
+                -0.98,
+                -0.294,
+                0.245
+              ]
+            ],
+            color: "#d32f2f"
+          },
+          {
+            id: "stern_L_under",
+            verts: [
+              [
+                -0.98,
+                0.49,
+                0.245
+              ],
+              [
+                -0.98,
+                0.49,
+                0
+              ],
+              [
+                -1.127,
+                0,
+                0
+              ],
+              [
+                -1.127,
+                0,
+                0.245
+              ]
+            ],
+            color: "#d32f2f"
+          },
+          {
+            id: "stern_R_under",
+            verts: [
+              [
+                -0.98,
+                -0.49,
+                0.245
+              ],
+              [
+                -0.98,
+                -0.49,
+                0
+              ],
+              [
+                -1.127,
+                0,
+                0
+              ],
+              [
+                -1.127,
+                0,
+                0.245
+              ]
+            ],
+            color: "#d32f2f"
+          },
+          {
+            id: "hull_L_under",
+            verts: [
+              [
+                -0.98,
+                0.49,
+                0
+              ],
+              [
+                0.245,
+                0.49,
+                0
+              ],
+              [
+                0.245,
+                0.49,
+                0.245
+              ],
+              [
+                -0.98,
+                0.49,
+                0.245
+              ]
+            ],
+            color: "#d32f2f"
+          },
+          {
+            id: "hull_R_under",
+            verts: [
+              [
+                0.245,
+                -0.49,
+                0
+              ],
+              [
+                -0.98,
+                -0.49,
+                0
+              ],
+              [
+                -0.98,
+                -0.49,
+                0.245
+              ],
+              [
+                0.245,
+                -0.49,
+                0.245
+              ]
+            ],
+            color: "#d32f2f"
+          },
+          {
+            id: "bow_L_1_under",
+            verts: [
+              [
+                0.245,
+                0.49,
+                0
+              ],
+              [
+                0.735,
+                0.343,
+                0
+              ],
+              [
+                0.735,
+                0.343,
+                0.245
+              ],
+              [
+                0.245,
+                0.49,
+                0.245
+              ]
+            ],
+            color: "#d32f2f"
+          },
+          {
+            id: "bow_R_1_under",
+            verts: [
+              [
+                0.735,
+                -0.343,
+                0
+              ],
+              [
+                0.245,
+                -0.49,
+                0
+              ],
+              [
+                0.245,
+                -0.49,
+                0.245
+              ],
+              [
+                0.735,
+                -0.343,
+                0.245
+              ]
+            ],
+            color: "#d32f2f"
+          },
+          {
+            id: "bow_tip_L_under",
+            verts: [
+              [
+                0.735,
+                0.343,
+                0
+              ],
+              [
+                1.225,
+                0,
+                0
+              ],
+              [
+                1.225,
+                0,
+                0.245
+              ],
+              [
+                0.735,
+                0.343,
+                0.245
+              ]
+            ],
+            color: "#d32f2f"
+          },
+          {
+            id: "bow_tip_R_under",
+            verts: [
+              [
+                1.225,
+                0,
+                0
+              ],
+              [
+                0.735,
+                -0.343,
+                0
+              ],
+              [
+                0.735,
+                -0.343,
+                0.245
+              ],
+              [
+                1.225,
+                0,
+                0.245
+              ]
+            ],
+            color: "#d32f2f"
+          },
+          {
+            id: "fender_stern_mid",
+            verts: [
+              [
+                -1.127,
+                0,
+                0.49
+              ],
+              [
+                -1.127,
+                0,
+                0.245
+              ],
+              [
+                -0.98,
+                -0.294,
+                0.245
+              ],
+              [
+                -0.98,
+                -0.294,
+                0.49
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "fender_stern_L",
+            verts: [
+              [
+                -0.98,
+                0.49,
+                0.49
+              ],
+              [
+                -0.98,
+                0.49,
+                0.245
+              ],
+              [
+                -1.127,
+                0,
+                0.245
+              ],
+              [
+                -1.127,
+                0,
+                0.49
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "fender_stern_R",
+            verts: [
+              [
+                -0.98,
+                -0.49,
+                0.49
+              ],
+              [
+                -0.98,
+                -0.49,
+                0.245
+              ],
+              [
+                -1.127,
+                0,
+                0.245
+              ],
+              [
+                -1.127,
+                0,
+                0.49
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "fender_L",
+            verts: [
+              [
+                -0.98,
+                0.49,
+                0.245
+              ],
+              [
+                0.245,
+                0.49,
+                0.245
+              ],
+              [
+                0.245,
+                0.49,
+                0.49
+              ],
+              [
+                -0.98,
+                0.49,
+                0.49
+              ]
+            ],
+            color: "#1a1a1a"
+          },
+          {
+            id: "fender_R",
+            verts: [
+              [
+                0.245,
+                -0.49,
+                0.245
+              ],
+              [
+                -0.98,
+                -0.49,
+                0.245
+              ],
+              [
+                -0.98,
+                -0.49,
+                0.49
+              ],
+              [
+                0.245,
+                -0.49,
+                0.49
+              ]
+            ],
+            color: "#1a1a1a"
+          },
+          {
+            id: "fender_bow_L",
+            verts: [
+              [
+                0.245,
+                0.49,
+                0.245
+              ],
+              [
+                0.735,
+                0.343,
+                0.245
+              ],
+              [
+                0.735,
+                0.343,
+                0.539
+              ],
+              [
+                0.245,
+                0.49,
+                0.49
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "fender_bow_R",
+            verts: [
+              [
+                0.735,
+                -0.343,
+                0.245
+              ],
+              [
+                0.245,
+                -0.49,
+                0.245
+              ],
+              [
+                0.245,
+                -0.49,
+                0.49
+              ],
+              [
+                0.735,
+                -0.343,
+                0.539
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "fender_tip_L",
+            verts: [
+              [
+                0.735,
+                0.343,
+                0.245
+              ],
+              [
+                1.225,
+                0,
+                0.245
+              ],
+              [
+                1.225,
+                0,
+                0.637
+              ],
+              [
+                0.735,
+                0.343,
+                0.539
+              ]
+            ],
+            color: "#2a2a2a"
+          },
+          {
+            id: "fender_tip_R",
+            verts: [
+              [
+                1.225,
+                0,
+                0.245
+              ],
+              [
+                0.735,
+                -0.343,
+                0.245
+              ],
+              [
+                0.735,
+                -0.343,
+                0.539
+              ],
+              [
+                1.225,
+                0,
+                0.637
+              ]
+            ],
+            color: "#2a2a2a"
+          },
+          {
+            id: "deck_main",
+            verts: [
+              [
+                -1.127,
+                0,
+                0.49
+              ],
+              [
+                -0.98,
+                0.49,
+                0.49
+              ],
+              [
+                0.245,
+                0.49,
+                0.49
+              ],
+              [
+                0.245,
+                -0.49,
+                0.49
+              ],
+              [
+                -0.98,
+                -0.49,
+                0.49
+              ]
+            ],
+            color: "#444444"
+          },
+          {
+            id: "deck_bow",
+            verts: [
+              [
+                0.245,
+                0.49,
+                0.49
+              ],
+              [
+                0.735,
+                0.343,
+                0.539
+              ],
+              [
+                1.225,
+                0,
+                0.637
+              ],
+              [
+                0.735,
+                -0.343,
+                0.539
+              ],
+              [
+                0.245,
+                -0.49,
+                0.49
+              ]
+            ],
+            color: "#3f3f3f"
+          },
+          {
+            id: "cab_f_L",
+            normal: [
+              1,
+              1
+            ],
+            verts: [
+              [
+                0.245,
+                0,
+                0.98
+              ],
+              [
+                0.049,
+                0.196,
+                0.98
+              ],
+              [
+                0.049,
+                0.196,
+                0.49
+              ],
+              [
+                0.245,
+                0,
+                0.49
+              ]
+            ],
+            color: "#d9d9d9"
+          },
+          {
+            id: "cab_f_R",
+            normal: [
+              1,
+              -1
+            ],
+            verts: [
+              [
+                0.049,
+                -0.196,
+                0.98
+              ],
+              [
+                0.245,
+                0,
+                0.98
+              ],
+              [
+                0.245,
+                0,
+                0.49
+              ],
+              [
+                0.049,
+                -0.196,
+                0.49
+              ]
+            ],
+            color: "#d9d9d9"
+          },
+          {
+            id: "cab_l",
+            normal: [
+              0,
+              1
+            ],
+            verts: [
+              [
+                -0.392,
+                0.2695,
+                0.98
+              ],
+              [
+                0.049,
+                0.196,
+                0.98
+              ],
+              [
+                0.049,
+                0.196,
+                0.49
+              ],
+              [
+                -0.392,
+                0.2695,
+                0.49
+              ]
+            ],
+            color: "#d9d9d9"
+          },
+          {
+            id: "cab_r",
+            normal: [
+              0,
+              -1
+            ],
+            verts: [
+              [
+                0.049,
+                -0.196,
+                0.98
+              ],
+              [
+                -0.392,
+                -0.2695,
+                0.98
+              ],
+              [
+                -0.392,
+                -0.2695,
+                0.49
+              ],
+              [
+                0.049,
+                -0.196,
+                0.49
+              ]
+            ],
+            color: "#d9d9d9"
+          },
+          {
+            id: "cab_b",
+            normal: [
+              -1,
+              0
+            ],
+            verts: [
+              [
+                -0.392,
+                -0.2695,
+                0.98
+              ],
+              [
+                -0.392,
+                0.2695,
+                0.98
+              ],
+              [
+                -0.392,
+                0.2695,
+                0.49
+              ],
+              [
+                -0.392,
+                -0.2695,
+                0.49
+              ]
+            ],
+            color: "#d9d9d9"
+          },
+          {
+            id: "door_b",
+            normal: [
+              -1,
+              0
+            ],
+            verts: [
+              [
+                -0.392,
+                -0.0882,
+                0.49
+              ],
+              [
+                -0.392,
+                -0.0882,
+                0.8575
+              ],
+              [
+                -0.392,
+                0.0882,
+                0.8575
+              ],
+              [
+                -0.392,
+                0.0882,
+                0.49
+              ]
+            ],
+            color: "#222222",
+            stroke: "#111111"
+          },
+          {
+            id: "win_f_L",
+            normal: [
+              1,
+              1
+            ],
+            verts: [
+              [
+                0.1862,
+                0.049,
+                0.6615
+              ],
+              [
+                0.1862,
+                0.049,
+                0.9065
+              ],
+              [
+                0.0882,
+                0.1372,
+                0.9065
+              ],
+              [
+                0.0882,
+                0.1372,
+                0.6615
+              ]
+            ],
+            color: "#1a3a5c"
+          },
+          {
+            id: "win_f_R",
+            normal: [
+              1,
+              -1
+            ],
+            verts: [
+              [
+                0.0882,
+                -0.1372,
+                0.6615
+              ],
+              [
+                0.0882,
+                -0.1372,
+                0.9065
+              ],
+              [
+                0.1862,
+                -0.049,
+                0.9065
+              ],
+              [
+                0.1862,
+                -0.049,
+                0.6615
+              ]
+            ],
+            color: "#1a3a5c"
+          },
+          {
+            id: "roof",
+            verts: [
+              [
+                0.245,
+                0,
+                0.98
+              ],
+              [
+                0.049,
+                0.196,
+                0.98
+              ],
+              [
+                -0.392,
+                0.2695,
+                0.98
+              ],
+              [
+                -0.392,
+                -0.2695,
+                0.98
+              ],
+              [
+                0.049,
+                -0.196,
+                0.98
+              ]
+            ],
+            color: "#ff5500"
+          },
+          {
+            id: "exhaust_pipe",
+            verts: [
+              [
+                -0.3675,
+                0.049,
+                1.176
+              ],
+              [
+                -0.343,
+                0.049,
+                1.176
+              ],
+              [
+                -0.294,
+                0.049,
+                0.98
+              ],
+              [
+                -0.3185,
+                0.049,
+                0.98
+              ]
+            ],
+            color: "#333333"
+          },
+          {
+            id: "antenna_base",
+            verts: [
+              [
+                -0.2842,
+                588e-5,
+                1.0094
+              ],
+              [
+                -0.2842,
+                -588e-5,
+                1.0094
+              ],
+              [
+                -0.2842,
+                -588e-5,
+                0.98
+              ],
+              [
+                -0.2842,
+                588e-5,
+                0.98
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "antenna_needle",
+            verts: [
+              [
+                -0.4998,
+                588e-5,
+                1.6562
+              ],
+              [
+                -0.4998,
+                -588e-5,
+                1.6562
+              ],
+              [
+                -0.2695,
+                -588e-5,
+                1.0094
+              ],
+              [
+                -0.2695,
+                588e-5,
+                1.0094
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "radar_mast",
+            verts: [
+              [
+                -0.1568,
+                0.01225,
+                1.0437
+              ],
+              [
+                -0.1568,
+                -0.01225,
+                1.0437
+              ],
+              [
+                -0.1568,
+                -0.01225,
+                0.98
+              ],
+              [
+                -0.1568,
+                0.01225,
+                0.98
+              ]
+            ],
+            color: "#999999"
+          }
+        ],
+        children: [
+          {
+            rotate: {
+              pivot: [
+                -0.1568,
+                0,
+                1.0437
+              ],
+              axis: [
+                0,
+                0,
+                1
+              ],
+              animate: {
+                type: "spin",
+                speed: 2e-3
+              }
+            },
+            faces: [
+              {
+                id: "radar_arm",
+                verts: [
+                  [
+                    -0.1029,
+                    -0.07546,
+                    0.73059
+                  ],
+                  [
+                    -0.1029,
+                    0.07546,
+                    0.73059
+                  ],
+                  [
+                    -0.11662,
+                    0.07546,
+                    0.73059
+                  ],
+                  [
+                    -0.11662,
+                    -0.07546,
+                    0.73059
+                  ]
+                ],
+                color: "#cccccc"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  // ../src/game/models/pilot_boat.zdef
+  var pilot_boat_default = {
+    version: 2,
+    id: "pilot_boat_v8_final",
+    collisionBoxes: [
+      {
+        id: "hull",
+        xMin: -1.127,
+        xMax: 1.225,
+        yMin: -0.49,
+        yMax: 0.49,
+        zMin: 0,
+        zMax: 0.49
+      },
+      {
+        id: "cabin",
+        xMin: -0.392,
+        xMax: 0.196,
+        yMin: -0.294,
+        yMax: 0.294,
+        zMin: 0.49,
+        zMax: 0.98
+      }
+    ],
+    nodes: [
+      {
+        faces: [
+          {
+            id: "stern_mid",
+            verts: [
+              [
+                -1.127,
+                0,
+                0.49
+              ],
+              [
+                -1.127,
+                0,
+                0
+              ],
+              [
+                -0.98,
+                -0.294,
+                0
+              ],
+              [
+                -0.98,
+                -0.294,
+                0.49
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "stern_L",
+            verts: [
+              [
+                -0.98,
+                0.49,
+                0.49
+              ],
+              [
+                -0.98,
+                0.49,
+                0
+              ],
+              [
+                -1.127,
+                0,
+                0
+              ],
+              [
+                -1.127,
+                0,
+                0.49
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "stern_R",
+            verts: [
+              [
+                -0.98,
+                -0.49,
+                0.49
+              ],
+              [
+                -0.98,
+                -0.49,
+                0
+              ],
+              [
+                -1.127,
+                0,
+                0
+              ],
+              [
+                -1.127,
+                0,
+                0.49
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "hull_L",
+            verts: [
+              [
+                -0.98,
+                0.49,
+                0
+              ],
+              [
+                0.245,
+                0.49,
+                0
+              ],
+              [
+                0.245,
+                0.49,
+                0.49
+              ],
+              [
+                -0.98,
+                0.49,
+                0.49
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "hull_R",
+            verts: [
+              [
+                0.245,
+                -0.49,
+                0
+              ],
+              [
+                -0.98,
+                -0.49,
+                0
+              ],
+              [
+                -0.98,
+                -0.49,
+                0.49
+              ],
+              [
+                0.245,
+                -0.49,
+                0.49
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "bow_L_1",
+            verts: [
+              [
+                0.245,
+                0.49,
+                0
+              ],
+              [
+                0.735,
+                0.343,
+                0
+              ],
+              [
+                0.735,
+                0.343,
+                0.539
+              ],
+              [
+                0.245,
+                0.49,
+                0.49
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "bow_R_1",
+            verts: [
+              [
+                0.735,
+                -0.343,
+                0
+              ],
+              [
+                0.245,
+                -0.49,
+                0
+              ],
+              [
+                0.245,
+                -0.49,
+                0.539
+              ],
+              [
+                0.735,
+                -0.343,
+                0.539
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "bow_tip_L",
+            verts: [
+              [
+                0.735,
+                0.343,
+                0
+              ],
+              [
+                1.225,
+                0,
+                0
+              ],
+              [
+                1.225,
+                0,
+                0.637
+              ],
+              [
+                0.735,
+                0.343,
+                0.539
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "bow_tip_R",
+            verts: [
+              [
+                1.225,
+                0,
+                0
+              ],
+              [
+                0.735,
+                -0.343,
+                0
+              ],
+              [
+                0.735,
+                -0.343,
+                0.539
+              ],
+              [
+                1.225,
+                0,
+                0.637
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "deck_main",
+            verts: [
+              [
+                -1.127,
+                0,
+                0.49
+              ],
+              [
+                -0.98,
+                0.49,
+                0.49
+              ],
+              [
+                0.245,
+                0.49,
+                0.49
+              ],
+              [
+                0.245,
+                -0.49,
+                0.49
+              ],
+              [
+                -0.98,
+                -0.49,
+                0.49
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "deck_bow",
+            verts: [
+              [
+                0.245,
+                0.49,
+                0.49
+              ],
+              [
+                0.735,
+                0.343,
+                0.539
+              ],
+              [
+                1.225,
+                0,
+                0.637
+              ],
+              [
+                0.735,
+                -0.343,
+                0.539
+              ],
+              [
+                0.245,
+                -0.49,
+                0.49
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "cab_f_L",
+            normal: [
+              1,
+              1
+            ],
+            verts: [
+              [
+                0.196,
+                0,
+                0.98
+              ],
+              [
+                0.049,
+                0.196,
+                0.98
+              ],
+              [
+                0.049,
+                0.196,
+                0.49
+              ],
+              [
+                0.196,
+                0,
+                0.49
+              ]
+            ],
+            color: "#cc9900"
+          },
+          {
+            id: "cab_f_R",
+            normal: [
+              1,
+              -1
+            ],
+            verts: [
+              [
+                0.049,
+                -0.196,
+                0.98
+              ],
+              [
+                0.196,
+                0,
+                0.98
+              ],
+              [
+                0.196,
+                0,
+                0.49
+              ],
+              [
+                0.049,
+                -0.196,
+                0.49
+              ]
+            ],
+            color: "#cc9900"
+          },
+          {
+            id: "cab_l",
+            normal: [
+              0,
+              1
+            ],
+            verts: [
+              [
+                -0.392,
+                0.294,
+                0.98
+              ],
+              [
+                0.049,
+                0.196,
+                0.98
+              ],
+              [
+                0.049,
+                0.196,
+                0.49
+              ],
+              [
+                -0.392,
+                0.294,
+                0.49
+              ]
+            ],
+            color: "#cc9900"
+          },
+          {
+            id: "cab_r",
+            normal: [
+              0,
+              -1
+            ],
+            verts: [
+              [
+                0.049,
+                -0.196,
+                0.98
+              ],
+              [
+                -0.392,
+                -0.294,
+                0.98
+              ],
+              [
+                -0.392,
+                -0.294,
+                0.49
+              ],
+              [
+                0.049,
+                -0.196,
+                0.49
+              ]
+            ],
+            color: "#cc9900"
+          },
+          {
+            id: "cab_b",
+            normal: [
+              -1,
+              0
+            ],
+            verts: [
+              [
+                -0.392,
+                -0.294,
+                0.98
+              ],
+              [
+                -0.392,
+                0.294,
+                0.98
+              ],
+              [
+                -0.392,
+                0.294,
+                0.49
+              ],
+              [
+                -0.392,
+                -0.294,
+                0.49
+              ]
+            ],
+            color: "#cc9900"
+          },
+          {
+            id: "door_b",
+            normal: [
+              -1,
+              0
+            ],
+            verts: [
+              [
+                -0.392,
+                -0.098,
+                0.49
+              ],
+              [
+                -0.392,
+                -0.098,
+                0.833
+              ],
+              [
+                -0.392,
+                0.098,
+                0.833
+              ],
+              [
+                -0.392,
+                0.098,
+                0.49
+              ]
+            ],
+            color: "#664400",
+            stroke: "#332200"
+          },
+          {
+            id: "win_f_L",
+            normal: [
+              1,
+              1
+            ],
+            verts: [
+              [
+                0.1519,
+                0.049,
+                0.686
+              ],
+              [
+                0.1519,
+                0.049,
+                0.882
+              ],
+              [
+                0.0931,
+                0.1372,
+                0.882
+              ],
+              [
+                0.0931,
+                0.1372,
+                0.686
+              ]
+            ],
+            color: "#336699"
+          },
+          {
+            id: "win_f_R",
+            normal: [
+              1,
+              -1
+            ],
+            verts: [
+              [
+                0.0931,
+                -0.1372,
+                0.686
+              ],
+              [
+                0.0931,
+                -0.1372,
+                0.882
+              ],
+              [
+                0.1519,
+                -0.049,
+                0.882
+              ],
+              [
+                0.1519,
+                -0.049,
+                0.686
+              ]
+            ],
+            color: "#336699"
+          },
+          {
+            id: "roof",
+            verts: [
+              [
+                0.196,
+                0,
+                0.98
+              ],
+              [
+                0.049,
+                0.196,
+                0.98
+              ],
+              [
+                -0.392,
+                0.294,
+                0.98
+              ],
+              [
+                -0.392,
+                -0.294,
+                0.98
+              ],
+              [
+                0.049,
+                -0.196,
+                0.98
+              ]
+            ],
+            color: "#cc9900"
+          },
+          {
+            id: "antenna_base",
+            verts: [
+              [
+                -0.2842,
+                588e-5,
+                1.0094
+              ],
+              [
+                -0.2842,
+                -588e-5,
+                1.0094
+              ],
+              [
+                -0.2842,
+                -588e-5,
+                0.98
+              ],
+              [
+                -0.2842,
+                588e-5,
+                0.98
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "antenna_needle",
+            verts: [
+              [
+                -0.4998,
+                588e-5,
+                1.6562
+              ],
+              [
+                -0.4998,
+                -588e-5,
+                1.6562
+              ],
+              [
+                -0.2695,
+                -588e-5,
+                1.0094
+              ],
+              [
+                -0.2695,
+                588e-5,
+                1.0094
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "radar_mast",
+            verts: [
+              [
+                -0.1568,
+                0.01225,
+                1.0437
+              ],
+              [
+                -0.1568,
+                -0.01225,
+                1.0437
+              ],
+              [
+                -0.1568,
+                -0.01225,
+                0.98
+              ],
+              [
+                -0.1568,
+                0.01225,
+                0.98
+              ]
+            ],
+            color: "#999999"
+          }
+        ],
+        children: [
+          {
+            rotate: {
+              pivot: [
+                -0.1568,
+                0,
+                1.0437
+              ],
+              axis: [
+                0,
+                0,
+                1
+              ],
+              animate: {
+                type: "spin",
+                speed: 2e-3
+              }
+            },
+            faces: [
+              {
+                id: "radar_arm",
+                verts: [
+                  [
+                    -0.1029,
+                    -0.07546,
+                    0.73059
+                  ],
+                  [
+                    -0.1029,
+                    0.07546,
+                    0.73059
+                  ],
+                  [
+                    -0.11662,
+                    0.07546,
+                    0.73059
+                  ],
+                  [
+                    -0.11662,
+                    -0.07546,
+                    0.73059
+                  ]
+                ],
+                color: "#cccccc"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
   // editor-view/render.ts
+  var _DEF_MAP = {
+    lighthouse: { def: lighthouse_default, v2: false },
+    wind_turbine: { def: wind_turbine_default, v2: false },
+    buoy: { def: buoy_default, v2: false },
+    baywatch_car: { def: baywatch_car_default, v2: false },
+    baywatch_hq: { def: baywatch_hq_default, v2: false },
+    baywatch_tower: { def: baywatch_tower_default, v2: false },
+    concert_stage: { def: concert_stage_default, v2: false },
+    festival_tent: { def: festival_tent_default, v2: false },
+    festival_tent_broken: { def: festival_tent_broken_default, v2: false },
+    festival_car: { def: festival_car_default, v2: false },
+    xmas_house_a: { def: xmas_house_a_default, v2: false },
+    xmas_house_b: { def: xmas_house_b_default, v2: false },
+    xmas_lantern: { def: xmas_lantern_default, v2: false },
+    sleigh: { def: sleigh_default, v2: false },
+    reindeer: { def: reindeer_default, v2: false },
+    volleyball_court: { def: volleyball_court_default, v2: false },
+    hangar_tower: { def: hangar_tower_default, v2: false },
+    plane_wreck: { def: plane_wreck_default, v2: false },
+    sailboat_broken: { def: sailboat_broken_default, v2: false },
+    research_platform: { def: research_platform_default, v2: false },
+    submarine: { def: submarine_default, v2: false },
+    carrier: { def: carrier_default, v2: true },
+    frigate: { def: frigate_default, v2: true },
+    supply_vessel: { def: supply_vessel_default, v2: true },
+    sar_boat: { def: sar_boat_default, v2: true },
+    pilot_boat: { def: pilot_boat_default, v2: true }
+  };
   var BASE_HW = 14;
   var HEIGHT_SCALE = 1.8;
   var _canvas = () => document.getElementById("editorCanvas");
@@ -120,6 +12633,11 @@
     return { gx: (dx / hw + dy / hh) / 2, gy: (dy / hh - dx / hw) / 2 };
   };
   var centerCamera = (gridSize) => {
+    state.zoom = 16 / BASE_HW;
+    state.panX = gridSize / 2;
+    state.panY = gridSize / 2;
+  };
+  var fitCamera = (gridSize) => {
     const c = _canvas();
     const fitW = c.width / (gridSize * 2 * BASE_HW * 1.05);
     const fitH = c.height * 0.9 / (gridSize * BASE_HW * 1.05);
@@ -170,21 +12688,6 @@
     );
     ctx.stroke();
   };
-  var _isoDiamond = (ctx, sx, sy, hw, hh, fill, stroke) => {
-    ctx.beginPath();
-    ctx.moveTo(sx, sy);
-    ctx.lineTo(sx + hw, sy + hh);
-    ctx.lineTo(sx, sy + 2 * hh);
-    ctx.lineTo(sx - hw, sy + hh);
-    ctx.closePath();
-    ctx.fillStyle = fill;
-    ctx.fill();
-    if (stroke) {
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
-  };
   var syncVesselUI = (obj, kind) => {
     const prefix = kind === "carrier" ? "carrier" : kind === "submarine" ? "submarine" : "boat";
     const g = (id) => document.getElementById(id);
@@ -226,6 +12729,20 @@
     const toSY = (gx, gy) => (gx + gy) * hh + oy;
     const wl = m.waterLevel ?? 0;
     const isSnow = !!m.snow;
+    const defTW = hw * 2;
+    const defIso = createIsoFn({ canvas, tileW: defTW, tileH: hh * 2, stepH: hw * 0.78 });
+    const defCamX = canvas.width / 2 - ox;
+    const defCamY = canvas.height / 2 - oy;
+    const defDrawCtx = { ctx, isoFn: defIso, tileW: defTW };
+    const _renderDEF = (def, v2, wx, wy, wz, angle, colors) => {
+      const sr = createSceneRenderer(ctx, defIso);
+      if (v2) {
+        renderNodes(def, {}, { x: wx, y: wy, z: wz, angle }, sr, defCamX, defCamY, defDrawCtx);
+      } else {
+        sr.add(def, { x: wx, y: wy, z: wz, angle, colors });
+      }
+      sr.flush(defCamX, defCamY);
+    };
     const corners = [[0, 0], [W, 0], [0, H], [W, H]].map(([sx, sy]) => {
       const dx = sx - ox, dy = sy - oy;
       return { gx: (dx / hw + dy / hh) / 2, gy: (dy / hh - dx / hw) / 2 };
@@ -290,6 +12807,9 @@
       const isSel = state.selectedObjectIdx === idx;
       const cx = toSX(obj.x + 0.5, obj.y + 0.5);
       const cy = toSY(obj.x + 0.5, obj.y + 0.5);
+      const objAngle = obj.angle ?? 0;
+      const objAngleRad = objAngle * Math.PI / 180;
+      const defEntry = obj.type !== "pad" ? _DEF_MAP[obj.type] : void 0;
       if (isSel) {
         ctx.shadowBlur = 14;
         ctx.shadowColor = "#fff";
@@ -323,21 +12843,27 @@
         if (isSel) {
           const btn = document.getElementById("btn_spawn_pad");
           if (btn) btn.style.background = m.spawnObject === "pad" ? COLORS.uiHighlight : "var(--accent)";
+          const tvSel = document.getElementById("pad_tower_variant");
+          if (tvSel) tvSel.value = obj.towerVariant ?? "classic";
         }
       } else if (obj.type === "carrier" || obj.type === "boat" || obj.type === "pilot_boat" || obj.type === "sar_boat" || obj.type === "salvage_tug" || obj.type === "supply_vessel" || obj.type === "frigate") {
         const isCarrier = obj.type === "carrier";
-        const color = isCarrier ? COLORS.carrierBase : obj.type === "pilot_boat" ? "#ffcc00" : obj.type === "sar_boat" ? "#d32f2f" : obj.type === "salvage_tug" ? "#888" : obj.type === "supply_vessel" ? "#0d233a" : obj.type === "frigate" ? "#5a6673" : "#ddd";
-        const rad = Math.max(4, hw * (isCarrier ? 1.4 : 0.8));
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, rad, rad * 0.6, 0, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
-        if (isSel) {
-          ctx.strokeStyle = "#fff";
-          ctx.lineWidth = 2;
-          ctx.stroke();
+        if (defEntry) {
+          _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, wl, objAngleRad);
+        } else {
+          const color = obj.type === "pilot_boat" ? "#ffcc00" : obj.type === "sar_boat" ? "#d32f2f" : obj.type === "salvage_tug" ? "#888" : obj.type === "supply_vessel" ? "#0d233a" : obj.type === "frigate" ? "#5a6673" : "#ddd";
+          const rad = Math.max(4, hw * 0.8);
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rad, rad * 0.6, 0, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+          if (isSel) {
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
         }
-        _isoArrow(ctx, cx, cy, obj.angle ?? 0, hw, hh, hw * 2.2, "#fff");
+        _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 2.2, "#fff");
         if (obj.path === "circle") {
           const r = obj.radius ?? 40;
           ctx.beginPath();
@@ -358,107 +12884,45 @@
           }
         }
       } else if (obj.type === "submarine") {
-        const rad = Math.max(3, hw * 0.7);
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, rad, rad * 0.55, 0, 0, Math.PI * 2);
-        ctx.fillStyle = "#111c";
-        ctx.fill();
-        if (isSel) {
-          ctx.strokeStyle = "#aaa";
-          ctx.lineWidth = 1.5;
-          ctx.stroke();
+        if (defEntry) {
+          _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, wl, objAngleRad);
+        } else {
+          const rad = Math.max(3, hw * 0.7);
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rad, rad * 0.55, 0, 0, Math.PI * 2);
+          ctx.fillStyle = "#111c";
+          ctx.fill();
+          if (isSel) {
+            ctx.strokeStyle = "#aaa";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
         }
-        _isoArrow(ctx, cx, cy, obj.angle ?? 0, hw, hh, hw * 1.8, "#888");
+        _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.8, "#888");
         if (isSel) {
           _showObjPanel("ui_submarine");
           syncVesselUI(obj, "submarine");
         }
       } else if (obj.type === "lighthouse") {
-        ctx.beginPath();
-        ctx.arc(cx, cy, Math.max(3, hw * 0.7), 0, Math.PI * 2);
-        ctx.fillStyle = COLORS.lighthouseBase;
-        ctx.fill();
-        ctx.beginPath();
-        ctx.arc(cx, cy, Math.max(2, hw * 0.35), 0, Math.PI * 2);
-        ctx.fillStyle = COLORS.lighthouseLight;
-        ctx.fill();
-      } else if (obj.type === "research_platform") {
-        const r = hw * 1.2;
-        _isoDiamond(ctx, cx - hw * 0.5, cy - hh * 0.5, r, r * 0.5, "#666", "#4af");
-        ctx.fillStyle = "#2a8f2a";
-        ctx.fillRect(cx - r, cy - hh * 0.3, r * 0.8, hh * 0.6);
-        ctx.fillStyle = "#fff";
-        ctx.font = `bold ${Math.max(7, hw * 0.55)}px monospace`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("H", cx - r * 0.6, cy);
-        ctx.textBaseline = "alphabetic";
-        ctx.textAlign = "left";
-      } else if (obj.type === "wind_turbine") {
-        ctx.beginPath();
-        ctx.arc(cx, cy, Math.max(2, hw * 0.22), 0, Math.PI * 2);
-        ctx.fillStyle = "#ccc";
-        ctx.fill();
-        ctx.strokeStyle = "#eee";
-        ctx.lineWidth = Math.max(1, hw * 0.12);
-        for (let i = 0; i < 3; i++) {
-          const a = i / 3 * Math.PI * 2;
-          ctx.beginPath();
-          ctx.moveTo(cx, cy);
-          ctx.lineTo(cx + Math.cos(a) * hw * 2.2, cy + Math.sin(a) * hh * 2.2);
-          ctx.stroke();
+        if (defEntry) {
+          _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, 0, objAngleRad);
         }
-        ctx.fillStyle = "#f22";
-        ctx.beginPath();
-        ctx.arc(cx, cy - hw * 0.3, Math.max(2, hw * 0.15), 0, Math.PI * 2);
-        ctx.fill();
+      } else if (obj.type === "research_platform") {
+        if (defEntry) {
+          _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, 0, objAngleRad);
+        }
+      } else if (obj.type === "wind_turbine") {
+        if (defEntry) {
+          const d = defEntry.def;
+          const baked = d.parts?.length ? applyParts(d, {}) : d;
+          _renderDEF(baked, false, obj.x, obj.y, 0, objAngleRad);
+        }
         if (isSel) {
           _showObjPanel("ui_wt");
           const spinEl = document.getElementById("m_wt_spinning");
           if (spinEl) spinEl.checked = !!obj.spinning;
         }
       } else {
-        const typeColors = {
-          plane_wreck: "#d4c022",
-          sailboat_broken: "#933",
-          ornithopter_wreck: "#d0d0d0",
-          baywatch_car: "#cc2200",
-          baywatch_hq: "#cc2200",
-          baywatch_tower: "#d8d0b8",
-          concert_stage: "#7a2aee",
-          festival_tent: "#2266cc",
-          festival_tent_broken: "#6688aa",
-          festival_car: "#9aabb5",
-          xmas_house_a: "#aaddff",
-          xmas_house_b: "#88bbee",
-          xmas_lantern: "#ffee88",
-          sleigh: "#ee3300",
-          reindeer: "#cc8844",
-          ring: "#FFD700"
-        };
-        const color = typeColors[obj.type] || "#aaa";
-        const r = Math.max(3, hw * 0.65);
-        if (obj.type === "ring") {
-          const rr = (obj.radius ?? 2.5) * hw;
-          ctx.beginPath();
-          ctx.ellipse(cx, cy, rr, rr * 0.55, 0, 0, Math.PI * 2);
-          ctx.strokeStyle = isSel ? "#fff" : color;
-          ctx.lineWidth = isSel ? 2.5 : 1.5;
-          ctx.stroke();
-        } else {
-          ctx.beginPath();
-          ctx.ellipse(cx, cy, r, r * 0.55, 0, 0, Math.PI * 2);
-          ctx.fillStyle = color + "cc";
-          ctx.fill();
-          if (isSel) {
-            ctx.strokeStyle = "#fff";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-          }
-          if (obj.angle !== void 0) {
-            _isoArrow(ctx, cx, cy, obj.angle, hw, hh, hw * 1.6, "#fff");
-          }
-        }
         const panelMap = {
           plane_wreck: "ui_plane_wreck",
           sailboat_broken: "ui_sailboat_broken",
@@ -476,9 +12940,40 @@
           sleigh: "ui_sleigh",
           reindeer: "ui_reindeer"
         };
+        if (obj.type === "ring") {
+          const rr = (obj.radius ?? 2.5) * hw;
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, rr, rr * 0.55, 0, 0, Math.PI * 2);
+          ctx.strokeStyle = isSel ? "#fff" : "#FFD700";
+          ctx.lineWidth = isSel ? 2.5 : 1.5;
+          ctx.stroke();
+        } else if (defEntry) {
+          const colors = defEntry.def.palettes && obj.colorVariant ? defEntry.def.palettes[obj.colorVariant] : void 0;
+          _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, 0, objAngleRad, colors);
+          if (obj.angle !== void 0) {
+            _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.6, "rgba(255,255,255,0.5)");
+          }
+        } else {
+          const typeColors = {
+            ornithopter_wreck: "#d0d0d0"
+          };
+          const color = typeColors[obj.type] || "#aaa";
+          const r = Math.max(3, hw * 0.65);
+          ctx.beginPath();
+          ctx.ellipse(cx, cy, r, r * 0.55, 0, 0, Math.PI * 2);
+          ctx.fillStyle = color + "cc";
+          ctx.fill();
+          if (isSel) {
+            ctx.strokeStyle = "#fff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+          if (obj.angle !== void 0) {
+            _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.6, "#fff");
+          }
+        }
         if (isSel && panelMap[obj.type]) {
           _showObjPanel(panelMap[obj.type]);
-          const angleId = obj.type === "xmas_house_a" || obj.type === "xmas_house_b" ? "m_xmas_house_angle" : obj.type === "festival_tent" ? "m_tent_angle" : obj.type === "festival_tent_broken" ? "m_tent_broken_angle" : obj.type === "festival_car" ? "m_fcar_angle" : `m_${obj.type.replace("_wreck", "_wreck").replace("baywatch_car", "bwc").replace("baywatch_hq", "").replace("baywatch_tower", "")}_angle`;
           const simpleId = {
             plane_wreck: "m_pw_angle",
             sailboat_broken: "m_sb_angle",
@@ -556,6 +13051,17 @@
       const ey = toSY(e.x + 0.5, e.y + 0.5);
       const r = Math.max(4, hw * 0.45);
       const isFire = e.type === "fire";
+      if (isFire && (e.radius ?? 0) > 0) {
+        const fireR = e.radius * hw;
+        ctx.globalAlpha = 0.4;
+        ctx.strokeStyle = "#ff8800";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.ellipse(ex, ey, fireR, fireR * 0.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       ctx.globalAlpha = 0.35;
       ctx.fillStyle = isFire ? "#ff6600" : "#888";
       ctx.beginPath();
@@ -1441,6 +13947,74 @@
       popup.style.top = Math.min(cy + 6, vh - 200) + "px";
       popup.style.display = "block";
     };
+    const showEmitterPopup = (idx, cx, cy) => {
+      const m = getCurrentMission();
+      const mAny = m;
+      const em = mAny.particleEmitters?.[idx];
+      if (!em) return;
+      const isFire = em.type === "fire";
+      popup.innerHTML = "";
+      const header = document.createElement("div");
+      header.style.cssText = "display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;border-bottom:1px solid #333;padding-bottom:6px";
+      const title = document.createElement("span");
+      title.style.fontWeight = "bold";
+      title.textContent = isFire ? "\u{1F525} Feuer-Emitter" : "\u{1F4A8} Rauch-Emitter";
+      const closeBtn = document.createElement("span");
+      closeBtn.textContent = "\xD7";
+      closeBtn.style.cssText = "cursor:pointer;color:#f55;font-weight:bold;font-size:16px;margin-left:12px";
+      closeBtn.onclick = hidePopup;
+      header.append(title, closeBtn);
+      popup.appendChild(header);
+      const makeRow = (label, value, step, min, max, color, onChange) => {
+        const row = document.createElement("div");
+        row.style.cssText = "margin:4px 0;display:flex;align-items:center;gap:6px";
+        const lbl = document.createElement("span");
+        lbl.style.cssText = `color:#aaa;min-width:60px;font-size:11px`;
+        lbl.textContent = label;
+        const inp = document.createElement("input");
+        inp.type = "number";
+        inp.value = String(value);
+        inp.step = String(step);
+        inp.min = String(min);
+        inp.max = String(max);
+        inp.style.cssText = `flex:1;background:#111;color:${color};border:1px solid #444;font-family:monospace;font-size:11px;padding:2px 4px;width:60px`;
+        inp.oninput = () => {
+          const v = parseFloat(inp.value);
+          if (!isNaN(v)) onChange(v);
+        };
+        row.append(lbl, inp);
+        return row;
+      };
+      popup.appendChild(makeRow("Z-Offset:", em.zOffset ?? 0, 0.25, -5, 20, "#8fa", (v) => {
+        em.zOffset = v || void 0;
+        drawMap();
+        notifyWorkbench();
+        broadcastPreview();
+      }));
+      if (isFire) {
+        popup.appendChild(makeRow("Radius:", em.radius ?? 0.18, 0.1, 0.1, 5, "#ff9", (v) => {
+          em.radius = v;
+          drawMap();
+          notifyWorkbench();
+          broadcastPreview();
+        }));
+      }
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "\u{1F5D1} Emitter l\xF6schen";
+      delBtn.style.cssText = "width:100%;background:#3a1a1a;border:1px solid #f55;color:#f55;font-size:11px;padding:5px;cursor:pointer;border-radius:3px;font-family:inherit;margin-top:8px";
+      delBtn.onclick = () => {
+        mAny.particleEmitters.splice(idx, 1);
+        hidePopup();
+        drawMap();
+        notifyWorkbench();
+        broadcastPreview();
+      };
+      popup.appendChild(delBtn);
+      const vw = window.innerWidth, vh = window.innerHeight;
+      popup.style.left = Math.min(cx + 6, vw - 200) + "px";
+      popup.style.top = Math.min(cy + 6, vh - 180) + "px";
+      popup.style.display = "block";
+    };
     document.addEventListener("mousedown", (e) => {
       if (!popup.contains(e.target)) hidePopup();
     });
@@ -1504,9 +14078,17 @@
       drawMap();
     };
     getEl("btn-zoom-out").onclick = () => {
-      state.zoom = Math.max(1, state.zoom - 0.5);
+      state.zoom = Math.max(0.2, state.zoom - 0.5);
       clampCamera();
       drawMap();
+    };
+    getEl("btn-fit").onclick = () => {
+      const m = getCurrentMission();
+      if (m) {
+        fitCamera(m.gridSize);
+        clampCamera();
+        drawMap();
+      }
     };
     getEl("btn-resize-map").onclick = () => {
       const m = getCurrentMission();
@@ -1674,6 +14256,13 @@
     safeClick("btn_spawn_pad", () => {
       getCurrentMission().spawnObject = "pad";
       drawMap();
+    });
+    document.getElementById("pad_tower_variant")?.addEventListener("change", (e) => {
+      const m = getCurrentMission();
+      if (!m) return;
+      const pad = m.objects.find((o) => o.type === "pad");
+      if (pad) pad.towerVariant = e.target.value;
+      notifyWorkbench();
     });
     safeClick("btn_spawn_carrier", () => {
       getCurrentMission().spawnObject = "carrier";
@@ -2029,6 +14618,9 @@
           if (!mAny.objectives.some((o) => o.type === "ring_all"))
             mAny.objectives.push({ type: "ring_all" });
           break;
+        case "volleyball_court":
+          m.objects.push({ type: "volleyball_court", x: gx, y: gy, angle: 0 });
+          break;
       }
       renderObjectList();
       drawMap();
@@ -2065,7 +14657,8 @@
           { v: "concert_stage", l: "\u{1F3B8} B\xFChne" },
           { v: "festival_tent", l: "\u{1F3AA} Zelt" },
           { v: "festival_tent_broken", l: "\u{1F3AA} Zelt (kap.)" },
-          { v: "festival_car", l: "\u{1F699} Festival-Auto" }
+          { v: "festival_car", l: "\u{1F699} Festival-Auto" },
+          { v: "volleyball_court", l: "\u{1F3D0} Volleyball" }
         ] },
         { cat: "Load", emoji: "\u{1F4E6}", items: [
           { v: "person", l: "\u{1F7E1} Person" },
@@ -2228,7 +14821,7 @@
           if (obj.type === "pad") hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
           else if (["carrier", "boat", "pilot_boat", "sar_boat", "salvage_tug", "supply_vessel", "frigate", "submarine"].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
-          else if (["lighthouse", "research_platform", "wind_turbine"].includes(obj.type))
+          else if (["lighthouse", "research_platform", "wind_turbine", "buoy"].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
           else if ([
             "plane_wreck",
@@ -2247,6 +14840,8 @@
             "reindeer"
           ].includes(obj.type))
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
+          else if (obj.type === "volleyball_court")
+            hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
           else if (obj.type === "xmas_lantern")
             hit = Math.hypot(gx - obj.x, gy - obj.y) < 2.5;
           else if (obj.type === "ring")
@@ -2400,6 +14995,8 @@
           const clickedObj = getCurrentMission()?.objects[state.dragItemIdx];
           if (clickedObj?.type === "ring")
             showRingPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
+        } else if (!state.dragHasMoved && state.dragItemType === "emitter" && state.dragItemIdx !== null) {
+          showEmitterPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
         }
         state.isDraggingItem = false;
         state.dragItemType = null;

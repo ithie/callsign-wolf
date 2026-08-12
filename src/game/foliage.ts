@@ -12,7 +12,8 @@ type DrawTreeFn = (
     scale: number,
     gz: number,
     type: string,
-    wind: WindState
+    wind: WindState,
+    heliPos?: { x: number; y: number; z: number }
 ) => void;
 
 type EntryOpts = { x: number; y: number; depth: number; drawFn: (camX: number, camY: number) => void };
@@ -62,7 +63,7 @@ export const createFoliage = (opts: {
             const treeType = t.type || 'pine';
             t._entry = {
                 x: t.x, y: t.y, depth: t.x + t.y,
-                drawFn: (cx: number, cy: number) => drawTree(t.x, t.y, cx, cy, t.s, t.gz, treeType, G.wind),
+                drawFn: (cx: number, cy: number) => drawTree(t.x, t.y, cx, cy, t.s, t.gz, treeType, G.wind, G.heli),
             } as EntryOpts;
         });
     };

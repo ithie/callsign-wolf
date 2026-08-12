@@ -7,8 +7,10 @@ import {
     migrateSession,
     getCampaignsDone,
     getMissionsDone,
+    isUnlocked,
     type PlayerSession,
 } from '../../session';
+import * as Paywall from '../paywall/paywall';
 import { rankBadgeHtml } from '../rank-badge/rank-badge';
 import { createSettingsBtn } from '../settings-btn/settings-btn';
 import { showScreen, showScreenCrtEnter } from '../nav';
@@ -72,6 +74,7 @@ export const mount = () => {
     codeDisplay.id = 'settings-code-display';
     codeDisplay.textContent = '—';
     const codeField = document.createElement('div');
+    codeField.id = 'settings-code-field';
     codeField.className = 'settings-field';
     codeField.style.marginTop = '8px';
     const codeLbl = document.createElement('label');
@@ -92,6 +95,7 @@ export const mount = () => {
     importMsg.id = 'import-code-msg';
     importMsg.style.cssText = 'font-size:12px;letter-spacing:2px;min-height:18px;margin-top:4px';
     const importField = document.createElement('div');
+    importField.id = 'settings-import-field';
     importField.className = 'settings-field';
     const importLbl = document.createElement('label');
     importLbl.textContent = I18N.PILOT_IMPORT;
@@ -131,6 +135,16 @@ export const mount = () => {
 
     audioSection.append(musicField, sfxField, langField);
 
+    // IAP restore section (only when not yet unlocked)
+    const iapSection = document.createElement('div');
+    iapSection.id = 'settings-iap-section';
+    iapSection.style.cssText = 'margin-top:20px;border-top:1px solid #1a1a2e;padding-top:16px;width:100%;display:flex;flex-direction:column;align-items:center;gap:8px';
+    const iapRestoreBtn = createSettingsBtn(I18N.IAP_RESTORE, { id: 'iap-restore-btn' });
+    const iapStatus = document.createElement('div');
+    iapStatus.id = 'iap-restore-status';
+    iapStatus.style.cssText = 'font-size:12px;letter-spacing:2px;min-height:18px';
+    iapSection.append(iapRestoreBtn, iapStatus);
+
     // Delete section
     const deleteSection = document.createElement('div');
     deleteSection.style.cssText = 'margin-top:20px;border-top:1px solid #1a1a2e;padding-top:16px;width:100%;display:flex;flex-direction:column;align-items:center';
@@ -140,11 +154,14 @@ export const mount = () => {
     deleteMsg.style.cssText = 'font-size:12px;letter-spacing:2px;color:#c44;min-height:18px;margin-top:6px';
     deleteSection.append(deleteBtn, deleteMsg);
 
-    body.append(badge, callsignField, stats, codeField, importField, audioSection, deleteSection);
+    body.append(badge, callsignField, stats, codeField, importField, audioSection, iapSection, deleteSection);
 
     // Event wiring
     applyBtn.addEventListener('click', applySaveCode);
     deleteBtn.addEventListener('click', deleteSessionData);
+    iapRestoreBtn.addEventListener('click', () => {
+        Paywall.show(() => showScreenCrtEnter('settings-screen'));
+    });
     musicOn.addEventListener('click',  () => { _deps.setMusicEnabled(true);  _refreshAudioButtons(); });
     musicOff.addEventListener('click', () => { _deps.setMusicEnabled(false); _refreshAudioButtons(); });
     sfxOn.addEventListener('click',    () => { _deps.setSfxEnabled(true);    _refreshAudioButtons(); });
@@ -202,6 +219,13 @@ const _refreshSettingsScreen = () => {
 
 export const show = () => {
     _refreshSettingsScreen();
+    const unlocked = isUnlocked();
+    const iapSection = document.getElementById('settings-iap-section');
+    if (iapSection) iapSection.style.display = unlocked ? 'none' : 'flex';
+    const codeFieldEl = document.getElementById('settings-code-field');
+    if (codeFieldEl) codeFieldEl.style.display = unlocked ? '' : 'none';
+    const importFieldEl = document.getElementById('settings-import-field');
+    if (importFieldEl) importFieldEl.style.display = unlocked ? '' : 'none';
     const session = _deps.getSession();
     const input = document.getElementById('player-name-input') as HTMLInputElement;
     input.value = session.playerName || '';

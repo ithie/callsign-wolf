@@ -7,6 +7,7 @@ export type SwipeCarouselOpts<T> = {
     renderDetail?: (item: T, close: () => void) => HTMLElement | null;
     isLocked?: (item: T) => boolean;
     onTap?: (item: T) => void;
+    onLockedTap?: (item: T) => void;
     onDetailClose?: () => void;
     haptic?: () => void;
 };
@@ -27,7 +28,7 @@ const DRAG_THRESHOLD = 20;
 const AXIS_LOCK_THRESHOLD = 10;
 
 export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement => {
-    const { items, renderCard, renderStamp, renderDetail, isLocked, onTap, onDetailClose } = opts;
+    const { items, renderCard, renderStamp, renderDetail, isLocked, onTap, onLockedTap, onDetailClose } = opts;
 
     const root = document.createElement('div');
     root.className = 'swipe-carousel';
@@ -135,7 +136,13 @@ export const createSwipeCarousel = <T>(opts: SwipeCarouselOpts<T>): HTMLElement 
 
     const _onCardTap = (i: number) => {
         const locked = isLocked?.(items[i]) ?? false;
-        if (locked) return;
+        if (locked) {
+            if (onLockedTap) {
+                if (state.index !== i) _goTo(i);
+                onLockedTap(items[i]);
+            }
+            return;
+        }
 
         if (renderDetail) {
             _openDetail(i); // overlay covers screen — no need to scroll first

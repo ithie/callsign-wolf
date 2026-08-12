@@ -36,6 +36,7 @@ import * as MissionSelect from './ui/mission-select/mission-select';
 import * as CampaignSelect from './ui/campaign-select/campaign-select';
 import * as CampaignCompleteScreen from './ui/campaign-complete-screen/campaign-complete-screen';
 import * as CampaignEndScreen from './ui/campaign-end-screen/campaign-end-screen';
+import * as Paywall from './ui/paywall/paywall';
 import { showScreen } from './ui/nav';
 import { mountMinimap } from './ui/minimap/minimap';
 import { createHud } from './ui/hud/hud';
@@ -455,6 +456,7 @@ const mountGameScreens = () => {
     MissionSelect.mount();
     CampaignSelect.mount();
     HeliSelect.mount();
+    Paywall.mount();
     CampaignCompleteScreen.mount(Flow.returnToCampaignSelect);
     CampaignEndScreen.mount(() => { CampaignEndScreen.hide(); showScreen('main-menu'); soundHandler.play('maintheme'); });
 };
@@ -483,7 +485,7 @@ const _previewLaunch = !import.meta.env.DEV
           const objs = missionData.objects || [];
           const padObj = objs.find((o: any) => o.type === VESSEL.PAD) ||
               objs.find((o: any) => o.type === VESSEL.CARRIER) || { x: 10, y: 10 };
-          G.PAD = { xMin: padObj.x, xMax: padObj.x + 7, yMin: padObj.y, yMax: padObj.y + 7, z: 0.5 };
+          G.PAD = { xMin: padObj.x, xMax: padObj.x + 7, yMin: padObj.y, yMax: padObj.y + 7, z: 0.5, towerVariant: padObj.towerVariant };
           G.START_POS = { x: padObj.x + 4, y: padObj.y + 4 };
           initGrid(missionData.gridSize, G.points);
 
@@ -653,7 +655,7 @@ window.onload = () => {
                 _onloadPreview();
                 return;
             }
-            await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, 'z_music', 'z_sfx', 'z_heli_color']);
+            await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, 'z_music', 'z_sfx', 'z_heli_color', 'z_unlocked']);
             Flow.setSession(loadSession());
             const _sl = storageGet(LANG_PREF_KEY);
             if (_sl === 'de' || _sl === 'en') setLanguage(_sl);

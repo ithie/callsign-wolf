@@ -418,6 +418,10 @@ export const initStaticObjectsFromMission = () => {
         x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
         gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
     }));
+    G.VOLLEYBALL_COURTS = getObjectsByType(VESSEL.VOLLEYBALL_COURT).map((obj: any) => ({
+        x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+        gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+    }));
     const missionData = campaignHandler.getCurrentMissionData() as any;
     const _startOnboard = Math.max(0, Math.min(6, missionData?.startOnboard ?? 0));
     const _spawnOnboardPersons = (missionData?.payloads ?? []).filter(
@@ -434,6 +438,7 @@ export const initStaticObjectsFromMission = () => {
         x: e.x,
         y: e.y,
         gz: getGround(e.x, e.y, G.points, G.CARRIER) + (e.zOffset ?? 0),
+        radius: e.radius as number | undefined,
         particles: [] as any[],
         spawnTimer: 0,
     }));
@@ -448,6 +453,16 @@ export const initStaticObjectsFromMission = () => {
         const cx = h.x + h.chimneyPos.x * c - h.chimneyPos.y * s;
         const cy = h.y + h.chimneyPos.x * s + h.chimneyPos.y * c;
         G.PARTICLE_EMITTERS.push({ type: 'chimney', x: cx, y: cy, gz: h.gz + h.chimneyPos.z, particles: [], spawnTimer: 0 });
+    });
+    G.PLANE_WRECKS.forEach((pw: any) => {
+        G.PARTICLE_EMITTERS.push({
+            type: 'wreck_smoke',
+            x: pw.x, y: pw.y,
+            gz: getGround(pw.x, pw.y, G.points, G.CARRIER) + 0.4,
+            radius: 0.14,
+            particles: [],
+            spawnTimer: Math.random() * 9,
+        });
     });
 };
 

@@ -30,6 +30,7 @@ export const VESSEL = {
     XMAS_LANTERN:       'xmas_lantern',
     SLEIGH:             'sleigh',
     REINDEER:           'reindeer',
+    VOLLEYBALL_COURT:   'volleyball_court',
 } as const;
 
 export const PAYLOAD = {
@@ -93,7 +94,7 @@ export const PARTICLE_EMITTER_TYPE = {
 export type ParticleEmitterType = typeof PARTICLE_EMITTER_TYPE[keyof typeof PARTICLE_EMITTER_TYPE];
 export type ParticleEmitter = { type: ParticleEmitterType; x: number; y: number };
 
-type PadObject = { type: 'pad'; x: number; y: number };
+type PadObject = { type: 'pad'; x: number; y: number; towerVariant?: 'classic' | 'new' };
 type CarrierObject = {
     type: 'carrier';
     x: number;

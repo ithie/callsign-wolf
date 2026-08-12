@@ -12,6 +12,7 @@ import { createStructuresDraw } from './structures';
 import { createPayloadsDraw } from './payloads';
 import { createCollisionDraw } from './collision';
 import { createMiscDraw } from './misc';
+import { createVolleyballDraw } from './volleyball';
 
 export type { DrawWorldCtx } from './types';
 export type { DrawWorldCtx as DrawWorldCtxType } from './types';
@@ -40,6 +41,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
     const { drawPayloadObjects, queueAttachedPayloads } = createPayloadsDraw(dwCtx);
     const { handleCollisionBoxes, drawDebugOverlay } = createCollisionDraw(dwCtx);
     const { drawBirds, drawDebris, renderRain } = createMiscDraw(dwCtx);
+    const { _drawVolleyballCourts } = createVolleyballDraw(dwCtx);
 
     const drawWorldObjects = (
         camX: number,
@@ -216,6 +218,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         });
         _drawBaywatchObjects(_inNightCone);
         _drawBuoys(_inNightCone);
+        _drawVolleyballCourts(_inNightCone);
         _drawFestivalObjects(_inNightCone);
         _drawXmasObjects(_inNightCone);
         _drawRings(_inNightCone);

@@ -113,7 +113,8 @@ export const createDrawObjects = (
         scale = 1.0,
         gz = 0,
         type = 'pine',
-        wind: WindState = { x: 0, y: 0, phase: 0 }
+        wind: WindState = { x: 0, y: 0, phase: 0 },
+        heliPos?: { x: number; y: number; z: number }
     ) => {
         if (gz < 0.05) gz = 0.05;
         const z0 = gz;
@@ -326,12 +327,15 @@ export const createDrawObjects = (
             const base = iso(tX, tY, z0, cx, cy);
             const s = (tileW / 64) * scale;
             const skin = '#e8b070';
-            const headR = Math.max(1.5, 3 * s);
-            const bw = Math.max(2, 5 * s);
-            const sw = Math.max(1.5, 4.5 * s);  // swimwear height
-            const legH = Math.max(2, 9 * s);
-            const torsoH = Math.max(1.5, sw * 2.5); // skin above swimwear
+            const headR = Math.max(1, 2.5 * s);
+            const bw = Math.max(1.5, 5 * s);
+            const sw = Math.max(1, 2.5 * s);     // swimwear strip
+            const legH = Math.max(1.5, 7 * s);
+            const torsoH = Math.max(1.5, 5 * s); // skin above swimwear
             const bx = base.x, by = base.y;
+            const waving = heliPos !== undefined
+                && Math.hypot(heliPos.x - tX, heliPos.y - tY) < 5
+                && heliPos.z < 8;
             // Ground shadow
             ctx.fillStyle = 'rgba(0,0,0,0.15)';
             ctx.beginPath();
@@ -347,9 +351,23 @@ export const createDrawObjects = (
             // Torso (skin — above swimwear, bikini/open chest)
             ctx.fillStyle = skin;
             ctx.fillRect(bx - bw / 2, by - legH - sw - torsoH, bw, torsoH);
-            // Arms (skin — short stubs out to sides)
+            // Left arm always horizontal
             ctx.fillRect(bx - bw, by - legH - sw - torsoH * 0.7, bw * 0.5, Math.max(1, 2 * s));
-            ctx.fillRect(bx + bw / 2, by - legH - sw - torsoH * 0.7, bw * 0.5, Math.max(1, 2 * s));
+            // Right arm: raised + waving when heli nearby, otherwise horizontal
+            if (waving) {
+                const waveOff = Math.sin(Date.now() / 260) * headR * 0.9;
+                ctx.strokeStyle = skin;
+                ctx.lineWidth = Math.max(0.8, bw * 0.38);
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(bx + bw * 0.5, by - legH - sw - torsoH * 0.65);
+                ctx.lineTo(bx + bw * 0.9, by - legH - sw - torsoH - headR * 0.8 + waveOff);
+                ctx.stroke();
+                ctx.lineCap = 'butt';
+            } else {
+                ctx.fillStyle = skin;
+                ctx.fillRect(bx + bw / 2, by - legH - sw - torsoH * 0.7, bw * 0.5, Math.max(1, 2 * s));
+            }
             // Head
             ctx.fillStyle = skin;
             ctx.beginPath();
