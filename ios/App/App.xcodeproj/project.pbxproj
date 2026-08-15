@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		272332073030FCF7000B25BA /* Configuration.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 272332063030FCF7000B25BA /* Configuration.storekit */; };
 		2724CBA730095B9A00DDC142 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 2724CBA630095B9A00DDC142 /* PrivacyInfo.xcprivacy */; };
 		27C2DD74300A06D600C7E3BC /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 27C2DD72300A06D600C7E3BC /* InfoPlist.strings */; };
 		27D455E62FD80EBF0042D988 /* ZsynthPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27D455E52FD80EBF0042D988 /* ZsynthPlayer.swift */; };
@@ -22,6 +23,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		272332063030FCF7000B25BA /* Configuration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Configuration.storekit; sourceTree = "<group>"; };
 		2724CBA630095B9A00DDC142 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		27C2DD73300A06D600C7E3BC /* pt */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = pt; path = pt.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		27C2DD77300A06F300C7E3BC /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
@@ -40,7 +42,6 @@
 		A1C4E8F1B3D56A7890123456 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		C7CCF1112FC8BC3600F6FDE8 /* GameControlOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameControlOverlay.swift; sourceTree = "<group>"; };
 		C7CCF1122FC8BC3600F6FDE8 /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
-		B09A4E8F2FCA1E0042D98800 /* Configuration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Configuration.storekit; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -77,6 +78,7 @@
 				C7CCF1122FC8BC3600F6FDE8 /* ViewController.swift */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				A1C4E8F1B3D56A7890123456 /* SceneDelegate.swift */,
+				272332063030FCF7000B25BA /* Configuration.storekit */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -86,7 +88,6 @@
 				27F496242FD9A3E000E7ECD1 /* HeliSound.swift */,
 				2724CBA630095B9A00DDC142 /* PrivacyInfo.xcprivacy */,
 				27C2DD72300A06D600C7E3BC /* InfoPlist.strings */,
-				B09A4E8F2FCA1E0042D98800 /* Configuration.storekit */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -159,6 +160,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				272332073030FCF7000B25BA /* Configuration.storekit in Resources */,
 				504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */,
 				27C2DD74300A06D600C7E3BC /* InfoPlist.strings in Resources */,
 				50B271D11FEDC1A000F3C39B /* public in Resources */,
@@ -271,7 +273,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
@@ -328,7 +330,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -347,7 +349,7 @@
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Callsign WOLF";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.arcade-games";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -371,7 +373,7 @@
 				INFOPLIST_FILE = App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Callsign WOLF";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.arcade-games";
-				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

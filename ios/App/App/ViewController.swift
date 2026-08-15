@@ -90,7 +90,7 @@ private final class ControlsHandler: NSObject, WKScriptMessageHandler {
 
 // MARK: - IAP bridge
 
-private let kProductID = "i.thie.softworks.fullgame"
+private let kProductID = "i.thie.softworks.wolf.fullgame"
 private let kConversionVersion = "1.5" // First version where app is free — prior buyers are grandfathered
 
 private final class IAPHandler: NSObject, WKScriptMessageHandler {
@@ -265,11 +265,11 @@ class ViewController: UIViewController {
         if UserDefaults.standard.string(forKey: "z_unlocked") == "1" { return }
 
         // 1. Grandfathering: original purchase was before the freemium conversion (v1.5)
-        if case .verified(let appTx) = await AppTransaction.shared {
-            if _compareVersions(appTx.originalApplicationVersion, kConversionVersion) == .orderedAscending {
-                UserDefaults.standard.set("1", forKey: "z_unlocked")
-                return
-            }
+        if let appTx = try? await AppTransaction.shared,
+           case .verified(let tx) = appTx,
+           _compareVersions(tx.originalAppVersion, kConversionVersion) == .orderedAscending {
+            UserDefaults.standard.set("1", forKey: "z_unlocked")
+            return
         }
 
         // 2. Active entitlement via StoreKit 2
@@ -282,11 +282,17 @@ class ViewController: UIViewController {
     }
 
     func iapLoadPrice() async {
+#if targetEnvironment(simulator)
+        DispatchQueue.main.async {
+            self.webView.evaluateJavaScript("window.__iapPrice && window.__iapPrice('1,99\u{a0}€')")
+        }
+#else
         guard let product = try? await Product.products(for: [kProductID]).first else { return }
         let price = product.displayPrice
         DispatchQueue.main.async {
             self.webView.evaluateJavaScript("window.__iapPrice && window.__iapPrice('\(price)')")
         }
+#endif
     }
 
     func iapPurchase() async {

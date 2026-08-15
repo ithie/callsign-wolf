@@ -23,6 +23,7 @@ import Vigil from './music/vigil.zsong';
 import Baywatch from './music/baywatch.zsong';
 import Fanfare from './music/fanfare.zsong';
 import Metalstorm from './music/metalstorm.zsong';
+import Unlock from './music/unlock.zsong';
 import { SongData } from '@/shared/tracker-types';
 
 const soundHandler = (() => {
@@ -44,6 +45,7 @@ const soundHandler = (() => {
         thunderscene: ThunderScene,
         fanfare: Fanfare,
         metalstorm: Metalstorm,
+        unlock: Unlock,
     };
 
     const state: { activeTheme: string; isMuted: boolean } = {

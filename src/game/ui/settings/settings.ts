@@ -160,7 +160,22 @@ export const mount = () => {
     applyBtn.addEventListener('click', applySaveCode);
     deleteBtn.addEventListener('click', deleteSessionData);
     iapRestoreBtn.addEventListener('click', () => {
-        Paywall.show(() => showScreenCrtEnter('settings-screen'));
+        iapRestoreBtn.disabled = true;
+        iapStatus.textContent = I18N.PAYWALL_PENDING;
+        iapStatus.style.color = '#aaa';
+        Paywall.triggerRestore((result) => {
+            iapRestoreBtn.disabled = false;
+            if (result === 'success' || result === 'already') {
+                iapStatus.textContent = I18N.PAYWALL_SUCCESS;
+                iapStatus.style.color = '#2ecc71';
+                setTimeout(() => { iapSection.style.display = 'none'; }, 2000);
+            } else if (result === 'cancelled') {
+                iapStatus.textContent = '';
+            } else {
+                iapStatus.textContent = I18N.PAYWALL_ERROR;
+                iapStatus.style.color = '#c44';
+            }
+        });
     });
     musicOn.addEventListener('click',  () => { _deps.setMusicEnabled(true);  _refreshAudioButtons(); });
     musicOff.addEventListener('click', () => { _deps.setMusicEnabled(false); _refreshAudioButtons(); });
