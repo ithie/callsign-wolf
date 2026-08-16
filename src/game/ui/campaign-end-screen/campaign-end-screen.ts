@@ -41,6 +41,10 @@ export const getSections = (): { role: string; names: string[] }[] => [
         role: I18N.CREDITS_ROLE_TEST,
         names: ['Da Harp', 'Jay "G" Man', 'DBuhn', 'Bigwilli', 'Mrs Beer', 'deathnical', 'SkzStay15'],
     },
+    {
+        role: I18N.CREDITS_ROLE_SANDBOX,
+        names: ['Peer V. Rse'],
+    },
     { role: I18N.CREDITS_ROLE_INSPIREDBY, names: ['Zeewolf (Binary Asylum, 1994)'] },
 ];
 

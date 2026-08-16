@@ -236,6 +236,7 @@ const _DE = {
     CREDITS_ROLE_LEADERTEST: 'LEITER TEST',
     CREDITS_ROLE_TEST: 'TESTER',
     CREDITS_ROLE_CONSULTGS: 'FACHBERATUNG G.S.',
+    CREDITS_ROLE_SANDBOX: 'SANDBOX / AUTOMATISIERUNG',
     CREDITS_ROLE_INSPIREDBY: 'INSPIRIERT VON',
 } as const;
 
@@ -410,6 +411,7 @@ const _EN = {
     CREDITS_ROLE_LEADERTEST: 'LEADER-TESTER',
     CREDITS_ROLE_TEST: 'TESTERS',
     CREDITS_ROLE_CONSULTGS: 'CONSULTING G.S.',
+    CREDITS_ROLE_SANDBOX: 'SANDBOX / AUTOMATION',
     CREDITS_ROLE_INSPIREDBY: 'INSPIRED BY',
 } as const;
 
@@ -457,7 +459,14 @@ const _FR = {
     ALL_MISSIONS_CLEARED: 'TOUTES LES MISSIONS ACCOMPLIES',
     CLICK_TO_DEPLOY: 'APPUYER POUR DÉPLOYER',
     RANK_NAME: (key: string): string =>
-        ({ leutnant: 'Lieutenant', oberleutnant: 'Premier Lieutenant', hauptmann: 'Capitaine', major: 'Commandant' } as Record<string, string>)[key] ?? key,
+        (
+            ({
+                leutnant: 'Lieutenant',
+                oberleutnant: 'Premier Lieutenant',
+                hauptmann: 'Capitaine',
+                major: 'Commandant',
+            }) as Record<string, string>
+        )[key] ?? key,
     PILOT_ADDRESS: (rank: string, callsign: string) => `${rank} ${callsign || 'WOLF'}`,
     BRIEFING_ADDRESS: (rank: string, callsign: string) => `Votre mission, ${rank} ${callsign || 'WOLF'}`,
     RANKUP_DECREE: (fromRank: string, toRank: string, callsign: string) =>
@@ -492,11 +501,11 @@ const _FR = {
     TUT_BACKWARD_M: 'ARRIÈRE — STICK DROIT EN BAS',
     TUT_LAND_M: 'CARBURANT FAIBLE — STICK GAUCHE EN BAS POUR ATTERRIR',
     TUT_ENGINE_STOP: 'ARRÊTER MOTEUR — STICK GAUCHE EN BAS À NOUVEAU',
-    TUT_REFUEL: 'ATTENDRE — LE CAMION RAVITAILLE L\'HÉLICOPTÈRE',
+    TUT_REFUEL: "ATTENDRE — LE CAMION RAVITAILLE L'HÉLICOPTÈRE",
     TUT_REFUEL_2: 'REFUEL FIRST — LAND, STOP ENGINE, WAIT',
     TUT_LOCATE_CRATE: 'TROUVER LA CAISSE — MINIMAP ET APPROCHER',
     TUT_CRATE_PICKUP_M: 'SOULEVER LA CAISSE — MOLETTE EN BAS, SURVOLER LA CAISSE',
-    TUT_CRATE_TO_PAD_M: 'APPORTER LA CAISSE AU PAD ET L\'ABAISSER',
+    TUT_CRATE_TO_PAD_M: "APPORTER LA CAISSE AU PAD ET L'ABAISSER",
     TUT_LOCATE_PERSON: 'LOCALISER LE SURVIVANT — MINIMAP ET APPROCHER',
     TUT_PERSON_PICKUP_M: 'SAUVER LE SURVIVANT — MOLETTE EN BAS, PUIS EN HAUT',
     TUT_PERSON_TO_PAD_M: 'VOLER AU PAD AVEC LE PATIENT ET ATTERRIR',
@@ -529,12 +538,13 @@ const _FR = {
 
     FULL_VERSION_BADGE: 'VERSION COMPLÈTE',
     PAYWALL_TITLE: 'VERSION COMPLÈTE',
-    PAYWALL_DESCRIPTION: 'Toutes les campagnes, tous les scénarios, tous les hélicoptères — et la progression de grade complète.',
+    PAYWALL_DESCRIPTION:
+        'Toutes les campagnes, tous les scénarios, tous les hélicoptères — et la progression de grade complète.',
     PAYWALL_BUY: 'DÉBLOQUER',
     PAYWALL_RESTORE: 'RESTAURER LES ACHATS',
     PAYWALL_PENDING: 'VEUILLEZ PATIENTER…',
     PAYWALL_SUCCESS: 'VERSION COMPLÈTE ACTIVE !',
-    PAYWALL_ERROR: 'ERREUR D\'ACHAT',
+    PAYWALL_ERROR: "ERREUR D'ACHAT",
     IAP_RESTORE: 'RESTAURER LES ACHATS',
 
     MADE_WITH: 'FAIT AVEC ♥ EN JAVASCRIPT',
@@ -545,6 +555,7 @@ const _FR = {
     CREDITS_ROLE_LEADERTEST: 'TESTEUR EN CHEF',
     CREDITS_ROLE_TEST: 'TESTEURS',
     CREDITS_ROLE_CONSULTGS: 'CONSEIL G.S.',
+    CREDITS_ROLE_SANDBOX: 'SANDBOX / AUTOMATISATION',
     CREDITS_ROLE_INSPIREDBY: 'INSPIRÉ PAR',
 } as const;
 
@@ -592,7 +603,12 @@ const _ES = {
     ALL_MISSIONS_CLEARED: 'TODAS LAS MISIONES COMPLETADAS',
     CLICK_TO_DEPLOY: 'TOCA PARA DESPLEGAR',
     RANK_NAME: (key: string): string =>
-        ({ leutnant: 'Teniente', oberleutnant: 'Primer Teniente', hauptmann: 'Capitán', major: 'Mayor' } as Record<string, string>)[key] ?? key,
+        (
+            ({ leutnant: 'Teniente', oberleutnant: 'Primer Teniente', hauptmann: 'Capitán', major: 'Mayor' }) as Record<
+                string,
+                string
+            >
+        )[key] ?? key,
     PILOT_ADDRESS: (rank: string, callsign: string) => `${rank} ${callsign || 'WOLF'}`,
     BRIEFING_ADDRESS: (rank: string, callsign: string) => `Tu misión, ${rank} ${callsign || 'WOLF'}`,
     RANKUP_DECREE: (fromRank: string, toRank: string, callsign: string) =>
@@ -664,7 +680,8 @@ const _ES = {
 
     FULL_VERSION_BADGE: 'VERSIÓN COMPLETA',
     PAYWALL_TITLE: 'VERSIÓN COMPLETA',
-    PAYWALL_DESCRIPTION: 'Todas las campañas, todos los escenarios, todos los helicópteros — y la progresión de rango completa.',
+    PAYWALL_DESCRIPTION:
+        'Todas las campañas, todos los escenarios, todos los helicópteros — y la progresión de rango completa.',
     PAYWALL_BUY: 'DESBLOQUEAR',
     PAYWALL_RESTORE: 'RESTAURAR COMPRAS',
     PAYWALL_PENDING: 'POR FAVOR ESPERA…',
@@ -680,6 +697,7 @@ const _ES = {
     CREDITS_ROLE_LEADERTEST: 'TESTER PRINCIPAL',
     CREDITS_ROLE_TEST: 'TESTERS',
     CREDITS_ROLE_CONSULTGS: 'CONSULTORÍA G.S.',
+    CREDITS_ROLE_SANDBOX: 'SANDBOX / AUTOMATIZACIÓN',
     CREDITS_ROLE_INSPIREDBY: 'INSPIRADO POR',
 } as const;
 
@@ -727,7 +745,12 @@ const _PT = {
     ALL_MISSIONS_CLEARED: 'TODAS AS MISSÕES CONCLUÍDAS',
     CLICK_TO_DEPLOY: 'TOQUE PARA IMPLANTAR',
     RANK_NAME: (key: string): string =>
-        ({ leutnant: 'Tenente', oberleutnant: 'Primeiro Tenente', hauptmann: 'Capitão', major: 'Major' } as Record<string, string>)[key] ?? key,
+        (
+            ({ leutnant: 'Tenente', oberleutnant: 'Primeiro Tenente', hauptmann: 'Capitão', major: 'Major' }) as Record<
+                string,
+                string
+            >
+        )[key] ?? key,
     PILOT_ADDRESS: (rank: string, callsign: string) => `${rank} ${callsign || 'WOLF'}`,
     BRIEFING_ADDRESS: (rank: string, callsign: string) => `Sua missão, ${rank} ${callsign || 'WOLF'}`,
     RANKUP_DECREE: (fromRank: string, toRank: string, callsign: string) =>
@@ -799,7 +822,8 @@ const _PT = {
 
     FULL_VERSION_BADGE: 'VERSÃO COMPLETA',
     PAYWALL_TITLE: 'VERSÃO COMPLETA',
-    PAYWALL_DESCRIPTION: 'Todas as campanhas, todos os cenários, todos os helicópteros — e a progressão de posto completa.',
+    PAYWALL_DESCRIPTION:
+        'Todas as campanhas, todos os cenários, todos os helicópteros — e a progressão de posto completa.',
     PAYWALL_BUY: 'DESBLOQUEAR',
     PAYWALL_RESTORE: 'RESTAURAR COMPRAS',
     PAYWALL_PENDING: 'AGUARDE…',
@@ -815,6 +839,7 @@ const _PT = {
     CREDITS_ROLE_LEADERTEST: 'TESTER PRINCIPAL',
     CREDITS_ROLE_TEST: 'TESTERS',
     CREDITS_ROLE_CONSULTGS: 'CONSULTORIA G.S.',
+    CREDITS_ROLE_SANDBOX: 'SANDBOX / AUTOMATIZAÇÃO',
     CREDITS_ROLE_INSPIREDBY: 'INSPIRADO POR',
 } as const;
 
