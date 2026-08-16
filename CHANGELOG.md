@@ -12,7 +12,7 @@
 
 - **Freemium model** — App is now free to download. Free tier includes the Tutorial and one Free Flight scenario ("Seenotrettung"). All other campaigns, scenarios, rank progression, and helicopter unlocks require the full version (1.99 €, one-time purchase, non-consumable).
 - **No rank progression in free tier** — `getRankMissions()` returns 0 when the full version is not active; rank is always Leutnant for free users.
-- **Promo tagline updated** — "No Ads. No Tracking. No Bullshit. Free to Play. Pay Once for the Full Campaign."
+- **Promo tagline updated** — "No Ads. No Tracking. No Bullshit. Free to Play. Pay Once for the Full Game."
 - **Localisation** — All paywall strings fully localised in German, English, French, Spanish, Brazilian Portuguese, and European Portuguese.
 
 ### Technical

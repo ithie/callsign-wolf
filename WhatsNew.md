@@ -10,7 +10,7 @@ Außerdem: neue Farben für den Helikopter, überarbeitete Steuerungstasten, ver
 
 ## EN
 
-Callsign Wolf is now free to download! The full campaign can be unlocked with a one-time purchase — no subscriptions, no ads.
+Callsign Wolf is now free to download! The full game can be unlocked with a one-time purchase — no subscriptions, no ads.
 
 Also new: additional helicopter colours, revised control buttons, improved audio, and a new app name under the icon.
 

@@ -11,7 +11,7 @@ export const mount = (): void => {
     el.innerHTML = `<div>
         <h1>SAR:<br/>Callsign WOLF</h1>
         <canvas id="ph" aria-hidden="true"></canvas>
-        <p class="tagline">No Ads. No Tracking. No Bullshit.<br>Free to Play. Pay Once for the Full Campaign.</p>
+        <p class="tagline">No Ads. No Tracking. No Bullshit.<br>Free to Play. Pay Once for the Full Game.</p>
         <a class="as-badge" href="https://apps.apple.com/us/app/sar-callsign-wolf/id6769071734" target="_blank" rel="noopener" aria-label="Download SAR: Callsign WOLF on the App Store">
             <svg id="livetype" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 119.66407 40">
   <title>Download on the App Store</title>
