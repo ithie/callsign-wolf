@@ -1,5 +1,18 @@
 # SAR: Callsign WOLF — Changelog
 
+## v31.0.1 — Localisation Fix
+
+### Fixed
+
+- **Campaign localisation** — All campaign and mission texts (headlines, briefings, sublines) are now fully localised in French, Spanish, Brazilian Portuguese, and European Portuguese. Previously only German and English were available for in-mission content.
+
+### Tools
+
+- **Campaign editor: Event UI** — Event creation and editing redesigned. Form now shows full German labels, a per-mission object reference list, and clear TRIGGER / ACTIONS sections. Existing events can be edited via a new ✏ button (pre-fills the form). Event connections are drawn on the map as dashed lines (objectReaches) and circles (heliNear).
+- **Campaign editor: ZDEF double-click** — Double-clicking a ZDEF object on the map opens the corresponding `.zdef` file directly in the model editor.
+
+---
+
 ## v31.0.0 — Freemium
 
 ### Added
