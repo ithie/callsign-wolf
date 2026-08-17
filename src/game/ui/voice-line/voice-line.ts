@@ -48,3 +48,11 @@ export const hideVoiceLine = (): void => {
     if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
     if (_el) _el.style.display = 'none';
 };
+
+export const showScriptMessage = (text: string): void => {
+    if (!_el) return;
+    if (_hideTimer) { clearTimeout(_hideTimer); _hideTimer = null; }
+    _el.textContent = text;
+    _el.style.display = 'block';
+    _hideTimer = setTimeout(() => { if (_el) _el.style.display = 'none'; _hideTimer = null; }, 4500);
+};

@@ -57,6 +57,7 @@ export const G = {
     LANDING_ZONES: [] as { xMin: number; xMax: number; yMin: number; yMax: number; z: number }[],
     PLANE_WRECKS: [] as any[],
     BOAT_WRECKS: [] as { x: number; y: number; angle: number }[],
+    FRAGMENTS: [] as import('./sim/fragments').RuntimeFragment[],
     ORNI_RESIDUES: [] as { x: number; y: number; angle: number }[],
     BROKEN_SAILBOATS: [] as any[],
     BAYWATCH_CARS: [] as any[],

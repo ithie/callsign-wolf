@@ -30,7 +30,10 @@ depth overrides for off-center sub-objects.
   "landingZone": { "x": -8.0, "y": 0, "w": 4.5, "h": 4.5, "z": 2.0 },
 
   // ── Visual definition ─────────────────────────────────────────────────────
-  "nodes": [ <Node>, <Node>, ... ]
+  "nodes": [ <Node>, <Node>, ... ],
+
+  // ── Destruction (optional) ────────────────────────────────────────────────
+  "fragments": [ <Fragment>, ... ]   // see DEF_SPEC § Destruction Fragments
 }
 ```
 

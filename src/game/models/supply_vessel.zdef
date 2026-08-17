@@ -24,6 +24,36 @@
   "rescueZones": [
     { "x": -0.7, "y": 0, "w": 1.8, "h": 1.0, "role": "pickup" }
   ],
+  "fragments": [
+    {
+      "id": "bridge",
+      "faceIds": ["cab_front_L", "cab_front_R", "cab_side_L_1", "cab_side_R_1", "cab_wall_L", "cab_wall_R", "cab_back", "cab_roof", "win_front_L", "win_front_R", "win_side_L", "win_side_R", "exhaust_L", "exhaust_R", "radar_blade"],
+      "pivot": [1.35, 0, 2.2],
+      "impulse": [0.0, 0, 0.28],
+      "torque": -5
+    },
+    {
+      "id": "bow",
+      "faceIds": ["bow_L_seg1", "bow_R_seg1", "bow_L_seg2", "bow_R_seg2", "bow_nose_L", "bow_nose_R", "deck_border_L"],
+      "pivot": [2.5, 0, 0.8],
+      "impulse": [0.14, 0, 0.1],
+      "torque": 4
+    },
+    {
+      "id": "hull_stern",
+      "faceIds": ["stern_mid", "stern_L", "hull_L_main", "hull_R_main"],
+      "pivot": [-2.5, 0, 0.6],
+      "impulse": [-0.1, 0, 0.1],
+      "torque": -3
+    },
+    {
+      "id": "deck",
+      "faceIds": ["cargo_deck", "hull_bottom"],
+      "pivot": [-0.8, 0, 0.6],
+      "impulse": [0, 0, 0.18],
+      "torque": 2
+    }
+  ],
   "nodes": [
     {
       "faces": [

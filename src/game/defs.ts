@@ -43,6 +43,18 @@ export interface DEFPart {
     parent?: string;
 }
 
+export interface DEFFragment {
+    id: string;
+    /** Face IDs from this DEF's faces array that belong to this fragment chunk */
+    faceIds: string[];
+    /** Local-space center of mass / rotation pivot for this chunk */
+    pivot: [number, number, number];
+    /** Local-space initial velocity (world-rotated at spawn). Default: [0,0,0] */
+    impulse?: [number, number, number];
+    /** Self-rotation speed in radians/s. Default: random ±3 */
+    torque?: number;
+}
+
 export interface DEF {
     id: string;
     /** Rotation pivot in local coords (default [0,0,0]) */
@@ -57,6 +69,8 @@ export interface DEF {
     passes?: DEFPass[];
     /** Named color sets: variantName → { faceId → color }. Pass result of resolvePalette() as colors to SceneRenderer.add(). */
     palettes?: Record<string, Record<string, string>>;
+    /** Destruction fragments: face groups that fly apart when the object is destroyed */
+    fragments?: DEFFragment[];
 }
 
 export interface DEFPass {

@@ -737,6 +737,36 @@
       ]
     }
   ],
+  "fragments": [
+    {
+      "id": "blades",
+      "faceIds": ["b1", "b2", "b3"],
+      "pivot": [0.51, 0, 12.15],
+      "impulse": [0.15, 0, 0.15],
+      "torque": 8
+    },
+    {
+      "id": "gondola",
+      "faceIds": ["n_top", "n_front", "n_back", "n_L", "n_R"],
+      "pivot": [0.1, 0, 12.15],
+      "impulse": [-0.06, 0, 0.22],
+      "torque": -5
+    },
+    {
+      "id": "mast",
+      "faceIds": ["p_main_1", "p_main_2", "p_main_3", "p_main_4", "p_main_5", "p_main_6", "p_main_7", "p_main_8"],
+      "pivot": [0, 0, 7],
+      "impulse": [0.01, 0, 0.06],
+      "torque": 2
+    },
+    {
+      "id": "base",
+      "faceIds": ["p_base_1", "p_base_2", "p_base_3", "p_base_4", "p_base_5", "p_base_6", "p_base_7", "p_base_8"],
+      "pivot": [0, 0, 1],
+      "impulse": [0, 0, 0.02],
+      "torque": -2
+    }
+  ],
   "rescueZones": [
     {
       "x": 0.1,

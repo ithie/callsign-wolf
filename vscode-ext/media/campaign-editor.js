@@ -55,6 +55,7 @@
     isPrevDragging: false,
     lastMX: 0,
     lastMY: 0,
+    isDraggingMinimap: false,
     isDraggingItem: false,
     dragItemType: null,
     dragItemIdx: null,
@@ -66,6 +67,259 @@
     dragOrigY: 0
   };
   var getCurrentMission = () => state.campaign[state.curIdx];
+
+  // editor-view/events-editor.ts
+  var _notify = null;
+  var _formOpen = false;
+  var _formObjectIdx = null;
+  var initEventsEditor = (notify) => {
+    _notify = notify;
+    const panel = document.getElementById("ui_events");
+    if (!panel) return;
+    panel.addEventListener("click", _handleClick);
+    panel.addEventListener("change", (e) => {
+      const t = e.target;
+      if (t.id === "ev_trig_type") _renderTriggerFields();
+      if (t.classList.contains("ev-act-type")) _updateActionRow(t.closest(".ev-action-row"));
+    });
+  };
+  var _handleClick = (e) => {
+    const btn = e.target.closest("[data-ev]");
+    if (!btn) return;
+    e.stopPropagation();
+    const m = getCurrentMission();
+    if (!m) return;
+    const action = btn.dataset["ev"];
+    if (action === "add") {
+      _formOpen = true;
+      _formObjectIdx = state.selectedObjectIdx;
+      _renderForm();
+    } else if (action === "delete") {
+      const idx = parseInt(btn.dataset["evIdx"] ?? "-1");
+      if (idx < 0) return;
+      const events = m.events ?? [];
+      events.splice(idx, 1);
+      m.events = events;
+      _notify?.();
+      renderEventsPanel(state.selectedObjectIdx);
+    } else if (action === "save") {
+      _saveForm();
+    } else if (action === "cancel") {
+      _formOpen = false;
+      _formObjectIdx = null;
+      renderEventsPanel(state.selectedObjectIdx);
+    } else if (action === "add-action") {
+      _appendActionRow(state.selectedObjectIdx ?? 0);
+    } else if (action === "remove-action") {
+      btn.closest(".ev-action-row")?.remove();
+    }
+  };
+  var _touchesObj = (ev, idx) => {
+    const t = ev.trigger;
+    if (t.objectIdx === idx || t.nearObjectIdx === idx) return true;
+    return ev.actions.some((a) => a.objectIdx === idx);
+  };
+  var _trigLabel = (t) => {
+    switch (t.type) {
+      case "time":
+        return `\u23F1 ${t.seconds}s`;
+      case "rescued":
+        return `\u{1F681} rescued\xD7${t.count}`;
+      case "objectReaches":
+        return `[${t.objectIdx}]\u2192[${t.nearObjectIdx}] \u2264${t.distance}`;
+      case "objectDestroyed":
+        return `[${t.objectIdx}] zerst\xF6rt`;
+      case "heliNear":
+        return `heli near [${t.objectIdx}] \u2264${t.distance}`;
+    }
+  };
+  var _actLabel = (a) => {
+    switch (a.type) {
+      case "setOnFire":
+        return `fire[${a.objectIdx}]`;
+      case "setOnSmoke":
+        return `smoke[${a.objectIdx}]`;
+      case "destroy":
+        return `destroy[${a.objectIdx}]`;
+      case "startMoving":
+        return `move>[${a.objectIdx}]`;
+      case "stopMoving":
+        return `stop[${a.objectIdx}]`;
+      case "killAttachedPayloads":
+        return `kill[${a.objectIdx}]`;
+      case "failMission":
+        return a.objectIdx !== void 0 ? `fail[${a.objectIdx}]` : "fail";
+      case "showMessage":
+        return "msg";
+      case "setWindStr":
+        return `wind=${a.value}`;
+    }
+  };
+  var renderEventsPanel = (objectIdx) => {
+    const el = document.getElementById("ui_events");
+    if (!el) return;
+    if (_formOpen && _formObjectIdx === objectIdx) return;
+    if (_formOpen) {
+      _formOpen = false;
+      _formObjectIdx = null;
+    }
+    const m = getCurrentMission();
+    const allEvents = m?.events ?? [];
+    const relevant = allEvents.map((ev, i) => ({ ev, i })).filter(({ ev }) => objectIdx === null || _touchesObj(ev, objectIdx));
+    let html = `<strong style="color:#fa0">EVENTS</strong>`;
+    if (relevant.length === 0) {
+      html += `<div style="color:#555;font-size:11px;margin:4px 0">\u2014</div>`;
+    } else {
+      for (const { ev, i } of relevant) {
+        const acts = ev.actions.map(_actLabel).join(" ");
+        html += `<div style="margin:3px 0;background:#111;padding:3px 6px;border-radius:2px;display:flex;justify-content:space-between;align-items:flex-start;gap:4px"><span style="font-size:10px;flex:1;min-width:0"><span style="color:#4af">${_trigLabel(ev.trigger)}</span> <span style="color:#fa8">${acts}</span></span><button data-ev="delete" data-ev-idx="${i}" style="background:#600;border:none;color:#f88;cursor:pointer;padding:0 4px;font-size:10px;flex-shrink:0">\u2715</button></div>`;
+      }
+    }
+    html += `<button data-ev="add" style="width:100%;margin-top:6px;background:var(--accent);border:none;color:#000;cursor:pointer;padding:3px;font-size:11px">\uFF0B Event</button>`;
+    el.innerHTML = html;
+  };
+  var _trigOptions = [
+    ["objectReaches", "objectReaches"],
+    ["objectDestroyed", "objectDestroyed"],
+    ["heliNear", "heliNear"],
+    ["time", "time"],
+    ["rescued", "rescued"]
+  ].map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+  var _actOptions = [
+    ["destroy", "destroy"],
+    ["setOnFire", "setOnFire"],
+    ["setOnSmoke", "setOnSmoke"],
+    ["startMoving", "startMoving"],
+    ["stopMoving", "stopMoving"],
+    ["killAttachedPayloads", "killAttached"],
+    ["failMission", "failMission"],
+    ["showMessage", "showMessage"],
+    ["setWindStr", "setWindStr"]
+  ].map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
+  var _triggerFieldsHTML = (trigType, defOidx) => {
+    const ni = (id, val, w = 40) => `<input type="number" id="${id}" value="${val}" style="width:${w}px;font-size:10px">`;
+    switch (trigType) {
+      case "time":
+        return `Sek: ${ni("ev_t_seconds", 5)}`;
+      case "rescued":
+        return `Anz: ${ni("ev_t_count", 1)}`;
+      case "objectReaches":
+        return `Obj: ${ni("ev_t_oidx", defOidx)} Near: ${ni("ev_t_nidx", defOidx)} Dist: ${ni("ev_t_dist", 8)}`;
+      case "objectDestroyed":
+        return `Obj: ${ni("ev_t_oidx", defOidx)}`;
+      case "heliNear":
+        return `Obj: ${ni("ev_t_oidx", defOidx)} Dist: ${ni("ev_t_dist", 10)}`;
+      default:
+        return "";
+    }
+  };
+  var _actionRowHTML = (defOidx) => `<div class="ev-action-row" style="display:flex;align-items:center;gap:2px;margin:2px 0"><select class="ev-act-type" style="font-size:10px;flex:1">${_actOptions}</select><input class="ev-act-oidx" type="number" value="${defOidx}" style="width:30px;font-size:10px"><input class="ev-act-val" type="number" value="1" step="0.1" style="width:30px;font-size:10px;display:none"><span class="ev-act-msg" style="display:none;flex-direction:column;gap:2px"><input class="ev-act-text-de" type="text" placeholder="DE (Pflicht)" style="width:110px;font-size:10px"><input class="ev-act-text-en" type="text" placeholder="EN" style="width:110px;font-size:10px"><input class="ev-act-text-fr" type="text" placeholder="FR" style="width:110px;font-size:10px"><input class="ev-act-text-es" type="text" placeholder="ES" style="width:110px;font-size:10px"><input class="ev-act-text-pt" type="text" placeholder="PT" style="width:110px;font-size:10px"></span><button data-ev="remove-action" style="background:#400;border:none;color:#f88;cursor:pointer;padding:0 3px;font-size:10px;flex-shrink:0">\u2715</button></div>`;
+  var _renderForm = () => {
+    const el = document.getElementById("ui_events");
+    if (!el) return;
+    const defOidx = state.selectedObjectIdx ?? 0;
+    const firstTrig = "objectReaches";
+    el.innerHTML = `<strong style="color:#fa0">ADD EVENT</strong><div style="margin:5px 0;font-size:11px">TRIGGER: <select id="ev_trig_type" style="width:130px;font-size:10px">${_trigOptions}</select><div id="ev_trig_fields" style="margin:3px 0">${_triggerFieldsHTML(firstTrig, defOidx)}</div></div><div style="font-size:10px;color:#aaa;margin:2px 0">ACTIONS:</div><div id="ev_action_list">${_actionRowHTML(defOidx)}</div><button data-ev="add-action" style="background:#333;border:none;color:#ccc;cursor:pointer;padding:2px 6px;font-size:10px;margin-top:2px">\uFF0B Action</button><div style="margin-top:6px;display:flex;gap:4px"><button data-ev="save" style="flex:1;background:var(--accent);border:none;color:#000;cursor:pointer;padding:3px;font-size:11px">Speichern</button><button data-ev="cancel" style="flex:1;background:#333;border:none;color:#ccc;cursor:pointer;padding:3px;font-size:11px">Abbrechen</button></div>`;
+  };
+  var _renderTriggerFields = () => {
+    const sel = document.getElementById("ev_trig_type");
+    const div = document.getElementById("ev_trig_fields");
+    if (!sel || !div) return;
+    div.innerHTML = _triggerFieldsHTML(sel.value, state.selectedObjectIdx ?? 0);
+  };
+  var _updateActionRow = (row) => {
+    if (!row) return;
+    const type = row.querySelector(".ev-act-type")?.value;
+    const objTypes = ["destroy", "setOnFire", "setOnSmoke", "startMoving", "stopMoving", "killAttachedPayloads", "failMission"];
+    const oidx = row.querySelector(".ev-act-oidx");
+    const val = row.querySelector(".ev-act-val");
+    const msg = row.querySelector(".ev-act-msg");
+    if (oidx) oidx.style.display = objTypes.includes(type) ? "" : "none";
+    if (val) val.style.display = type === "setWindStr" ? "" : "none";
+    if (msg) msg.style.display = type === "showMessage" ? "flex" : "none";
+  };
+  var _appendActionRow = (defOidx) => {
+    const list = document.getElementById("ev_action_list");
+    if (!list) return;
+    const tmp = document.createElement("div");
+    tmp.innerHTML = _actionRowHTML(defOidx);
+    while (tmp.firstChild) list.appendChild(tmp.firstChild);
+  };
+  var _saveForm = () => {
+    const m = getCurrentMission();
+    if (!m) return;
+    const trigType = document.getElementById("ev_trig_type")?.value ?? "";
+    const int = (id) => parseInt(document.getElementById(id)?.value ?? "0") || 0;
+    const num = (id) => parseFloat(document.getElementById(id)?.value ?? "0") || 0;
+    let trigger;
+    switch (trigType) {
+      case "time":
+        trigger = { type: "time", seconds: num("ev_t_seconds") };
+        break;
+      case "rescued":
+        trigger = { type: "rescued", count: int("ev_t_count") };
+        break;
+      case "objectReaches":
+        trigger = { type: "objectReaches", objectIdx: int("ev_t_oidx"), nearObjectIdx: int("ev_t_nidx"), distance: num("ev_t_dist") };
+        break;
+      case "objectDestroyed":
+        trigger = { type: "objectDestroyed", objectIdx: int("ev_t_oidx") };
+        break;
+      case "heliNear":
+        trigger = { type: "heliNear", objectIdx: int("ev_t_oidx"), distance: num("ev_t_dist") };
+        break;
+      default:
+        return;
+    }
+    const actions = [];
+    document.querySelectorAll("#ev_action_list .ev-action-row").forEach((row) => {
+      const type = row.querySelector(".ev-act-type")?.value ?? "";
+      const oidx = parseInt(row.querySelector(".ev-act-oidx")?.value ?? "0") || 0;
+      const val = parseFloat(row.querySelector(".ev-act-val")?.value ?? "0") || 0;
+      const de = row.querySelector(".ev-act-text-de")?.value.trim() ?? "";
+      const en = row.querySelector(".ev-act-text-en")?.value.trim() ?? "";
+      const fr = row.querySelector(".ev-act-text-fr")?.value.trim() ?? "";
+      const es = row.querySelector(".ev-act-text-es")?.value.trim() ?? "";
+      const pt = row.querySelector(".ev-act-text-pt")?.value.trim() ?? "";
+      switch (type) {
+        case "setOnFire":
+        case "setOnSmoke":
+        case "destroy":
+        case "startMoving":
+        case "stopMoving":
+        case "killAttachedPayloads":
+          actions.push({ type, objectIdx: oidx });
+          break;
+        case "failMission":
+          actions.push(oidx >= 0 ? { type: "failMission", objectIdx: oidx } : { type: "failMission" });
+          break;
+        case "setWindStr":
+          actions.push({ type: "setWindStr", value: val });
+          break;
+        case "showMessage": {
+          if (!en && !fr && !es && !pt) {
+            actions.push({ type: "showMessage", text: de });
+            break;
+          }
+          const text = { de };
+          if (en) text.en = en;
+          if (fr) text.fr = fr;
+          if (es) text.es = es;
+          if (pt) text.pt = pt;
+          actions.push({ type: "showMessage", text });
+          break;
+        }
+      }
+    });
+    if (actions.length === 0) return;
+    const events = m.events ?? [];
+    events.push({ trigger, actions });
+    m.events = events;
+    _formOpen = false;
+    _formObjectIdx = null;
+    _notify?.();
+    renderEventsPanel(state.selectedObjectIdx);
+  };
 
   // ../src/shared/constants.ts
   var COLORS = {
@@ -91,17 +345,6 @@
   var getSandColor = (height) => {
     const c = 35 + height * 15;
     return `rgb(${Math.min(240, c + 160)},${Math.min(215, c + 135)},${Math.min(140, c + 55)})`;
-  };
-  var getLandColor = (height, isNight) => {
-    let r = 50 + height * 20;
-    let g = 150 + height * 10;
-    let b = 50;
-    if (isNight) {
-      r = Math.floor(r * 0.3);
-      g = Math.floor(g * 0.4);
-      b = Math.floor(b * 0.6);
-    }
-    return `rgb(${r}, ${g}, ${b})`;
   };
 
   // ../src/game/scene-renderer.ts
@@ -483,6 +726,2077 @@
       if (onBeforeFlush) onBeforeFlush(def.nodes.indexOf(topNode));
       renderer.flush(camX, camY);
     }
+  };
+  var applyNodes = (def, params) => {
+    const faces = [];
+    const discard = [];
+    for (const node of def.nodes) {
+      _collectNode(node, params, _id2, faces, discard);
+    }
+    return { id: def.id, faces };
+  };
+
+  // ../src/game/models/coasthawk.zdef
+  var coasthawk_default = {
+    id: "coasthawk",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: -3,
+        xMax: 1.3,
+        yMin: -0.5,
+        yMax: 0.5,
+        zMin: 0,
+        zMax: 1.3
+      }
+    ],
+    faces: [
+      {
+        id: "tail_rotor_bar",
+        verts: [
+          [
+            -2.4,
+            0.6,
+            0.25
+          ],
+          [
+            -2.4,
+            -0.6,
+            0.25
+          ],
+          [
+            -2.4,
+            -0.6,
+            0.35
+          ],
+          [
+            -2.4,
+            0.6,
+            0.35
+          ]
+        ],
+        color: "#222222"
+      },
+      {
+        id: "tail_fin",
+        verts: [
+          [
+            -2.4,
+            0,
+            0.6
+          ],
+          [
+            -2.9,
+            0,
+            1.3
+          ],
+          [
+            -3,
+            0,
+            0.6
+          ]
+        ],
+        color: "#ff6600"
+      },
+      {
+        id: "tail_boom",
+        verts: [
+          [
+            -1.1,
+            0.08,
+            0.6
+          ],
+          [
+            -2.4,
+            0.08,
+            0.6
+          ],
+          [
+            -2.4,
+            -0.08,
+            0.6
+          ],
+          [
+            -1.1,
+            -0.08,
+            0.6
+          ]
+        ],
+        color: "#ff6600"
+      },
+      {
+        id: "fuselage",
+        verts: [
+          [
+            1.3,
+            0,
+            0.3
+          ],
+          [
+            0.4,
+            -0.45,
+            0.4
+          ],
+          [
+            -1,
+            -0.45,
+            0.4
+          ],
+          [
+            -1.1,
+            0,
+            0.6
+          ],
+          [
+            -1,
+            0.45,
+            0.4
+          ],
+          [
+            0.4,
+            0.45,
+            0.4
+          ]
+        ],
+        color: "#ff6600"
+      },
+      {
+        id: "window_right",
+        verts: [
+          [
+            0.3,
+            -0.47,
+            0.35
+          ],
+          [
+            -0.6,
+            -0.47,
+            0.35
+          ],
+          [
+            -0.6,
+            -0.3,
+            0.6
+          ],
+          [
+            0.3,
+            -0.3,
+            0.6
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "window_left",
+        verts: [
+          [
+            0.3,
+            0.47,
+            0.35
+          ],
+          [
+            -0.6,
+            0.47,
+            0.35
+          ],
+          [
+            -0.6,
+            0.3,
+            0.6
+          ],
+          [
+            0.3,
+            0.3,
+            0.6
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "cockpit_nose",
+        verts: [
+          [
+            1.3,
+            0,
+            0.3
+          ],
+          [
+            0.6,
+            0.4,
+            0.6
+          ],
+          [
+            0.6,
+            -0.4,
+            0.6
+          ]
+        ],
+        color: "#111111"
+      }
+    ]
+  };
+
+  // ../src/game/models/dolphin.zdef
+  var dolphin_default = {
+    id: "dolphin",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: -1.4,
+        xMax: 0.98,
+        yMin: -0.28,
+        yMax: 0.28,
+        zMin: 0,
+        zMax: 0.84
+      }
+    ],
+    faces: [
+      {
+        id: "fuselage",
+        verts: [
+          [
+            0.98,
+            0,
+            0.14
+          ],
+          [
+            0,
+            -0.28,
+            0.28
+          ],
+          [
+            -0.56,
+            0,
+            0.35
+          ],
+          [
+            0,
+            0.28,
+            0.28
+          ]
+        ],
+        color: "#ff6600"
+      },
+      {
+        id: "cockpit",
+        verts: [
+          [
+            0.84,
+            0,
+            0.175
+          ],
+          [
+            0.21,
+            -0.21,
+            0.42
+          ],
+          [
+            0.21,
+            0.21,
+            0.42
+          ]
+        ],
+        color: "#112233"
+      },
+      {
+        id: "tail_fin",
+        verts: [
+          [
+            -0.56,
+            0,
+            0.35
+          ],
+          [
+            -1.26,
+            0,
+            0.84
+          ],
+          [
+            -1.4,
+            0,
+            0.28
+          ]
+        ],
+        color: "#ff6600"
+      }
+    ]
+  };
+
+  // ../src/game/models/atlas.zdef
+  var atlas_default = {
+    id: "atlas",
+    pivot: [0, 0, 0],
+    collisionBoxes: [
+      { id: "body", xMin: -2.6, xMax: 2.8, yMin: -0.6, yMax: 0.6, zMin: 0, zMax: 1.8 }
+    ],
+    faces: [
+      { id: "bottom", verts: [[1.8, 0.3, 0.15], [1.8, -0.3, 0.15], [-2, -0.3, 0.15], [-2, 0.3, 0.15]], color: "#ff6600" },
+      { id: "side_left_lower", verts: [[1.8, 0.3, 0.15], [1.8, 0.6, 0.5], [-2, 0.6, 0.5], [-2, 0.3, 0.15]], color: "#ff6600" },
+      { id: "side_right_lower", verts: [[1.8, -0.3, 0.15], [1.8, -0.6, 0.5], [-2, -0.6, 0.5], [-2, -0.3, 0.15]], color: "#ff6600" },
+      { id: "side_left_upper_front", verts: [[1.8, 0.6, 0.5], [1.8, 0.3, 0.85], [1.4, 0.3, 0.85], [1.4, 0.6, 0.5]], color: "#ff6600" },
+      { id: "side_left_upper_back", verts: [[0.9, 0.6, 0.5], [0.9, 0.3, 0.85], [-2, 0.3, 0.85], [-2, 0.6, 0.5]], color: "#ff6600" },
+      { id: "side_right_upper_front", verts: [[1.8, -0.6, 0.5], [1.8, -0.3, 0.85], [1.4, -0.3, 0.85], [1.4, -0.6, 0.5]], color: "#ff6600" },
+      { id: "side_right_upper_back", verts: [[0.9, -0.6, 0.5], [0.9, -0.3, 0.85], [-2, -0.3, 0.85], [-2, -0.6, 0.5]], color: "#ff6600" },
+      { id: "tail_left", verts: [[-2, 0.6, 0.5], [-2, 0.3, 0.85], [-2.6, 0, 1.1], [-2.6, 0, 0.4]], color: "#ff6600" },
+      { id: "tail_right", verts: [[-2, -0.6, 0.5], [-2, -0.3, 0.85], [-2.6, 0, 1.1], [-2.6, 0, 0.4]], color: "#ff6600" },
+      { id: "chinook_nose_bottom", verts: [[1.8, -0.3, 0.15], [1.8, 0.3, 0.15], [2.4, 0.3, 0.15], [2.7, 0, 0.25], [2.4, -0.3, 0.15]], color: "#ff6600" },
+      { id: "chinook_nose_lower_left", verts: [[1.8, 0.3, 0.15], [2.4, 0.3, 0.15], [2.4, 0.5, 0.5], [1.8, 0.6, 0.5]], color: "#ff6600" },
+      { id: "chinook_nose_lower_right", verts: [[1.8, -0.3, 0.15], [1.8, -0.6, 0.5], [2.4, -0.5, 0.5], [2.4, -0.3, 0.15]], color: "#ff6600" },
+      { id: "chinook_nose_front_under", verts: [[2.4, 0.3, 0.15], [2.7, 0, 0.25], [2.4, -0.3, 0.15], [2.4, -0.5, 0.5], [2.4, 0.5, 0.5]], color: "#ff6600" },
+      { id: "chinook_nose_bump", verts: [[2.7, 0, 0.25], [2.4, 0.5, 0.5], [2.3, 0.3, 0.6], [2.3, -0.3, 0.6], [2.4, -0.5, 0.5]], color: "#ff6600" },
+      { id: "cockpit_front", verts: [[2.3, 0.27, 0.6], [2.3, -0.27, 0.6], [1.8, -0.27, 0.85], [1.8, 0.27, 0.85]], color: "#111111" },
+      { id: "cockpit_left", verts: [[2.4, 0.5, 0.5], [2.3, 0.33, 0.6], [1.8, 0.33, 0.85], [1.8, 0.6, 0.5]], color: "#111111" },
+      { id: "cockpit_right", verts: [[2.4, -0.5, 0.5], [1.8, -0.6, 0.5], [1.8, -0.33, 0.85], [2.3, -0.33, 0.6]], color: "#111111" },
+      { id: "cockpit_frame_left", verts: [[2.3, 0.33, 0.6], [2.3, 0.27, 0.6], [1.8, 0.27, 0.85], [1.8, 0.33, 0.85]], color: "#ff6600" },
+      { id: "cockpit_frame_right", verts: [[2.3, -0.27, 0.6], [2.3, -0.33, 0.6], [1.8, -0.33, 0.85], [1.8, -0.27, 0.85]], color: "#ff6600" },
+      { id: "window_left", verts: [[1.4, 0.6, 0.5], [0.9, 0.6, 0.5], [0.9, 0.3, 0.85], [1.4, 0.3, 0.85]], color: "#111111" },
+      { id: "window_right", verts: [[1.4, -0.6, 0.5], [0.9, -0.6, 0.5], [0.9, -0.3, 0.85], [1.4, -0.3, 0.85]], color: "#111111" },
+      { id: "fpylon_front", verts: [[1.8, 0.3, 0.85], [1.8, -0.3, 0.85], [1.5, 0, 1.15]], color: "#ff6600" },
+      { id: "fpylon_right", verts: [[1.8, -0.3, 0.85], [1.2, -0.3, 0.85], [1.5, 0, 1.15]], color: "#ff6600" },
+      { id: "fpylon_back", verts: [[1.2, -0.3, 0.85], [1.2, 0.3, 0.85], [1.5, 0, 1.15]], color: "#ff6600" },
+      { id: "fpylon_left", verts: [[1.2, 0.3, 0.85], [1.8, 0.3, 0.85], [1.5, 0, 1.15]], color: "#ff6600" },
+      { id: "tail_roof", verts: [[-2, 0.3, 0.85], [-2, -0.3, 0.85], [-2.6, 0, 1.1]], color: "#ff6600" },
+      { id: "top", verts: [[1.8, 0.3, 0.85], [1.8, -0.3, 0.85], [-2, -0.3, 0.85], [-2, 0.3, 0.85]], color: "#ff6600" },
+      { id: "rpylon_front", verts: [[-2, 0.3, 0.85], [-2, -0.3, 0.85], [-2.3, 0, 1.8]], color: "#ff6600" },
+      { id: "rpylon_right", verts: [[-2, -0.3, 0.85], [-2.6, 0, 1.1], [-2.3, 0, 1.8]], color: "#ff6600" },
+      { id: "rpylon_left", verts: [[-2.6, 0, 1.1], [-2, 0.3, 0.85], [-2.3, 0, 1.8]], color: "#ff6600" }
+    ]
+  };
+
+  // ../src/game/models/ornithopter.zdef
+  var ornithopter_default = {
+    version: 2,
+    id: "ornithopter_westwood_final_flat",
+    label: "ornithopter_westwood_final_flat",
+    static: false,
+    movementType: "none",
+    collisionBoxes: [
+      { id: "hull_core", xMin: -0.8, xMax: 0.9, yMin: -0.35, yMax: 0.35, zMin: 0.1, zMax: 0.55 },
+      { id: "tail_boom", xMin: -1.6, xMax: -0.8, yMin: -0.15, yMax: 0.15, zMin: 0.2, zMax: 0.5 }
+    ],
+    nodes: [
+      {
+        faces: [
+          {
+            id: "belly",
+            verts: [[0.9, 0, 0.1], [0.4, 0.35, 0.1], [-0.8, 0.3, 0.1], [-0.8, -0.3, 0.1], [0.4, -0.35, 0.1]],
+            color: "#bcbcbc"
+          },
+          {
+            id: "side_l",
+            verts: [[0.9, 0.15, 0.1], [0.5, 0.2, 0.45], [-0.8, 0.22, 0.45], [-0.8, 0.3, 0.1], [0.4, 0.35, 0.1]],
+            color: "#dcdcdc"
+          },
+          {
+            id: "side_r",
+            verts: [[0.9, -0.15, 0.1], [0.4, -0.35, 0.1], [-0.8, -0.3, 0.1], [-0.8, -0.22, 0.45], [0.5, -0.2, 0.45]],
+            color: "#dcdcdc"
+          },
+          {
+            id: "top",
+            verts: [[0.1, 0.25, 0.5], [0.1, -0.25, 0.5], [-0.8, -0.22, 0.45], [-0.8, 0.22, 0.45]],
+            color: "#f2f2f2"
+          },
+          {
+            id: "tail",
+            verts: [[-0.8, 0.15, 0.45], [-0.8, -0.15, 0.45], [-1.6, 0, 0.5], [-1.6, 0, 0.2], [-0.8, 0, 0.1]],
+            color: "#f2f2f2"
+          },
+          {
+            id: "cockpit_f",
+            verts: [[0.91, 0.15, 0.1], [0.91, -0.15, 0.1], [0.5, -0.2, 0.45], [0.5, 0.2, 0.45]],
+            color: "#add8e6",
+            shade: 1
+          },
+          {
+            id: "cockpit_t",
+            verts: [[0.5, 0.2, 0.45], [0.5, -0.2, 0.45], [0.1, -0.25, 0.5], [0.1, 0.25, 0.5]],
+            color: "#add8e6",
+            shade: 1
+          }
+        ],
+        children: [
+          {
+            rotate: { pivot: [-0.2, 0.25, 0.48], axis: [1, 0, 0], param: "wingAngle" },
+            faces: [
+              {
+                id: "wl_in",
+                verts: [[0.2, 0.25, 0.48], [0.1, 2.5, 1.4], [-0.6, 2.5, 1.4], [-0.7, 0.22, 0.48]],
+                color: "#ffffff"
+              }
+            ],
+            children: [
+              {
+                rotate: { pivot: [-0.25, 2.5, 1.4], axis: [1, 0, 0], param: "wingTipAngle" },
+                faces: [
+                  {
+                    id: "wl_out",
+                    verts: [[0.1, 2.5, 1.4], [0, 3.8, 0.4], [-0.2, 3.8, 0.4], [-0.6, 2.5, 1.4]],
+                    color: "#eeeeee"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            rotate: { pivot: [-0.2, -0.25, 0.48], axis: [1, 0, 0], param: "wingAngleInv" },
+            faces: [
+              {
+                id: "wr_in",
+                verts: [[0.2, -0.25, 0.48], [-0.7, -0.22, 0.48], [-0.6, -2.5, 1.4], [0.1, -2.5, 1.4]],
+                color: "#ffffff"
+              }
+            ],
+            children: [
+              {
+                rotate: { pivot: [-0.25, -2.5, 1.4], axis: [1, 0, 0], param: "wingTipAngleInv" },
+                faces: [
+                  {
+                    id: "wr_out",
+                    verts: [[0.1, -2.5, 1.4], [-0.6, -2.5, 1.4], [-0.2, -3.8, 0.4], [0, -3.8, 0.4]],
+                    color: "#eeeeee"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  // ../src/game/heli-types.ts
+  var HELI_TYPES = [
+    {
+      id: "dolphin",
+      label: "Dolphin",
+      def: dolphin_default,
+      maxLoad: 3,
+      accel: 117e-5,
+      friction: 0.995,
+      tiltSpeed: 0.05,
+      fuelRate: 0.012,
+      liftPower: 9e-4,
+      cargoResist: 0.35,
+      scale: 0.7,
+      previewScale: 1.43,
+      collisionBox: { xMin: -1.26, xMax: 1.26, yMin: -0.28, yMax: 0.28, zMax: 0.56 },
+      rotorOffsets: [0],
+      extraRotorDebris: false,
+      canCarryCargo: false,
+      selectLabel: "DOLPHIN",
+      selectSub: { de: "Wendig / Schnell", en: "Agile / Fast" },
+      selectCap: { de: "Kap.: 3 (Leichtgewicht)", en: "Cap.: 3 (Lightweight)" },
+      description: {
+        de: "Ein wendiger K\xFCstenwachthubschrauber \u2014 ideal f\xFCr schnelle Eins\xE4tze in schwierigem Gel\xE4nde. Leicht, pr\xE4zise, reaktionsschnell. Das bevorzugte Werkzeug erfahrener Piloten.",
+        en: "An agile coast guard helicopter \u2014 ideal for rapid deployment in difficult terrain. Light, precise, responsive. The preferred tool of experienced pilots."
+      },
+      minRankIndex: 1,
+      typeRatingRequired: true,
+      soundProfile: "rotor",
+      bladeCount: 4,
+      audioPreset: [3, 120, 2.5]
+    },
+    {
+      id: "coasthawk",
+      label: "Coast-Hawk",
+      def: coasthawk_default,
+      maxLoad: 10,
+      accel: 502e-6,
+      friction: 0.998,
+      tiltSpeed: 0.015,
+      fuelRate: 7e-3,
+      liftPower: 5e-4,
+      cargoResist: 0.1,
+      scale: 1,
+      previewScale: 1,
+      collisionBox: { xMin: -3, xMax: 1.3, yMin: -0.5, yMax: 0.5, zMax: 1.3 },
+      rotorOffsets: [0],
+      extraRotorDebris: false,
+      canCarryCargo: true,
+      selectLabel: "Coast-Hawk",
+      selectSub: { de: "Schwer / Stabil", en: "Heavy / Stable" },
+      selectCap: { de: "Kap.: 10 (Schwerlast)", en: "Cap.: 10 (Heavy lift)" },
+      description: {
+        de: "Das Arbeitstier der Seenotrettung. Tr\xE4gt schwere Lasten \xFCber weite Strecken, auch bei rauem Wetter. Einmal in Fahrt gebracht, ist er schwer aufzuhalten.",
+        en: "The workhorse of maritime rescue. Carries heavy loads over long distances, even in rough weather. Once up to speed, it is hard to stop."
+      },
+      minRankIndex: 0,
+      soundProfile: "rotor",
+      bladeCount: 4,
+      audioPreset: [3, 110, 2.5]
+    },
+    {
+      id: "atlas",
+      label: "Atlas",
+      def: atlas_default,
+      maxLoad: 20,
+      accel: 212e-6,
+      friction: 0.9992,
+      tiltSpeed: 0.01,
+      fuelRate: 5e-3,
+      liftPower: 4e-4,
+      cargoResist: 0.05,
+      scale: 1,
+      previewScale: 1,
+      collisionBox: { xMin: -2.6, xMax: 2.8, yMin: -0.6, yMax: 0.6, zMax: 1.8 },
+      rotorOffsets: [1.5, -2.3],
+      extraRotorDebris: true,
+      canCarryCargo: true,
+      selectLabel: "Atlas",
+      selectSub: { de: "Tandem / Extraschwer", en: "Tandem / Extra-heavy" },
+      selectCap: { de: "Kap.: 20 (Schwerlast)", en: "Cap.: 20 (Heavy lift)" },
+      description: {
+        de: "Zwei Rotoren, keine Ausrede. Der Atlas ist f\xFCr den Masseneinsatz gebaut \u2014 wenn normale Helikopter kapitulieren, fliegt der Atlas.",
+        en: "Two rotors, no excuses. The Atlas is built for mass operations \u2014 when ordinary helicopters give up, the Atlas flies on."
+      },
+      minRankIndex: 2,
+      typeRatingRequired: true,
+      soundProfile: "rotor",
+      bladeCount: 3,
+      audioPreset: [4, 90, 3]
+    },
+    {
+      id: "ornithopter",
+      label: "Ornithopter",
+      def: ornithopter_default,
+      maxLoad: 2,
+      accel: 145e-5,
+      friction: 0.993,
+      tiltSpeed: 0.045,
+      fuelRate: 9e-3,
+      liftPower: 82e-5,
+      cargoResist: 0.25,
+      scale: 0.7,
+      previewScale: 1.43,
+      collisionBox: { xMin: -1.6, xMax: 0.9, yMin: -0.35, yMax: 0.35, zMax: 0.55 },
+      rotorOffsets: [0],
+      extraRotorDebris: false,
+      canCarryCargo: true,
+      selectLabel: "ORNITHOPTER",
+      selectSub: { de: "Schl\xE4ger / Wendig", en: "Flapper / Agile" },
+      selectCap: { de: "Kap.: 2 (Schnelleinsatz)", en: "Cap.: 2 (Quick deploy)" },
+      description: {
+        de: "Ein Fl\xFCgelschl\xE4ger der n\xE4chsten Generation. Zwei Mann, maximale Wendigkeit. Mit Fracht \xFCberraschend schnell \u2014 kein Helikopter, kein Flugzeug, etwas dazwischen.",
+        en: "A next-generation ornithopter. Two crew, maximum agility. Surprisingly fast with cargo \u2014 not a helicopter, not a plane, something in between."
+      },
+      minRankIndex: 3,
+      typeRatingRequired: true,
+      hideWhenLocked: true,
+      soundProfile: "ornithopter",
+      bladeCount: 0,
+      audioPreset: [0, 0, 0]
+    }
+  ];
+  var getHeliType = (id) => {
+    const ht = HELI_TYPES.find((h) => h.id === id);
+    if (!ht) throw new Error(`Unknown heli type: ${id}`);
+    return ht;
+  };
+
+  // ../src/game/models/fuel_truck_chassis.zdef
+  var fuel_truck_chassis_default = {
+    id: "fuel_truck_chassis",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: 0,
+        xMax: 2.2,
+        yMin: -0.45,
+        yMax: 0.45,
+        zMin: 0,
+        zMax: 0.85
+      }
+    ],
+    faces: [
+      {
+        id: "ch_top",
+        verts: [
+          [
+            0,
+            -0.45,
+            0.3
+          ],
+          [
+            2.2,
+            -0.45,
+            0.3
+          ],
+          [
+            2.2,
+            0.45,
+            0.3
+          ],
+          [
+            0,
+            0.45,
+            0.3
+          ]
+        ],
+        color: "#4a6a4a"
+      },
+      {
+        id: "ch_front",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            2.2,
+            -0.45,
+            0
+          ],
+          [
+            2.2,
+            0.45,
+            0
+          ],
+          [
+            2.2,
+            0.45,
+            0.3
+          ],
+          [
+            2.2,
+            -0.45,
+            0.3
+          ]
+        ],
+        color: "#4a6a4a"
+      },
+      {
+        id: "ch_rear",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            0,
+            0.45,
+            0
+          ],
+          [
+            0,
+            -0.45,
+            0
+          ],
+          [
+            0,
+            -0.45,
+            0.3
+          ],
+          [
+            0,
+            0.45,
+            0.3
+          ]
+        ],
+        color: "#3a5a3a"
+      },
+      {
+        id: "ch_right",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            2.2,
+            0.45,
+            0
+          ],
+          [
+            0,
+            0.45,
+            0
+          ],
+          [
+            0,
+            0.45,
+            0.3
+          ],
+          [
+            2.2,
+            0.45,
+            0.3
+          ]
+        ],
+        color: "#2a4a2a"
+      },
+      {
+        id: "ch_left",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            0,
+            -0.45,
+            0
+          ],
+          [
+            2.2,
+            -0.45,
+            0
+          ],
+          [
+            2.2,
+            -0.45,
+            0.3
+          ],
+          [
+            0,
+            -0.45,
+            0.3
+          ]
+        ],
+        color: "#2a4a2a"
+      },
+      {
+        id: "wrl",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            0.25,
+            -0.45,
+            0
+          ],
+          [
+            0.55,
+            -0.45,
+            0
+          ],
+          [
+            0.55,
+            -0.45,
+            0.22
+          ],
+          [
+            0.25,
+            -0.45,
+            0.22
+          ]
+        ],
+        color: "#1a2e1a"
+      },
+      {
+        id: "wrr",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.25,
+            0.45,
+            0
+          ],
+          [
+            0.55,
+            0.45,
+            0
+          ],
+          [
+            0.55,
+            0.45,
+            0.22
+          ],
+          [
+            0.25,
+            0.45,
+            0.22
+          ]
+        ],
+        color: "#1a2e1a"
+      }
+    ],
+    parts: [
+      {
+        id: "wheel_front_L",
+        rotate: { pivot: [1.8, -0.45, 0.11], axis: [0, 0, 1], param: "steerAngle" },
+        faces: [
+          { id: "wfl", normal: [0, -1], verts: [[1.65, -0.45, 0], [1.95, -0.45, 0], [1.95, -0.45, 0.22], [1.65, -0.45, 0.22]], color: "#1a2e1a" }
+        ]
+      },
+      {
+        id: "wheel_front_R",
+        rotate: { pivot: [1.8, 0.45, 0.11], axis: [0, 0, 1], param: "steerAngle" },
+        faces: [
+          { id: "wfr", normal: [0, 1], verts: [[1.65, 0.45, 0], [1.95, 0.45, 0], [1.95, 0.45, 0.22], [1.65, 0.45, 0.22]], color: "#1a2e1a" }
+        ]
+      }
+    ]
+  };
+
+  // ../src/game/models/fuel_truck_tank.zdef
+  var fuel_truck_tank_default = {
+    id: "fuel_truck_tank",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    faces: [
+      {
+        id: "tk_top",
+        verts: [
+          [
+            0.25,
+            -0.38,
+            1.06
+          ],
+          [
+            1.4,
+            -0.38,
+            1.06
+          ],
+          [
+            1.4,
+            0.38,
+            1.06
+          ],
+          [
+            0.25,
+            0.38,
+            1.06
+          ]
+        ],
+        color: "#cccccc"
+      },
+      {
+        id: "tk_front",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            1.4,
+            -0.38,
+            0.3
+          ],
+          [
+            1.4,
+            0.38,
+            0.3
+          ],
+          [
+            1.4,
+            0.38,
+            1.06
+          ],
+          [
+            1.4,
+            -0.38,
+            1.06
+          ]
+        ],
+        color: "#aaaaaa"
+      },
+      {
+        id: "tk_right",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            1.4,
+            0.38,
+            0.3
+          ],
+          [
+            0.25,
+            0.38,
+            0.3
+          ],
+          [
+            0.25,
+            0.38,
+            1.06
+          ],
+          [
+            1.4,
+            0.38,
+            1.06
+          ]
+        ],
+        color: "#999999"
+      },
+      {
+        id: "tk_left",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            0.25,
+            -0.38,
+            0.3
+          ],
+          [
+            1.4,
+            -0.38,
+            0.3
+          ],
+          [
+            1.4,
+            -0.38,
+            1.06
+          ],
+          [
+            0.25,
+            -0.38,
+            1.06
+          ]
+        ],
+        color: "#bbbbbb"
+      },
+      {
+        id: "tk_rear",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            0.25,
+            0.38,
+            0.3
+          ],
+          [
+            0.25,
+            -0.38,
+            0.3
+          ],
+          [
+            0.25,
+            -0.38,
+            1.06
+          ],
+          [
+            0.25,
+            0.38,
+            1.06
+          ]
+        ],
+        color: "#aaaaaa"
+      },
+      {
+        id: "tk_stripe",
+        verts: [
+          [
+            0.3,
+            -0.04,
+            1.065
+          ],
+          [
+            1.35,
+            -0.04,
+            1.065
+          ],
+          [
+            1.35,
+            0.04,
+            1.065
+          ],
+          [
+            0.3,
+            0.04,
+            1.065
+          ]
+        ],
+        color: "#ff4400"
+      }
+    ]
+  };
+
+  // ../src/game/models/fuel_truck_cab.zdef
+  var fuel_truck_cab_default = {
+    id: "fuel_truck_cab",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    faces: [
+      {
+        id: "cab_top",
+        verts: [
+          [
+            1.5,
+            -0.45,
+            0.85
+          ],
+          [
+            2.2,
+            -0.45,
+            0.85
+          ],
+          [
+            2.2,
+            0.45,
+            0.85
+          ],
+          [
+            1.5,
+            0.45,
+            0.85
+          ]
+        ],
+        color: "#6a9a6a",
+        stroke: "#8aba8a"
+      },
+      {
+        id: "cab_front",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            2.2,
+            -0.45,
+            0.3
+          ],
+          [
+            2.2,
+            0.45,
+            0.3
+          ],
+          [
+            2.2,
+            0.45,
+            0.85
+          ],
+          [
+            2.2,
+            -0.45,
+            0.85
+          ]
+        ],
+        color: "#3a6a3a"
+      },
+      {
+        id: "cab_win",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            2.201,
+            -0.25,
+            0.45
+          ],
+          [
+            2.201,
+            0.25,
+            0.45
+          ],
+          [
+            2.201,
+            0.25,
+            0.75
+          ],
+          [
+            2.201,
+            -0.25,
+            0.75
+          ]
+        ],
+        color: "#112233"
+      },
+      {
+        id: "cab_right",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            2.2,
+            0.45,
+            0.3
+          ],
+          [
+            1.5,
+            0.45,
+            0.3
+          ],
+          [
+            1.5,
+            0.45,
+            0.85
+          ],
+          [
+            2.2,
+            0.45,
+            0.85
+          ]
+        ],
+        color: "#4a7a4a"
+      },
+      {
+        id: "cab_left",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            1.5,
+            -0.45,
+            0.3
+          ],
+          [
+            2.2,
+            -0.45,
+            0.3
+          ],
+          [
+            2.2,
+            -0.45,
+            0.85
+          ],
+          [
+            1.5,
+            -0.45,
+            0.85
+          ]
+        ],
+        color: "#5a8a5a"
+      },
+      {
+        id: "cab_rear",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            1.5,
+            0.45,
+            0.3
+          ],
+          [
+            1.5,
+            -0.45,
+            0.3
+          ],
+          [
+            1.5,
+            -0.45,
+            0.85
+          ],
+          [
+            1.5,
+            0.45,
+            0.85
+          ]
+        ],
+        color: "#3a5a3a"
+      }
+    ]
+  };
+
+  // ../src/game/draw-objects.ts
+  var createDrawObjects = (ctx, iso2, tileW, tileH, SceneRenderer) => {
+    const _drawFace = (drawCtx, isoFn, points, color, strokeColor, zOffset, cX, cY) => {
+      drawCtx.fillStyle = color;
+      drawCtx.beginPath();
+      const first = isoFn(points[0].x, points[0].y, points[0].z + zOffset, cX, cY);
+      drawCtx.moveTo(first.x, first.y);
+      for (let i = 1; i < points.length; i++) {
+        const p = isoFn(points[i].x, points[i].y, points[i].z + zOffset, cX, cY);
+        drawCtx.lineTo(p.x, p.y);
+      }
+      drawCtx.closePath();
+      drawCtx.fill();
+      if (strokeColor) {
+        drawCtx.strokeStyle = strokeColor;
+        drawCtx.lineWidth = 1;
+        drawCtx.stroke();
+      }
+    };
+    const drawFace = (points, color, strokeColor, zOffset, cX, cY) => {
+      _drawFace(ctx, iso2, points, color, strokeColor, zOffset, cX, cY);
+    };
+    const drawTree = (tX, tY, cx, cy, scale = 1, gz = 0, type = "pine", wind = { x: 0, y: 0, phase: 0 }, heliPos) => {
+      if (gz < 0.05) gz = 0.05;
+      const z0 = gz;
+      const trunkH = 0.5 * scale;
+      const trunkR = 0.08 * scale;
+      const windStrength = Math.hypot(wind.x, wind.y);
+      const swayPhase = wind.phase + tX * 0.3 + tY * 0.17;
+      const swayX = Math.cos(swayPhase) * windStrength * 18 * scale;
+      const swayY = Math.sin(swayPhase) * windStrength * 10 * scale;
+      if (type !== "bush") {
+        ctx.fillStyle = type === "dead" ? "#7a5a3a" : "#5a3a1a";
+        for (let i = 0; i <= 6; i++) {
+          const cz = z0 + i * (trunkH / 6);
+          const p = iso2(tX, tY, cz, cx, cy);
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y, trunkR * tileW / 2, trunkR * tileH / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      if (type === "pine") {
+        const layers = [
+          {
+            zBase: z0 + trunkH * 0.3,
+            zTop: z0 + trunkH * 0.3 + 1.4 * scale,
+            rBase: 0.9 * scale,
+            color: "#1a4a1a",
+            shadow: "#0f2f0f",
+            sway: 0.3
+          },
+          {
+            zBase: z0 + trunkH * 0.3 + 0.7 * scale,
+            zTop: z0 + trunkH * 0.3 + 1.9 * scale,
+            rBase: 0.65 * scale,
+            color: "#1e5a1e",
+            shadow: "#133513",
+            sway: 0.65
+          },
+          {
+            zBase: z0 + trunkH * 0.3 + 1.3 * scale,
+            zTop: z0 + trunkH * 0.3 + 2.3 * scale,
+            rBase: 0.4 * scale,
+            color: "#246024",
+            shadow: "#163a16",
+            sway: 1
+          }
+        ];
+        layers.forEach((l) => {
+          for (let i = 10; i >= 0; i--) {
+            const t = i / 10;
+            const cz = l.zBase + t * (l.zTop - l.zBase);
+            const r = l.rBase * (1 - t);
+            if (r <= 0) continue;
+            const p = iso2(tX, tY, cz, cx, cy);
+            const ox = swayX * l.sway * (1 - t * 0.5);
+            const oy = swayY * l.sway * (1 - t * 0.5);
+            ctx.fillStyle = l.shadow;
+            ctx.beginPath();
+            ctx.ellipse(p.x + ox + 2, p.y + oy + 1, r * tileW / 2, r * tileH / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = l.color;
+            ctx.beginPath();
+            ctx.ellipse(p.x + ox, p.y + oy, r * tileW / 2, r * tileH / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        });
+      } else if (type === "oak") {
+        const crownZ = z0 + trunkH + 0.5 * scale;
+        const crownR = 0.75 * scale;
+        const sw = swayX * 0.8, sh = swayY * 0.8;
+        [
+          { dx: 0, dz: 0, r: crownR, col: "#2a5a10", scol: "#1a3a08" },
+          { dx: -0.25 * scale, dz: 0.3 * scale, r: crownR * 0.75, col: "#336614", scol: "#1e4a0a" },
+          { dx: 0.3 * scale, dz: 0.2 * scale, r: crownR * 0.7, col: "#2e6012", scol: "#1c4208" },
+          { dx: -0.1 * scale, dz: 0.6 * scale, r: crownR * 0.55, col: "#3a7018", scol: "#234a0e" },
+          { dx: 0.15 * scale, dz: 0.55 * scale, r: crownR * 0.5, col: "#4a8020", scol: "#2a5010" }
+        ].forEach((blob) => {
+          const p = iso2(tX + blob.dx * 0.3, tY, crownZ + blob.dz, cx, cy);
+          const ox = sw + blob.dx * 10, oy = sh;
+          ctx.fillStyle = blob.scol;
+          ctx.beginPath();
+          ctx.ellipse(p.x + ox + 3, p.y + oy + 2, blob.r * tileW / 2, blob.r * tileH / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = blob.col;
+          ctx.beginPath();
+          ctx.ellipse(p.x + ox, p.y + oy, blob.r * tileW / 2, blob.r * tileH / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      } else if (type === "bush") {
+        const bz = z0 + 0.15 * scale;
+        [
+          { dx: 0, r: 0.65 * scale, col: "#1a4a0a", dz: 0 },
+          { dx: -0.2 * scale, r: 0.5 * scale, col: "#2a6014", dz: 0.1 },
+          { dx: 0.25 * scale, r: 0.45 * scale, col: "#266010", dz: 0.08 },
+          { dx: 0, r: 0.38 * scale, col: "#347018", dz: 0.2 }
+        ].forEach((blob) => {
+          const p = iso2(tX + blob.dx * 0.4, tY, bz + blob.dz * scale, cx, cy);
+          const ox = swayX * 0.4, oy = swayY * 0.4;
+          ctx.fillStyle = blob.col;
+          ctx.beginPath();
+          ctx.ellipse(p.x + ox, p.y + oy, blob.r * tileW / 2 * 1.3, blob.r * tileH / 2, 0, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      } else if (type === "dead") {
+        const topZ = z0 + trunkH + 0.9 * scale;
+        const ptop = iso2(tX, tY, topZ, cx, cy);
+        const pbase = iso2(tX, tY, z0 + trunkH, cx, cy);
+        ctx.strokeStyle = "#8a6a4a";
+        ctx.lineWidth = Math.max(1.5, tileW * 0.06 * scale);
+        ctx.beginPath();
+        ctx.moveTo(pbase.x, pbase.y);
+        ctx.lineTo(ptop.x, ptop.y);
+        ctx.stroke();
+        ctx.lineWidth = Math.max(0.8, tileW * 0.03 * scale);
+        ctx.strokeStyle = "#7a5a3a";
+        [
+          { ax: -0.35, az: 0.45, bx: -0.6, bz: 0.65 },
+          { ax: 0.3, az: 0.5, bx: 0.55, bz: 0.68 },
+          { ax: -0.2, az: 0.72, bx: -0.38, bz: 0.88 },
+          { ax: 0.22, az: 0.75, bx: 0.4, bz: 0.9 },
+          { ax: 0, az: 0.85, bx: -0.15, bz: 1 }
+        ].forEach((br) => {
+          const pa = iso2(tX + br.ax * 0.3 * scale, tY, z0 + trunkH + br.az * scale, cx, cy);
+          const pb = iso2(tX + br.bx * 0.35 * scale, tY, z0 + trunkH + br.bz * scale, cx, cy);
+          const sw2 = swayX * 0.5 * (br.bz - 0.3);
+          ctx.beginPath();
+          ctx.moveTo(pa.x, pa.y);
+          ctx.lineTo(pb.x + sw2, pb.y);
+          ctx.stroke();
+        });
+      } else if (type === "beach_umbrella") {
+        const poleTop = iso2(tX, tY, z0 + 1 * scale, cx, cy);
+        const poleBase = iso2(tX, tY, z0, cx, cy);
+        ctx.strokeStyle = "#d8d0b8";
+        ctx.lineWidth = Math.max(1, tileW * 0.04 * scale);
+        ctx.beginPath();
+        ctx.moveTo(poleBase.x, poleBase.y);
+        ctx.lineTo(poleTop.x, poleTop.y);
+        ctx.stroke();
+        const rw = 0.5 * scale * tileW / 2;
+        const rh = 0.5 * scale * tileH / 2;
+        ctx.fillStyle = "#881500";
+        ctx.beginPath();
+        ctx.ellipse(poleTop.x + 2, poleTop.y + 1, rw, rh, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#cc2200";
+        ctx.beginPath();
+        ctx.ellipse(poleTop.x, poleTop.y, rw, rh, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "rgba(240,240,240,0.9)";
+        ctx.beginPath();
+        ctx.ellipse(poleTop.x, poleTop.y, rw, rh * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === "beach_lounger") {
+        const s1 = iso2(tX - 0.38 * scale, tY - 0.18 * scale, z0 + 0.08 * scale, cx, cy);
+        const s2 = iso2(tX + 0.22 * scale, tY - 0.18 * scale, z0 + 0.1 * scale, cx, cy);
+        const s3 = iso2(tX + 0.22 * scale, tY + 0.18 * scale, z0 + 0.1 * scale, cx, cy);
+        const s4 = iso2(tX - 0.38 * scale, tY + 0.18 * scale, z0 + 0.08 * scale, cx, cy);
+        ctx.fillStyle = "#d8cc90";
+        ctx.beginPath();
+        ctx.moveTo(s1.x, s1.y);
+        ctx.lineTo(s2.x, s2.y);
+        ctx.lineTo(s3.x, s3.y);
+        ctx.lineTo(s4.x, s4.y);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "#e8dcc0";
+        ctx.beginPath();
+        ctx.moveTo(s1.x, s1.y);
+        ctx.lineTo(s4.x, s4.y);
+        ctx.lineTo(s4.x, s4.y - Math.abs(s1.y - iso2(tX - 0.38 * scale, tY - 0.18 * scale, z0 + 0.44 * scale, cx, cy).y));
+        ctx.lineTo(s1.x, s1.y - Math.abs(s1.y - iso2(tX - 0.38 * scale, tY - 0.18 * scale, z0 + 0.44 * scale, cx, cy).y));
+        ctx.closePath();
+        ctx.fill();
+      } else if (type === "beach_cooler") {
+        const p = iso2(tX, tY, z0 + 0.13 * scale, cx, cy);
+        const ptop = iso2(tX, tY, z0 + 0.27 * scale, cx, cy);
+        const w = Math.max(3, 0.22 * scale * tileW / 2);
+        const h = Math.max(2, 0.14 * scale * tileH / 2);
+        ctx.fillStyle = "#ccd8e4";
+        ctx.fillRect(p.x - w, p.y - h, w * 2, h * 2);
+        ctx.fillStyle = "#3366aa";
+        ctx.fillRect(ptop.x - w - 1, ptop.y - 2, w * 2 + 2, 4);
+      } else if (type === "beach_umbrella_tilted") {
+        const poleBase = iso2(tX, tY, z0, cx, cy);
+        const poleTop = iso2(tX + 0.2 * scale, tY, z0 + 0.8 * scale, cx, cy);
+        ctx.strokeStyle = "#d8d0b8";
+        ctx.lineWidth = Math.max(1, tileW * 0.04 * scale);
+        ctx.beginPath();
+        ctx.moveTo(poleBase.x, poleBase.y);
+        ctx.lineTo(poleTop.x, poleTop.y);
+        ctx.stroke();
+        const canCtr = iso2(tX + 0.18 * scale, tY, z0 + 0.8 * scale, cx, cy);
+        const rMaj = 0.5 * scale * tileW / 2;
+        const rMin = rMaj * 0.55;
+        const lean = Math.atan2(tileH / 2, tileW / 2);
+        ctx.save();
+        ctx.translate(canCtr.x, canCtr.y);
+        ctx.rotate(lean);
+        ctx.fillStyle = "#881400";
+        ctx.beginPath();
+        ctx.ellipse(1, 1, rMaj, rMin, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#cc2200";
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rMaj, rMin, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = "rgba(240,240,240,0.88)";
+        ctx.lineWidth = Math.max(1.5, rMin * 0.45);
+        ctx.beginPath();
+        ctx.moveTo(-rMaj * 0.9, 0);
+        ctx.lineTo(rMaj * 0.9, 0);
+        ctx.stroke();
+        ctx.restore();
+      } else if (type === "beach_person") {
+        const variant = Math.abs(Math.round(tX * 7 + tY * 3)) % 4;
+        const swimColors = ["#cc2200", "#1166cc", "#cc8800", "#118833"];
+        const swimColor = swimColors[variant];
+        const base = iso2(tX, tY, z0, cx, cy);
+        const s = tileW / 64 * scale;
+        const skin = "#e8b070";
+        const headR = Math.max(1, 2.5 * s);
+        const bw = Math.max(1.5, 5 * s);
+        const sw = Math.max(1, 2.5 * s);
+        const legH = Math.max(1.5, 7 * s);
+        const torsoH = Math.max(1.5, 5 * s);
+        const bx = base.x, by = base.y;
+        const waving = heliPos !== void 0 && Math.hypot(heliPos.x - tX, heliPos.y - tY) < 5 && heliPos.z < 8;
+        ctx.fillStyle = "rgba(0,0,0,0.15)";
+        ctx.beginPath();
+        ctx.ellipse(bx, by, tileW * 0.15 * scale, tileH * 0.1 * scale, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = skin;
+        ctx.fillRect(bx - bw / 2, by - legH, bw * 0.38, legH);
+        ctx.fillRect(bx + bw / 2 - bw * 0.38, by - legH, bw * 0.38, legH);
+        ctx.fillStyle = swimColor;
+        ctx.fillRect(bx - bw / 2, by - legH - sw, bw, sw);
+        ctx.fillStyle = skin;
+        ctx.fillRect(bx - bw / 2, by - legH - sw - torsoH, bw, torsoH);
+        ctx.fillRect(bx - bw, by - legH - sw - torsoH * 0.7, bw * 0.5, Math.max(1, 2 * s));
+        if (waving) {
+          const waveOff = Math.sin(Date.now() / 260) * headR * 0.9;
+          ctx.strokeStyle = skin;
+          ctx.lineWidth = Math.max(0.8, bw * 0.38);
+          ctx.lineCap = "round";
+          ctx.beginPath();
+          ctx.moveTo(bx + bw * 0.5, by - legH - sw - torsoH * 0.65);
+          ctx.lineTo(bx + bw * 0.9, by - legH - sw - torsoH - headR * 0.8 + waveOff);
+          ctx.stroke();
+          ctx.lineCap = "butt";
+        } else {
+          ctx.fillStyle = skin;
+          ctx.fillRect(bx + bw / 2, by - legH - sw - torsoH * 0.7, bw * 0.5, Math.max(1, 2 * s));
+        }
+        ctx.fillStyle = skin;
+        ctx.beginPath();
+        ctx.arc(bx, by - legH - sw - torsoH - headR + s * 0.5, headR, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (type === "swimmer") {
+        const wz = Math.max(gz, 0);
+        const pHead = iso2(tX, tY, wz + 0.22 * scale, cx, cy);
+        const pArmL = iso2(tX - 0.3 * scale, tY, wz + 0.1 * scale, cx, cy);
+        const pArmR = iso2(tX + 0.3 * scale, tY, wz + 0.1 * scale, cx, cy);
+        ctx.strokeStyle = "#e0b878";
+        ctx.lineWidth = Math.max(1.5, tileW * 0.05 * scale);
+        ctx.beginPath();
+        ctx.moveTo(pArmL.x, pArmL.y);
+        ctx.lineTo(pArmR.x, pArmR.y);
+        ctx.stroke();
+        ctx.strokeStyle = "rgba(120,180,255,0.6)";
+        ctx.lineWidth = Math.max(1, tileW * 0.04 * scale);
+        ctx.beginPath();
+        ctx.ellipse(
+          pHead.x,
+          pHead.y + tileH * 0.08 * scale,
+          tileW * 0.22 * scale,
+          tileH * 0.14 * scale,
+          0,
+          0,
+          Math.PI * 2
+        );
+        ctx.stroke();
+        const hw = tileW * 0.09 * scale;
+        ctx.fillStyle = "#e0b878";
+        ctx.beginPath();
+        ctx.ellipse(pHead.x, pHead.y, hw, hw * 0.75, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    };
+    const drawPerson = (pX, pY, pZ, _angle, isWaving, cx, cy, outfit, colors, submerged = false) => {
+      const base = iso2(pX, pY, pZ, cx, cy);
+      const s = tileW / 64;
+      const headR = Math.max(1, 2.5 * s), torsoW = Math.max(1.5, 5 * s), torsoH = Math.max(1.5, 7.5 * s), legW = Math.max(1, 2 * s), legH = Math.max(1.5, 7 * s);
+      const isRescuer = outfit === "rescuer";
+      const colorShirt = colors?.shirt ?? (isRescuer ? "#ff6600" : "#5a786e");
+      const colorPants = colors?.pants ?? (isRescuer ? "#ff6600" : "#3b4a6b");
+      const colorArm = isRescuer ? "#ff6600" : "#f2d0a4";
+      const drawX = base.x, drawY = base.y;
+      if (submerged) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, ctx.canvas.width, drawY - legH);
+        ctx.clip();
+      }
+      ctx.fillStyle = colorPants;
+      ctx.fillRect(drawX - torsoW / 2, drawY - legH, legW, legH);
+      ctx.fillRect(drawX + torsoW / 2 - legW, drawY - legH, legW, legH);
+      const torsoY = drawY - legH - torsoH;
+      ctx.fillStyle = colorShirt;
+      ctx.fillRect(drawX - torsoW / 2, torsoY, torsoW, torsoH);
+      const headY = torsoY - headR + s;
+      ctx.fillStyle = isRescuer ? "#ffffff" : "#f2d0a4";
+      ctx.beginPath();
+      ctx.arc(drawX, headY, headR, 0, Math.PI * 2);
+      ctx.fill();
+      if (isRescuer) {
+        const isTravolta = colorShirt === "#ffffff";
+        if (isTravolta) {
+          ctx.fillStyle = "#111";
+          ctx.beginPath();
+          ctx.moveTo(drawX, torsoY + s);
+          ctx.lineTo(drawX - 2 * s, torsoY + 4 * s);
+          ctx.lineTo(drawX, torsoY + 3 * s);
+          ctx.lineTo(drawX + 2 * s, torsoY + 4 * s);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = "#111";
+          ctx.lineWidth = Math.max(0.8, 1.2 * s);
+          ctx.beginPath();
+          ctx.arc(drawX, headY, headR, Math.PI * 0.9, Math.PI * 0.1, false);
+          ctx.stroke();
+        }
+      }
+      if (isWaving) {
+        const waveOffset = Math.sin(Date.now() * 0.015) * 3 * s;
+        const shoulderX = drawX + torsoW / 2, shoulderY = torsoY + 2 * s;
+        ctx.strokeStyle = colorArm;
+        ctx.lineWidth = Math.max(1, 1.5 * s);
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(shoulderX, shoulderY);
+        ctx.lineTo(shoulderX + 4 * s + waveOffset, shoulderY - 5 * s);
+        ctx.stroke();
+      }
+      if (submerged) ctx.restore();
+    };
+    const drawTractor = (objX, objY, objAngle, deckZ, cx, cy, tx, ty, tAngle, bc, bs, bd, cc, cs, ct) => {
+      const cosA = Math.cos(objAngle), sinA = Math.sin(objAngle);
+      const bodyL = 1, bodyW = 0.72, bodyH = 0.15;
+      const isFireTractor = ct === "#eeeeee";
+      const cabH = isFireTractor ? 0.22 : bodyH + 0.22;
+      const cabL = isFireTractor ? bodyL * 0.75 : bodyL;
+      const dZ = deckZ + 0.01, wW = 0.15, wH = 0.25;
+      const cosT = Math.cos(tAngle + objAngle), sinT = Math.sin(tAngle + objAngle);
+      const vt = (lx, ly) => {
+        return lx * cosT - ly * sinT + (lx * sinT + ly * cosT) > 0;
+      };
+      const ox = objX + tx * cosA - ty * sinA;
+      const oy = objY + tx * sinA + ty * cosA;
+      const rr = (rx, ry) => {
+        return { x: ox + rx * cosT - ry * sinT, y: oy + rx * sinT + ry * cosT };
+      };
+      const H = (p, z) => {
+        return { x: p.x, y: p.y, z };
+      };
+      const face = (pts, col, stroke) => {
+        drawFace(pts, col, stroke ?? null, 0, cx, cy);
+      };
+      if (isFireTractor) {
+        const b1 = rr(0, 0), b2 = rr(bodyL, 0), b3 = rr(bodyL, bodyW), b4 = rr(0, bodyW);
+        face([H(b1, dZ), H(b2, dZ), H(b3, dZ), H(b4, dZ)], bc);
+        if (vt(0, -1)) face([H(b1, dZ), H(b2, dZ), H(b2, dZ + bodyH), H(b1, dZ + bodyH)], bs);
+        if (vt(1, 0)) face([H(b2, dZ), H(b3, dZ), H(b3, dZ + bodyH), H(b2, dZ + bodyH)], bd);
+        if (vt(0, 1)) face([H(b3, dZ), H(b4, dZ), H(b4, dZ + bodyH), H(b3, dZ + bodyH)], bs);
+        if (vt(-1, 0)) face([H(b4, dZ), H(b1, dZ), H(b1, dZ + bodyH), H(b4, dZ + bodyH)], bd);
+        face([H(b1, dZ + bodyH), H(b2, dZ + bodyH), H(b3, dZ + bodyH), H(b4, dZ + bodyH)], bs);
+        const eqZ = dZ + bodyH, eqW = 0.2, eqL = 0.25, eqH = 0.18, eqX = bodyL - eqW - 0.02;
+        const eq1 = rr(eqX, bodyW * 0.1), eq2 = rr(eqX + eqW, bodyW * 0.1);
+        const eq3 = rr(eqX + eqW, bodyW * 0.1 + eqL), eq4 = rr(eqX, bodyW * 0.1 + eqL);
+        face([H(eq1, eqZ), H(eq2, eqZ), H(eq3, eqZ), H(eq4, eqZ)], "#aa0000");
+        if (vt(0, -1)) face([H(eq1, eqZ), H(eq2, eqZ), H(eq2, eqZ + eqH), H(eq1, eqZ + eqH)], "#ee0000");
+        if (vt(1, 0)) face([H(eq2, eqZ), H(eq3, eqZ), H(eq3, eqZ + eqH), H(eq2, eqZ + eqH)], "#880000");
+        if (vt(0, 1)) face([H(eq3, eqZ), H(eq4, eqZ), H(eq4, eqZ + eqH), H(eq3, eqZ + eqH)], "#aa0000");
+        if (vt(-1, 0)) face([H(eq4, eqZ), H(eq1, eqZ), H(eq1, eqZ + eqH), H(eq4, eqZ + eqH)], "#880000");
+        face([H(eq1, eqZ + eqH), H(eq2, eqZ + eqH), H(eq3, eqZ + eqH), H(eq4, eqZ + eqH)], "#cc0000");
+      }
+      const cZ = isFireTractor ? dZ + bodyH : dZ;
+      const cc1 = rr(0, 0), cc2 = rr(cabL, 0), cc3 = rr(cabL, bodyW), cc4 = rr(0, bodyW);
+      face([H(cc1, cZ), H(cc2, cZ), H(cc3, cZ), H(cc4, cZ)], cc);
+      if (vt(0, -1)) face([H(cc1, cZ), H(cc2, cZ), H(cc2, cZ + cabH), H(cc1, cZ + cabH)], cs);
+      if (vt(1, 0)) face([H(cc2, cZ), H(cc3, cZ), H(cc3, cZ + cabH), H(cc2, cZ + cabH)], bd);
+      if (vt(0, 1)) face([H(cc3, cZ), H(cc4, cZ), H(cc4, cZ + cabH), H(cc3, cZ + cabH)], cc);
+      if (vt(-1, 0)) face([H(cc4, cZ), H(cc1, cZ), H(cc1, cZ + cabH), H(cc4, cZ + cabH)], bd);
+      face([H(cc1, cZ + cabH), H(cc2, cZ + cabH), H(cc3, cZ + cabH), H(cc4, cZ + cabH)], ct);
+      [0.15, bodyL - 0.15].forEach((ax) => {
+        if (vt(0, -1)) {
+          const w1 = rr(ax - wW * 0.5, 0), w2 = rr(ax + wW * 0.5, 0);
+          face([H(w1, dZ), H(w2, dZ), H(w2, dZ + wH), H(w1, dZ + wH)], "#222");
+        }
+        if (vt(0, 1)) {
+          const w1 = rr(ax - wW * 0.5, bodyW), w2 = rr(ax + wW * 0.5, bodyW);
+          face([H(w1, dZ), H(w2, dZ), H(w2, dZ + wH), H(w1, dZ + wH)], "#222");
+        }
+      });
+    };
+    const drawFuelTruck = (tX, tY, angle, opts = {}) => {
+      const { z = 0, armExtend = 0, armTarget = null, getFuelingState, steerAngle = 0 } = opts;
+      const cosA = Math.cos(angle), sinA = Math.sin(angle);
+      const tkDepth = tX + tY + 0.825 * (cosA + sinA);
+      const cabDepth = tX + tY + 1.85 * (cosA + sinA);
+      const chDepth = Math.min(tkDepth, cabDepth) - 0.01;
+      const pivotWX = tX + 0.3 * cosA;
+      const pivotWY = tY + 0.3 * sinA;
+      SceneRenderer.add(applyParts(fuel_truck_chassis_default, { steerAngle }), { x: tX, y: tY, z, angle, depth: chDepth });
+      SceneRenderer.add(fuel_truck_tank_default, { x: tX, y: tY, z, angle, depth: tkDepth });
+      SceneRenderer.add(fuel_truck_cab_default, {
+        x: tX,
+        y: tY,
+        z,
+        angle,
+        depth: cabDepth,
+        drawFn: (camX, camY) => {
+          if (armExtend <= 0) return;
+          const pivotZ = z + 0.98;
+          const pivotIso = iso2(pivotWX, pivotWY, pivotZ, camX, camY);
+          let elbowWX, elbowWY;
+          if (armTarget) {
+            const dx = armTarget.x - pivotWX, dy = armTarget.y - pivotWY;
+            const dist = Math.hypot(dx, dy) || 1;
+            elbowWX = pivotWX + dx / dist * 0.65 * armExtend;
+            elbowWY = pivotWY + dy / dist * 0.65 * armExtend;
+          } else {
+            elbowWX = pivotWX - cosA * 0.65 * armExtend;
+            elbowWY = pivotWY - sinA * 0.65 * armExtend;
+          }
+          const elbowZ = pivotZ + 0.25 * Math.sin(armExtend * Math.PI * 0.7);
+          const elbowIso = iso2(elbowWX, elbowWY, elbowZ, camX, camY);
+          let nozzleWX, nozzleWY;
+          if (armTarget) {
+            const dx = armTarget.x - pivotWX, dy = armTarget.y - pivotWY;
+            const dist = Math.hypot(dx, dy) || 1;
+            nozzleWX = elbowWX + dx / dist * 0.5 * armExtend;
+            nozzleWY = elbowWY + dy / dist * 0.5 * armExtend;
+          } else {
+            nozzleWX = elbowWX - cosA * 0.5 * armExtend;
+            nozzleWY = elbowWY - sinA * 0.5 * armExtend;
+          }
+          const nozzleZ = elbowZ - 0.7 * armExtend;
+          const nozzleIso = iso2(nozzleWX, nozzleWY, nozzleZ, camX, camY);
+          ctx.lineCap = "round";
+          ctx.lineJoin = "round";
+          ctx.strokeStyle = "#777";
+          ctx.lineWidth = 4;
+          ctx.beginPath();
+          ctx.moveTo(pivotIso.x, pivotIso.y);
+          ctx.lineTo(elbowIso.x, elbowIso.y);
+          ctx.stroke();
+          ctx.strokeStyle = "#aaa";
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(elbowIso.x, elbowIso.y);
+          ctx.lineTo(nozzleIso.x, nozzleIso.y);
+          ctx.stroke();
+          const as = tileW / 64;
+          ctx.fillStyle = "#555";
+          ctx.beginPath();
+          ctx.arc(elbowIso.x, elbowIso.y, Math.max(1.2, 3 * as), 0, Math.PI * 2);
+          ctx.fill();
+          const fueling = getFuelingState ? getFuelingState() : false;
+          ctx.fillStyle = fueling && Math.floor(Date.now() / 200) % 2 ? "#ff8800" : "#444";
+          ctx.beginPath();
+          ctx.arc(nozzleIso.x, nozzleIso.y, Math.max(1.5, 4 * as), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+    };
+    const drawHeli = (type, hX, hY, hZ, hAngle, hTilt, hRoll, hRotor, camX, camY, opts = {}) => {
+      const {
+        targetCtx: tCtx,
+        targetIso: tIso,
+        isShadow = false,
+        scaleOverride = 0,
+        fillColor: _rawFill = "#ff6600",
+        strokeColor: _rawStroke = "#dd3300",
+        shadowGetGround,
+        flapRate = 1,
+        tailRotorRate = 1,
+        colorVariant
+      } = opts;
+      const fillColor = colorVariant === "blue" ? "#55aadd" : colorVariant === "sand" ? "#c8a45a" : colorVariant === "green" ? "#4e8c38" : _rawFill;
+      const strokeColor = colorVariant === "blue" ? "#3388bb" : colorVariant === "sand" ? "#a07838" : colorVariant === "green" ? "#336025" : _rawStroke;
+      const actualCtx = tCtx ?? ctx;
+      const actualIso = tIso ?? iso2;
+      const cosA = Math.cos(hAngle), sinA = Math.sin(hAngle);
+      const _baseScale = getHeliType(type).scale;
+      let s = _baseScale;
+      if (scaleOverride > 0) s = scaleOverride * _baseScale;
+      const lineScale = tileW / 64;
+      const p = (lx, ly, lz) => {
+        lx *= s;
+        ly *= s;
+        lz *= s;
+        lz += ly * hRoll * 0.5 + lx * hTilt * 0.5;
+        const rx = lx * cosA - ly * sinA + hX;
+        const ry = lx * sinA + ly * cosA + hY;
+        let rz = hZ + lz;
+        if (isShadow) {
+          if (shadowGetGround) {
+            const g = shadowGetGround(rx, ry);
+            rz = g > -5 ? g : 0;
+          } else {
+            rz = hZ;
+          }
+        }
+        return actualIso(rx, ry, rz, camX, camY);
+      };
+      const faceFn = (pts, color, stroke, zOffset, cX, cY) => {
+        _drawFace(actualCtx, actualIso, pts, color, stroke, zOffset, cX, cY);
+      };
+      actualCtx.lineJoin = "round";
+      actualCtx.lineCap = "round";
+      if (type === "dolphin") {
+        if (isShadow) {
+          const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : hZ;
+          actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.04)})`;
+          const sN = p(1.2, 0, 0), sT = p(-1.8, 0, 0), sL = p(0, 0.4, 0), sR = p(0, -0.4, 0);
+          actualCtx.beginPath();
+          actualCtx.moveTo(sN.x, sN.y);
+          actualCtx.lineTo(sR.x, sR.y);
+          actualCtx.lineTo(sT.x, sT.y);
+          actualCtx.lineTo(sL.x, sL.y);
+          actualCtx.fill();
+          return;
+        }
+        actualCtx.strokeStyle = strokeColor;
+        actualCtx.lineWidth = 1;
+        const nose = p(1.4, 0, 0.2), tailBase = p(-0.8, 0, 0.5);
+        const lSide = p(0, 0.4, 0.4), rSide = p(0, -0.4, 0.4);
+        actualCtx.fillStyle = fillColor;
+        actualCtx.beginPath();
+        actualCtx.moveTo(nose.x, nose.y);
+        actualCtx.lineTo(rSide.x, rSide.y);
+        actualCtx.lineTo(tailBase.x, tailBase.y);
+        actualCtx.lineTo(lSide.x, lSide.y);
+        actualCtx.closePath();
+        actualCtx.fill();
+        actualCtx.fillStyle = "#112";
+        actualCtx.beginPath();
+        actualCtx.moveTo(p(1.2, 0, 0.25).x, p(1.2, 0, 0.25).y);
+        actualCtx.lineTo(p(0.3, -0.3, 0.6).x, p(0.3, -0.3, 0.6).y);
+        actualCtx.lineTo(p(0.3, 0.3, 0.6).x, p(0.3, 0.3, 0.6).y);
+        actualCtx.fill();
+        const tTop = p(-1.8, 0, 1.2), tBack = p(-2, 0, 0.4);
+        actualCtx.fillStyle = fillColor;
+        actualCtx.beginPath();
+        actualCtx.moveTo(tailBase.x, tailBase.y);
+        actualCtx.lineTo(tTop.x, tTop.y);
+        actualCtx.lineTo(tBack.x, tBack.y);
+        actualCtx.fill();
+        const fenCen = p(-1.6, 0.01, 0.72);
+        const fenE1 = p(-1.6 + 0.24, 0.01, 0.72);
+        const fenE2 = p(-1.6, 0.01, 0.72 + 0.24);
+        const fax = fenE1.x - fenCen.x, fay = fenE1.y - fenCen.y;
+        const fbx = fenE2.x - fenCen.x, fby = fenE2.y - fenCen.y;
+        const fenEllipse = (fill, stroke, lw, scale) => {
+          actualCtx.beginPath();
+          for (let i = 0; i <= 24; i++) {
+            const a = i / 24 * Math.PI * 2;
+            const ex = fenCen.x + fax * Math.cos(a) * scale + fbx * Math.sin(a) * scale;
+            const ey = fenCen.y + fay * Math.cos(a) * scale + fby * Math.sin(a) * scale;
+            i === 0 ? actualCtx.moveTo(ex, ey) : actualCtx.lineTo(ex, ey);
+          }
+          actualCtx.closePath();
+          if (fill) {
+            actualCtx.fillStyle = fill;
+            actualCtx.fill();
+          }
+          if (stroke) {
+            actualCtx.strokeStyle = stroke;
+            actualCtx.lineWidth = lw;
+            actualCtx.stroke();
+          }
+        };
+        fenEllipse("#1a1a1a", null, 0, 1);
+        actualCtx.strokeStyle = "rgba(210,235,255,0.7)";
+        actualCtx.lineWidth = 1.2 * s * lineScale;
+        actualCtx.lineCap = "round";
+        for (let i = 0; i < 8; i++) {
+          const a = hRotor * 2 * tailRotorRate + i * (Math.PI / 4);
+          const ca = Math.cos(a), sa = Math.sin(a);
+          actualCtx.beginPath();
+          actualCtx.moveTo(
+            fenCen.x + fax * ca * 0.25 + fbx * sa * 0.25,
+            fenCen.y + fay * ca * 0.25 + fby * sa * 0.25
+          );
+          actualCtx.lineTo(
+            fenCen.x + fax * ca * 0.88 + fbx * sa * 0.88,
+            fenCen.y + fay * ca * 0.88 + fby * sa * 0.88
+          );
+          actualCtx.stroke();
+        }
+        fenEllipse("#444", null, 0, 0.33);
+        fenEllipse(null, strokeColor, 1.5 * s * lineScale, 1);
+        actualCtx.strokeStyle = "rgba(220,245,255,0.5)";
+        actualCtx.lineWidth = 2 * lineScale;
+        const hub = p(0, 0, 0.7);
+        for (let i = 0; i < 4; i++) {
+          const a = hRotor + i * (Math.PI / 2);
+          const end = p(Math.cos(a) * 1.8, Math.sin(a) * 1.8, 0.8);
+          actualCtx.beginPath();
+          actualCtx.moveTo(hub.x, hub.y);
+          actualCtx.lineTo(end.x, end.y);
+          actualCtx.stroke();
+        }
+      } else if (type === "coasthawk") {
+        if (isShadow) {
+          const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : hZ;
+          actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.04)})`;
+          const sN = p(1.3, 0, 0), sT = p(-2.8, 0, 0), sL = p(0, 0.5, 0), sR = p(0, -0.5, 0);
+          actualCtx.beginPath();
+          actualCtx.moveTo(sN.x, sN.y);
+          actualCtx.lineTo(sR.x, sR.y);
+          actualCtx.lineTo(sT.x, sT.y);
+          actualCtx.lineTo(sL.x, sL.y);
+          actualCtx.fill();
+          return;
+        }
+        const stabL = p(-2.4, 0.6, 0.3), stabR = p(-2.4, -0.6, 0.3);
+        actualCtx.fillStyle = "#111";
+        actualCtx.lineWidth = 4 * s * lineScale;
+        actualCtx.strokeStyle = "#222";
+        actualCtx.beginPath();
+        actualCtx.moveTo(stabL.x, stabL.y);
+        actualCtx.lineTo(stabR.x, stabR.y);
+        actualCtx.stroke();
+        const n = p(1.3, 0, 0.3), tailBoomStart = p(-1.1, 0, 0.6);
+        const bodyFL = p(0.4, 0.45, 0.4), bodyFR = p(0.4, -0.45, 0.4);
+        const bodyBL = p(-1, 0.45, 0.4), bodyBR = p(-1, -0.45, 0.4);
+        actualCtx.strokeStyle = strokeColor;
+        actualCtx.lineWidth = 1;
+        actualCtx.fillStyle = fillColor;
+        actualCtx.beginPath();
+        actualCtx.moveTo(n.x, n.y);
+        actualCtx.lineTo(bodyFR.x, bodyFR.y);
+        actualCtx.lineTo(bodyBR.x, bodyBR.y);
+        actualCtx.lineTo(tailBoomStart.x, tailBoomStart.y);
+        actualCtx.lineTo(bodyBL.x, bodyBL.y);
+        actualCtx.lineTo(bodyFL.x, bodyFL.y);
+        actualCtx.fill();
+        actualCtx.stroke();
+        actualCtx.fillStyle = "#111";
+        actualCtx.beginPath();
+        actualCtx.moveTo(p(0.3, 0.47, 0.35).x, p(0.3, 0.47, 0.35).y);
+        actualCtx.lineTo(p(-0.6, 0.47, 0.35).x, p(-0.6, 0.47, 0.35).y);
+        actualCtx.lineTo(p(-0.6, 0.3, 0.6).x, p(-0.6, 0.3, 0.6).y);
+        actualCtx.lineTo(p(0.3, 0.3, 0.6).x, p(0.3, 0.3, 0.6).y);
+        actualCtx.fill();
+        actualCtx.beginPath();
+        actualCtx.moveTo(p(0.3, -0.47, 0.35).x, p(0.3, -0.47, 0.35).y);
+        actualCtx.lineTo(p(-0.6, -0.47, 0.35).x, p(-0.6, -0.47, 0.35).y);
+        actualCtx.lineTo(p(-0.6, -0.3, 0.6).x, p(-0.6, -0.3, 0.6).y);
+        actualCtx.lineTo(p(0.3, -0.3, 0.6).x, p(0.3, -0.3, 0.6).y);
+        actualCtx.fill();
+        actualCtx.fillStyle = "#111";
+        actualCtx.beginPath();
+        actualCtx.moveTo(n.x, n.y);
+        actualCtx.lineTo(p(0.6, 0.4, 0.6).x, p(0.6, 0.4, 0.6).y);
+        actualCtx.lineTo(p(0.6, -0.4, 0.6).x, p(0.6, -0.4, 0.6).y);
+        actualCtx.fill();
+        actualCtx.fillStyle = "#eee";
+        actualCtx.beginPath();
+        actualCtx.moveTo(p(0.6, 0, 0.7).x, p(0.6, 0, 0.7).y);
+        actualCtx.lineTo(p(-0.8, 0.35, 0.7).x, p(-0.8, 0.35, 0.7).y);
+        actualCtx.lineTo(p(-0.8, -0.35, 0.7).x, p(-0.8, -0.35, 0.7).y);
+        actualCtx.fill();
+        actualCtx.fillStyle = fillColor;
+        const finBase = p(-2.4, 0, 0.6), finTop = p(-2.9, 0, 1.3), finBack = p(-3, 0, 0.6);
+        actualCtx.lineWidth = 6 * s * lineScale;
+        actualCtx.strokeStyle = strokeColor;
+        actualCtx.beginPath();
+        actualCtx.moveTo(tailBoomStart.x, tailBoomStart.y);
+        actualCtx.lineTo(finBase.x, finBase.y);
+        actualCtx.stroke();
+        actualCtx.lineWidth = 1;
+        actualCtx.beginPath();
+        actualCtx.moveTo(finBase.x, finBase.y);
+        actualCtx.lineTo(finTop.x, finTop.y);
+        actualCtx.lineTo(finBack.x, finBack.y);
+        actualCtx.fill();
+        actualCtx.strokeStyle = "rgba(220,245,255,0.55)";
+        actualCtx.lineWidth = 2 * s * lineScale;
+        actualCtx.lineCap = "round";
+        const trHub = p(-2.95, 0.08, 0.95);
+        for (let i = 0; i < 4; i++) {
+          const a = hRotor * 1.5 * tailRotorRate + i * (Math.PI / 2);
+          const trEnd = p(-2.95 + Math.sin(a) * 0.55, 0.08, 0.95 + Math.cos(a) * 0.55);
+          actualCtx.beginPath();
+          actualCtx.moveTo(trHub.x, trHub.y);
+          actualCtx.lineTo(trEnd.x, trEnd.y);
+          actualCtx.stroke();
+        }
+        actualCtx.strokeStyle = "rgba(220,245,255,0.5)";
+        actualCtx.lineWidth = 3 * s * lineScale;
+        const hub = p(0, 0, 0.8);
+        for (let i = 0; i < 4; i++) {
+          const a = hRotor + i * (Math.PI / 2);
+          const end = p(Math.cos(a) * 2.6, Math.sin(a) * 2.6, 0.85);
+          actualCtx.beginPath();
+          actualCtx.moveTo(hub.x, hub.y);
+          actualCtx.lineTo(end.x, end.y);
+          actualCtx.stroke();
+        }
+      } else if (type === "atlas") {
+        if (isShadow) {
+          const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : hZ;
+          actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.04)})`;
+          const sN = p(2.5, 0, 0), sT = p(-2.8, 0, 0), sL = p(0, 0.8, 0), sR = p(0, -0.8, 0);
+          actualCtx.beginPath();
+          actualCtx.moveTo(sN.x, sN.y);
+          actualCtx.lineTo(sR.x, sR.y);
+          actualCtx.lineTo(sT.x, sT.y);
+          actualCtx.lineTo(sL.x, sL.y);
+          actualCtx.fill();
+          return;
+        }
+        const wf = (lx, ly, lz) => ({
+          x: lx * s * cosA - ly * s * sinA + hX,
+          y: lx * s * sinA + ly * s * cosA + hY,
+          z: hZ + (lz * s + ly * s * hRoll * 0.5 + lx * s * hTilt * 0.5)
+        });
+        const rB1 = wf(1.8, 0.3, 0.15), rB2 = wf(1.8, -0.3, 0.15);
+        const rB3 = wf(-2, -0.3, 0.15), rB4 = wf(-2, 0.3, 0.15);
+        const rM1 = wf(1.8, 0.6, 0.5), rM2 = wf(1.8, -0.6, 0.5);
+        const rM3 = wf(-2, -0.6, 0.5), rM4 = wf(-2, 0.6, 0.5);
+        const rT1 = wf(1.8, 0.3, 0.85), rT2 = wf(1.8, -0.3, 0.85);
+        const rT3 = wf(-2, -0.3, 0.85), rT4 = wf(-2, 0.3, 0.85);
+        const tailTop = wf(-2.6, 0, 1.1), tailLow = wf(-2.6, 0, 0.4);
+        const nearLeft = sinA < cosA;
+        const _cBody = fillColor;
+        const _cTop = fillColor;
+        const _cTail = fillColor;
+        const _cNose = fillColor;
+        const _cPylF = fillColor;
+        const _cPylR = fillColor;
+        if (nearLeft) {
+          faceFn([rB2, rM2, rM3, rB3], _cBody, null, 0, camX, camY);
+          faceFn([rM2, rT2, rT3, rM3], _cBody, null, 0, camX, camY);
+          faceFn([rB1, rM1, rM4, rB4], _cBody, null, 0, camX, camY);
+          faceFn([rM1, rT1, rT4, rM4], _cBody, null, 0, camX, camY);
+          faceFn([wf(1.5, 0.31, 0.6), wf(1, 0.31, 0.6), wf(1, 0.31, 0.75), wf(1.5, 0.31, 0.75)], "#111", null, 0, camX, camY);
+        } else {
+          faceFn([rB1, rM1, rM4, rB4], _cBody, null, 0, camX, camY);
+          faceFn([rM1, rT1, rT4, rM4], _cBody, null, 0, camX, camY);
+          faceFn([rB2, rM2, rM3, rB3], _cBody, null, 0, camX, camY);
+          faceFn([rM2, rT2, rT3, rM3], _cBody, null, 0, camX, camY);
+          faceFn([wf(1.5, -0.31, 0.6), wf(1, -0.31, 0.6), wf(1, -0.31, 0.75), wf(1.5, -0.31, 0.75)], "#111", null, 0, camX, camY);
+        }
+        faceFn([rT1, rT2, rT3, rT4], _cTop, null, 0, camX, camY);
+        if (nearLeft) {
+          faceFn([rM3, rT3, tailTop, tailLow], _cTail, null, 0, camX, camY);
+          faceFn([rM4, rT4, tailTop, tailLow], _cTail, null, 0, camX, camY);
+        } else {
+          faceFn([rM4, rT4, tailTop, tailLow], _cTail, null, 0, camX, camY);
+          faceFn([rM3, rT3, tailTop, tailLow], _cTail, null, 0, camX, camY);
+        }
+        faceFn([rT4, rT3, tailTop], _cTail, null, 0, camX, camY);
+        const nTip = wf(2.8, 0, 0.45);
+        faceFn([nTip, rM2, rT2, rT1, rM1], _cNose, null, 0, camX, camY);
+        faceFn([wf(2.6, 0, 0.5), wf(2.2, -0.35, 0.6), wf(2.2, 0.35, 0.6)], "#111", null, 0, camX, camY);
+        const vT = wf(1.5, 0, 1.15);
+        faceFn([wf(1.8, 0.3, 0.85), wf(1.8, -0.3, 0.85), vT], _cPylF, null, 0, camX, camY);
+        faceFn([wf(1.8, -0.3, 0.85), wf(1.2, -0.3, 0.85), vT], _cPylF, null, 0, camX, camY);
+        faceFn([wf(1.2, -0.3, 0.85), wf(1.2, 0.3, 0.85), vT], _cPylF, null, 0, camX, camY);
+        faceFn([wf(1.2, 0.3, 0.85), wf(1.8, 0.3, 0.85), vT], _cPylF, null, 0, camX, camY);
+        const hTop = wf(-2.3, 0, 1.8);
+        faceFn([wf(-1.9, 0.3, 1), wf(-1.9, -0.3, 1), hTop], _cPylR, null, 0, camX, camY);
+        faceFn([wf(-1.9, -0.3, 1), wf(-2.5, -0.15, 1.1), hTop], _cPylR, null, 0, camX, camY);
+        faceFn([wf(-2.5, -0.15, 1.1), wf(-2.5, 0.15, 1.1), hTop], _cPylR, null, 0, camX, camY);
+        faceFn([wf(-2.5, 0.15, 1.1), wf(-1.9, 0.3, 1), hTop], _cPylR, null, 0, camX, camY);
+        actualCtx.strokeStyle = "rgba(220,245,255,0.6)";
+        actualCtx.lineWidth = 3 * s * lineScale;
+        const rF = p(1.5, 0, 1.15);
+        for (let i = 0; i < 3; i++) {
+          const a = hRotor + i * (Math.PI * 2 / 3);
+          const end = p(1.5 + Math.cos(a) * 3.4, Math.sin(a) * 3.4, 1.15);
+          actualCtx.beginPath();
+          actualCtx.moveTo(rF.x, rF.y);
+          actualCtx.lineTo(end.x, end.y);
+          actualCtx.stroke();
+        }
+        const rR = p(-2.3, 0, 1.8);
+        for (let i = 0; i < 3; i++) {
+          const a = -hRotor + i * (Math.PI * 2 / 3);
+          const end = p(-2.3 + Math.cos(a) * 3.4, Math.sin(a) * 3.4, 1.8);
+          actualCtx.beginPath();
+          actualCtx.moveTo(rR.x, rR.y);
+          actualCtx.lineTo(end.x, end.y);
+          actualCtx.stroke();
+        }
+      } else if (type === "ornithopter") {
+        const flapPhase = hRotor * 0.22 * flapRate;
+        const wingAngle = Math.sin(flapPhase) * 0.32;
+        const wingTipAngle = Math.sin(flapPhase + 1) * 0.14;
+        if (isShadow) {
+          const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : hZ;
+          actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.04)})`;
+          actualCtx.beginPath();
+          actualCtx.moveTo(p(0.9, 0.35, 0).x, p(0.9, 0.35, 0).y);
+          actualCtx.lineTo(p(0.9, -0.35, 0).x, p(0.9, -0.35, 0).y);
+          actualCtx.lineTo(p(-1.6, -0.15, 0).x, p(-1.6, -0.15, 0).y);
+          actualCtx.lineTo(p(-1.6, 0.15, 0).x, p(-1.6, 0.15, 0).y);
+          actualCtx.closePath();
+          actualCtx.fill();
+          const wingReach = 3.5 * Math.max(0.25, Math.cos(wingAngle));
+          actualCtx.beginPath();
+          actualCtx.moveTo(p(0.2, 0.25, 0).x, p(0.2, 0.25, 0).y);
+          actualCtx.lineTo(p(-0.7, 0.22, 0).x, p(-0.7, 0.22, 0).y);
+          actualCtx.lineTo(p(-0.6, wingReach, 0).x, p(-0.6, wingReach, 0).y);
+          actualCtx.lineTo(p(0.1, wingReach, 0).x, p(0.1, wingReach, 0).y);
+          actualCtx.closePath();
+          actualCtx.fill();
+          actualCtx.beginPath();
+          actualCtx.moveTo(p(0.2, -0.25, 0).x, p(0.2, -0.25, 0).y);
+          actualCtx.lineTo(p(0.1, -wingReach, 0).x, p(0.1, -wingReach, 0).y);
+          actualCtx.lineTo(p(-0.6, -wingReach, 0).x, p(-0.6, -wingReach, 0).y);
+          actualCtx.lineTo(p(-0.7, -0.22, 0).x, p(-0.7, -0.22, 0).y);
+          actualCtx.closePath();
+          actualCtx.fill();
+          return;
+        }
+        const wf = (lx, ly, lz) => ({
+          x: lx * s * cosA - ly * s * sinA + hX,
+          y: lx * s * sinA + ly * s * cosA + hY,
+          z: hZ + (lz * s + ly * s * hRoll * 1 + lx * s * hTilt * 1)
+        });
+        const rollBias = hRoll * 0.15;
+        const baked = applyNodes(getHeliType(type).def, {
+          wingAngle: wingAngle + rollBias,
+          wingAngleInv: -(wingAngle - rollBias),
+          wingTipAngle: wingTipAngle + rollBias * 0.5,
+          wingTipAngleInv: -(wingTipAngle - rollBias * 0.5)
+        });
+        const sorted = [...baked.faces].map((face) => {
+          const pts = face.verts.map(([lx, ly, lz]) => wf(lx, ly, lz));
+          const depth = pts.reduce((sum, pt) => sum + pt.x + pt.y, 0) / pts.length;
+          return { pts, color: face.color, stroke: face.stroke ?? null, depth };
+        }).sort((a, b) => a.depth - b.depth);
+        sorted.forEach((f) => {
+          faceFn(f.pts, f.color, f.stroke, 0, camX, camY);
+        });
+      }
+    };
+    return { drawFace, drawTree, drawPerson, drawTractor, drawFuelTruck, drawHeli };
   };
 
   // ../src/game/models/objects/lighthouse.zdef
@@ -3539,6 +5853,36 @@
             color: "#ffffff"
           }
         ]
+      }
+    ],
+    fragments: [
+      {
+        id: "blades",
+        faceIds: ["b1", "b2", "b3"],
+        pivot: [0.51, 0, 12.15],
+        impulse: [0.15, 0, 0.15],
+        torque: 8
+      },
+      {
+        id: "gondola",
+        faceIds: ["n_top", "n_front", "n_back", "n_L", "n_R"],
+        pivot: [0.1, 0, 12.15],
+        impulse: [-0.06, 0, 0.22],
+        torque: -5
+      },
+      {
+        id: "mast",
+        faceIds: ["p_main_1", "p_main_2", "p_main_3", "p_main_4", "p_main_5", "p_main_6", "p_main_7", "p_main_8"],
+        pivot: [0, 0, 7],
+        impulse: [0.01, 0, 0.06],
+        torque: 2
+      },
+      {
+        id: "base",
+        faceIds: ["p_base_1", "p_base_2", "p_base_3", "p_base_4", "p_base_5", "p_base_6", "p_base_7", "p_base_8"],
+        pivot: [0, 0, 1],
+        impulse: [0, 0, 0.02],
+        torque: -2
       }
     ],
     rescueZones: [
@@ -8038,6 +10382,629 @@
     ]
   };
 
+  // ../src/game/models/objects/hangar.zdef
+  var hangar_default = {
+    id: "hangar",
+    pivot: [0, 0, 0],
+    collisionBoxes: [
+      { id: "body", xMin: -2, xMax: 2, yMin: -1, yMax: 1, zMin: 0, zMax: 2 }
+    ],
+    faces: [
+      { id: "back_int", verts: [[2, -1, 0], [-2, -1, 0], [-2, -1, 2], [2, -1, 2]], color: "#888888" },
+      { id: "right_int", verts: [[2, -1, 0], [2, 1, 0], [2, 1, 2], [2, -1, 2]], color: "#999999" },
+      { id: "left_int", verts: [[-2, 1, 0], [-2, -1, 0], [-2, -1, 2], [-2, 1, 2]], color: "#aaaaaa" },
+      { id: "back_ext", normal: [0, -1], verts: [[-2, -1, 0], [2, -1, 0], [2, -1, 2], [-2, -1, 2]], color: "#999999" },
+      { id: "right_ext", normal: [1, 0], verts: [[2, 1, 0], [2, -1, 0], [2, -1, 2], [2, 1, 2]], color: "#aaaaaa" },
+      { id: "left_ext", normal: [-1, 0], verts: [[-2, -1, 0], [-2, 1, 0], [-2, 1, 2], [-2, -1, 2]], color: "#cccccc" },
+      { id: "cross_h", verts: [[0.1, -0.65, 0.01], [-0.1, -0.65, 0.01], [-0.1, 0.65, 0.01], [0.1, 0.65, 0.01]], color: "#ffcc00" },
+      { id: "cross_v", verts: [[0.65, -0.1, 0.01], [-0.65, -0.1, 0.01], [-0.65, 0.1, 0.01], [0.65, 0.1, 0.01]], color: "#ffcc00" },
+      { id: "gb1_side", verts: [[-1.9, -0.25, 0], [-1.6, -0.25, 0], [-1.6, -0.25, 0.45], [-1.9, -0.25, 0.45]], color: "#4a6230" },
+      { id: "gb1_front", verts: [[-1.6, -0.55, 0], [-1.6, -0.25, 0], [-1.6, -0.25, 0.45], [-1.6, -0.55, 0.45]], color: "#3d5228" },
+      { id: "gb1_top", verts: [[-1.9, -0.55, 0.45], [-1.6, -0.55, 0.45], [-1.6, -0.25, 0.45], [-1.9, -0.25, 0.45]], color: "#5a7238" },
+      { id: "gb2_side", verts: [[-1.9, 0.3, 0], [-1.6, 0.3, 0], [-1.6, 0.3, 0.45], [-1.9, 0.3, 0.45]], color: "#4a6230" },
+      { id: "gb2_front", verts: [[-1.6, 0, 0], [-1.6, 0.3, 0], [-1.6, 0.3, 0.45], [-1.6, 0, 0.45]], color: "#3d5228" },
+      { id: "gb2_top", verts: [[-1.9, 0, 0.45], [-1.9, 0.3, 0.45], [-1.6, 0.3, 0.45], [-1.6, 0, 0.45]], color: "#5a7238" },
+      { id: "yba_s0", verts: [[-1.62, -0.75, 0], [-1.685, -0.637, 0], [-1.685, -0.637, 0.45], [-1.62, -0.75, 0.45]], color: "#e8c020" },
+      { id: "yba_s1", verts: [[-1.685, -0.637, 0], [-1.815, -0.637, 0], [-1.815, -0.637, 0.45], [-1.685, -0.637, 0.45]], color: "#e8c020" },
+      { id: "yba_s5", verts: [[-1.685, -0.863, 0], [-1.62, -0.75, 0], [-1.62, -0.75, 0.45], [-1.685, -0.863, 0.45]], color: "#e8c020" },
+      { id: "yba_top", verts: [[-1.62, -0.75, 0.45], [-1.685, -0.637, 0.45], [-1.815, -0.637, 0.45], [-1.88, -0.75, 0.45], [-1.815, -0.863, 0.45], [-1.685, -0.863, 0.45]], color: "#e8c020" },
+      { id: "ybb_s0", verts: [[-1.62, 0.55, 0], [-1.685, 0.663, 0], [-1.685, 0.663, 0.45], [-1.62, 0.55, 0.45]], color: "#e8c020" },
+      { id: "ybb_s1", verts: [[-1.685, 0.663, 0], [-1.815, 0.663, 0], [-1.815, 0.663, 0.45], [-1.685, 0.663, 0.45]], color: "#e8c020" },
+      { id: "ybb_s5", verts: [[-1.685, 0.437, 0], [-1.62, 0.55, 0], [-1.62, 0.55, 0.45], [-1.685, 0.437, 0.45]], color: "#e8c020" },
+      { id: "ybb_top", verts: [[-1.62, 0.55, 0.45], [-1.685, 0.663, 0.45], [-1.815, 0.663, 0.45], [-1.88, 0.55, 0.45], [-1.815, 0.437, 0.45], [-1.685, 0.437, 0.45]], color: "#e8c020" },
+      { id: "roof", verts: [[2, -1, 2], [2, 1, 2], [-2, 1, 2], [-2, -1, 2]], color: "#dddddd" }
+    ]
+  };
+
+  // ../src/game/models/objects/tower.zdef
+  var tower_default = {
+    id: "tower",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: -0.5,
+        xMax: 0.5,
+        yMin: -0.5,
+        yMax: 0.5,
+        zMin: 0,
+        zMax: 5
+      }
+    ],
+    faces: [
+      {
+        id: "rx0a",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.5,
+            -0.5,
+            0
+          ],
+          [
+            0.5,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0,
+            1
+          ],
+          [
+            0.5,
+            -0.5,
+            1
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "rx0b",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.5,
+            0,
+            0
+          ],
+          [
+            0.5,
+            0.5,
+            0
+          ],
+          [
+            0.5,
+            0.5,
+            1
+          ],
+          [
+            0.5,
+            0,
+            1
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "rx1a",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.5,
+            -0.5,
+            1
+          ],
+          [
+            0.5,
+            0,
+            1
+          ],
+          [
+            0.5,
+            0,
+            2
+          ],
+          [
+            0.5,
+            -0.5,
+            2
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "rx1b",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.5,
+            0,
+            1
+          ],
+          [
+            0.5,
+            0.5,
+            1
+          ],
+          [
+            0.5,
+            0.5,
+            2
+          ],
+          [
+            0.5,
+            0,
+            2
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "rx2a",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.5,
+            -0.5,
+            2
+          ],
+          [
+            0.5,
+            0,
+            2
+          ],
+          [
+            0.5,
+            0,
+            3
+          ],
+          [
+            0.5,
+            -0.5,
+            3
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "rx2b",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.5,
+            0,
+            2
+          ],
+          [
+            0.5,
+            0.5,
+            2
+          ],
+          [
+            0.5,
+            0.5,
+            3
+          ],
+          [
+            0.5,
+            0,
+            3
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "rx3a",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.5,
+            -0.5,
+            3
+          ],
+          [
+            0.5,
+            0,
+            3
+          ],
+          [
+            0.5,
+            0,
+            4
+          ],
+          [
+            0.5,
+            -0.5,
+            4
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "rx3b",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.5,
+            0,
+            3
+          ],
+          [
+            0.5,
+            0.5,
+            3
+          ],
+          [
+            0.5,
+            0.5,
+            4
+          ],
+          [
+            0.5,
+            0,
+            4
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "rx_g",
+        normal: [
+          1,
+          0
+        ],
+        verts: [
+          [
+            0.5,
+            -0.5,
+            4
+          ],
+          [
+            0.5,
+            0.5,
+            4
+          ],
+          [
+            0.5,
+            0.5,
+            5
+          ],
+          [
+            0.5,
+            -0.5,
+            5
+          ]
+        ],
+        color: "#2a8faa"
+      },
+      {
+        id: "ry0a",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.5,
+            0.5,
+            0
+          ],
+          [
+            0,
+            0.5,
+            0
+          ],
+          [
+            0,
+            0.5,
+            1
+          ],
+          [
+            0.5,
+            0.5,
+            1
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "ry0b",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0,
+            0.5,
+            0
+          ],
+          [
+            -0.5,
+            0.5,
+            0
+          ],
+          [
+            -0.5,
+            0.5,
+            1
+          ],
+          [
+            0,
+            0.5,
+            1
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "ry1a",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.5,
+            0.5,
+            1
+          ],
+          [
+            0,
+            0.5,
+            1
+          ],
+          [
+            0,
+            0.5,
+            2
+          ],
+          [
+            0.5,
+            0.5,
+            2
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "ry1b",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0,
+            0.5,
+            1
+          ],
+          [
+            -0.5,
+            0.5,
+            1
+          ],
+          [
+            -0.5,
+            0.5,
+            2
+          ],
+          [
+            0,
+            0.5,
+            2
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "ry2a",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.5,
+            0.5,
+            2
+          ],
+          [
+            0,
+            0.5,
+            2
+          ],
+          [
+            0,
+            0.5,
+            3
+          ],
+          [
+            0.5,
+            0.5,
+            3
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "ry2b",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0,
+            0.5,
+            2
+          ],
+          [
+            -0.5,
+            0.5,
+            2
+          ],
+          [
+            -0.5,
+            0.5,
+            3
+          ],
+          [
+            0,
+            0.5,
+            3
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "ry3a",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.5,
+            0.5,
+            3
+          ],
+          [
+            0,
+            0.5,
+            3
+          ],
+          [
+            0,
+            0.5,
+            4
+          ],
+          [
+            0.5,
+            0.5,
+            4
+          ]
+        ],
+        color: "#ffcc00"
+      },
+      {
+        id: "ry3b",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0,
+            0.5,
+            3
+          ],
+          [
+            -0.5,
+            0.5,
+            3
+          ],
+          [
+            -0.5,
+            0.5,
+            4
+          ],
+          [
+            0,
+            0.5,
+            4
+          ]
+        ],
+        color: "#111111"
+      },
+      {
+        id: "ry_g",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.5,
+            0.5,
+            4
+          ],
+          [
+            -0.5,
+            0.5,
+            4
+          ],
+          [
+            -0.5,
+            0.5,
+            5
+          ],
+          [
+            0.5,
+            0.5,
+            5
+          ]
+        ],
+        color: "#40b8d8"
+      },
+      {
+        id: "roof",
+        verts: [
+          [
+            -0.5,
+            -0.5,
+            5
+          ],
+          [
+            0.5,
+            -0.5,
+            5
+          ],
+          [
+            0.5,
+            0.5,
+            5
+          ],
+          [
+            -0.5,
+            0.5,
+            5
+          ]
+        ],
+        color: "#444444"
+      }
+    ]
+  };
+
   // ../src/game/models/objects/hangar_tower.zdef
   var hangar_tower_default = {
     id: "hangar_tower",
@@ -10047,6 +13014,36 @@
     rescueZones: [
       { x: -0.7, y: 0, w: 1.8, h: 1, role: "pickup" }
     ],
+    fragments: [
+      {
+        id: "bridge",
+        faceIds: ["cab_front_L", "cab_front_R", "cab_side_L_1", "cab_side_R_1", "cab_wall_L", "cab_wall_R", "cab_back", "cab_roof", "win_front_L", "win_front_R", "win_side_L", "win_side_R", "exhaust_L", "exhaust_R", "radar_blade"],
+        pivot: [1.35, 0, 2.2],
+        impulse: [0, 0, 0.28],
+        torque: -5
+      },
+      {
+        id: "bow",
+        faceIds: ["bow_L_seg1", "bow_R_seg1", "bow_L_seg2", "bow_R_seg2", "bow_nose_L", "bow_nose_R", "deck_border_L"],
+        pivot: [2.5, 0, 0.8],
+        impulse: [0.14, 0, 0.1],
+        torque: 4
+      },
+      {
+        id: "hull_stern",
+        faceIds: ["stern_mid", "stern_L", "hull_L_main", "hull_R_main"],
+        pivot: [-2.5, 0, 0.6],
+        impulse: [-0.1, 0, 0.1],
+        torque: -3
+      },
+      {
+        id: "deck",
+        faceIds: ["cargo_deck", "hull_bottom"],
+        pivot: [-0.8, 0, 0.6],
+        impulse: [0, 0, 0.18],
+        torque: 2
+      }
+    ],
     nodes: [
       {
         faces: [
@@ -10873,6 +13870,380 @@
             ]
           }
         ]
+      }
+    ]
+  };
+
+  // ../src/game/models/sailboat.zdef
+  var sailboat_default = {
+    id: "sailboat",
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    collisionBoxes: [
+      {
+        id: "hull",
+        xMin: -1.1,
+        xMax: 1.3,
+        yMin: -0.45,
+        yMax: 0.45,
+        zMin: 0,
+        zMax: 0.35
+      },
+      {
+        id: "mast",
+        xMin: -0.34,
+        xMax: -0.26,
+        yMin: -0.08,
+        yMax: 0.08,
+        zMin: 0.35,
+        zMax: 3.2
+      }
+    ],
+    faces: [
+      {
+        id: "keel",
+        verts: [
+          [
+            1.3,
+            0,
+            0
+          ],
+          [
+            0.2,
+            -0.45,
+            0
+          ],
+          [
+            -1.1,
+            -0.35,
+            0
+          ],
+          [
+            -1.1,
+            0.35,
+            0
+          ],
+          [
+            0.2,
+            0.45,
+            0
+          ]
+        ],
+        color: "#822"
+      },
+      {
+        id: "stern",
+        normal: [
+          -1,
+          0
+        ],
+        verts: [
+          [
+            -1.1,
+            -0.35,
+            0
+          ],
+          [
+            -1.1,
+            0.35,
+            0
+          ],
+          [
+            -1.1,
+            0.35,
+            0.35
+          ],
+          [
+            -1.1,
+            -0.35,
+            0.35
+          ]
+        ],
+        color: "#ddd"
+      },
+      {
+        id: "stbd_lower_bow",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            1.3,
+            0,
+            0
+          ],
+          [
+            0.2,
+            -0.45,
+            0
+          ],
+          [
+            0.2,
+            -0.45,
+            0.1
+          ],
+          [
+            1.3,
+            0,
+            0.1
+          ]
+        ],
+        color: "#a33"
+      },
+      {
+        id: "stbd_lower_mid",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            0.2,
+            -0.45,
+            0
+          ],
+          [
+            -1.1,
+            -0.35,
+            0
+          ],
+          [
+            -1.1,
+            -0.35,
+            0.1
+          ],
+          [
+            0.2,
+            -0.45,
+            0.1
+          ]
+        ],
+        color: "#922"
+      },
+      {
+        id: "stbd_upper_bow",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            1.3,
+            0,
+            0.1
+          ],
+          [
+            0.2,
+            -0.45,
+            0.1
+          ],
+          [
+            0.2,
+            -0.45,
+            0.35
+          ],
+          [
+            1.3,
+            0,
+            0.35
+          ]
+        ],
+        color: "#fff"
+      },
+      {
+        id: "stbd_upper_mid",
+        normal: [
+          0,
+          -1
+        ],
+        verts: [
+          [
+            0.2,
+            -0.45,
+            0.1
+          ],
+          [
+            -1.1,
+            -0.35,
+            0.1
+          ],
+          [
+            -1.1,
+            -0.35,
+            0.35
+          ],
+          [
+            0.2,
+            -0.45,
+            0.35
+          ]
+        ],
+        color: "#eee"
+      },
+      {
+        id: "port_bow",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            1.3,
+            0,
+            0
+          ],
+          [
+            0.2,
+            0.45,
+            0
+          ],
+          [
+            0.2,
+            0.45,
+            0.35
+          ],
+          [
+            1.3,
+            0,
+            0.35
+          ]
+        ],
+        color: "#eee"
+      },
+      {
+        id: "port_mid",
+        normal: [
+          0,
+          1
+        ],
+        verts: [
+          [
+            0.2,
+            0.45,
+            0
+          ],
+          [
+            -1.1,
+            0.35,
+            0
+          ],
+          [
+            -1.1,
+            0.35,
+            0.35
+          ],
+          [
+            0.2,
+            0.45,
+            0.35
+          ]
+        ],
+        color: "#ddd"
+      },
+      {
+        id: "deck",
+        verts: [
+          [
+            1.3,
+            0,
+            0.35
+          ],
+          [
+            0.2,
+            -0.45,
+            0.35
+          ],
+          [
+            -1.1,
+            -0.35,
+            0.35
+          ],
+          [
+            -1.1,
+            0.35,
+            0.35
+          ],
+          [
+            0.2,
+            0.45,
+            0.35
+          ]
+        ],
+        color: "#b96",
+        stroke: "#753"
+      },
+      {
+        id: "mast",
+        verts: [
+          [
+            -0.34,
+            -0.04,
+            0.35
+          ],
+          [
+            -0.26,
+            -0.04,
+            0.35
+          ],
+          [
+            -0.26,
+            -0.04,
+            3.2
+          ],
+          [
+            -0.34,
+            -0.04,
+            3.2
+          ]
+        ],
+        color: "#ddd"
+      },
+      {
+        id: "mainsail",
+        verts: [
+          [
+            -0.3,
+            0,
+            0.65
+          ],
+          [
+            -0.3,
+            0,
+            3
+          ],
+          [
+            -1.83,
+            -0.47,
+            0.65
+          ]
+        ],
+        color: "rgba(255,255,250,0.95)",
+        stroke: "#eee"
+      },
+      {
+        id: "jib",
+        verts: [
+          [
+            1.3,
+            0,
+            0.45
+          ],
+          [
+            -0.3,
+            0,
+            2.7
+          ],
+          [
+            -0.68,
+            -0.12,
+            0.55
+          ]
+        ],
+        color: "rgba(245,245,245,0.90)"
       }
     ]
   };
@@ -12616,7 +15987,9 @@
     frigate: { def: frigate_default, v2: true },
     supply_vessel: { def: supply_vessel_default, v2: true },
     sar_boat: { def: sar_boat_default, v2: true },
-    pilot_boat: { def: pilot_boat_default, v2: true }
+    pilot_boat: { def: pilot_boat_default, v2: true },
+    boat: { def: sailboat_default, v2: false },
+    salvage_tug: { def: supply_vessel_default, v2: true }
   };
   var BASE_HW = 14;
   var HEIGHT_SCALE = 1.8;
@@ -12734,6 +16107,10 @@
     const defCamX = canvas.width / 2 - ox;
     const defCamY = canvas.height / 2 - oy;
     const defDrawCtx = { ctx, isoFn: defIso, tileW: defTW };
+    const _noSR = { add: () => {
+    }, flush: () => {
+    } };
+    const { drawTree, drawPerson } = createDrawObjects(ctx, defIso, defTW, hh * 2, _noSR);
     const _renderDEF = (def, v2, wx, wy, wz, angle, colors) => {
       const sr = createSceneRenderer(ctx, defIso);
       if (v2) {
@@ -12764,7 +16141,8 @@
         const isWater = h0 <= wl;
         const isSand = !isWater && (m.sand?.[gx]?.[gy] ?? 0) > 0;
         const isPave = !isWater && (m.pavement?.[gx]?.[gy] ?? 0) > 0;
-        const topColor = isWater ? isSnow ? "#0a3060" : COLORS.water : isPave ? "#6a6a72" : isSand ? getSandColor(h0) : isSnow ? `rgb(${190 + Math.floor(h0 * 8)},${205 + Math.floor(h0 * 7)},${220 + Math.floor(h0 * 6)})` : getLandColor(h0, false);
+        const _c = 35 + Math.floor(h0 * 15);
+        const topColor = isWater ? isSnow ? "#0a3060" : "#1a5f9e" : isPave ? isSnow ? `rgb(${_c + 70},${_c + 75},${_c + 80})` : `rgb(${_c + 40},${_c + 40},${_c + 45})` : isSand ? getSandColor(h0) : isSnow ? `rgb(${190 + Math.floor(h0 * 8)},${205 + Math.floor(h0 * 7)},${220 + Math.floor(h0 * 6)})` : `rgb(${_c - 10},${_c + 30},${_c - 10})`;
         const sx = toSX(gx, gy);
         const sy = toSY(gx, gy);
         ctx.beginPath();
@@ -12782,26 +16160,12 @@
         }
       }
     }
-    const treeColors = {
-      pine: "#1a5a1a",
-      oak: "#2a6a1a",
-      bush: "#3a7a2a",
-      dead: "#6a4a2a",
-      beach_umbrella: "#cc2200",
-      beach_umbrella_tilted: "#cc2200",
-      beach_lounger: "#d8cc90",
-      beach_cooler: "#3366aa",
-      beach_person: "#e8c090",
-      swimmer: "#1a88cc"
-    };
+    const _foliageGz = (terrH) => (0.5 + terrH * HEIGHT_SCALE / BASE_HW) / 0.78;
     const foliage = m.foliage || [];
     foliage.forEach((f) => {
-      const { sx, sy } = { sx: toSX(f.x, f.y) + hw * 0.5, sy: toSY(f.x, f.y) + hh * 0.5 };
-      const r = Math.max(2, hw * 0.45 * (f.s || 1));
-      ctx.fillStyle = treeColors[f.type] || "#1a5a1a";
-      ctx.beginPath();
-      ctx.ellipse(sx, sy, r, r * 0.55, 0, 0, Math.PI * 2);
-      ctx.fill();
+      const terrH = m.terrain[Math.floor(f.x)]?.[Math.floor(f.y)] ?? 0;
+      const fGz = _foliageGz(terrH);
+      drawTree(f.x + 0.5, f.y + 0.5, defCamX, defCamY, f.s ?? 1, fGz, f.type, { x: 0, y: 0, phase: 0 });
     });
     m.objects.forEach((obj, idx) => {
       const isSel = state.selectedObjectIdx === idx;
@@ -12815,36 +16179,51 @@
         ctx.shadowColor = "#fff";
       }
       if (obj.type === "pad") {
-        const tl = { sx: toSX(obj.x, obj.y), sy: toSY(obj.x, obj.y) };
-        const tr = { sx: toSX(obj.x + 7, obj.y), sy: toSY(obj.x + 7, obj.y) };
-        const br = { sx: toSX(obj.x + 7, obj.y + 7), sy: toSY(obj.x + 7, obj.y + 7) };
-        const bl = { sx: toSX(obj.x, obj.y + 7), sy: toSY(obj.x, obj.y + 7) };
+        const towerVariant = obj.towerVariant ?? "classic";
+        const _pb = [
+          defIso(obj.x, obj.y, wl, defCamX, defCamY),
+          defIso(obj.x + 7, obj.y, wl, defCamX, defCamY),
+          defIso(obj.x + 7, obj.y + 7, wl, defCamX, defCamY),
+          defIso(obj.x, obj.y + 7, wl, defCamX, defCamY)
+        ];
         ctx.beginPath();
-        ctx.moveTo(tl.sx, tl.sy);
-        ctx.lineTo(tr.sx, tr.sy);
-        ctx.lineTo(br.sx, br.sy);
-        ctx.lineTo(bl.sx, bl.sy);
+        ctx.moveTo(_pb[0].x, _pb[0].y);
+        ctx.lineTo(_pb[1].x, _pb[1].y);
+        ctx.lineTo(_pb[2].x, _pb[2].y);
+        ctx.lineTo(_pb[3].x, _pb[3].y);
         ctx.closePath();
-        ctx.fillStyle = COLORS.padFill + "cc";
+        ctx.fillStyle = "#444";
         ctx.fill();
-        ctx.strokeStyle = COLORS.padStroke;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.fillStyle = "#fff";
-        ctx.font = `bold ${Math.max(9, hw * 1)}px monospace`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        const midX = (tl.sx + br.sx) / 2, midY = (tl.sy + br.sy) / 2;
-        ctx.fillText("H", midX, midY);
-        ctx.textBaseline = "alphabetic";
-        ctx.textAlign = "left";
-        if (m.spawnObject === "pad") _drawDolphin(ctx, midX, midY, 0, hw, hh);
+        if (isSel) {
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+        ctx.shadowBlur = 0;
+        _renderDEF(hangar_default, false, obj.x + 4, obj.y - 1, wl, 0);
+        const towerDef = towerVariant === "new" ? hangar_tower_default : tower_default;
+        const towerX = towerVariant === "new" ? obj.x + 7 : obj.x + 6.5;
+        _renderDEF(towerDef, false, towerX, obj.y - 1, wl, 0);
+        [
+          [obj.x + 0.5, obj.y + 0.5],
+          [obj.x + 7.5, obj.y + 0.5],
+          [obj.x + 7.5, obj.y + 7.5],
+          [obj.x + 0.5, obj.y + 7.5]
+        ].forEach(([lx, ly]) => {
+          const lp = defIso(lx, ly, wl, defCamX, defCamY);
+          ctx.fillStyle = "#cc2200";
+          ctx.beginPath();
+          ctx.arc(lp.x, lp.y, Math.max(1.5, hw * 0.12), 0, Math.PI * 2);
+          ctx.fill();
+        });
+        const mid = defIso(obj.x + 3.5, obj.y + 3.5, wl, defCamX, defCamY);
+        if (m.spawnObject === "pad") _drawDolphin(ctx, mid.x, mid.y, 0, hw, hh);
         if (isSel) _showObjPanel("ui_pad");
         if (isSel) {
           const btn = document.getElementById("btn_spawn_pad");
           if (btn) btn.style.background = m.spawnObject === "pad" ? COLORS.uiHighlight : "var(--accent)";
           const tvSel = document.getElementById("pad_tower_variant");
-          if (tvSel) tvSel.value = obj.towerVariant ?? "classic";
+          if (tvSel) tvSel.value = towerVariant;
         }
       } else if (obj.type === "carrier" || obj.type === "boat" || obj.type === "pilot_boat" || obj.type === "sar_boat" || obj.type === "salvage_tug" || obj.type === "supply_vessel" || obj.type === "frigate") {
         const isCarrier = obj.type === "carrier";
@@ -12941,11 +16320,37 @@
           reindeer: "ui_reindeer"
         };
         if (obj.type === "ring") {
-          const rr = (obj.radius ?? 2.5) * hw;
+          const rr = obj.radius ?? 2.5;
+          const rz = obj.z ?? 4;
+          const rAng = obj.angle ?? 0;
+          const cosA = Math.cos(rAng), sinA = Math.sin(rAng);
+          const SEGS = 24;
+          ctx.strokeStyle = "rgba(0,0,0,0.35)";
+          ctx.lineWidth = 1;
           ctx.beginPath();
-          ctx.ellipse(cx, cy, rr, rr * 0.55, 0, 0, Math.PI * 2);
+          for (let si = 0; si <= SEGS; si++) {
+            const t = si / SEGS * Math.PI * 2;
+            const p = defIso(obj.x + rr * Math.cos(t) * -sinA, obj.y + rr * Math.cos(t) * cosA, 0, defCamX, defCamY);
+            if (si === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+          }
+          ctx.closePath();
+          ctx.stroke();
           ctx.strokeStyle = isSel ? "#fff" : "#FFD700";
           ctx.lineWidth = isSel ? 2.5 : 1.5;
+          ctx.beginPath();
+          for (let si = 0; si <= SEGS; si++) {
+            const t = si / SEGS * Math.PI * 2;
+            const p = defIso(
+              obj.x + rr * Math.cos(t) * -sinA,
+              obj.y + rr * Math.cos(t) * cosA,
+              rz + rr * Math.sin(t),
+              defCamX,
+              defCamY
+            );
+            if (si === 0) ctx.moveTo(p.x, p.y);
+            else ctx.lineTo(p.x, p.y);
+          }
           ctx.stroke();
         } else if (defEntry) {
           const colors = defEntry.def.palettes && obj.colorVariant ? defEntry.def.palettes[obj.colorVariant] : void 0;
@@ -13005,6 +16410,10 @@
         }
       }
       ctx.shadowBlur = 0;
+      if (isSel) {
+        renderEventsPanel(idx);
+        _showObjPanel("ui_events");
+      }
       if (hw > 10) {
         ctx.fillStyle = isSel ? "#fff" : "rgba(255,255,255,0.65)";
         ctx.font = `${Math.max(8, hw * 0.7)}px monospace`;
@@ -13023,20 +16432,51 @@
         ctx.shadowBlur = 10;
         ctx.shadowColor = "#fff";
       }
-      const colors = {
-        person: [isAtt ? "#88ffcc" : "#ffe033", "#cc9900"],
-        rescuer: [isAtt ? "#88ddff" : "#ff6600", "#cc3300"],
-        reindeer: [isAtt ? "#eebb88" : "#cc8844", "#aa6622"],
-        crate: [isAtt ? "#44ccff" : "#ff8800", "#cc5500"]
-      };
-      const [fill, stroke] = colors[p.type] || ["#aaa", "#888"];
-      ctx.beginPath();
-      ctx.ellipse(px, py, r * 0.8, r * 0.5, 0, 0, Math.PI * 2);
-      ctx.fillStyle = fill;
-      ctx.fill();
-      ctx.strokeStyle = stroke;
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      if (p.type === "person" || p.type === "rescuer") {
+        drawPerson(
+          p.x + 0.5,
+          p.y + 0.5,
+          wl,
+          0,
+          true,
+          defCamX,
+          defCamY,
+          p.type === "rescuer" ? "rescuer" : void 0,
+          p.outfitColors
+        );
+        if (isSel) {
+          ctx.beginPath();
+          ctx.ellipse(px, py, r * 0.9, r * 0.5, 0, 0, Math.PI * 2);
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+      } else if (p.type === "crate") {
+        const cp = defIso(p.x + 0.5, p.y + 0.5, wl, defCamX, defCamY);
+        const cs = defTW * 0.22;
+        ctx.fillStyle = isAtt ? "#44ccff" : "#d84";
+        ctx.strokeStyle = "#530";
+        ctx.lineWidth = Math.max(0.5, defTW / 64);
+        ctx.fillRect(cp.x - cs / 2, cp.y - cs, cs, cs);
+        ctx.strokeRect(cp.x - cs / 2, cp.y - cs, cs, cs);
+        if (isSel) {
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(cp.x - cs / 2, cp.y - cs, cs, cs);
+        }
+      } else {
+        const ellColors = {
+          reindeer: [isAtt ? "#eebb88" : "#cc8844", "#aa6622"]
+        };
+        const [fill, stroke] = ellColors[p.type] || ["#aaa", "#888"];
+        ctx.beginPath();
+        ctx.ellipse(px, py, r * 0.8, r * 0.5, 0, 0, Math.PI * 2);
+        ctx.fillStyle = fill;
+        ctx.fill();
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
       if (!p.npcTarget) {
         ctx.fillStyle = "#fff";
         ctx.font = `bold ${Math.max(7, hw * 0.5)}px monospace`;
@@ -13166,7 +16606,8 @@
         if (m.terrain[gx]?.[gy] === void 0) continue;
         const h = m.terrain[gx]?.[gy];
         if (h === void 0) continue;
-        ctx.fillStyle = h <= wl ? COLORS.water : getLandColor(h, false);
+        const _mc = 35 + Math.floor(h * 15);
+        ctx.fillStyle = h <= wl ? "#1a5f9e" : `rgb(${_mc - 10},${_mc + 30},${_mc - 10})`;
         ctx.fillRect(MX + gx * ts, MY + gy * ts, ts + 0.5, ts + 0.5);
       }
     }
@@ -13193,6 +16634,15 @@
     ctx.strokeStyle = "rgba(255,255,255,0.2)";
     ctx.lineWidth = 1;
     ctx.strokeRect(MX, MY, MW, MH);
+  };
+  var minimapHitToGrid = (sx, sy, gs) => {
+    const c = _canvas();
+    const MW = 160, MH = 100;
+    const MX = c.width - MW - 8;
+    const MY = c.height - MH - 8;
+    if (sx < MX || sx > MX + MW || sy < MY || sy > MY + MH) return null;
+    const ts = Math.min(MW / gs, MH / gs);
+    return { gx: (sx - MX) / ts, gy: (sy - MY) / ts };
   };
 
   // ../src/shared/utils.ts
@@ -13278,19 +16728,49 @@
   var renderPayloadList = () => notifyWorkbench();
   var renderObjectList = () => notifyWorkbench();
   var renderFoliageList = () => notifyWorkbench();
-  var _lsDe = (ls) => !ls ? "" : typeof ls === "string" ? ls : ls.de || "";
-  var _lsEn = (ls) => !ls ? "" : typeof ls === "string" ? "" : ls.en || "";
+  var _lsLang = (ls, lang) => {
+    if (!ls) return "";
+    if (typeof ls === "string") return lang === "de" ? ls : "";
+    return ls[lang] || "";
+  };
   var syncToData = () => {
     const m = getCurrentMission();
     if (!m) return;
-    m.headline = { de: getInput("m_headline_de").value, en: getInput("m_headline_en").value };
-    const subDe = getEl("m_sublines_de").value.split("\n").filter((l) => l.trim());
-    const subEn = getEl("m_sublines_en").value.split("\n").filter((l) => l.trim());
-    m.sublines = subDe.map((de, i) => ({ de, en: subEn[i] || "" }));
-    m.briefing = {
-      de: getEl("m_briefing_de").value,
-      en: getEl("m_briefing_en").value
+    const _ls5 = (langs) => {
+      const [de, en, fr, es, pt] = langs.map(([v]) => v);
+      const obj = { de };
+      if (en) obj.en = en;
+      if (fr) obj.fr = fr;
+      if (es) obj.es = es;
+      if (pt) obj.pt = pt;
+      return obj;
     };
+    m.headline = _ls5([
+      [getInput("m_headline_de").value],
+      [getInput("m_headline_en").value],
+      [getInput("m_headline_fr").value],
+      [getInput("m_headline_es").value],
+      [getInput("m_headline_pt").value]
+    ]);
+    const _subLines = (id) => getEl(id).value.split("\n").filter((l) => l.trim());
+    const subDe = _subLines("m_sublines_de"), subEn = _subLines("m_sublines_en");
+    const subFr = _subLines("m_sublines_fr"), subEs = _subLines("m_sublines_es"), subPt = _subLines("m_sublines_pt");
+    m.sublines = subDe.map((de, i) => {
+      const en = subEn[i] || "", fr = subFr[i] || "", es = subEs[i] || "", pt = subPt[i] || "";
+      const obj = { de };
+      if (en) obj.en = en;
+      if (fr) obj.fr = fr;
+      if (es) obj.es = es;
+      if (pt) obj.pt = pt;
+      return obj;
+    });
+    m.briefing = _ls5([
+      [getEl("m_briefing_de").value],
+      [getEl("m_briefing_en").value],
+      [getEl("m_briefing_fr").value],
+      [getEl("m_briefing_es").value],
+      [getEl("m_briefing_pt").value]
+    ]);
     m.rain = getInput("m_rain").checked;
     m.snow = getInput("m_snow").checked;
     m.night = getInput("m_night").checked;
@@ -13339,12 +16819,15 @@
     if (!m) return;
     if (!m.payloads) m.payloads = [];
     if (!m.objects) m.objects = [];
-    getInput("m_headline_de").value = _lsDe(m.headline);
-    getInput("m_headline_en").value = _lsEn(m.headline);
-    getEl("m_sublines_de").value = (m.sublines || []).map(_lsDe).join("\n");
-    getEl("m_sublines_en").value = (m.sublines || []).map(_lsEn).join("\n");
-    getEl("m_briefing_de").value = _lsDe(m.briefing);
-    getEl("m_briefing_en").value = _lsEn(m.briefing);
+    getInput("m_headline_de").value = _lsLang(m.headline, "de");
+    getInput("m_headline_en").value = _lsLang(m.headline, "en");
+    getInput("m_headline_fr").value = _lsLang(m.headline, "fr");
+    getInput("m_headline_es").value = _lsLang(m.headline, "es");
+    getInput("m_headline_pt").value = _lsLang(m.headline, "pt");
+    for (const lang of ["de", "en", "fr", "es", "pt"]) {
+      getEl(`m_sublines_${lang}`).value = (m.sublines || []).map((s) => _lsLang(s, lang)).join("\n");
+      getEl(`m_briefing_${lang}`).value = _lsLang(m.briefing, lang);
+    }
     getInput("m_grid_size").value = m.gridSize.toString();
     getInput("m_rain").checked = m.rain;
     getInput("m_snow").checked = !!m.snow;
@@ -14285,8 +17768,14 @@
     [
       "m_headline_de",
       "m_headline_en",
+      "m_headline_fr",
+      "m_headline_es",
+      "m_headline_pt",
       "m_briefing_de",
       "m_briefing_en",
+      "m_briefing_fr",
+      "m_briefing_es",
+      "m_briefing_pt",
       "m_rain",
       "m_snow",
       "m_night",
@@ -14299,7 +17788,10 @@
       "m_npc_heli_count",
       "m_npc_heli_type",
       "m_sublines_de",
-      "m_sublines_en"
+      "m_sublines_en",
+      "m_sublines_fr",
+      "m_sublines_es",
+      "m_sublines_pt"
     ].forEach((id) => getEl(id)?.addEventListener("input", syncToData));
     const canvas = getEl("editorCanvas");
     const cursorEl = document.createElement("canvas");
@@ -14755,6 +18247,15 @@
       const m = getCurrentMission();
       const mx = e.clientX - rect.left, my = e.clientY - rect.top;
       const { gx, gy } = screenToGrid(mx, my);
+      const _minimapHit = minimapHitToGrid(mx, my, m.gridSize || 100);
+      if (_minimapHit) {
+        state.panX = _minimapHit.gx;
+        state.panY = _minimapHit.gy;
+        state.isDraggingMinimap = true;
+        clampCamera();
+        drawMap();
+        return;
+      }
       if (Math.hypot(mx - 50, my - 50) < 30) {
         state.selectedUI = state.selectedUI === "wind" ? null : "wind";
         state.selectedObjectIdx = null;
@@ -14811,7 +18312,14 @@
         for (let i = 0; i < payloads.length; i++) {
           const p = payloads[i];
           if (Math.hypot(gx - p.x, gy - p.y) < 2) {
-            startDrag("payload", i, p.x, p.y);
+            if (state.selectedPayloadIdx !== i) {
+              state.selectedPayloadIdx = i;
+              state.selectedObjectIdx = null;
+              state.selectedUI = null;
+              drawMap();
+            } else {
+              startDrag("payload", i, p.x, p.y);
+            }
             return;
           }
         }
@@ -14847,7 +18355,14 @@
           else if (obj.type === "ring")
             hit = Math.hypot(gx - obj.x, gy - obj.y) < (obj.radius ?? 2.5) + 1;
           if (hit) {
-            startDrag("object", i, obj.x, obj.y);
+            if (state.selectedObjectIdx !== i) {
+              state.selectedObjectIdx = i;
+              state.selectedPayloadIdx = null;
+              state.selectedUI = null;
+              drawMap();
+            } else {
+              startDrag("object", i, obj.x, obj.y);
+            }
             return;
           }
         }
@@ -14929,6 +18444,18 @@
       }
     };
     window.addEventListener("mousemove", (e) => {
+      if (state.isDraggingMinimap) {
+        const rect = canvas.getBoundingClientRect();
+        const mx2 = e.clientX - rect.left, my2 = e.clientY - rect.top;
+        const hit = minimapHitToGrid(mx2, my2, getCurrentMission()?.gridSize || 100);
+        if (hit) {
+          state.panX = hit.gx;
+          state.panY = hit.gy;
+          clampCamera();
+          drawMap();
+        }
+        return;
+      }
       if (state.isDraggingItem) {
         if (Math.hypot(e.clientX - state.dragStartMX, e.clientY - state.dragStartMY) > 3) state.dragHasMoved = true;
         if (state.dragHasMoved) {
@@ -14965,6 +18492,10 @@
       }
     });
     window.addEventListener("mouseup", () => {
+      if (state.isDraggingMinimap) {
+        state.isDraggingMinimap = false;
+        return;
+      }
       if (state.isDraggingItem) {
         if (state.dragHasMoved) {
           const m = getCurrentMission();
@@ -14986,15 +18517,22 @@
           notifyWorkbench();
           broadcastPreview();
         } else if (state.dragWasSelected) {
-          state.selectedPayloadIdx = null;
-          state.selectedObjectIdx = null;
-          hidePopup();
-        } else if (!state.dragHasMoved && state.dragItemType === "payload" && state.dragItemIdx !== null) {
-          showPayloadPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
-        } else if (!state.dragHasMoved && state.dragItemType === "object" && state.dragItemIdx !== null) {
-          const clickedObj = getCurrentMission()?.objects[state.dragItemIdx];
-          if (clickedObj?.type === "ring")
-            showRingPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
+          if (state.dragItemType === "payload" && state.dragItemIdx !== null) {
+            showPayloadPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
+          } else if (state.dragItemType === "object" && state.dragItemIdx !== null) {
+            const clickedObj = getCurrentMission()?.objects[state.dragItemIdx];
+            if (clickedObj?.type === "ring") {
+              showRingPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
+            } else {
+              state.selectedObjectIdx = null;
+              state.selectedPayloadIdx = null;
+              hidePopup();
+            }
+          } else {
+            state.selectedPayloadIdx = null;
+            state.selectedObjectIdx = null;
+            hidePopup();
+          }
         } else if (!state.dragHasMoved && state.dragItemType === "emitter" && state.dragItemIdx !== null) {
           showEmitterPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
         }
@@ -15054,12 +18592,27 @@
         };
       });
       state.curIdx = savedIdx;
-      const cSubDe = getEl("c_sublines_de").value.split("\n").filter((l) => l.trim());
-      const cSubEn = getEl("c_sublines_en").value.split("\n").filter((l) => l.trim());
+      const _cSub = (lang) => getEl(`c_sublines_${lang}`).value.split("\n").filter((l) => l.trim());
+      const cSubDe = _cSub("de"), cSubEn = _cSub("en"), cSubFr = _cSub("fr"), cSubEs = _cSub("es"), cSubPt = _cSub("pt");
+      const _cTitle = (lang) => getInput(`c_title_${lang}`).value;
+      const ctDE = _cTitle("de"), ctEN = _cTitle("en"), ctFR = _cTitle("fr"), ctES = _cTitle("es"), ctPT = _cTitle("pt");
+      const campaignTitle = { de: ctDE };
+      if (ctEN) campaignTitle.en = ctEN;
+      if (ctFR) campaignTitle.fr = ctFR;
+      if (ctES) campaignTitle.es = ctES;
+      if (ctPT) campaignTitle.pt = ctPT;
       const exportData = {
         type: getEl("c_type").value || "CSW_CAMPAIGN",
-        campaignTitle: { de: getInput("c_title_de").value, en: getInput("c_title_en").value },
-        campaignSublines: cSubDe.map((de, i) => ({ de, en: cSubEn[i] || "" })),
+        campaignTitle,
+        campaignSublines: cSubDe.map((de, i) => {
+          const en = cSubEn[i] || "", fr = cSubFr[i] || "", es = cSubEs[i] || "", pt = cSubPt[i] || "";
+          const obj = { de };
+          if (en) obj.en = en;
+          if (fr) obj.fr = fr;
+          if (es) obj.es = es;
+          if (pt) obj.pt = pt;
+          return obj;
+        }),
         levels: data
       };
       getEl("output").value = JSON.stringify(exportData);
@@ -15071,11 +18624,12 @@
       try {
         const parsed = JSON.parse(raw);
         const ct = parsed.campaignTitle;
-        getInput("c_title_de").value = ct ? typeof ct === "string" ? ct : ct.de || "" : "Imported Campaign";
-        getInput("c_title_en").value = ct && typeof ct !== "string" ? ct.en || "" : "";
+        const _ctLang = (l) => !ct ? "" : typeof ct === "string" ? l === "de" ? ct : "" : ct[l] || "";
+        getInput("c_title_de").value = _ctLang("de") || "Imported Campaign";
+        for (const l of ["en", "fr", "es", "pt"]) getInput(`c_title_${l}`).value = _ctLang(l);
         const cs = parsed.campaignSublines || [];
-        getEl("c_sublines_de").value = cs.map((s) => typeof s === "string" ? s : s.de || "").join("\n");
-        getEl("c_sublines_en").value = cs.map((s) => typeof s === "string" ? "" : s.en || "").join("\n");
+        const _csLang = (l) => cs.map((s) => typeof s === "string" ? l === "de" ? s : "" : s[l] || "").join("\n");
+        for (const l of ["de", "en", "fr", "es", "pt"]) getEl(`c_sublines_${l}`).value = _csLang(l);
         getEl("c_type").value = parsed.type || "CSW_CAMPAIGN";
         state.type = parsed.type;
         state.campaign = parsed.levels.map((m) => {
@@ -15147,6 +18701,7 @@
   };
   setOnStateChanged(scheduleNotify);
   initUI();
+  initEventsEditor(scheduleNotify);
   loadMission(0);
   window.addEventListener("message", (e) => {
     if (e.data.type === "load" && e.data.content !== void 0) {

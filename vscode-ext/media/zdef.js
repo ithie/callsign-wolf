@@ -5272,7 +5272,8 @@
     activePart: null,
     partTestAngles: {},
     dirty: false,
-    filename: null
+    filename: null,
+    selectedFragmentIdx: -1
   };
   var buildTestParams = () => {
     const p = {};
@@ -5497,6 +5498,13 @@
             const ap = state.def.parts?.find((p) => p.id === state.activePart);
             if (ap) ap.faces.forEach((f) => {
               colors[f.id] = "#2d5c88";
+            });
+          }
+          if (state.selectedFragmentIdx >= 0 && state.def.fragments?.[state.selectedFragmentIdx]) {
+            const selFr = state.def.fragments[state.selectedFragmentIdx];
+            const fragColor = _fragColors[state.selectedFragmentIdx % _fragColors.length];
+            selFr.faceIds.forEach((id) => {
+              colors[id] = fragColor;
             });
           }
           if (state.selectedFaceIdx >= 0 && activeFaces[state.selectedFaceIdx]) {
@@ -5937,6 +5945,248 @@
       });
     });
   };
+  var _getAllEditorFaces = () => {
+    const result = [...state.def?.faces ?? []];
+    for (const part of state.def?.parts ?? []) {
+      result.push(...part.faces);
+    }
+    return result;
+  };
+  var _previewFrags = null;
+  var _previewRafId = 0;
+  var PREVIEW_GRAVITY = 0.018;
+  var PREVIEW_MAX_AGE = 120;
+  var _fragColors = ["#4af", "#fa4", "#4f8", "#f4a", "#a4f", "#ff4"];
+  var renderFragmentList = () => {
+    const sec = document.getElementById("fragments-sec");
+    const list = document.getElementById("fragment-list");
+    const playBtn = document.getElementById("btn-play-fragments");
+    const resetBtn = document.getElementById("btn-reset-fragments");
+    if (state.def2) {
+      sec.style.display = "none";
+      return;
+    }
+    sec.style.display = "";
+    const frags = state.def?.fragments ?? [];
+    const hasFrags = frags.length > 0;
+    playBtn.style.display = hasFrags && !_previewFrags ? "" : "none";
+    resetBtn.style.display = _previewFrags ? "" : "none";
+    if (!frags.length) {
+      list.innerHTML = '<div class="empty">\u2013</div>';
+      return;
+    }
+    list.innerHTML = frags.map((fr, i) => {
+      const color = _fragColors[i % _fragColors.length];
+      const sel = i === state.selectedFragmentIdx;
+      const faceCount = fr.faceIds.length;
+      const allFaces = _getAllEditorFaces();
+      const faceRows = sel ? allFaces.map((f, fi) => {
+        const checked = fr.faceIds.includes(f.id) ? "checked" : "";
+        return `<label class="frag-face-label"><input type="checkbox" class="frag-face-cb" data-fi="${fi}" ${checked}/>${f.id}</label>`;
+      }).join("") : "";
+      const pivot = fr.pivot;
+      const imp = fr.impulse ?? [0, 0, 0];
+      const detail = sel ? `
+        <div class="cbox-grid" style="margin-top:4px">
+            <label>Pivot</label>
+            <input type="number" step="0.1" class="fri" data-f="px" value="${pivot[0].toFixed(2)}" style="width:44px">
+            <input type="number" step="0.1" class="fri" data-f="py" value="${pivot[1].toFixed(2)}" style="width:44px">
+            <label>Z</label>
+            <input type="number" step="0.1" class="fri" data-f="pz" value="${pivot[2].toFixed(2)}" style="width:44px;grid-column:2">
+            <label>Impuls</label>
+            <input type="number" step="0.05" class="fri" data-f="ix" value="${imp[0].toFixed(2)}" style="width:44px">
+            <input type="number" step="0.05" class="fri" data-f="iy" value="${imp[1].toFixed(2)}" style="width:44px">
+            <label>Z</label>
+            <input type="number" step="0.05" class="fri" data-f="iz" value="${imp[2].toFixed(2)}" style="width:44px;grid-column:2">
+            <label>Torque</label>
+            <input type="number" step="0.5" class="fri" data-f="torque" value="${(fr.torque ?? 0).toFixed(1)}" style="width:44px;grid-column:2">
+        </div>
+        <div style="margin-top:4px;font-size:10px;color:var(--dim)">Fl\xE4chen:</div>
+        <div class="frag-faces-wrap">${faceRows}</div>` : "";
+      return `<div class="frag-item ${sel ? "active" : ""}" data-fi="${i}">
+            <div class="frag-header">
+                <div class="part-dot" style="background:${color}"></div>
+                <div class="part-name">${fr.id}</div>
+                <div class="part-info">${faceCount}f</div>
+                <button class="btn btn-sm btn-danger frag-del" data-fi="${i}" style="padding:0 4px">\u2715</button>
+            </div>${detail}
+        </div>`;
+    }).join("");
+    list.querySelectorAll(".frag-header").forEach((el) => {
+      el.addEventListener("click", (e) => {
+        if (e.target.closest(".frag-del")) return;
+        const fi = parseInt(el.parentElement.dataset["fi"] ?? "-1");
+        state.selectedFragmentIdx = state.selectedFragmentIdx === fi ? -1 : fi;
+        renderFragmentList();
+        draw();
+      });
+    });
+    list.querySelectorAll(".frag-del").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const fi = parseInt(btn.dataset["fi"] ?? "-1");
+        state.def.fragments.splice(fi, 1);
+        if (state.selectedFragmentIdx >= state.def.fragments.length) state.selectedFragmentIdx = -1;
+        markDirty();
+        renderFragmentList();
+        draw();
+      });
+    });
+    list.querySelectorAll(".fri").forEach((inp) => {
+      inp.addEventListener("input", () => {
+        const fi = state.selectedFragmentIdx;
+        if (fi < 0 || !state.def?.fragments?.[fi]) return;
+        const fr = state.def.fragments[fi];
+        const f = inp.dataset["f"];
+        const v = parseFloat(inp.value) || 0;
+        if (f === "px") fr.pivot[0] = v;
+        else if (f === "py") fr.pivot[1] = v;
+        else if (f === "pz") fr.pivot[2] = v;
+        else if (f === "ix") {
+          if (!fr.impulse) fr.impulse = [0, 0, 0];
+          fr.impulse[0] = v;
+        } else if (f === "iy") {
+          if (!fr.impulse) fr.impulse = [0, 0, 0];
+          fr.impulse[1] = v;
+        } else if (f === "iz") {
+          if (!fr.impulse) fr.impulse = [0, 0, 0];
+          fr.impulse[2] = v;
+        } else if (f === "torque") fr.torque = v;
+        markDirty();
+        draw();
+      });
+      inp.addEventListener("click", (e) => e.stopPropagation());
+    });
+    list.querySelectorAll(".frag-face-cb").forEach((cb) => {
+      cb.addEventListener("change", () => {
+        const fi = state.selectedFragmentIdx;
+        if (fi < 0 || !state.def?.fragments?.[fi]) return;
+        const fr = state.def.fragments[fi];
+        const faceIdx = parseInt(cb.dataset["fi"] ?? "-1");
+        const face = _getAllEditorFaces()[faceIdx];
+        if (!face) return;
+        if (cb.checked) {
+          if (!fr.faceIds.includes(face.id)) fr.faceIds.push(face.id);
+        } else {
+          fr.faceIds = fr.faceIds.filter((id) => id !== face.id);
+        }
+        markDirty();
+        renderFragmentList();
+      });
+      cb.addEventListener("click", (e) => e.stopPropagation());
+    });
+  };
+  var _buildPreviewFrags = () => {
+    if (!state.def?.fragments?.length) return [];
+    const result = [];
+    for (const frag of state.def.fragments) {
+      const [px, py, pz] = frag.pivot;
+      const bakedFaces = [];
+      const allEditorFaces = _getAllEditorFaces();
+      for (const faceId of frag.faceIds) {
+        const src = allEditorFaces.find((f) => f.id === faceId);
+        if (!src) continue;
+        const verts = src.verts.map((v) => [v[0] - px, v[1] - py, v[2] - pz]);
+        bakedFaces.push({ ...src, verts });
+      }
+      if (!bakedFaces.length) continue;
+      const [ix, iy, iz] = frag.impulse ?? [0, 0, 0];
+      const torque = frag.torque ?? (Math.random() - 0.5) * 6;
+      result.push({
+        faces: bakedFaces,
+        x: px,
+        y: py,
+        z: pz,
+        vx: ix,
+        vy: iy,
+        vz: iz + 0.04 + Math.random() * 0.06,
+        selfAngle: 0,
+        rotSpeed: torque / (PREVIEW_MAX_AGE * 0.5),
+        age: 0,
+        maxAge: PREVIEW_MAX_AGE
+      });
+    }
+    return result;
+  };
+  var _drawPreview = () => {
+    if (!_previewFrags) return;
+    for (const f of _previewFrags) {
+      if (f.age >= f.maxAge) continue;
+      const fragDef = { id: "_prev", faces: f.faces };
+      SceneRenderer.add(fragDef, { x: f.x, y: f.y, z: f.z, angle: f.selfAngle });
+    }
+    SceneRenderer.flush(renderCam.x, renderCam.y);
+  };
+  var _stepPreview = () => {
+    if (!_previewFrags) return;
+    for (const f of _previewFrags) {
+      if (f.age >= f.maxAge) continue;
+      f.vz -= PREVIEW_GRAVITY;
+      f.x += f.vx;
+      f.y += f.vy;
+      f.z += f.vz;
+      f.selfAngle += f.rotSpeed;
+      f.age++;
+    }
+    if (_previewFrags.every((f) => f.age >= f.maxAge)) stopPreview();
+  };
+  var stopPreview = () => {
+    cancelAnimationFrame(_previewRafId);
+    _previewFrags = null;
+    const playBtn = document.getElementById("btn-play-fragments");
+    const resetBtn = document.getElementById("btn-reset-fragments");
+    if (playBtn) playBtn.style.display = "";
+    if (resetBtn) resetBtn.style.display = "none";
+    draw();
+  };
+  var _previewLoop = () => {
+    _stepPreview();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const qw = canvas.width / 2, qh = canvas.height / 2;
+    for (let q = 0; q < 4; q++) {
+      setRenderContext(q);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(q % 2 * qw, Math.floor(q / 2) * qh, qw, qh);
+      ctx.clip();
+      _drawPreview();
+      ctx.restore();
+    }
+    ctx.strokeStyle = "rgba(255,255,255,0.12)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(qw, 0);
+    ctx.lineTo(qw, canvas.height);
+    ctx.moveTo(0, qh);
+    ctx.lineTo(canvas.width, qh);
+    ctx.stroke();
+    if (_previewFrags) _previewRafId = requestAnimationFrame(_previewLoop);
+  };
+  document.getElementById("btn-add-fragment").addEventListener("click", () => {
+    if (!state.def) return;
+    if (!state.def.fragments) state.def.fragments = [];
+    const id = "frag_" + state.def.fragments.length;
+    const selFace = state.selectedFaceIdx >= 0 ? state.def.faces[state.selectedFaceIdx] : null;
+    state.def.fragments.push({
+      id,
+      faceIds: selFace ? [selFace.id] : [],
+      pivot: [0, 0, 0]
+    });
+    state.selectedFragmentIdx = state.def.fragments.length - 1;
+    markDirty();
+    renderFragmentList();
+    draw();
+  });
+  document.getElementById("btn-play-fragments").addEventListener("click", () => {
+    if (!state.def?.fragments?.length) return;
+    _previewFrags = _buildPreviewFrags();
+    const playBtn = document.getElementById("btn-play-fragments");
+    const resetBtn = document.getElementById("btn-reset-fragments");
+    playBtn.style.display = "none";
+    resetBtn.style.display = "";
+    _previewRafId = requestAnimationFrame(_previewLoop);
+  });
+  document.getElementById("btn-reset-fragments").addEventListener("click", stopPreview);
   var renderAll = () => {
     renderPartsList();
     renderFaceList();
@@ -5944,6 +6194,7 @@
     renderCboxList();
     renderZoneList();
     renderLandingZone();
+    renderFragmentList();
     draw();
   };
   var selectFace = (i) => {
@@ -6590,6 +6841,7 @@
       collisionBoxes: d.collisionBoxes || []
     };
     if (d.parts?.length) out["parts"] = d.parts;
+    if (d.fragments?.length) out["fragments"] = d.fragments;
     if (d.rescueZones?.length) out["rescueZones"] = d.rescueZones;
     if (d.landingZone) out["landingZone"] = d.landingZone;
     return JSON.stringify(out, null, 2);
@@ -6613,6 +6865,7 @@
         faces: d["faces"] || [],
         collisionBoxes: d["collisionBoxes"] || [],
         parts: d["parts"],
+        fragments: d["fragments"],
         rotateNodes: d["rotateNodes"],
         rescueZones: d["rescueZones"],
         landingZone: d["landingZone"]
@@ -6626,6 +6879,7 @@
     state.selectedFaceIdx = -1;
     state.selectedVertIdx = -1;
     state.activePart = null;
+    state.selectedFragmentIdx = -1;
     state.partTestAngles = {};
     state.dirty = false;
     syncMetaToUI();

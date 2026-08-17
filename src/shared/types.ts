@@ -1,5 +1,30 @@
-/** Text field that can be a plain string (legacy) or a { de, en } object. */
-export type LocalizedString = string | { de: string; en?: string };
+/** Text field that can be a plain string (legacy/DE-only) or a fully localized object. */
+export type LocalizedString = string | { de: string; en?: string; fr?: string; es?: string; pt?: string };
+
+// ── Script Events ─────────────────────────────────────────────────────────────
+
+export type EventTrigger =
+    | { type: 'time'; seconds: number }
+    | { type: 'rescued'; count: number }
+    | { type: 'objectReaches'; objectIdx: number; nearObjectIdx: number; distance: number }
+    | { type: 'objectDestroyed'; objectIdx: number }
+    | { type: 'heliNear'; objectIdx: number; distance: number };
+
+export type EventAction =
+    | { type: 'setOnFire'; objectIdx: number }
+    | { type: 'setOnSmoke'; objectIdx: number }
+    | { type: 'destroy'; objectIdx: number }
+    | { type: 'startMoving'; objectIdx: number }
+    | { type: 'stopMoving'; objectIdx: number }
+    | { type: 'killAttachedPayloads'; objectIdx: number }
+    | { type: 'failMission'; objectIdx?: number }
+    | { type: 'showMessage'; text: LocalizedString }
+    | { type: 'setWindStr'; value: number };
+
+export type MissionEvent = {
+    trigger: EventTrigger;
+    actions: EventAction[];
+};
 
 export const VESSEL = {
     CARRIER:            'carrier',
@@ -223,6 +248,7 @@ export interface Mission {
     typeRatingFor?: string;   // heliId: grant type rating on successful completion
     heliOverride?: string;    // force this heli for the mission (tutorial ring missions)
     terrainRef?: number;      // index into campaign.levels — share terrain with that mission
+    events?: MissionEvent[];
 }
 
 export type MissionData = Omit<Mission, 'terrain' | 'foliage'> & {

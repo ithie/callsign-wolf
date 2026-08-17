@@ -20,13 +20,14 @@ import {
 import { carrierCar } from './sim/vehicles/carrier-car';
 import { fuelTruck } from './sim/vehicles/fuel-truck';
 import { initParticles, spawnExplosion, spawnPositionExplosion, type ParticlesCtx } from './sim/particles';
+import { initEventSystem, markEventSystemStarted } from './sim/event-system';
 import { initNpcHelisFromMission } from './sim/npc-helis';
 import { initFoliageFromMission } from './foliage';
 import { buildStartZone } from './start-zone';
 import { VESSEL, PAYLOAD, CAMPAIGN_TYPE } from '../shared/types';
 import { I18N, localize } from './i18n';
 import { voiceEvents } from './voice-events';
-import { hideVoiceLine } from './ui/voice-line/voice-line';
+import { hideVoiceLine, showScriptMessage } from './ui/voice-line/voice-line';
 import { requestReview } from './reviewRequest';
 import RESEARCH_PLATFORM_DEF from './models/research_platform.zdef';
 import * as LoadingScreen from './ui/loading-screen/loading-screen';
@@ -630,6 +631,18 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     initParticles({ ctx: makePCtx(), dt: 0 });
     G.deliverMode = false;
     initPayloadsFromMission();
+    initEventSystem(
+        () => {
+            if (zstate.crashed) return;
+            zstate.crashed = true;
+            setTimeout(() => {
+                stopMission();
+                MissionFailedScreen.mount(returnToBase, retryMission, undefined);
+                MissionFailedScreen.show();
+            }, 2000);
+        },
+        (text) => showScriptMessage(text),
+    );
     initNpcHelisFromMission();
     _maybeSpawnOrniWreck();
     if (missionHasPad) fuelTruck.init();
@@ -676,6 +689,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     Briefing.show({ headline: _lmd.headline, sublines: _lmd.sublines, briefing: _lmd.briefing, address }, () => {
         briefingActive = false;
         missionStartTime = Date.now();
+        markEventSystemStarted();
         _deps.setTouchVisible(true);
 
         if (_lmd.campaignType === CAMPAIGN_TYPE.TUTORIAL && !(_lmd as any).heliOverride) {

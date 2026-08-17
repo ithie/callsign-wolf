@@ -1,5 +1,5 @@
 import { state, createEmptyMission, getCurrentMission } from './state';
-import { drawMap, screenToGrid, isoHW, isoHH, centerCamera, fitCamera, initIsoCanvas } from './render';
+import { drawMap, screenToGrid, isoHW, isoHH, centerCamera, fitCamera, initIsoCanvas, minimapHitToGrid } from './render';
 import { compressTerrain, decompressTerrain, compressFoliage, decompressFoliage } from '@/shared/utils';
 import { Mission } from '@/shared/types';
 
@@ -38,26 +38,47 @@ export const renderObjectList = () => notifyWorkbench();
 
 // ── Foliage-Liste ─────────────────────────────────────────────────────────────
 export const renderFoliageList = () => notifyWorkbench();
-const _lsDe = (ls: string | { de: string; en?: string } | undefined): string =>
-    !ls ? '' : typeof ls === 'string' ? ls : ls.de || '';
-const _lsEn = (ls: string | { de: string; en?: string } | undefined): string =>
-    !ls ? '' : typeof ls === 'string' ? '' : ls.en || '';
+type _LsObj = { de: string; en?: string; fr?: string; es?: string; pt?: string };
+const _lsLang = (ls: string | _LsObj | undefined, lang: 'de' | 'en' | 'fr' | 'es' | 'pt'): string => {
+    if (!ls) return '';
+    if (typeof ls === 'string') return lang === 'de' ? ls : '';
+    return ls[lang] || '';
+};
+const _lsDe = (ls: string | _LsObj | undefined): string => _lsLang(ls, 'de');
+const _lsEn = (ls: string | _LsObj | undefined): string => _lsLang(ls, 'en');
 
 export const syncToData = () => {
     const m = getCurrentMission();
     if (!m) return;
-    m.headline = { de: getInput('m_headline_de').value, en: getInput('m_headline_en').value };
-    const subDe = getEl<HTMLTextAreaElement>('m_sublines_de')
-        .value.split('\n')
-        .filter(l => l.trim());
-    const subEn = getEl<HTMLTextAreaElement>('m_sublines_en')
-        .value.split('\n')
-        .filter(l => l.trim());
-    m.sublines = subDe.map((de, i) => ({ de, en: subEn[i] || '' }));
-    m.briefing = {
-        de: getEl<HTMLTextAreaElement>('m_briefing_de').value,
-        en: getEl<HTMLTextAreaElement>('m_briefing_en').value,
+    const _ls5 = (langs: string[][]): _LsObj => {
+        const [de, en, fr, es, pt] = langs.map(([v]) => v);
+        const obj: _LsObj = { de };
+        if (en) obj.en = en; if (fr) obj.fr = fr; if (es) obj.es = es; if (pt) obj.pt = pt;
+        return obj;
     };
+    m.headline = _ls5([
+        [getInput('m_headline_de').value],
+        [getInput('m_headline_en').value],
+        [getInput('m_headline_fr').value],
+        [getInput('m_headline_es').value],
+        [getInput('m_headline_pt').value],
+    ]);
+    const _subLines = (id: string) => getEl<HTMLTextAreaElement>(id).value.split('\n').filter(l => l.trim());
+    const subDe = _subLines('m_sublines_de'), subEn = _subLines('m_sublines_en');
+    const subFr = _subLines('m_sublines_fr'), subEs = _subLines('m_sublines_es'), subPt = _subLines('m_sublines_pt');
+    m.sublines = subDe.map((de, i) => {
+        const en = subEn[i] || '', fr = subFr[i] || '', es = subEs[i] || '', pt = subPt[i] || '';
+        const obj: _LsObj = { de };
+        if (en) obj.en = en; if (fr) obj.fr = fr; if (es) obj.es = es; if (pt) obj.pt = pt;
+        return obj;
+    });
+    m.briefing = _ls5([
+        [getEl<HTMLTextAreaElement>('m_briefing_de').value],
+        [getEl<HTMLTextAreaElement>('m_briefing_en').value],
+        [getEl<HTMLTextAreaElement>('m_briefing_fr').value],
+        [getEl<HTMLTextAreaElement>('m_briefing_es').value],
+        [getEl<HTMLTextAreaElement>('m_briefing_pt').value],
+    ]);
     m.rain = getInput('m_rain').checked;
     m.snow = getInput('m_snow').checked;
     m.night = getInput('m_night').checked;
@@ -111,12 +132,15 @@ export const loadMission = (idx: number) => {
     if (!m.payloads) m.payloads = [];
     if (!m.objects) m.objects = [];
 
-    getInput('m_headline_de').value = _lsDe(m.headline);
-    getInput('m_headline_en').value = _lsEn(m.headline);
-    getEl<HTMLTextAreaElement>('m_sublines_de').value = (m.sublines || []).map(_lsDe).join('\n');
-    getEl<HTMLTextAreaElement>('m_sublines_en').value = (m.sublines || []).map(_lsEn).join('\n');
-    getEl<HTMLTextAreaElement>('m_briefing_de').value = _lsDe(m.briefing);
-    getEl<HTMLTextAreaElement>('m_briefing_en').value = _lsEn(m.briefing);
+    getInput('m_headline_de').value = _lsLang(m.headline, 'de');
+    getInput('m_headline_en').value = _lsLang(m.headline, 'en');
+    getInput('m_headline_fr').value = _lsLang(m.headline, 'fr');
+    getInput('m_headline_es').value = _lsLang(m.headline, 'es');
+    getInput('m_headline_pt').value = _lsLang(m.headline, 'pt');
+    for (const lang of ['de', 'en', 'fr', 'es', 'pt'] as const) {
+        getEl<HTMLTextAreaElement>(`m_sublines_${lang}`).value = (m.sublines || []).map(s => _lsLang(s, lang)).join('\n');
+        getEl<HTMLTextAreaElement>(`m_briefing_${lang}`).value = _lsLang(m.briefing, lang);
+    }
     getInput('m_grid_size').value = m.gridSize.toString();
     getInput('m_rain').checked = m.rain;
     getInput('m_snow').checked = !!m.snow;
@@ -1064,23 +1088,11 @@ export const initUI = () => {
 
     // General sync
     [
-        'm_headline_de',
-        'm_headline_en',
-        'm_briefing_de',
-        'm_briefing_en',
-        'm_rain',
-        'm_snow',
-        'm_night',
-        'm_water_level',
-        'm_max_time',
-        'm_heli_override',
-        'm_wind_dir',
-        'm_wind_str',
-        'm_wind_var',
-        'm_npc_heli_count',
-        'm_npc_heli_type',
-        'm_sublines_de',
-        'm_sublines_en',
+        'm_headline_de', 'm_headline_en', 'm_headline_fr', 'm_headline_es', 'm_headline_pt',
+        'm_briefing_de', 'm_briefing_en', 'm_briefing_fr', 'm_briefing_es', 'm_briefing_pt',
+        'm_rain', 'm_snow', 'm_night', 'm_water_level', 'm_max_time', 'm_heli_override',
+        'm_wind_dir', 'm_wind_str', 'm_wind_var', 'm_npc_heli_count', 'm_npc_heli_type',
+        'm_sublines_de', 'm_sublines_en', 'm_sublines_fr', 'm_sublines_es', 'm_sublines_pt',
     ].forEach(id => getEl(id)?.addEventListener('input', syncToData));
 
     const canvas = getEl<HTMLCanvasElement>('editorCanvas');
@@ -1526,6 +1538,17 @@ export const initUI = () => {
         const mx = e.clientX - rect.left, my = e.clientY - rect.top;
         const { gx, gy } = screenToGrid(mx, my);
 
+        // Minimap click-to-pan
+        const _minimapHit = minimapHitToGrid(mx, my, m.gridSize || 100);
+        if (_minimapHit) {
+            state.panX = _minimapHit.gx;
+            state.panY = _minimapHit.gy;
+            state.isDraggingMinimap = true;
+            clampCamera();
+            drawMap();
+            return;
+        }
+
         // Wind compass
         if (Math.hypot(mx - 50, my - 50) < 30) {
             state.selectedUI = state.selectedUI === 'wind' ? null : 'wind';
@@ -1590,7 +1613,14 @@ export const initUI = () => {
             for (let i = 0; i < payloads.length; i++) {
                 const p = payloads[i] as any;
                 if (Math.hypot(gx - p.x, gy - p.y) < 2) {
-                    startDrag('payload', i, p.x, p.y);
+                    if (state.selectedPayloadIdx !== i) {
+                        state.selectedPayloadIdx = i;
+                        state.selectedObjectIdx = null;
+                        state.selectedUI = null;
+                        drawMap();
+                    } else {
+                        startDrag('payload', i, p.x, p.y);
+                    }
                     return;
                 }
             }
@@ -1614,7 +1644,14 @@ export const initUI = () => {
                 else if ((obj as any).type === 'ring')
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < ((obj as any).radius ?? 2.5) + 1;
                 if (hit) {
-                    startDrag('object', i, obj.x, obj.y);
+                    if (state.selectedObjectIdx !== i) {
+                        state.selectedObjectIdx = i;
+                        state.selectedPayloadIdx = null;
+                        state.selectedUI = null;
+                        drawMap();
+                    } else {
+                        startDrag('object', i, obj.x, obj.y);
+                    }
                     return;
                 }
             }
@@ -1691,6 +1728,18 @@ export const initUI = () => {
     };
 
     window.addEventListener('mousemove', e => {
+        if (state.isDraggingMinimap) {
+            const rect = canvas.getBoundingClientRect();
+            const mx2 = e.clientX - rect.left, my2 = e.clientY - rect.top;
+            const hit = minimapHitToGrid(mx2, my2, (getCurrentMission()?.gridSize) || 100);
+            if (hit) {
+                state.panX = hit.gx;
+                state.panY = hit.gy;
+                clampCamera();
+                drawMap();
+            }
+            return;
+        }
         if (state.isDraggingItem) {
             if (Math.hypot(e.clientX - state.dragStartMX, e.clientY - state.dragStartMY) > 3) state.dragHasMoved = true;
             if (state.dragHasMoved) {
@@ -1752,6 +1801,10 @@ export const initUI = () => {
     });
 
     window.addEventListener('mouseup', () => {
+        if (state.isDraggingMinimap) {
+            state.isDraggingMinimap = false;
+            return;
+        }
         if (state.isDraggingItem) {
             if (state.dragHasMoved) {
                 const m = getCurrentMission()!;
@@ -1774,16 +1827,23 @@ export const initUI = () => {
                 notifyWorkbench();
                 broadcastPreview();
             } else if (state.dragWasSelected) {
-                // second click on already-selected item → deselect + close popup
-                state.selectedPayloadIdx = null;
-                state.selectedObjectIdx = null;
-                hidePopup();
-            } else if (!state.dragHasMoved && state.dragItemType === 'payload' && state.dragItemIdx !== null) {
-                showPayloadPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
-            } else if (!state.dragHasMoved && state.dragItemType === 'object' && state.dragItemIdx !== null) {
-                const clickedObj = getCurrentMission()?.objects[state.dragItemIdx] as any;
-                if (clickedObj?.type === 'ring')
-                    showRingPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
+                // second click on already-selected item (no move) → show popup or deselect
+                if (state.dragItemType === 'payload' && state.dragItemIdx !== null) {
+                    showPayloadPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
+                } else if (state.dragItemType === 'object' && state.dragItemIdx !== null) {
+                    const clickedObj = getCurrentMission()?.objects[state.dragItemIdx] as any;
+                    if (clickedObj?.type === 'ring') {
+                        showRingPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
+                    } else {
+                        state.selectedObjectIdx = null;
+                        state.selectedPayloadIdx = null;
+                        hidePopup();
+                    }
+                } else {
+                    state.selectedPayloadIdx = null;
+                    state.selectedObjectIdx = null;
+                    hidePopup();
+                }
             } else if (!state.dragHasMoved && state.dragItemType === 'emitter' && state.dragItemIdx !== null) {
                 showEmitterPopup(state.dragItemIdx, state.dragStartMX, state.dragStartMY);
             }
@@ -1853,16 +1913,22 @@ export const initUI = () => {
 
         state.curIdx = savedIdx;
 
-        const cSubDe = getEl<HTMLTextAreaElement>('c_sublines_de')
-            .value.split('\n')
-            .filter(l => l.trim());
-        const cSubEn = getEl<HTMLTextAreaElement>('c_sublines_en')
-            .value.split('\n')
-            .filter(l => l.trim());
+        const _cSub = (lang: string) => getEl<HTMLTextAreaElement>(`c_sublines_${lang}`).value.split('\n').filter(l => l.trim());
+        const cSubDe = _cSub('de'), cSubEn = _cSub('en'), cSubFr = _cSub('fr'), cSubEs = _cSub('es'), cSubPt = _cSub('pt');
+        const _cTitle = (lang: string) => getInput(`c_title_${lang}`).value;
+        const ctDE = _cTitle('de'), ctEN = _cTitle('en'), ctFR = _cTitle('fr'), ctES = _cTitle('es'), ctPT = _cTitle('pt');
+        const campaignTitle: _LsObj = { de: ctDE };
+        if (ctEN) campaignTitle.en = ctEN; if (ctFR) campaignTitle.fr = ctFR;
+        if (ctES) campaignTitle.es = ctES; if (ctPT) campaignTitle.pt = ctPT;
         const exportData = {
             type: getEl<HTMLSelectElement>('c_type').value || 'CSW_CAMPAIGN',
-            campaignTitle: { de: getInput('c_title_de').value, en: getInput('c_title_en').value },
-            campaignSublines: cSubDe.map((de, i) => ({ de, en: cSubEn[i] || '' })),
+            campaignTitle,
+            campaignSublines: cSubDe.map((de, i) => {
+                const en = cSubEn[i] || '', fr = cSubFr[i] || '', es = cSubEs[i] || '', pt = cSubPt[i] || '';
+                const obj: _LsObj = { de };
+                if (en) obj.en = en; if (fr) obj.fr = fr; if (es) obj.es = es; if (pt) obj.pt = pt;
+                return obj;
+            }),
             levels: data,
         };
         getEl<HTMLTextAreaElement>('output').value = JSON.stringify(exportData);
@@ -1876,15 +1942,12 @@ export const initUI = () => {
         try {
             const parsed = JSON.parse(raw);
             const ct = parsed.campaignTitle;
-            getInput('c_title_de').value = ct ? (typeof ct === 'string' ? ct : ct.de || '') : 'Imported Campaign';
-            getInput('c_title_en').value = ct && typeof ct !== 'string' ? ct.en || '' : '';
+            const _ctLang = (l: string) => !ct ? '' : typeof ct === 'string' ? (l === 'de' ? ct : '') : (ct[l] || '');
+            getInput('c_title_de').value = _ctLang('de') || 'Imported Campaign';
+            for (const l of ['en', 'fr', 'es', 'pt']) getInput(`c_title_${l}`).value = _ctLang(l);
             const cs: any[] = parsed.campaignSublines || [];
-            getEl<HTMLTextAreaElement>('c_sublines_de').value = cs
-                .map(s => (typeof s === 'string' ? s : s.de || ''))
-                .join('\n');
-            getEl<HTMLTextAreaElement>('c_sublines_en').value = cs
-                .map(s => (typeof s === 'string' ? '' : s.en || ''))
-                .join('\n');
+            const _csLang = (l: string) => cs.map(s => typeof s === 'string' ? (l === 'de' ? s : '') : (s[l] || '')).join('\n');
+            for (const l of ['de', 'en', 'fr', 'es', 'pt']) getEl<HTMLTextAreaElement>(`c_sublines_${l}`).value = _csLang(l);
             getEl<HTMLSelectElement>('c_type').value = parsed.type || 'CSW_CAMPAIGN';
             state.type = parsed.type;
             state.campaign = parsed.levels.map((m: any) => {

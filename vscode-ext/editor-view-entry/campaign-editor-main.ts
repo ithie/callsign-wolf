@@ -4,6 +4,7 @@ const vscode = acquireVsCodeApi();
 
 import styleContent from '../editor-view/style.css';
 import { initUI, loadMission, syncToData, renderPayloadList, renderObjectList, renderFoliageList, setOnStateChanged } from '../editor-view/ui';
+import { initEventsEditor } from '../editor-view/events-editor';
 import { state } from '../editor-view/state';
 import { compressTerrain, compressFoliage, decompressFoliage, decompressTerrain } from '../../src/shared/utils';
 
@@ -48,6 +49,7 @@ const scheduleNotify = (): void => {
 setOnStateChanged(scheduleNotify);
 
 initUI();
+initEventsEditor(scheduleNotify);
 loadMission(0);
 
 window.addEventListener('message', (e: MessageEvent<{ type: string; content?: string }>) => {

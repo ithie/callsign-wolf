@@ -4,6 +4,7 @@ import { getGround } from './terrain';
 import { VESSEL, PAYLOAD, VESSEL_PATH } from '../../shared/types';
 import FRIGATE_DEF from '../models/frigate.zdef';
 import CARRIER_DEF from '../models/carrier.zdef';
+import SUPPLY_VESSEL_DEF from '../models/supply_vessel.zdef';
 import WIND_TURBINE_DEF from '../models/objects/wind_turbine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
 import XMAS_HOUSE_A_DEF from '../models/objects/xmas_house_a.zdef';
@@ -288,6 +289,9 @@ export const initBoatsFromMission = () => {
                 _seaTime: 0,
                 _objIdx: allObjects.indexOf(obj),
                 radioSilent: (obj as any).radioSilent ?? false,
+                _def: obj.type === VESSEL.SUPPLY_VESSEL ? SUPPLY_VESSEL_DEF
+                    : obj.type === VESSEL.FRIGATE ? FRIGATE_DEF
+                    : null,
             };
             const st = {
                 get t() {
@@ -328,6 +332,7 @@ export const initStaticObjectsFromMission = () => {
         rescueZones: (obj.rescueZones || []) as any[],
         gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
         _objIdx: allObjects.indexOf(obj),
+        _def: WIND_TURBINE_DEF,
     }));
     G.BUOYS = getObjectsByType(VESSEL.BUOY).map((obj: any) => ({ x: obj.x, y: obj.y }));
     G.PLANE_WRECKS = getObjectsByType(VESSEL.PLANE_WRECK).map((obj: any) => ({
@@ -336,6 +341,7 @@ export const initStaticObjectsFromMission = () => {
         angle: obj.angle ?? 0,
     }));
     G.BOAT_WRECKS = [];
+    G.FRAGMENTS = [];
     G.ORNI_RESIDUES = [];
     getObjectsByType(VESSEL.ORNITHOPTER_WRECK).forEach((obj: any) => {
         const gz = getGround(obj.x, obj.y, G.points, G.CARRIER);

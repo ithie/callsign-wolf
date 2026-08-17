@@ -1,8 +1,10 @@
 import { state, getCurrentMission } from './state';
-import { COLORS, getLandColor, getSandColor } from '@/shared/constants';
+import { renderEventsPanel } from './events-editor';
+import { COLORS, getSandColor } from '@/shared/constants';
 import { createSceneRenderer } from '../../src/game/scene-renderer';
 import { createIsoFn } from '../../src/game/render';
 import { renderNodes, applyParts } from '../../src/game/def-utils';
+import { createDrawObjects } from '../../src/game/draw-objects';
 import type { DEF, DEF2 } from '../../src/game/defs';
 
 import LIGHTHOUSE_RAW        from '../../src/game/models/objects/lighthouse.zdef';
@@ -21,6 +23,8 @@ import XMAS_LANTERN_RAW      from '../../src/game/models/objects/xmas_lantern.zd
 import SLEIGH_RAW            from '../../src/game/models/objects/sleigh.zdef';
 import REINDEER_RAW          from '../../src/game/models/objects/reindeer.zdef';
 import VOLLEYBALL_COURT_RAW  from '../../src/game/models/objects/volleyball_court.zdef';
+import HANGAR_RAW            from '../../src/game/models/objects/hangar.zdef';
+import TOWER_RAW             from '../../src/game/models/objects/tower.zdef';
 import HANGAR_TOWER_RAW      from '../../src/game/models/objects/hangar_tower.zdef';
 import PLANE_WRECK_RAW       from '../../src/game/models/objects/plane_wreck.zdef';
 import SAILBOAT_BROKEN_RAW   from '../../src/game/models/objects/sailboat_broken.zdef';
@@ -29,6 +33,7 @@ import SUBMARINE_RAW         from '../../src/game/models/submarine.zdef';
 import CARRIER_RAW           from '../../src/game/models/carrier.zdef';
 import FRIGATE_RAW           from '../../src/game/models/frigate.zdef';
 import SUPPLY_VESSEL_RAW     from '../../src/game/models/supply_vessel.zdef';
+import SAILBOAT_RAW          from '../../src/game/models/sailboat.zdef';
 import SAR_BOAT_RAW          from '../../src/game/models/sar_boat.zdef';
 import PILOT_BOAT_RAW        from '../../src/game/models/pilot_boat.zdef';
 
@@ -59,6 +64,8 @@ const _DEF_MAP: Record<string, { def: unknown; v2: boolean }> = {
     supply_vessel:        { def: SUPPLY_VESSEL_RAW,      v2: true  },
     sar_boat:             { def: SAR_BOAT_RAW,           v2: true  },
     pilot_boat:           { def: PILOT_BOAT_RAW,         v2: true  },
+    boat:                 { def: SAILBOAT_RAW,           v2: false },
+    salvage_tug:          { def: SUPPLY_VESSEL_RAW,      v2: true  },
 };
 
 // ── ISO Camera ────────────────────────────────────────────────────────────────
@@ -236,6 +243,10 @@ export const drawMap = (): void => {
     const defCamY = canvas.height / 2 - oy;
     const defDrawCtx = { ctx, isoFn: defIso, tileW: defTW };
 
+    // Game draw functions reused in editor (drawTree needs no SceneRenderer)
+    const _noSR = { add: () => {}, flush: () => {} } as any;
+    const { drawTree, drawPerson } = createDrawObjects(ctx, defIso, defTW, hh * 2, _noSR);
+
     const _renderDEF = (def: unknown, v2: boolean, wx: number, wy: number, wz: number, angle: number, colors?: Record<string, string>): void => {
         const sr = createSceneRenderer(ctx, defIso);
         if (v2) {
@@ -275,12 +286,13 @@ export const drawMap = (): void => {
             const isWater = h0 <= wl;
             const isSand  = !isWater && ((m as any).sand?.[gx]?.[gy] ?? 0) > 0;
             const isPave  = !isWater && ((m as any).pavement?.[gx]?.[gy] ?? 0) > 0;
+            const _c = 35 + Math.floor(h0 * 15);
             const topColor = isWater
-                ? (isSnow ? '#0a3060' : COLORS.water)
-                : isPave  ? '#6a6a72'
+                ? (isSnow ? '#0a3060' : '#1a5f9e')
+                : isPave  ? (isSnow ? `rgb(${_c+70},${_c+75},${_c+80})` : `rgb(${_c+40},${_c+40},${_c+45})`)
                 : isSand  ? getSandColor(h0)
                 : isSnow  ? `rgb(${190 + Math.floor(h0*8)},${205 + Math.floor(h0*7)},${220 + Math.floor(h0*6)})`
-                : getLandColor(h0, false);
+                : `rgb(${_c-10},${_c+30},${_c-10})`;
 
             const sx = toSX(gx, gy);
             const sy = toSY(gx, gy);
@@ -303,20 +315,16 @@ export const drawMap = (): void => {
     }
 
     // ── Foliage ───────────────────────────────────────────────────────────────
-    const treeColors: Record<string, string> = {
-        pine: '#1a5a1a', oak: '#2a6a1a', bush: '#3a7a2a', dead: '#6a4a2a',
-        beach_umbrella: '#cc2200', beach_umbrella_tilted: '#cc2200',
-        beach_lounger: '#d8cc90', beach_cooler: '#3366aa',
-        beach_person: '#e8c090', swimmer: '#1a88cc',
-    };
+    // gz converts terrain height (editor pixels/hs) → defIso z-units (pixels/stepH)
+    // so trees sit on the terrain surface rather than floating below it.
+    const _foliageGz = (terrH: number): number =>
+        (0.5 + terrH * HEIGHT_SCALE / BASE_HW) / 0.78;
+
     const foliage = (m as any).foliage || [];
     foliage.forEach((f: any) => {
-        const { sx, sy } = { sx: toSX(f.x, f.y) + hw * 0.5, sy: toSY(f.x, f.y) + hh * 0.5 };
-        const r = Math.max(2, hw * 0.45 * (f.s || 1));
-        ctx.fillStyle = treeColors[f.type] || '#1a5a1a';
-        ctx.beginPath();
-        ctx.ellipse(sx, sy, r, r * 0.55, 0, 0, Math.PI * 2);
-        ctx.fill();
+        const terrH = m.terrain[Math.floor(f.x)]?.[Math.floor(f.y)] ?? 0;
+        const fGz   = _foliageGz(terrH);
+        drawTree(f.x + 0.5, f.y + 0.5, defCamX, defCamY, f.s ?? 1, fGz, f.type, { x: 0, y: 0, phase: 0 });
     });
 
     // ── Objects ───────────────────────────────────────────────────────────────
@@ -331,38 +339,49 @@ export const drawMap = (): void => {
         if (isSel) { ctx.shadowBlur = 14; ctx.shadowColor = '#fff'; }
 
         if (obj.type === 'pad') {
-            // Full 7×7 diamond footprint
-            const tl = { sx: toSX(obj.x, obj.y),         sy: toSY(obj.x, obj.y)         };
-            const tr = { sx: toSX(obj.x+7, obj.y),        sy: toSY(obj.x+7, obj.y)       };
-            const br = { sx: toSX(obj.x+7, obj.y+7),      sy: toSY(obj.x+7, obj.y+7)     };
-            const bl = { sx: toSX(obj.x, obj.y+7),        sy: toSY(obj.x, obj.y+7)       };
+            const towerVariant = (obj as any).towerVariant ?? 'classic';
+            // Gray base plate — matches game's isPadTile → '#444'
+            const _pb = [
+                defIso(obj.x,   obj.y,   wl, defCamX, defCamY),
+                defIso(obj.x+7, obj.y,   wl, defCamX, defCamY),
+                defIso(obj.x+7, obj.y+7, wl, defCamX, defCamY),
+                defIso(obj.x,   obj.y+7, wl, defCamX, defCamY),
+            ];
             ctx.beginPath();
-            ctx.moveTo(tl.sx, tl.sy);
-            ctx.lineTo(tr.sx, tr.sy);
-            ctx.lineTo(br.sx, br.sy);
-            ctx.lineTo(bl.sx, bl.sy);
+            ctx.moveTo(_pb[0].x, _pb[0].y);
+            ctx.lineTo(_pb[1].x, _pb[1].y);
+            ctx.lineTo(_pb[2].x, _pb[2].y);
+            ctx.lineTo(_pb[3].x, _pb[3].y);
             ctx.closePath();
-            ctx.fillStyle = COLORS.padFill + 'cc';
+            ctx.fillStyle = '#444';
             ctx.fill();
-            ctx.strokeStyle = COLORS.padStroke;
-            ctx.lineWidth   = 1.5;
-            ctx.stroke();
-            // H marker
-            ctx.fillStyle = '#fff';
-            ctx.font      = `bold ${Math.max(9, hw * 1.0)}px monospace`;
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            const midX = (tl.sx + br.sx) / 2, midY = (tl.sy + br.sy) / 2;
-            ctx.fillText('H', midX, midY);
-            ctx.textBaseline = 'alphabetic';
-            ctx.textAlign    = 'left';
-            if (m.spawnObject === 'pad') _drawDolphin(ctx, midX, midY, 0, hw, hh);
+            if (isSel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
+            ctx.shadowBlur = 0;
+            // Hangar building — same offset as game: xMax-3 = obj.x+4, yMin-1 = obj.y-1
+            _renderDEF(HANGAR_RAW, false, obj.x + 4, obj.y - 1, wl, 0);
+            // Tower (variant-dependent)
+            const towerDef = towerVariant === 'new' ? HANGAR_TOWER_RAW : TOWER_RAW;
+            const towerX   = towerVariant === 'new' ? obj.x + 7 : obj.x + 6.5;
+            _renderDEF(towerDef, false, towerX, obj.y - 1, wl, 0);
+            // Corner lights matching game _drawPadLights positions
+            ([
+                [obj.x + 0.5, obj.y + 0.5], [obj.x + 7.5, obj.y + 0.5],
+                [obj.x + 7.5, obj.y + 7.5], [obj.x + 0.5, obj.y + 7.5],
+            ] as [number, number][]).forEach(([lx, ly]) => {
+                const lp = defIso(lx, ly, wl, defCamX, defCamY);
+                ctx.fillStyle = '#cc2200';
+                ctx.beginPath();
+                ctx.arc(lp.x, lp.y, Math.max(1.5, hw * 0.12), 0, Math.PI * 2);
+                ctx.fill();
+            });
+            const mid = defIso(obj.x + 3.5, obj.y + 3.5, wl, defCamX, defCamY);
+            if (m.spawnObject === 'pad') _drawDolphin(ctx, mid.x, mid.y, 0, hw, hh);
             if (isSel) _showObjPanel('ui_pad');
             if (isSel) {
                 const btn = document.getElementById('btn_spawn_pad');
                 if (btn) btn.style.background = m.spawnObject === 'pad' ? COLORS.uiHighlight : 'var(--accent)';
                 const tvSel = document.getElementById('pad_tower_variant') as HTMLSelectElement | null;
-                if (tvSel) tvSel.value = (obj as any).towerVariant ?? 'classic';
+                if (tvSel) tvSel.value = towerVariant;
             }
 
         } else if (
@@ -459,11 +478,35 @@ export const drawMap = (): void => {
             };
 
             if (obj.type === 'ring') {
-                const rr = ((obj as any).radius ?? 2.5) * hw;
+                const rr    = (obj as any).radius ?? 2.5;
+                const rz    = (obj as any).z ?? 4;
+                const rAng  = (obj as any).angle ?? 0;  // radians, same as game
+                const cosA  = Math.cos(rAng), sinA = Math.sin(rAng);
+                const SEGS  = 24;
+                // Ground shadow
+                ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+                ctx.lineWidth   = 1;
                 ctx.beginPath();
-                ctx.ellipse(cx, cy, rr, rr * 0.55, 0, 0, Math.PI * 2);
+                for (let si = 0; si <= SEGS; si++) {
+                    const t = (si / SEGS) * Math.PI * 2;
+                    const p = defIso(obj.x + rr * Math.cos(t) * (-sinA), obj.y + rr * Math.cos(t) * cosA, 0, defCamX, defCamY);
+                    if (si === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                }
+                ctx.closePath(); ctx.stroke();
+                // 3-D ring
                 ctx.strokeStyle = isSel ? '#fff' : '#FFD700';
                 ctx.lineWidth   = isSel ? 2.5 : 1.5;
+                ctx.beginPath();
+                for (let si = 0; si <= SEGS; si++) {
+                    const t = (si / SEGS) * Math.PI * 2;
+                    const p = defIso(
+                        obj.x + rr * Math.cos(t) * (-sinA),
+                        obj.y + rr * Math.cos(t) * cosA,
+                        rz  + rr * Math.sin(t),
+                        defCamX, defCamY,
+                    );
+                    if (si === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                }
                 ctx.stroke();
             } else if (defEntry) {
                 const colors: Record<string, string> | undefined =
@@ -523,6 +566,11 @@ export const drawMap = (): void => {
 
         ctx.shadowBlur = 0;
 
+        if (isSel) {
+            renderEventsPanel(idx);
+            _showObjPanel('ui_events');
+        }
+
         // Object type label (only when reasonably zoomed in)
         if (hw > 10) {
             ctx.fillStyle = isSel ? '#fff' : 'rgba(255,255,255,0.65)';
@@ -543,20 +591,35 @@ export const drawMap = (): void => {
 
         if (isSel) { ctx.shadowBlur = 10; ctx.shadowColor = '#fff'; }
 
-        const colors: Record<string, [string, string]> = {
-            person:   [isAtt ? '#88ffcc' : '#ffe033', '#cc9900'],
-            rescuer:  [isAtt ? '#88ddff' : '#ff6600', '#cc3300'],
-            reindeer: [isAtt ? '#eebb88' : '#cc8844', '#aa6622'],
-            crate:    [isAtt ? '#44ccff' : '#ff8800', '#cc5500'],
-        };
-        const [fill, stroke] = colors[p.type] || ['#aaa', '#888'];
-        ctx.beginPath();
-        ctx.ellipse(px, py, r * 0.8, r * 0.5, 0, 0, Math.PI * 2);
-        ctx.fillStyle = fill;
-        ctx.fill();
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        if (p.type === 'person' || p.type === 'rescuer') {
+            drawPerson(p.x + 0.5, p.y + 0.5, wl, 0, true, defCamX, defCamY,
+                p.type === 'rescuer' ? 'rescuer' : undefined, (p as any).outfitColors);
+            // selection ring
+            if (isSel) {
+                ctx.beginPath();
+                ctx.ellipse(px, py, r * 0.9, r * 0.5, 0, 0, Math.PI * 2);
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+            }
+        } else if (p.type === 'crate') {
+            const cp = defIso(p.x + 0.5, p.y + 0.5, wl, defCamX, defCamY);
+            const cs = defTW * 0.22;
+            ctx.fillStyle = isAtt ? '#44ccff' : '#d84';
+            ctx.strokeStyle = '#530';
+            ctx.lineWidth = Math.max(0.5, defTW / 64);
+            ctx.fillRect(cp.x - cs / 2, cp.y - cs, cs, cs);
+            ctx.strokeRect(cp.x - cs / 2, cp.y - cs, cs, cs);
+            if (isSel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(cp.x - cs / 2, cp.y - cs, cs, cs); }
+        } else {
+            // reindeer and other types — colored ellipse
+            const ellColors: Record<string, [string, string]> = {
+                reindeer: [isAtt ? '#eebb88' : '#cc8844', '#aa6622'],
+            };
+            const [fill, stroke] = ellColors[p.type] || ['#aaa', '#888'];
+            ctx.beginPath();
+            ctx.ellipse(px, py, r * 0.8, r * 0.5, 0, 0, Math.PI * 2);
+            ctx.fillStyle = fill; ctx.fill();
+            ctx.strokeStyle = stroke; ctx.lineWidth = 1; ctx.stroke();
+        }
 
         if (!(p as any).npcTarget) {
             ctx.fillStyle = '#fff';
@@ -729,7 +792,8 @@ const _drawMinimap = (
             if (m.terrain[gx]?.[gy] === undefined) continue;
             const h = m.terrain[gx]?.[gy];
             if (h === undefined) continue;
-            ctx.fillStyle = h <= wl ? COLORS.water : getLandColor(h, false);
+            const _mc = 35 + Math.floor(h * 15);
+            ctx.fillStyle = h <= wl ? '#1a5f9e' : `rgb(${_mc-10},${_mc+30},${_mc-10})`;
             ctx.fillRect(MX + gx * ts, MY + gy * ts, ts + 0.5, ts + 0.5);
         }
     }
@@ -764,4 +828,14 @@ const _drawMinimap = (
     ctx.strokeStyle = 'rgba(255,255,255,0.2)';
     ctx.lineWidth   = 1;
     ctx.strokeRect(MX, MY, MW, MH);
+};
+
+export const minimapHitToGrid = (sx: number, sy: number, gs: number): { gx: number; gy: number } | null => {
+    const c = _canvas();
+    const MW = 160, MH = 100;
+    const MX = c.width - MW - 8;
+    const MY = c.height - MH - 8;
+    if (sx < MX || sx > MX + MW || sy < MY || sy > MY + MH) return null;
+    const ts = Math.min(MW / gs, MH / gs);
+    return { gx: (sx - MX) / ts, gy: (sy - MY) / ts };
 };

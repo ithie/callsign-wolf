@@ -271,6 +271,36 @@ This lets outer segments of a wing, arm, or antenna follow their inner segment's
 
 ---
 
+## Destruction Fragments (`fragments`)
+
+When a scripted `destroy` event fires on an object, the engine spawns physics fragments that fly apart and vanish after ~4 s. Each fragment group is a named subset of faces.
+
+```typescript
+interface DEFFragment {
+    id: string;                         // unique name (shown in model editor)
+    faceIds: string[];                  // face ids that form this chunk
+    pivot: [number, number, number];    // local-space origin the chunk flies from
+    impulse?: [number, number, number]; // initial velocity in local space (default [0,0,0])
+    torque?: number;                    // total self-rotation over lifetime in radians (default: random ±3)
+}
+```
+
+`fragments` is a top-level array on the DEF. Faces in parts and (for ZDEF2) nodes are supported — face ids are resolved from all sources. A face not listed in any fragment is invisible during the destruction animation.
+
+**Physics (per tick at 30 fps):**
+
+| Property | Value |
+|----------|-------|
+| Gravity | `vz -= 0.018` per tick |
+| Upward pop at spawn | `+0.04 … +0.10` added to `vz` |
+| Lifetime | `MAX_AGE = 120` ticks (~4 s) |
+| Impulse | rotated by the object's world angle at destruction time |
+| Face vertices | baked into pivot-relative world space at spawn — no further deformation |
+
+The model editor supports adding, editing, and previewing fragment groups via **+ Gruppe**, **PLAY**, and **RESET**.
+
+---
+
 ## Instance Schema
 
 ```typescript

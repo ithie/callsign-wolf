@@ -699,6 +699,9 @@
                                   </select>
                                 </div>
                             </div>
+                        <div id="ui_events" class="floating-ui">
+                            <!-- content rendered by events-editor.ts renderEventsPanel() -->
+                        </div>
             </div><!-- end #ed-obj-panel -->
         </div>
 
@@ -789,6 +792,15 @@
             <textarea id="m_sublines_en"></textarea>
             <textarea id="m_briefing_de"></textarea>
             <textarea id="m_briefing_en"></textarea>
+            <input type="text" id="m_headline_fr" value="" />
+            <input type="text" id="m_headline_es" value="" />
+            <input type="text" id="m_headline_pt" value="" />
+            <textarea id="m_sublines_fr"></textarea>
+            <textarea id="m_sublines_es"></textarea>
+            <textarea id="m_sublines_pt"></textarea>
+            <textarea id="m_briefing_fr"></textarea>
+            <textarea id="m_briefing_es"></textarea>
+            <textarea id="m_briefing_pt"></textarea>
             <input type="checkbox" id="m_rain" />
             <input type="checkbox" id="m_snow" />
             <input type="checkbox" id="m_night" />
@@ -818,6 +830,12 @@ Sichere den Archipel.
 Viel Glück, Pilot.</textarea
             >
             <textarea id="c_sublines_en"></textarea>
+            <input type="text" id="c_title_fr" value="" />
+            <input type="text" id="c_title_es" value="" />
+            <input type="text" id="c_title_pt" value="" />
+            <textarea id="c_sublines_fr"></textarea>
+            <textarea id="c_sublines_es"></textarea>
+            <textarea id="c_sublines_pt"></textarea>
             <select id="c_type">
                 <option value="CSW_CAMPAIGN">Kampagne</option>
                 <option value="tutorial">Tutorial</option>
@@ -902,10 +920,16 @@ Viel Glück, Pilot.</textarea
                     campaignTitle: {
                         de: document.getElementById('c_title_de').value,
                         en: document.getElementById('c_title_en').value,
+                        fr: document.getElementById('c_title_fr').value,
+                        es: document.getElementById('c_title_es').value,
+                        pt: document.getElementById('c_title_pt').value,
                     },
                     campaignSublines: {
                         de: document.getElementById('c_sublines_de').value,
                         en: document.getElementById('c_sublines_en').value,
+                        fr: document.getElementById('c_sublines_fr').value,
+                        es: document.getElementById('c_sublines_es').value,
+                        pt: document.getElementById('c_sublines_pt').value,
                     },
                     campaignType: document.getElementById('c_type').value,
                     missions: s.campaign.map((mis, i) => ({ idx: i, headline: mis.headline, active: i === s.curIdx })),
@@ -1259,16 +1283,12 @@ Viel Glück, Pilot.</textarea
 
             const edTabs = () =>
                 '<div style="display:flex;gap:4px;margin-bottom:4px">' +
-                '<button class="ed-btn-sm' +
-                (_edLang === 'de' ? ' active' : '') +
-                '" onclick="edSetLang(\'de\')" style="' +
-                (_edLang === 'de' ? 'background:var(--accent);color:#fff' : '') +
-                '">DE</button>' +
-                '<button class="ed-btn-sm' +
-                (_edLang === 'en' ? ' active' : '') +
-                '" onclick="edSetLang(\'en\')" style="' +
-                (_edLang === 'en' ? 'background:var(--accent);color:#fff' : '') +
-                '">EN</button>' +
+                ['de','en','fr','es','pt'].map(l =>
+                    '<button class="ed-btn-sm' + (_edLang === l ? ' active' : '') +
+                    '" onclick="edSetLang(\'' + l + '\')" style="' +
+                    (_edLang === l ? 'background:var(--accent);color:#fff' : '') +
+                    '">' + l.toUpperCase() + '</button>'
+                ).join('') +
                 '</div>';
 
             const edLs = (ls, lang) => {
@@ -1316,8 +1336,6 @@ Viel Glück, Pilot.</textarea
             const edRenderCampaignHeader = st => {
                 const el = document.getElementById('ed-campaign-header');
                 if (!el || !st) return;
-                const titleDe = edLs(st.campaignTitle, 'de');
-                const titleEn = edLs(st.campaignTitle, 'en');
                 const typeOptions = [
                     { v: 'CSW_CAMPAIGN', l: 'Kampagne' },
                     { v: 'tutorial', l: 'Tutorial' },
@@ -1335,22 +1353,19 @@ Viel Glück, Pilot.</textarea
                     )
                     .join('');
                 el.innerHTML =
-                    '<div style="padding:4px 8px 2px;font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim)">Kampagne</div>' +
-                    '<div class="ch-title-row">' +
-                    '<span class="ch-label">DE</span>' +
-                    '<input type="text" value="' +
-                    edH(titleDe) +
-                    '" placeholder="Titel…" oninput="edDispatch(\'set-campaign-title\',{lang:\'de\',value:this.value})">' +
+                    '<div style="padding:4px 8px 2px;display:flex;align-items:center;gap:6px">' +
+                    '<span style="font-size:9px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);flex:1">Kampagne</span>' +
+                    '<select onchange="edDispatch(\'set-campaign-type\',{value:this.value})" title="Kampagnentyp" style="font-size:10px;background:var(--bg3,#222);color:var(--text,#ccc);border:1px solid var(--border,#444);border-radius:2px;padding:1px 4px">' +
+                    typeOptions + '</select>' +
                     '</div>' +
-                    '<div class="ch-title-row" style="padding-top:1px">' +
-                    '<span class="ch-label">EN</span>' +
-                    '<input type="text" value="' +
-                    edH(titleEn) +
-                    '" placeholder="Title…" oninput="edDispatch(\'set-campaign-title\',{lang:\'en\',value:this.value})">' +
-                    '<select onchange="edDispatch(\'set-campaign-type\',{value:this.value})" title="Kampagnentyp">' +
-                    typeOptions +
-                    '</select>' +
-                    '</div>';
+                    ['de','en','fr','es','pt'].map((l, i) =>
+                        '<div class="ch-title-row"' + (i > 0 ? ' style="padding-top:1px"' : '') + '>' +
+                        '<span class="ch-label">' + l.toUpperCase() + '</span>' +
+                        '<input type="text" value="' + edH(edLs(st.campaignTitle, l)) +
+                        '" placeholder="' + (l === 'de' ? 'Titel…' : 'Title…') +
+                        '" oninput="edDispatch(\'set-campaign-title\',{lang:\'' + l + '\',value:this.value})">' +
+                        '</div>'
+                    ).join('');
             };
 
             // ── Missions panel (always visible) ──────────────────────────────────

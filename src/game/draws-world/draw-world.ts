@@ -207,6 +207,10 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             if (isVisible(wt.x, wt.y, visMargin) && _inNightCone(wt.x, wt.y)) _drawWindTurbine(wt);
             if (!wt.collapsing && _inNightCone(wt.x, wt.y)) _drawDefLights(wt.x, wt.y, WIND_TURBINE_DEF);
         });
+        G.FRAGMENTS.forEach(f => {
+            if (!isVisible(f.x, f.y, visMargin)) return;
+            SceneRenderer.add({ id: '_frag', faces: f.faces } as any, { x: f.x, y: f.y, z: f.z, angle: f.selfAngle });
+        });
         G.BOAT_WRECKS.forEach((w: any) => {
             if (isVisible(w.x, w.y, visMargin) && _inNightCone(w.x, w.y)) _drawBoatWreck(w, camX, camY);
         });

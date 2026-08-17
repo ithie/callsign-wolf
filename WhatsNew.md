@@ -2,7 +2,7 @@
 
 ## DE
 
-Callsign Wolf ist jetzt kostenlos! Die vollständige Kampagne kann optional per Einmalkauf freigeschaltet werden – keine Abos, keine Werbung.
+Callsign Wolf ist jetzt kostenlos! Das vollständige Spiel kann optional per Einmalkauf freigeschaltet werden – keine Abos, keine Werbung.
 
 Außerdem: neue Farben für den Helikopter, überarbeitete Steuerungstasten, verbesserter Sound und der neue App-Name unter dem Symbol.
 
@@ -18,7 +18,7 @@ Also new: additional helicopter colours, revised control buttons, improved audio
 
 ## FR
 
-Callsign Wolf est désormais gratuit ! La campagne complète peut être débloquée avec un achat unique — sans abonnement, sans publicité.
+Callsign Wolf est désormais gratuit ! Le jeu complet peut être débloqué avec un achat unique — sans abonnement, sans publicité.
 
 Également au programme : nouvelles couleurs pour l'hélicoptère, boutons de contrôle retravaillés, son amélioré et nouveau nom sous l'icône.
 
@@ -26,7 +26,7 @@ Callsign Wolf est désormais gratuit ! La campagne complète peut être débloqu
 
 ## ES
 
-¡Callsign Wolf ahora es gratuito! La campaña completa se puede desbloquear con una compra única — sin suscripciones, sin publicidad.
+¡Callsign Wolf ahora es gratuito! El juego completo se puede desbloquear con una compra única — sin suscripciones, sin publicidad.
 
 Además: nuevos colores para el helicóptero, botones de control revisados, audio mejorado y nuevo nombre bajo el icono.
 
@@ -34,7 +34,7 @@ Además: nuevos colores para el helicóptero, botones de control revisados, audi
 
 ## PT-BR
 
-Callsign Wolf agora é gratuito! A campanha completa pode ser desbloqueada com uma compra única — sem assinaturas, sem anúncios.
+Callsign Wolf agora é gratuito! O jogo completo pode ser desbloqueado com uma compra única — sem assinaturas, sem anúncios.
 
 Também novo: novas cores para o helicóptero, botões de controle revisados, áudio aprimorado e novo nome sob o ícone.
 
@@ -42,6 +42,6 @@ Também novo: novas cores para o helicóptero, botões de controle revisados, á
 
 ## PT-PT
 
-Callsign Wolf é agora gratuito! A campanha completa pode ser desbloqueada com uma compra única — sem subscrições, sem publicidade.
+Callsign Wolf é agora gratuito! O jogo completo pode ser desbloqueado com uma compra única — sem subscrições, sem publicidade.
 
 Também novo: novas cores para o helicóptero, botões de controlos revistos, som melhorado e novo nome sob o ícone.

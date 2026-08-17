@@ -13,6 +13,8 @@ import { updateBoats, updateSubmarines, updateCarrierPos, resolveAttachTo } from
 import { carrierCar } from './vehicles/carrier-car';
 import { fuelTruck } from './vehicles/fuel-truck';
 import { updateParticles } from './particles';
+import { updateEventSystem } from './event-system';
+import { updateFragments } from './fragments';
 import { getHeliType } from '../heli-types';
 import { voiceEvents } from '../voice-events';
 import { playSfx } from '../heli-sound';
@@ -268,6 +270,8 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     const { crashed } = zstate;
     const { gridSize } = campaignHandler.getTerrain();
 
+    updateEventSystem();
+    updateFragments();
     updateWind(G.wind, dt, ctx);
     const _frigateSnap = G.BOATS
         .filter((b: any) => b.objectType === VESSEL.FRIGATE)

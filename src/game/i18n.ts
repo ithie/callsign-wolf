@@ -879,8 +879,8 @@ export const setLanguage = (lang: Lang): void => {
 };
 
 /** Resolve a LocalizedString to the active language (falls back to 'de'). */
-export const localize = (ls: string | { de: string; en?: string } | undefined): string => {
+export const localize = (ls: string | { de: string; en?: string; fr?: string; es?: string; pt?: string } | undefined): string => {
     if (!ls) return '';
     if (typeof ls === 'string') return ls;
-    return LANG !== 'de' && ls.en ? ls.en : ls.de;
+    return (ls as Record<string, string>)[LANG] ?? ls.en ?? ls.de;
 };
