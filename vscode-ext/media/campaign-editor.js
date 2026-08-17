@@ -72,6 +72,7 @@
   var _notify = null;
   var _formOpen = false;
   var _formObjectIdx = null;
+  var _editIdx = null;
   var initEventsEditor = (notify) => {
     _notify = notify;
     const panel = document.getElementById("ui_events");
@@ -92,8 +93,17 @@
     const action = btn.dataset["ev"];
     if (action === "add") {
       _formOpen = true;
+      _editIdx = null;
       _formObjectIdx = state.selectedObjectIdx;
       _renderForm();
+    } else if (action === "edit") {
+      const idx = parseInt(btn.dataset["evIdx"] ?? "-1");
+      const events = m.events ?? [];
+      if (idx < 0 || !events[idx]) return;
+      _formOpen = true;
+      _editIdx = idx;
+      _formObjectIdx = state.selectedObjectIdx;
+      _renderForm(events[idx]);
     } else if (action === "delete") {
       const idx = parseInt(btn.dataset["evIdx"] ?? "-1");
       if (idx < 0) return;
@@ -107,6 +117,7 @@
     } else if (action === "cancel") {
       _formOpen = false;
       _formObjectIdx = null;
+      _editIdx = null;
       renderEventsPanel(state.selectedObjectIdx);
     } else if (action === "add-action") {
       _appendActionRow(state.selectedObjectIdx ?? 0);
@@ -114,46 +125,66 @@
       btn.closest(".ev-action-row")?.remove();
     }
   };
-  var _touchesObj = (ev, idx) => {
-    const t = ev.trigger;
-    if (t.objectIdx === idx || t.nearObjectIdx === idx) return true;
-    return ev.actions.some((a) => a.objectIdx === idx);
-  };
+  var _TRIG_TYPES = [
+    ["objectReaches", "Objekt erreicht Ziel"],
+    ["objectDestroyed", "Objekt zerst\xF6rt"],
+    ["heliNear", "Heli in der N\xE4he"],
+    ["time", "Zeitverz\xF6gerung"],
+    ["rescued", "Gerettete Personen"]
+  ];
+  var _ACT_TYPES = [
+    ["destroy", "Zerst\xF6ren"],
+    ["setOnFire", "In Brand setzen"],
+    ["setOnSmoke", "Rauch erzeugen"],
+    ["startMoving", "Bewegung starten"],
+    ["stopMoving", "Bewegung stoppen"],
+    ["killAttachedPayloads", "Payloads t\xF6ten"],
+    ["failMission", "Mission \xD7"],
+    ["showMessage", "Nachricht anzeigen"],
+    ["setWindStr", "Wind setzen"]
+  ];
+  var _trigOpts = (sel) => _TRIG_TYPES.map(([v, l]) => `<option value="${v}"${v === sel ? " selected" : ""}>${l}</option>`).join("");
+  var _actOpts = (sel) => _ACT_TYPES.map(([v, l]) => `<option value="${v}"${v === sel ? " selected" : ""}>${l}</option>`).join("");
   var _trigLabel = (t) => {
     switch (t.type) {
       case "time":
-        return `\u23F1 ${t.seconds}s`;
+        return `\u23F1 Nach ${t.seconds}s`;
       case "rescued":
-        return `\u{1F681} rescued\xD7${t.count}`;
+        return `\u{1F3C1} Gerettet: ${t.count}`;
       case "objectReaches":
-        return `[${t.objectIdx}]\u2192[${t.nearObjectIdx}] \u2264${t.distance}`;
+        return `[${t.objectIdx}] \u2192 [${t.nearObjectIdx}] \u2264${t.distance}`;
       case "objectDestroyed":
         return `[${t.objectIdx}] zerst\xF6rt`;
       case "heliNear":
-        return `heli near [${t.objectIdx}] \u2264${t.distance}`;
+        return `Heli \u2264${t.distance} von [${t.objectIdx}]`;
     }
   };
   var _actLabel = (a) => {
     switch (a.type) {
       case "setOnFire":
-        return `fire[${a.objectIdx}]`;
+        return `Feuer [${a.objectIdx}]`;
       case "setOnSmoke":
-        return `smoke[${a.objectIdx}]`;
+        return `Rauch [${a.objectIdx}]`;
       case "destroy":
-        return `destroy[${a.objectIdx}]`;
+        return `Zerst\xF6ren [${a.objectIdx}]`;
       case "startMoving":
-        return `move>[${a.objectIdx}]`;
+        return `Start [${a.objectIdx}]`;
       case "stopMoving":
-        return `stop[${a.objectIdx}]`;
+        return `Stop [${a.objectIdx}]`;
       case "killAttachedPayloads":
-        return `kill[${a.objectIdx}]`;
+        return `Kill [${a.objectIdx}]`;
       case "failMission":
-        return a.objectIdx !== void 0 ? `fail[${a.objectIdx}]` : "fail";
+        return a.objectIdx !== void 0 ? `Mission \xD7 [${a.objectIdx}]` : "Mission \xD7";
       case "showMessage":
-        return "msg";
+        return "\u{1F4AC} Nachricht";
       case "setWindStr":
-        return `wind=${a.value}`;
+        return `Wind ${a.value}`;
     }
+  };
+  var _touchesObj = (ev, idx) => {
+    const t = ev.trigger;
+    if (t.objectIdx === idx || t.nearObjectIdx === idx) return true;
+    return ev.actions.some((a) => a.objectIdx === idx);
   };
   var renderEventsPanel = (objectIdx) => {
     const el = document.getElementById("ui_events");
@@ -162,64 +193,94 @@
     if (_formOpen) {
       _formOpen = false;
       _formObjectIdx = null;
+      _editIdx = null;
     }
     const m = getCurrentMission();
     const allEvents = m?.events ?? [];
     const relevant = allEvents.map((ev, i) => ({ ev, i })).filter(({ ev }) => objectIdx === null || _touchesObj(ev, objectIdx));
-    let html = `<strong style="color:#fa0">EVENTS</strong>`;
-    if (relevant.length === 0) {
-      html += `<div style="color:#555;font-size:11px;margin:4px 0">\u2014</div>`;
-    } else {
-      for (const { ev, i } of relevant) {
-        const acts = ev.actions.map(_actLabel).join(" ");
-        html += `<div style="margin:3px 0;background:#111;padding:3px 6px;border-radius:2px;display:flex;justify-content:space-between;align-items:flex-start;gap:4px"><span style="font-size:10px;flex:1;min-width:0"><span style="color:#4af">${_trigLabel(ev.trigger)}</span> <span style="color:#fa8">${acts}</span></span><button data-ev="delete" data-ev-idx="${i}" style="background:#600;border:none;color:#f88;cursor:pointer;padding:0 4px;font-size:10px;flex-shrink:0">\u2715</button></div>`;
-      }
+    const S = 'style="';
+    let html = `<div ${S}font-size:10px;font-weight:700;color:var(--accent);letter-spacing:0.06em;margin-bottom:5px">EVENTS</div>`;
+    for (const { ev, i } of relevant) {
+      const acts = ev.actions.map(_actLabel).join("  \xB7  ");
+      html += `<div ${S}margin:3px 0;background:#111;border:1px solid #1e1e1e;padding:4px 6px;border-radius:3px"><div ${S}display:flex;justify-content:space-between;align-items:flex-start;gap:3px"><div ${S}flex:1;min-width:0"><div ${S}font-size:10px;color:#4af;margin-bottom:2px">${_trigLabel(ev.trigger)}</div><div ${S}font-size:9px;color:#fa8;line-height:1.4">${acts}</div></div><div ${S}display:flex;gap:2px;flex-shrink:0;margin-left:4px"><button data-ev="edit" data-ev-idx="${i}" ${S}background:#223;border:1px solid #335;color:#88f;cursor:pointer;padding:1px 5px;font-size:10px;border-radius:2px">\u270F</button><button data-ev="delete" data-ev-idx="${i}" ${S}background:#400;border:1px solid #622;color:#f88;cursor:pointer;padding:1px 5px;font-size:10px;border-radius:2px">\u2715</button></div></div></div>`;
     }
-    html += `<button data-ev="add" style="width:100%;margin-top:6px;background:var(--accent);border:none;color:#000;cursor:pointer;padding:3px;font-size:11px">\uFF0B Event</button>`;
+    if (relevant.length === 0) {
+      html += `<div ${S}color:#444;font-size:10px;margin:4px 0;text-align:center">\u2014</div>`;
+    }
+    html += `<button data-ev="add" ${S}width:100%;margin-top:5px;background:var(--accent);border:none;color:#000;cursor:pointer;padding:4px;font-size:11px;font-weight:700;border-radius:2px">\uFF0B Event</button>`;
     el.innerHTML = html;
   };
-  var _trigOptions = [
-    ["objectReaches", "objectReaches"],
-    ["objectDestroyed", "objectDestroyed"],
-    ["heliNear", "heliNear"],
-    ["time", "time"],
-    ["rescued", "rescued"]
-  ].map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
-  var _actOptions = [
-    ["destroy", "destroy"],
-    ["setOnFire", "setOnFire"],
-    ["setOnSmoke", "setOnSmoke"],
-    ["startMoving", "startMoving"],
-    ["stopMoving", "stopMoving"],
-    ["killAttachedPayloads", "killAttached"],
-    ["failMission", "failMission"],
-    ["showMessage", "showMessage"],
-    ["setWindStr", "setWindStr"]
-  ].map(([v, l]) => `<option value="${v}">${l}</option>`).join("");
-  var _triggerFieldsHTML = (trigType, defOidx) => {
-    const ni = (id, val, w = 40) => `<input type="number" id="${id}" value="${val}" style="width:${w}px;font-size:10px">`;
+  var _objRef = () => {
+    const objs = getCurrentMission()?.objects;
+    if (!objs?.length) return "";
+    const MAX = 14;
+    const items = objs.slice(0, MAX).map(
+      (o, i) => `<span style="color:#555;white-space:nowrap">[${i}]<span style="color:#444">${o.type}</span></span>`
+    ).join(" ");
+    const more = objs.length > MAX ? `<span style="color:#333"> +${objs.length - MAX}</span>` : "";
+    return `<div style="font-size:9px;background:#080808;border:1px solid #1a1a1a;padding:3px 6px;border-radius:3px;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:3px;line-height:1.6">${items}${more}</div>`;
+  };
+  var _SI = "font-size:10px;background:#0a0a0a;border:1px solid #2a2a2a;color:#ccc;padding:2px 4px;border-radius:2px";
+  var _ST = `${_SI};width:108px`;
+  var _numInp = (id, val, w = 42) => `<input type="number" id="${id}" value="${val}" style="width:${w}px;${_SI}">`;
+  var _frow = (label, content) => `<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><span style="font-size:9px;color:#666;min-width:108px;text-align:right">${label}</span>${content}</div>`;
+  var _triggerFieldsHTML = (trigType, defOidx, t) => {
+    const tv = t;
     switch (trigType) {
       case "time":
-        return `Sek: ${ni("ev_t_seconds", 5)}`;
+        return _frow("Sekunden:", _numInp("ev_t_seconds", tv?.seconds ?? 5));
       case "rescued":
-        return `Anz: ${ni("ev_t_count", 1)}`;
+        return _frow("Anzahl:", _numInp("ev_t_count", tv?.count ?? 1));
       case "objectReaches":
-        return `Obj: ${ni("ev_t_oidx", defOidx)} Near: ${ni("ev_t_nidx", defOidx)} Dist: ${ni("ev_t_dist", 8)}`;
+        return [
+          _frow("Quell-Objekt Nr:", _numInp("ev_t_oidx", tv?.objectIdx ?? defOidx)),
+          _frow("Ziel-Objekt Nr:", _numInp("ev_t_nidx", tv?.nearObjectIdx ?? defOidx)),
+          _frow("Max. Distanz:", _numInp("ev_t_dist", tv?.distance ?? 8) + `<span style="font-size:9px;color:#555;margin-left:3px">Tiles</span>`)
+        ].join("");
       case "objectDestroyed":
-        return `Obj: ${ni("ev_t_oidx", defOidx)}`;
+        return _frow("Objekt Nr:", _numInp("ev_t_oidx", tv?.objectIdx ?? defOidx));
       case "heliNear":
-        return `Obj: ${ni("ev_t_oidx", defOidx)} Dist: ${ni("ev_t_dist", 10)}`;
+        return [
+          _frow("Objekt Nr:", _numInp("ev_t_oidx", tv?.objectIdx ?? defOidx)),
+          _frow("Max. Distanz:", _numInp("ev_t_dist", tv?.distance ?? 10) + `<span style="font-size:9px;color:#555;margin-left:3px">Tiles</span>`)
+        ].join("");
       default:
         return "";
     }
   };
-  var _actionRowHTML = (defOidx) => `<div class="ev-action-row" style="display:flex;align-items:center;gap:2px;margin:2px 0"><select class="ev-act-type" style="font-size:10px;flex:1">${_actOptions}</select><input class="ev-act-oidx" type="number" value="${defOidx}" style="width:30px;font-size:10px"><input class="ev-act-val" type="number" value="1" step="0.1" style="width:30px;font-size:10px;display:none"><span class="ev-act-msg" style="display:none;flex-direction:column;gap:2px"><input class="ev-act-text-de" type="text" placeholder="DE (Pflicht)" style="width:110px;font-size:10px"><input class="ev-act-text-en" type="text" placeholder="EN" style="width:110px;font-size:10px"><input class="ev-act-text-fr" type="text" placeholder="FR" style="width:110px;font-size:10px"><input class="ev-act-text-es" type="text" placeholder="ES" style="width:110px;font-size:10px"><input class="ev-act-text-pt" type="text" placeholder="PT" style="width:110px;font-size:10px"></span><button data-ev="remove-action" style="background:#400;border:none;color:#f88;cursor:pointer;padding:0 3px;font-size:10px;flex-shrink:0">\u2715</button></div>`;
-  var _renderForm = () => {
+  var _ACT_WITH_OBJ = ["destroy", "setOnFire", "setOnSmoke", "startMoving", "stopMoving", "killAttachedPayloads", "failMission"];
+  var _actionRowHTML = (defOidx, existing) => {
+    const type = existing?.type ?? "destroy";
+    const ev = existing;
+    const oidx = ev?.objectIdx ?? defOidx;
+    const val = ev?.value ?? 1;
+    const textDe = typeof ev?.text === "string" ? ev.text : ev?.text?.de ?? "";
+    const textEn = typeof ev?.text === "object" ? ev.text?.en ?? "" : "";
+    const textFr = typeof ev?.text === "object" ? ev.text?.fr ?? "" : "";
+    const textEs = typeof ev?.text === "object" ? ev.text?.es ?? "" : "";
+    const textPt = typeof ev?.text === "object" ? ev.text?.pt ?? "" : "";
+    const showOidx = _ACT_WITH_OBJ.includes(type);
+    const showVal = type === "setWindStr";
+    const showMsg = type === "showMessage";
+    return `<div class="ev-action-row" style="display:flex;align-items:flex-start;gap:3px;margin:2px 0;background:#0c0c0c;padding:3px 4px;border-radius:3px;border:1px solid #1a1a1a"><select class="ev-act-type" style="flex:1;min-width:0;${_SI}">${_actOpts(type)}</select><input class="ev-act-oidx" type="number" value="${oidx}" style="width:36px;${_SI};${showOidx ? "" : "display:none"}"><input class="ev-act-val" type="number" value="${val}" step="0.1" style="width:36px;${_SI};${showVal ? "" : "display:none"}"><span class="ev-act-msg" style="${showMsg ? "display:flex" : "display:none"};flex-direction:column;gap:2px"><input class="ev-act-text-de" type="text" placeholder="DE" value="${textDe}" style="${_ST}"><input class="ev-act-text-en" type="text" placeholder="EN" value="${textEn}" style="${_ST}"><input class="ev-act-text-fr" type="text" placeholder="FR" value="${textFr}" style="${_ST}"><input class="ev-act-text-es" type="text" placeholder="ES" value="${textEs}" style="${_ST}"><input class="ev-act-text-pt" type="text" placeholder="PT" value="${textPt}" style="${_ST}"></span><button data-ev="remove-action" style="background:#400;border:none;color:#f88;cursor:pointer;padding:1px 5px;font-size:10px;border-radius:2px;flex-shrink:0">\u2715</button></div>`;
+  };
+  var _renderForm = (existing) => {
     const el = document.getElementById("ui_events");
     if (!el) return;
     const defOidx = state.selectedObjectIdx ?? 0;
-    const firstTrig = "objectReaches";
-    el.innerHTML = `<strong style="color:#fa0">ADD EVENT</strong><div style="margin:5px 0;font-size:11px">TRIGGER: <select id="ev_trig_type" style="width:130px;font-size:10px">${_trigOptions}</select><div id="ev_trig_fields" style="margin:3px 0">${_triggerFieldsHTML(firstTrig, defOidx)}</div></div><div style="font-size:10px;color:#aaa;margin:2px 0">ACTIONS:</div><div id="ev_action_list">${_actionRowHTML(defOidx)}</div><button data-ev="add-action" style="background:#333;border:none;color:#ccc;cursor:pointer;padding:2px 6px;font-size:10px;margin-top:2px">\uFF0B Action</button><div style="margin-top:6px;display:flex;gap:4px"><button data-ev="save" style="flex:1;background:var(--accent);border:none;color:#000;cursor:pointer;padding:3px;font-size:11px">Speichern</button><button data-ev="cancel" style="flex:1;background:#333;border:none;color:#ccc;cursor:pointer;padding:3px;font-size:11px">Abbrechen</button></div>`;
+    const t = existing?.trigger;
+    const trigType = t?.type ?? "objectReaches";
+    const isEdit = _editIdx !== null;
+    const _sect = (title, right, content) => `<div style="background:#0c0c0c;border:1px solid #1e1e1e;border-radius:4px;padding:5px 6px;margin-bottom:5px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:9px;font-weight:700;letter-spacing:0.08em;color:#555">${title}</span>${right}</div>${content}</div>`;
+    el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:0.06em;margin-bottom:5px">${isEdit ? "\u270F EVENT BEARBEITEN" : "\u26A1 NEUES EVENT"}</div>` + _objRef() + _sect(
+      "AUSL\xD6SER",
+      "",
+      `<select id="ev_trig_type" style="width:100%;${_SI};margin-bottom:5px">${_trigOpts(trigType)}</select><div id="ev_trig_fields">${_triggerFieldsHTML(trigType, defOidx, t)}</div>`
+    ) + _sect(
+      "AKTIONEN",
+      `<button data-ev="add-action" style="background:#1e1e1e;border:1px solid #2a2a2a;color:#999;cursor:pointer;padding:1px 7px;font-size:10px;border-radius:2px">\uFF0B</button>`,
+      `<div id="ev_action_list">${(existing?.actions?.length ? existing.actions : [void 0]).map((a) => _actionRowHTML(defOidx, a)).join("")}</div>`
+    ) + `<div style="display:flex;gap:4px"><button data-ev="save" style="flex:1;background:var(--accent);border:none;color:#000;cursor:pointer;padding:4px;font-size:11px;font-weight:700;border-radius:2px">\u2713 Speichern</button><button data-ev="cancel" style="background:#1e1e1e;border:1px solid #2a2a2a;color:#999;cursor:pointer;padding:4px 10px;font-size:11px;border-radius:2px">\u2715</button></div>`;
   };
   var _renderTriggerFields = () => {
     const sel = document.getElementById("ev_trig_type");
@@ -230,11 +291,10 @@
   var _updateActionRow = (row) => {
     if (!row) return;
     const type = row.querySelector(".ev-act-type")?.value;
-    const objTypes = ["destroy", "setOnFire", "setOnSmoke", "startMoving", "stopMoving", "killAttachedPayloads", "failMission"];
     const oidx = row.querySelector(".ev-act-oidx");
     const val = row.querySelector(".ev-act-val");
     const msg = row.querySelector(".ev-act-msg");
-    if (oidx) oidx.style.display = objTypes.includes(type) ? "" : "none";
+    if (oidx) oidx.style.display = _ACT_WITH_OBJ.includes(type) ? "" : "none";
     if (val) val.style.display = type === "setWindStr" ? "" : "none";
     if (msg) msg.style.display = type === "showMessage" ? "flex" : "none";
   };
@@ -313,10 +373,16 @@
     });
     if (actions.length === 0) return;
     const events = m.events ?? [];
-    events.push({ trigger, actions });
+    const newEvent = { trigger, actions };
+    if (_editIdx !== null && _editIdx < events.length) {
+      events[_editIdx] = newEvent;
+    } else {
+      events.push(newEvent);
+    }
     m.events = events;
     _formOpen = false;
     _formObjectIdx = null;
+    _editIdx = null;
     _notify?.();
     renderEventsPanel(state.selectedObjectIdx);
   };
@@ -16167,6 +16233,46 @@
       const fGz = _foliageGz(terrH);
       drawTree(f.x + 0.5, f.y + 0.5, defCamX, defCamY, f.s ?? 1, fGz, f.type, { x: 0, y: 0, phase: 0 });
     });
+    const _evList = m.events ?? [];
+    if (_evList.length > 0) {
+      ctx.save();
+      _evList.forEach((ev) => {
+        const t = ev.trigger;
+        const srcObj = m.objects?.[t.objectIdx];
+        if (!srcObj) return;
+        const sx = toSX(srcObj.x + 0.5, srcObj.y + 0.5);
+        const sy = toSY(srcObj.x + 0.5, srcObj.y + 0.5);
+        if (t.type === "objectReaches") {
+          const dstObj = m.objects?.[t.nearObjectIdx];
+          if (!dstObj) return;
+          const dx = toSX(dstObj.x + 0.5, dstObj.y + 0.5);
+          const dy = toSY(dstObj.x + 0.5, dstObj.y + 0.5);
+          ctx.strokeStyle = "rgba(255,140,0,0.55)";
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([5, 4]);
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(dx, dy);
+          ctx.stroke();
+          const r = (t.distance ?? 8) * hw;
+          ctx.strokeStyle = "rgba(255,140,0,0.2)";
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(dx, dy, r, r * 0.5, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (t.type === "heliNear") {
+          const r = (t.distance ?? 10) * hw;
+          ctx.strokeStyle = "rgba(255,230,50,0.35)";
+          ctx.lineWidth = 1.5;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.ellipse(sx, sy, r, r * 0.5, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      });
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
     m.objects.forEach((obj, idx) => {
       const isSel = state.selectedObjectIdx === idx;
       const cx = toSX(obj.x + 0.5, obj.y + 0.5);
@@ -16709,6 +16815,40 @@
   var _onStateChanged = null;
   var setOnStateChanged = (fn) => {
     _onStateChanged = fn;
+  };
+  var _onOpenFile = null;
+  var setOnOpenFile = (fn) => {
+    _onOpenFile = fn;
+  };
+  var _TYPE_TO_ZDEF = {
+    lighthouse: "src/game/models/objects/lighthouse.zdef",
+    wind_turbine: "src/game/models/objects/wind_turbine.zdef",
+    buoy: "src/game/models/objects/buoy.zdef",
+    baywatch_car: "src/game/models/objects/baywatch_car.zdef",
+    baywatch_hq: "src/game/models/objects/baywatch_hq.zdef",
+    baywatch_tower: "src/game/models/objects/baywatch_tower.zdef",
+    concert_stage: "src/game/models/objects/concert_stage.zdef",
+    festival_tent: "src/game/models/objects/festival_tent.zdef",
+    festival_tent_broken: "src/game/models/objects/festival_tent_broken.zdef",
+    festival_car: "src/game/models/objects/festival_car.zdef",
+    xmas_house_a: "src/game/models/objects/xmas_house_a.zdef",
+    xmas_house_b: "src/game/models/objects/xmas_house_b.zdef",
+    xmas_lantern: "src/game/models/objects/xmas_lantern.zdef",
+    sleigh: "src/game/models/objects/sleigh.zdef",
+    reindeer: "src/game/models/objects/reindeer.zdef",
+    volleyball_court: "src/game/models/objects/volleyball_court.zdef",
+    hangar_tower: "src/game/models/objects/hangar_tower.zdef",
+    plane_wreck: "src/game/models/objects/plane_wreck.zdef",
+    sailboat_broken: "src/game/models/objects/sailboat_broken.zdef",
+    research_platform: "src/game/models/research_platform.zdef",
+    submarine: "src/game/models/submarine.zdef",
+    carrier: "src/game/models/carrier.zdef",
+    frigate: "src/game/models/frigate.zdef",
+    supply_vessel: "src/game/models/supply_vessel.zdef",
+    salvage_tug: "src/game/models/supply_vessel.zdef",
+    boat: "src/game/models/sailboat.zdef",
+    sar_boat: "src/game/models/sar_boat.zdef",
+    pilot_boat: "src/game/models/pilot_boat.zdef"
   };
   var notifyWorkbench = () => {
     if (window.parent !== window) window.parent.postMessage({ type: "editor-state-changed" }, "*");
@@ -18227,6 +18367,14 @@
         _ctxGx = Math.floor(_cg);
         _ctxGy = Math.floor(_cd);
         if (_ctxGx < 0 || _ctxGx >= m.gridSize || _ctxGy < 0 || _ctxGy >= m.gridSize) return;
+        if (_onOpenFile) {
+          const hit = m.objects.find((o) => Math.hypot(_cg - o.x - 0.5, _cd - o.y - 0.5) < 2);
+          const zdefPath = hit ? _TYPE_TO_ZDEF[hit.type] : void 0;
+          if (zdefPath) {
+            _onOpenFile(zdefPath);
+            return;
+          }
+        }
         state.selectedObjectIdx = null;
         state.selectedPayloadIdx = null;
         state.isDraggingItem = false;
@@ -18578,7 +18726,8 @@
         const mAny = m;
         if (mAny.terrainRef !== void 0) {
           const { terrain, gridSize, sand, pavement, foliage, ...rest } = { ...mAny };
-          return { ...rest, terrainRef: mAny.terrainRef };
+          const foliageOut = foliage ? typeof foliage === "string" ? foliage : compressFoliage(foliage) : void 0;
+          return { ...rest, terrainRef: mAny.terrainRef, ...foliageOut ? { foliage: foliageOut } : {} };
         }
         state.curIdx = i;
         return {
@@ -18634,7 +18783,12 @@
         state.type = parsed.type;
         state.campaign = parsed.levels.map((m) => {
           if (m.terrainRef !== void 0) {
-            return { ...m, terrain: [], gridSize: 0 };
+            return {
+              ...m,
+              terrain: [],
+              gridSize: 0,
+              foliage: typeof m.foliage === "string" ? decompressFoliage(m.foliage) : m.foliage || []
+            };
           }
           const base = {
             ...m,
@@ -18700,6 +18854,7 @@
     }, 400);
   };
   setOnStateChanged(scheduleNotify);
+  setOnOpenFile((path) => vscode.postMessage({ type: "open-zdef", path }));
   initUI();
   initEventsEditor(scheduleNotify);
   loadMission(0);

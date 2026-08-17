@@ -74,7 +74,7 @@ export class CampaignEditorProvider implements vscode.CustomEditorProvider<Campa
             } catch { return []; }
         })();
 
-        panel.webview.onDidReceiveMessage((msg: { type: string; content?: string; value?: number }) => {
+        panel.webview.onDidReceiveMessage((msg: { type: string; content?: string; value?: number; path?: string }) => {
             if (msg.type === 'ready') {
                 panel.webview.postMessage({ type: 'load', content: document.content, songKeys });
             } else if (msg.type === 'change' && msg.content !== undefined) {
@@ -84,6 +84,12 @@ export class CampaignEditorProvider implements vscode.CustomEditorProvider<Campa
                 }
             } else if (msg.type === 'missionIndex' && msg.value !== undefined) {
                 document.missionIndex = msg.value;
+            } else if (msg.type === 'open-zdef' && msg.path) {
+                const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                if (ws) {
+                    const fileUri = vscode.Uri.file(join(ws, msg.path));
+                    vscode.commands.executeCommand('vscode.open', fileUri);
+                }
             }
         });
     }

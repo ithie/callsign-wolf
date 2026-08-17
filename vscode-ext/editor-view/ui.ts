@@ -9,6 +9,41 @@ export const setOnStateChanged = (fn: (() => void) | null): void => {
     _onStateChanged = fn;
 };
 
+// Callback for opening a ZDEF file in the ZDEF editor
+let _onOpenFile: ((path: string) => void) | null = null;
+export const setOnOpenFile = (fn: (path: string) => void): void => { _onOpenFile = fn; };
+
+const _TYPE_TO_ZDEF: Partial<Record<string, string>> = {
+    lighthouse:           'src/game/models/objects/lighthouse.zdef',
+    wind_turbine:         'src/game/models/objects/wind_turbine.zdef',
+    buoy:                 'src/game/models/objects/buoy.zdef',
+    baywatch_car:         'src/game/models/objects/baywatch_car.zdef',
+    baywatch_hq:          'src/game/models/objects/baywatch_hq.zdef',
+    baywatch_tower:       'src/game/models/objects/baywatch_tower.zdef',
+    concert_stage:        'src/game/models/objects/concert_stage.zdef',
+    festival_tent:        'src/game/models/objects/festival_tent.zdef',
+    festival_tent_broken: 'src/game/models/objects/festival_tent_broken.zdef',
+    festival_car:         'src/game/models/objects/festival_car.zdef',
+    xmas_house_a:         'src/game/models/objects/xmas_house_a.zdef',
+    xmas_house_b:         'src/game/models/objects/xmas_house_b.zdef',
+    xmas_lantern:         'src/game/models/objects/xmas_lantern.zdef',
+    sleigh:               'src/game/models/objects/sleigh.zdef',
+    reindeer:             'src/game/models/objects/reindeer.zdef',
+    volleyball_court:     'src/game/models/objects/volleyball_court.zdef',
+    hangar_tower:         'src/game/models/objects/hangar_tower.zdef',
+    plane_wreck:          'src/game/models/objects/plane_wreck.zdef',
+    sailboat_broken:      'src/game/models/objects/sailboat_broken.zdef',
+    research_platform:    'src/game/models/research_platform.zdef',
+    submarine:            'src/game/models/submarine.zdef',
+    carrier:              'src/game/models/carrier.zdef',
+    frigate:              'src/game/models/frigate.zdef',
+    supply_vessel:        'src/game/models/supply_vessel.zdef',
+    salvage_tug:          'src/game/models/supply_vessel.zdef',
+    boat:                 'src/game/models/sailboat.zdef',
+    sar_boat:             'src/game/models/sar_boat.zdef',
+    pilot_boat:           'src/game/models/pilot_boat.zdef',
+};
+
 // Notify the Electron workbench parent frame that editor state has changed
 export const notifyWorkbench = () => {
     if (window.parent !== window) window.parent.postMessage({ type: 'editor-state-changed' }, '*');
@@ -1514,6 +1549,13 @@ export const initUI = () => {
             _ctxGx = Math.floor(_cg);
             _ctxGy = Math.floor(_cd);
             if (_ctxGx < 0 || _ctxGx >= m.gridSize || _ctxGy < 0 || _ctxGy >= m.gridSize) return;
+
+            // Double-click on a ZDEF object → open in ZDEF editor
+            if (_onOpenFile) {
+                const hit = m.objects.find(o => Math.hypot(_cg - o.x - 0.5, _cd - o.y - 0.5) < 2);
+                const zdefPath = hit ? _TYPE_TO_ZDEF[hit.type] : undefined;
+                if (zdefPath) { _onOpenFile(zdefPath); return; }
+            }
             // clear object selection so no floating UI overlaps the context menu
             state.selectedObjectIdx = null;
             state.selectedPayloadIdx = null;
@@ -1897,7 +1939,10 @@ export const initUI = () => {
             const mAny = m as any;
             if (mAny.terrainRef !== undefined) {
                 const { terrain, gridSize, sand, pavement, foliage, ...rest } = { ...mAny };
-                return { ...rest, terrainRef: mAny.terrainRef };
+                const foliageOut = foliage
+                    ? (typeof foliage === 'string' ? foliage : compressFoliage(foliage))
+                    : undefined;
+                return { ...rest, terrainRef: mAny.terrainRef, ...(foliageOut ? { foliage: foliageOut } : {}) };
             }
             state.curIdx = i;
             return {
@@ -1952,7 +1997,12 @@ export const initUI = () => {
             state.type = parsed.type;
             state.campaign = parsed.levels.map((m: any) => {
                 if (m.terrainRef !== undefined) {
-                    return { ...m, terrain: [] as any, gridSize: 0 } as Mission;
+                    return {
+                        ...m,
+                        terrain: [] as any,
+                        gridSize: 0,
+                        foliage: typeof m.foliage === 'string' ? decompressFoliage(m.foliage) : m.foliage || [],
+                    } as Mission;
                 }
                 const base = {
                     ...m,

@@ -327,6 +327,41 @@ export const drawMap = (): void => {
         drawTree(f.x + 0.5, f.y + 0.5, defCamX, defCamY, f.s ?? 1, fGz, f.type, { x: 0, y: 0, phase: 0 });
     });
 
+    // ── Event connections ─────────────────────────────────────────────────────
+    const _evList: any[] = (m as any).events ?? [];
+    if (_evList.length > 0) {
+        ctx.save();
+        _evList.forEach((ev: any) => {
+            const t = ev.trigger;
+            const srcObj = m.objects?.[t.objectIdx];
+            if (!srcObj) return;
+            const sx = toSX(srcObj.x + 0.5, srcObj.y + 0.5);
+            const sy = toSY(srcObj.x + 0.5, srcObj.y + 0.5);
+            if (t.type === 'objectReaches') {
+                const dstObj = m.objects?.[t.nearObjectIdx];
+                if (!dstObj) return;
+                const dx = toSX(dstObj.x + 0.5, dstObj.y + 0.5);
+                const dy = toSY(dstObj.x + 0.5, dstObj.y + 0.5);
+                ctx.strokeStyle = 'rgba(255,140,0,0.55)';
+                ctx.lineWidth   = 1.5;
+                ctx.setLineDash([5, 4]);
+                ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(dx, dy); ctx.stroke();
+                const r = (t.distance ?? 8) * hw;
+                ctx.strokeStyle = 'rgba(255,140,0,0.2)';
+                ctx.lineWidth   = 1;
+                ctx.beginPath(); ctx.ellipse(dx, dy, r, r * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
+            } else if (t.type === 'heliNear') {
+                const r = (t.distance ?? 10) * hw;
+                ctx.strokeStyle = 'rgba(255,230,50,0.35)';
+                ctx.lineWidth   = 1.5;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath(); ctx.ellipse(sx, sy, r, r * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
+            }
+        });
+        ctx.setLineDash([]);
+        ctx.restore();
+    }
+
     // ── Objects ───────────────────────────────────────────────────────────────
     m.objects.forEach((obj, idx) => {
         const isSel = state.selectedObjectIdx === idx;
