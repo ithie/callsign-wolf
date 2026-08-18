@@ -52,6 +52,7 @@ export const mount = (): void => {
   </g></g></g>
 </svg>
         </a>
+        <a class="il" href="?faq">FAQ</a>
         <a class="il" href="?imprint">IMPRESSUM · DATENSCHUTZ</a>
     </div>`;
 
