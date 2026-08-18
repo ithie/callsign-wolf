@@ -576,7 +576,12 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     await campaignHandler.prewarmLevel();
     const _lmd = campaignHandler.getCurrentMissionData();
     const _lmdObjs = _lmd.objects || [];
-    missionHasPad = !!_lmdObjs.find((o: any) => o.type === VESSEL.PAD);
+    const _padObj = _lmdObjs.find((o: any) => o.type === VESSEL.PAD);
+    missionHasPad = !!_padObj;
+    if (_padObj) {
+        G.PAD = { xMin: _padObj.x, xMax: _padObj.x + 7, yMin: _padObj.y, yMax: _padObj.y + 7, z: 0.5, towerVariant: (_padObj as any).towerVariant };
+        G.START_POS = { x: _padObj.x + 4, y: _padObj.y + 4 };
+    }
     missionHasCarrier = !!_lmdObjs.find((o: any) => o.type === VESSEL.CARRIER);
     missionHasLighthouse = !!_lmdObjs.find((o: any) => o.type === VESSEL.LIGHTHOUSE);
     missionRain = !!_lmd.rain;

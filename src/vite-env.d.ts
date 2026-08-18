@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+declare module '*.zsong' {
+    const value: string;
+    export default value;
+}
+
 declare module 'virtual:model-loader' {
     /** Called by plugin-generated stub code — not for direct use. */
     export function _r(stub: Record<string, unknown>, data: string, isHeli: boolean): void;

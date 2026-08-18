@@ -236,7 +236,7 @@ export const show = () => {
     _refreshSettingsScreen();
     const unlocked = isUnlocked();
     const iapSection = document.getElementById('settings-iap-section');
-    if (iapSection) iapSection.style.display = unlocked ? 'none' : 'flex';
+    if (iapSection) iapSection.style.display = 'flex';
     const codeFieldEl = document.getElementById('settings-code-field');
     if (codeFieldEl) codeFieldEl.style.display = unlocked ? '' : 'none';
     const importFieldEl = document.getElementById('settings-import-field');

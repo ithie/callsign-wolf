@@ -1,4 +1,5 @@
 import { SongData, SynthConfig } from './tracker-types';
+import { parseZsong } from './zsong';
 
 interface ActiveTrack {
     data: SongData;
@@ -67,8 +68,10 @@ const ZsynthPlayer = {
         C1: 32.7,
     } as Record<string, number>,
 
-    init: (songList: Record<string, SongData>): void => {
-        ZsynthPlayer.songs = songList;
+    init: (songList: Record<string, string>): void => {
+        ZsynthPlayer.songs = Object.fromEntries(
+            Object.entries(songList).map(([k, v]) => [k, parseZsong(v)])
+        );
         const _ensureCtx = () => {
             try {
                 if (!ZsynthPlayer.ctx) {
@@ -257,7 +260,7 @@ const ZsynthPlayer = {
         const attack = cfg.attack ?? 0.02;
         const release = cfg.release ?? 0.3;
         const detune = cfg.detune ?? 0;
-        const v = Math.max(0.0001, (cfg.vol / 100) * 0.2);
+        const v = Math.max(0.0001, (cfg.vol / 100) * 0.35);
 
         const g = ZsynthPlayer.ctx.createGain();
         g.gain.setValueAtTime(0.0001, time);

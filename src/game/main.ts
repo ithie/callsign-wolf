@@ -5,7 +5,6 @@ import CallsignWolf from './campaigns/callsignwolf.zcampaign';
 //import Zephyr from './campaigns/Zephyr.zcampaign';
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
-import { songToZsong } from '../shared/zsong';
 import SoundSuccess from './music/success.zsong';
 import SoundClike from './music/clike.zsong';
 import SoundDestroid from './music/destroid.zsong';
@@ -24,10 +23,9 @@ import Baywatch from './music/baywatch.zsong';
 import Fanfare from './music/fanfare.zsong';
 import Metalstorm from './music/metalstorm.zsong';
 import Unlock from './music/unlock.zsong';
-import { SongData } from '@/shared/tracker-types';
 
 const soundHandler = (() => {
-    const songList: Record<string, SongData> = {
+    const songList: Record<string, string> = {
         success: SoundSuccess,
         carrierops: CarrierOps,
         clike: SoundClike,
@@ -57,14 +55,12 @@ const soundHandler = (() => {
         (window as any).webkit?.messageHandlers?.zsynthPlayer ?? null;
 
     if (_native) {
-        const raw: Record<string, string> = {};
-        for (const [k, v] of Object.entries(songList)) raw[k] = songToZsong(v);
-        _native.postMessage({ action: 'preload', songs: raw });
+        _native.postMessage({ action: 'preload', songs: songList });
     } else {
         ZsynthPlayer.init(songList);
     }
 
-    const CTX_VOL: Record<string, number> = { menu: 0.65, game: 0.35 };
+    const CTX_VOL: Record<string, number> = { menu: 0.75, game: 0.55 };
     let _nativeKey = '';
     let _nativeCtx = 'menu';
 

@@ -126,56 +126,31 @@ export const createDrawObjects = (
         const swayY = Math.sin(swayPhase) * windStrength * 10 * scale;
 
         if (type !== 'bush') {
-            ctx.fillStyle = type === 'dead' ? '#7a5a3a' : '#5a3a1a';
-            for (let i = 0; i <= 6; i++) {
-                const cz = z0 + i * (trunkH / 6);
-                const p = iso(tX, tY, cz, cx, cy);
-                ctx.beginPath();
-                ctx.ellipse(p.x, p.y, (trunkR * tileW) / 2, (trunkR * tileH) / 2, 0, 0, Math.PI * 2);
-                ctx.fill();
-            }
+            const pTrunkBase = iso(tX, tY, z0, cx, cy);
+            const pTrunkTop = iso(tX, tY, z0 + trunkH, cx, cy);
+            ctx.strokeStyle = type === 'dead' ? '#7a5a3a' : '#5a3a1a';
+            ctx.lineWidth = Math.max(1, trunkR * tileW);
+            ctx.beginPath();
+            ctx.moveTo(pTrunkBase.x, pTrunkBase.y);
+            ctx.lineTo(pTrunkTop.x, pTrunkTop.y);
+            ctx.stroke();
         }
 
         if (type === 'pine') {
             const layers = [
-                {
-                    zBase: z0 + trunkH * 0.3,
-                    zTop: z0 + trunkH * 0.3 + 1.4 * scale,
-                    rBase: 0.9 * scale,
-                    color: '#1a4a1a',
-                    shadow: '#0f2f0f',
-                    sway: 0.3,
-                },
-                {
-                    zBase: z0 + trunkH * 0.3 + 0.7 * scale,
-                    zTop: z0 + trunkH * 0.3 + 1.9 * scale,
-                    rBase: 0.65 * scale,
-                    color: '#1e5a1e',
-                    shadow: '#133513',
-                    sway: 0.65,
-                },
-                {
-                    zBase: z0 + trunkH * 0.3 + 1.3 * scale,
-                    zTop: z0 + trunkH * 0.3 + 2.3 * scale,
-                    rBase: 0.4 * scale,
-                    color: '#246024',
-                    shadow: '#163a16',
-                    sway: 1.0,
-                },
+                { zBase: z0 + trunkH * 0.3, zTop: z0 + trunkH * 0.3 + 1.4 * scale, rBase: 0.9 * scale, color: '#1a4a1a', sway: 0.3 },
+                { zBase: z0 + trunkH * 0.3 + 0.7 * scale, zTop: z0 + trunkH * 0.3 + 1.9 * scale, rBase: 0.65 * scale, color: '#1e5a1e', sway: 0.65 },
+                { zBase: z0 + trunkH * 0.3 + 1.3 * scale, zTop: z0 + trunkH * 0.3 + 2.3 * scale, rBase: 0.4 * scale, color: '#246024', sway: 1.0 },
             ];
             layers.forEach(l => {
-                for (let i = 10; i >= 0; i--) {
-                    const t = i / 10;
+                for (let i = 6; i >= 0; i--) {
+                    const t = i / 6;
                     const cz = l.zBase + t * (l.zTop - l.zBase);
                     const r = l.rBase * (1 - t);
                     if (r <= 0) continue;
                     const p = iso(tX, tY, cz, cx, cy);
                     const ox = swayX * l.sway * (1 - t * 0.5);
                     const oy = swayY * l.sway * (1 - t * 0.5);
-                    ctx.fillStyle = l.shadow;
-                    ctx.beginPath();
-                    ctx.ellipse(p.x + ox + 2, p.y + oy + 1, (r * tileW) / 2, (r * tileH) / 2, 0, 0, Math.PI * 2);
-                    ctx.fill();
                     ctx.fillStyle = l.color;
                     ctx.beginPath();
                     ctx.ellipse(p.x + ox, p.y + oy, (r * tileW) / 2, (r * tileH) / 2, 0, 0, Math.PI * 2);
@@ -188,19 +163,15 @@ export const createDrawObjects = (
             const sw = swayX * 0.8,
                 sh = swayY * 0.8;
             [
-                { dx: 0, dz: 0, r: crownR, col: '#2a5a10', scol: '#1a3a08' },
-                { dx: -0.25 * scale, dz: 0.3 * scale, r: crownR * 0.75, col: '#336614', scol: '#1e4a0a' },
-                { dx: 0.3 * scale, dz: 0.2 * scale, r: crownR * 0.7, col: '#2e6012', scol: '#1c4208' },
-                { dx: -0.1 * scale, dz: 0.6 * scale, r: crownR * 0.55, col: '#3a7018', scol: '#234a0e' },
-                { dx: 0.15 * scale, dz: 0.55 * scale, r: crownR * 0.5, col: '#4a8020', scol: '#2a5010' },
+                { dx: 0, dz: 0, r: crownR, col: '#2a5a10' },
+                { dx: -0.25 * scale, dz: 0.3 * scale, r: crownR * 0.75, col: '#336614' },
+                { dx: 0.3 * scale, dz: 0.2 * scale, r: crownR * 0.7, col: '#2e6012' },
+                { dx: -0.1 * scale, dz: 0.6 * scale, r: crownR * 0.55, col: '#3a7018' },
+                { dx: 0.15 * scale, dz: 0.55 * scale, r: crownR * 0.5, col: '#4a8020' },
             ].forEach(blob => {
                 const p = iso(tX + blob.dx * 0.3, tY, crownZ + blob.dz, cx, cy);
                 const ox = sw + blob.dx * 10,
                     oy = sh;
-                ctx.fillStyle = blob.scol;
-                ctx.beginPath();
-                ctx.ellipse(p.x + ox + 3, p.y + oy + 2, (blob.r * tileW) / 2, (blob.r * tileH) / 2, 0, 0, Math.PI * 2);
-                ctx.fill();
                 ctx.fillStyle = blob.col;
                 ctx.beginPath();
                 ctx.ellipse(p.x + ox, p.y + oy, (blob.r * tileW) / 2, (blob.r * tileH) / 2, 0, 0, Math.PI * 2);
