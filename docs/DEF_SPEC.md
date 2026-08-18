@@ -510,3 +510,58 @@ const EXAMPLE_DEF = {
 SceneRenderer.add(EXAMPLE_DEF, { x: 10, y: 5, z: 0, angle: 0 });
 SceneRenderer.flush(camX, camY);
 ```
+
+---
+
+## Compact Wire Format (Build Mode)
+
+In production builds the Vite plugin encodes DEF v1 files as **ZD1 compact strings**.
+`parseCompact()` in `src/game/model-loader.ts` decodes them back to the same plain object
+structure at runtime. Dev mode skips encoding entirely — plugin returns raw JSON.
+
+### Syntax
+
+```
+ZD1 {id}
+P {#hex0} {#hex1} ...
+[M {json}]
+F {id} {c} [{nx} {ny}]  [S {sc} [{sw}]]
+{x},{y},{z} {x},{y},{z} ...
+[PART {id} [{parent_id}]  [R {px} {py} {pz} {ax} {ay} {az} {param}]
+  F ...
+  {x},{y},{z} ...
+]
+```
+
+**Line types:**
+
+| Prefix | Fields | Notes |
+|--------|--------|-------|
+| `ZD1 {id}` | id | Header; must be first line |
+| `P {hex} ...` | space-separated `#rrggbb` | Color palette, 0-indexed |
+| `M {json}` | single JSON object | Optional; carries `pivot`, `collisionBoxes`, `lights`, `rescueZones`, `landingZone`, `fragments` |
+| `F {id} {c} [{nx} {ny}] [S {sc} [{sw}]]` | face-id, color idx, optional normal, optional stroke (palette idx + optional strokeWidth) | Face header |
+| *(next line after F)* | `{x},{y},{z}` ... | Vertex triples, space-separated |
+| `PART {id} [{parent}] [R …]` | part-id, optional parent-id, optional rotate | Opens an animated part group; faces follow on subsequent lines |
+
+**Normal:** two integers (`nx ny`) after the color index; omit both when absent.
+**Stroke:** `S {sc}` where `sc` is a palette index; optionally followed by stroke-width float.
+
+### Example
+
+```
+ZD1 crate
+P #8B6914 #A07820 #7A5C10 #C49A28
+F back 0 0 -1
+-0.5,-0.5,0 0.5,-0.5,0 0.5,-0.5,1 -0.5,-0.5,1
+F right 1 1 0
+0.5,-0.5,0 0.5,0.5,0 0.5,0.5,1 0.5,-0.5,1
+F left 2 -1 0
+-0.5,0.5,0 -0.5,-0.5,0 -0.5,-0.5,1 -0.5,0.5,1
+F front 0 0 1
+0.5,0.5,0 -0.5,0.5,0 -0.5,0.5,1 0.5,0.5,1
+F top 3
+-0.5,-0.5,1 0.5,-0.5,1 0.5,0.5,1 -0.5,0.5,1
+```
+
+See `ZDEF2_SPEC.md § Compact Wire Format` for the loading strategy (queues, timing, heli vs. mission assets).

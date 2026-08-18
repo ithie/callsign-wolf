@@ -4,10 +4,10 @@ import { deflateRawSync } from 'zlib';
 
 const COMPRESSED_PREFIX = '\x00';
 
-const compressTerrain = (rle: string): string => {
-    const buf = deflateRawSync(Buffer.from(rle, 'utf-8'));
-    return COMPRESSED_PREFIX + buf.toString('base64');
-};
+const _compress = (s: string): string =>
+    COMPRESSED_PREFIX + deflateRawSync(Buffer.from(s, 'utf-8')).toString('base64');
+
+const compressTerrain = _compress;
 
 export const zcampaignPlugin = (): Plugin => {
     let isBuild = false;
@@ -25,6 +25,13 @@ export const zcampaignPlugin = (): Plugin => {
                     if (typeof level.terrain === 'string') level.terrain = compressTerrain(level.terrain);
                     if (typeof level.sand === 'string') level.sand = compressTerrain(level.sand);
                     if (typeof level.pavement === 'string') level.pavement = compressTerrain(level.pavement);
+                    if (typeof level.foliage === 'string') level.foliage = _compress(level.foliage);
+                    // Compress mission-only data (objects/payloads/events) — decompressed at launchMission
+                    const _ops: Record<string, unknown> = {};
+                    for (const k of ['objects', 'payloads', 'events'] as const) {
+                        if (level[k]) { _ops[k] = level[k]; delete level[k]; }
+                    }
+                    if (Object.keys(_ops).length) level._ops = _compress(JSON.stringify(_ops));
                 }
             }
             return { code: `export default ${JSON.stringify({ ...data, _key: key })};`, map: null };

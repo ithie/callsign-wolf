@@ -30,6 +30,7 @@ import { voiceEvents } from './voice-events';
 import { hideVoiceLine, showScriptMessage } from './ui/voice-line/voice-line';
 import { requestReview } from './reviewRequest';
 import RESEARCH_PLATFORM_DEF from './models/research_platform.zdef';
+import { decompressMissionAssets } from './model-loader';
 import * as LoadingScreen from './ui/loading-screen/loading-screen';
 import { showScreen } from './ui/nav';
 import * as Briefing from './ui/briefing/briefing';
@@ -588,6 +589,8 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     const _lhObj = _lmdObjs.find((o: any) => o.type === VESSEL.LIGHTHOUSE);
     lighthouseX = _lhObj ? _lhObj.x : -1;
     lighthouseY = _lhObj ? _lhObj.y : -1;
+    await decompressMissionAssets();
+    await campaignHandler.prewarmLevel();
     await campaignHandler.prewarmTerrain();
     missionGridSize = campaignHandler.getTerrain().gridSize;
     missionMaxTime = (_lmd as any).maxTime ?? null;
@@ -626,7 +629,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     handle?.step('Objekte…', 0.5);
     if (handle) await _tick();
 
-    initFoliageFromMission();
+    await initFoliageFromMission();
     _deps.rebuildEntryCache();
     initParticles({ ctx: makePCtx(), dt: 0 });
     G.deliverMode = false;

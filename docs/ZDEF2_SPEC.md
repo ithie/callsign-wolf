@@ -237,6 +237,94 @@ The special variant name `"disco"` is **not** declared in the palette map — it
 
 ---
 
+## Compact Wire Format (Build Mode)
+
+In production builds the Vite plugin (`plugins/zdef.ts`) encodes every ZDEF2 file as a
+**ZD2 compact string** instead of inlining the raw JSON. At runtime `parseCompact()` in
+`src/game/model-loader.ts` reconstructs a plain JS object with the same structure as the
+raw JSON so no other code needs to change.
+
+Dev mode: plugin exports raw parsed JSON, `model-loader` is a no-op.
+Build mode: plugin exports compact string; `model-loader` decodes before first use.
+
+### Syntax
+
+```
+ZD2 {id}
+P {#hex0} {#hex1} ...
+[M {json}]
+{  [R {px} {py} {pz} {ax} {ay} {az} {spec}]  [D {dx} {dy}]
+  F {id} {c} [{nx} {ny}]  [line [{lw}]]
+  {x},{y},{z} {x},{y},{z} ...
+  L {x} {y} {z} {c} [{cOff|-}] [{radius}] [{blink}]
+  {
+    ...child node
+  }
+}
+{
+  ...next top-level node
+}
+```
+
+**Line types:**
+
+| Prefix | Fields | Notes |
+|--------|--------|-------|
+| `ZD2 {id}` | id | Header; must be first line |
+| `P {hex} ...` | space-separated `#rrggbb` | Color palette, 0-indexed; `rgba(…)` values allowed |
+| `M {json}` | single JSON object | Optional; carries all non-renderer fields: `label`, `static`, `movementType`, `collisionBoxes`, `landingZone`, `rescueZones`, `fragments`, `palettes` |
+| `{` | (optional inline `R` and/or `D` fields) | Opens a node; fields on the same line as `{` belong to that node |
+| `}` | — | Closes the innermost open node |
+| `R {px} {py} {pz} {ax} {ay} {az} {spec}` | pivot (3), axis (3), spec | Rotate — see below |
+| `D {dx} {dy}` | depth-anchor offset | `depthAnchor` field |
+| `F {id} {c} [{nx} {ny}] [line [{lw}]]` | face-id, color idx, optional normal, optional `line` marker + lineWidth | Face header |
+| *(next line after F)* | `{x},{y},{z}` ... | Vertex triples, space-separated |
+| `L {x} {y} {z} {c} [{cOff} [{r} [{blink}]]]` | position, on-color idx, off-color idx or `-`, radius, blink 0/1 | Light; trailing fields optional |
+
+**`R` spec field:**
+
+| Value | Meaning |
+|-------|---------|
+| `{name}` | `"param": "{name}"` — driven by external runtime parameter |
+| `spin:{speed}` | `"animate": {"type":"spin","speed":…}` |
+| `osc:{speed}:{amp}` | `"animate": {"type":"oscillate","speed":…,"amplitude":…}` |
+
+**Normal encoding:** two integers on the same `F` line after the color index.
+Omit both for faces without a normal.
+
+### Example
+
+```
+ZD2 buoy
+P #cc3300 #ff4400 #dddddd #1a1a1a
+M {"static":true,"collisionBoxes":[{"id":"body","xMin":-0.5,"xMax":0.5,"yMin":-0.5,"yMax":0.5,"zMin":0,"zMax":2}]}
+{ D 0 0
+  F hull_base 0 0 -1
+  -0.5,-0.5,0 0.5,-0.5,0 0.5,0.5,0 -0.5,0.5,0
+  F hull_side_r 1 1 0
+  0.5,-0.5,0 0.5,0.5,0 0.5,0.5,2 0.5,-0.5,2
+  F top 2
+  -0.5,-0.5,2 0.5,-0.5,2 0.5,0.5,2 -0.5,0.5,2
+  L 0 0 2.1 0 - 1.5 1
+}
+```
+
+### Loading Strategy
+
+| Asset group | When decoded | How |
+|-------------|--------------|-----|
+| `atlas.zdef`, `dolphin.zdef`, `ornithopter.zdef`, `coasthawk.zdef` | After splash-click (async, fire-and-forget) | `model-loader.decompressHelis()` |
+| All other ZDEFs + campaign data | Mission loading screen ("Bereit.") | `await model-loader.decompressMissionAssets()` |
+
+The Vite plugin marks heli models with `isHeli: true` in the generated module so `model-loader`
+routes them into the correct queue. The exported binding is always the same stub object reference;
+`parseCompact` fills it in-place so all import sites see the populated model without any change.
+
+Campaign data **must** be fully decoded before `game.ts` is entered — the loading screen
+`await` guarantees this.
+
+---
+
 ## Known Limitations
 
 - **Particles** (wake, spray): procedural and physics-driven — not in format.

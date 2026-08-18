@@ -224,6 +224,15 @@ const createCampaignHandler = () => {
 
     const getCampaignByKey = (key: string): CampaignExport | undefined => campaignMap.get(key);
 
+    // Decompresses compressed objects/payloads/events for the current level (build mode only).
+    const prewarmLevel = async (): Promise<void> => {
+        const level = campaigns[campaignState.activeCampaign]?.levels[campaignState.activeMission] as any;
+        if (!level || typeof level._ops !== 'string' || !_isCompressed(level._ops)) return;
+        const text = await _decompressStr(level._ops as string);
+        Object.assign(level, JSON.parse(text));
+        delete level._ops;
+    };
+
     return {
         getCampaigns,
         getCampaignByKey,
@@ -235,6 +244,7 @@ const createCampaignHandler = () => {
         getCurrentMissionData,
         getTerrain,
         prewarmTerrain,
+        prewarmLevel,
     };
 };
 

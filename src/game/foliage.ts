@@ -22,21 +22,34 @@ type SceneAddFn = (def: null, opts: EntryOpts) => void;
 
 const FOLIAGE_DECODE: Record<string, string> = { p: 'pine', o: 'oak', b: 'bush', d: 'dead', u: 'beach_umbrella', l: 'beach_lounger', c: 'beach_cooler', v: 'beach_umbrella_tilted', g: 'beach_person', s: 'swimmer' };
 
-const decompressFoliage = (str: string | { x: number; y: number; s: number; type: string }[]) => {
-    if (!str) return [];
-    if (typeof str !== 'string') return str;
-    return str.split('|').map(token => {
+const _decompressRle = (rle: string) =>
+    rle.split('|').map(token => {
         const type = FOLIAGE_DECODE[token[0]] || 'pine';
         const [x, y, s] = token.slice(1).split(',').map(Number);
         return { type, x: x / 10, y: y / 10, s: s / 10 };
     });
+
+const _isDeflated = (s: string) => s.charCodeAt(0) === 0;
+
+const _inflate = async (s: string): Promise<string> => {
+    const bytes = Uint8Array.from(atob(s.slice(1)), c => c.charCodeAt(0));
+    const ds = new DecompressionStream('deflate-raw');
+    return new Response(new Blob([bytes]).stream().pipeThrough(ds)).text();
+};
+
+const decompressFoliage = (str: string | { x: number; y: number; s: number; type: string }[]) => {
+    if (!str) return [];
+    if (typeof str !== 'string') return str;
+    return _decompressRle(str);
 };
 
 let _treeIndex: Map<string, any[]> = new Map();
 
-export const initFoliageFromMission = () => {
+export const initFoliageFromMission = async (): Promise<void> => {
     const md = campaignHandler.getCurrentMissionData();
-    const foliage = decompressFoliage(md.foliage || []);
+    let raw = md.foliage || [];
+    if (typeof raw === 'string' && _isDeflated(raw)) raw = _decompressRle(await _inflate(raw));
+    const foliage = decompressFoliage(raw);
     G.TREES_MAP = foliage.map((f: any) => ({ x: f.x, y: f.y, s: f.s || 1.0, type: f.type || 'pine', gz: null }));
     G.TREES_MAP.forEach((t: any) => { t.gz = getGround(t.x, t.y); });
     _treeIndex.clear();

@@ -22,6 +22,7 @@ import { tileW as _tileW, tileH as _tileH, stepH as _stepH, gameRenderScale } fr
 const tileW = Math.round(_tileW * gameRenderScale);
 const tileH = Math.round(_tileH * gameRenderScale);
 const stepH = _stepH * gameRenderScale;
+import { decompressHelis } from './model-loader';
 import * as CreditsScreen from './ui/credits-screen/credits-screen';
 import * as LegalScreen from './ui/legal-screen/legal-screen';
 import { startMenuParticles } from './ui/menu-particles/menu-particles';
@@ -558,6 +559,7 @@ const _onloadPreview = !import.meta.env.DEV
       };
 
 const _onloadMain = () => {
+    decompressHelis(); // fire-and-forget — done long before user reaches heli-select
     assertDom();
     const _mountScreens = () => {
         CreditsScreen.mount(Flow.toMainMenu);

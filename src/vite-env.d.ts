@@ -1,5 +1,14 @@
 /// <reference types="vite/client" />
 
+declare module 'virtual:model-loader' {
+    /** Called by plugin-generated stub code — not for direct use. */
+    export function _r(stub: Record<string, unknown>, data: string, isHeli: boolean): void;
+    /** Decompress heli models (atlas/dolphin/ornithopter/coasthawk). Fire-and-forget at app start. */
+    export function decompressHelis(): Promise<void>;
+    /** Decompress all non-heli ZDEF models. Must be awaited at mission loading screen. */
+    export function decompressMissionAssets(): Promise<void>;
+}
+
 declare const __APP_VERSION__: string;
 declare const __ORNI_SPAWN_RATE__: number;
 
