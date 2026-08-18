@@ -79,10 +79,21 @@ body {
     letter-spacing: 3px;
     text-decoration: none;
     transition: color 0.2s;
-    margin-top: 8px;
     cursor: pointer;
 }
 
 #promo .il:hover {
     color: #aaa;
+}
+
+#promo .il-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+#promo .il-sep {
+    color: #fff;
+    font-size: 10px;
 }

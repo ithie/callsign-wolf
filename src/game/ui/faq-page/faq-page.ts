@@ -3,16 +3,16 @@ import { ensureEl } from '@/ui/dom-helpers';
 
 const FAQ_DE = [
     { q: 'WIE STELLE ICH MEINEN KAUF WIEDER HER?', a: 'Öffne die Einstellungen im Hauptmenü und tippe auf „Käufe wiederherstellen".' },
-    { q: 'WAS IST DER SPEICHERCODE?', a: 'Der Speichercode sichert deinen Spielfortschritt als kurzen Text. Notiere ihn, um deinen Stand auf ein neues Gerät zu übertragen. Den Code findest du in den Einstellungen.' },
-    { q: 'WAS SCHALTET DER KAUF FREI?', a: 'SAR: Callsign WOLF ist kostenlos spielbar. Mit einem einmaligen Kauf (2,99 €) schaltest du alle Kampagnenmissionen dauerhaft frei – kein Abo, keine weiteren Kosten.' },
+    { q: 'WAS IST DER SPEICHERCODE?', a: 'Der Speichercode sichert deinen Spielfortschritt als kurzen Text. Notiere ihn, um deinen Stand auf ein neues Gerät zu übertragen. Den Code findest du in den Einstellungen – er ist nach dem Freischalten der Vollversion verfügbar.' },
+    { q: 'WAS SCHALTET DER KAUF FREI?', a: 'SAR: Callsign WOLF ist kostenlos spielbar. Mit einem einmaligen Kauf (1,99 €) schaltest du alle Kampagnenmissionen dauerhaft frei – kein Abo, keine weiteren Kosten.' },
     { q: 'GIBT ES WERBUNG ODER TRACKING?', a: 'Nein. Keine Werbung, kein Tracking, keine Datensammlung.' },
     { q: 'ICH HABE EINE FRAGE ODER EIN PROBLEM.', a: 'Schreib uns: yarrick@web.de' },
 ];
 
 const FAQ_EN = [
     { q: 'HOW DO I RESTORE MY PURCHASE?', a: 'Open Settings from the main menu and tap "Restore Purchases".' },
-    { q: 'WHAT IS THE SAVE CODE?', a: 'The Save Code backs up your progress as a short text string. Note it down to transfer your game to a new device. Find it in Settings.' },
-    { q: 'WHAT DOES THE PURCHASE UNLOCK?', a: 'SAR: Callsign WOLF is free to play. A one-time purchase (€2.99) unlocks all campaign missions permanently – no subscription, no further costs.' },
+    { q: 'WHAT IS THE SAVE CODE?', a: 'The Save Code backs up your progress as a short text string. Note it down to transfer your game to a new device. Find it in Settings – available after purchasing the full version.' },
+    { q: 'WHAT DOES THE PURCHASE UNLOCK?', a: 'SAR: Callsign WOLF is free to play. A one-time purchase (€1.99) unlocks all campaign missions permanently – no subscription, no further costs.' },
     { q: 'ARE THERE ADS OR TRACKING?', a: 'No. No ads, no tracking, no data collection.' },
     { q: 'I HAVE A QUESTION OR PROBLEM.', a: 'Write to us: yarrick@web.de' },
 ];

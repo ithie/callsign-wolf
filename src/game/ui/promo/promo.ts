@@ -52,8 +52,7 @@ export const mount = (): void => {
   </g></g></g>
 </svg>
         </a>
-        <a class="il" href="?faq">FAQ</a>
-        <a class="il" href="?imprint">IMPRESSUM · DATENSCHUTZ</a>
+        <span class="il-row"><a class="il" href="?faq">FAQ</a><span class="il-sep">|</span><a class="il" href="?imprint">IMPRESSUM · DATENSCHUTZ</a></span>
     </div>`;
 
     const c = document.getElementById('ph') as HTMLCanvasElement;
