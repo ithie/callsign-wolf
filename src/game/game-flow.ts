@@ -572,6 +572,8 @@ const _maybeSpawnOrniWreck = (): void => {
 };
 
 export const launchMission = async (showLoader = true): Promise<void> => {
+    await decompressMissionAssets();
+    await campaignHandler.prewarmLevel();
     const _lmd = campaignHandler.getCurrentMissionData();
     const _lmdObjs = _lmd.objects || [];
     missionHasPad = !!_lmdObjs.find((o: any) => o.type === VESSEL.PAD);
@@ -589,8 +591,6 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     const _lhObj = _lmdObjs.find((o: any) => o.type === VESSEL.LIGHTHOUSE);
     lighthouseX = _lhObj ? _lhObj.x : -1;
     lighthouseY = _lhObj ? _lhObj.y : -1;
-    await decompressMissionAssets();
-    await campaignHandler.prewarmLevel();
     await campaignHandler.prewarmTerrain();
     missionGridSize = campaignHandler.getTerrain().gridSize;
     missionMaxTime = (_lmd as any).maxTime ?? null;
