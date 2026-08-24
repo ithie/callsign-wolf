@@ -114,7 +114,12 @@ final class GameControlOverlay: UIView {
         let wHalf: CGFloat = (joyRadius * 2 - wGap) / 2
         winchUpRect   = CGRect(x: leftCenter.x - joyRadius,               y: btnY, width: wHalf, height: btnH)
         winchDownRect = CGRect(x: leftCenter.x - joyRadius + wHalf + wGap, y: btnY, width: wHalf, height: btnH)
-        deliverRect   = CGRect(x: rightCenter.x - wHalf / 2, y: btnY, width: wHalf, height: btnH)
+
+        // R-button: keep clear of minimap (130px + ~12px top margin ≈ 144pt from top)
+        let minimapClear: CGFloat = safeAreaInsets.top + 144
+        let deliverBtnH: CGFloat  = max(44, min(btnH, joyY - joyRadius - 6 - minimapClear))
+        let deliverY:    CGFloat  = joyY - joyRadius - 6 - deliverBtnH
+        deliverRect = CGRect(x: rightCenter.x - wHalf / 2, y: deliverY, width: wHalf, height: deliverBtnH)
 
         setNeedsDisplay()
     }

@@ -259,7 +259,9 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                             const lifeRatio = Math.min(1, p.life / (p.maxLife ?? 2.0));
                             const alpha = p.isSmoke
                                 ? Math.min(0.55, lifeRatio * 0.7)
-                                : Math.min(0.85, lifeRatio * 2.0);
+                                : p.isSpark
+                                    ? Math.min(0.95, lifeRatio * 1.5)
+                                    : Math.min(0.85, lifeRatio * 2.0);
                             if (alpha <= 0.01) return;
                             const key = Math.round(alpha / ALPHA_STEP) * ALPHA_STEP;
                             const pos = _iso(p.x, p.y, Math.max(p.z, 0), cx, cy);
@@ -267,7 +269,11 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                             const base = p.size ?? 5;
                             const r = p.isSmoke
                                 ? base * (0.5 + ageRatio * 0.8)
-                                : base * Math.max(0.2, 1 - ageRatio * 0.8);
+                                : p.isSpark
+                                    ? base
+                                    : ageRatio < 0.28
+                                        ? base * (0.5 + ageRatio * 1.79)
+                                        : base * Math.max(0.05, 1.0 - (ageRatio - 0.28) / 0.72);
                             if (!buckets.has(key)) buckets.set(key, { color: p.color ?? defaultColor, arcs: [] });
                             buckets.get(key)!.arcs.push({ x: pos.x, y: pos.y, r: Math.max(1, r) });
                         });
@@ -275,12 +281,13 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                             _ctx.globalAlpha = alpha;
                             _ctx.fillStyle = `rgb(${color})`;
                             _ctx.beginPath();
-                            arcs.forEach(({ x, y, r }) => _ctx.arc(x, y, r, 0, Math.PI * 2));
+                            arcs.forEach(({ x, y, r }) => { _ctx.moveTo(x + r, y); _ctx.arc(x, y, r, 0, Math.PI * 2); });
                             _ctx.fill();
                         });
                     };
-                    _drawPass(p => p.isFire, '240,100,0');
-                    _drawPass(p => p.isSmoke, '130,125,120');
+                    _drawPass(p => !!p.isFire, '240,100,0');
+                    _drawPass(p => !!p.isSmoke, '130,125,120');
+                    _drawPass(p => !!p.isSpark, '255,220,80');
                     _ctx.globalAlpha = 1.0;
                 },
             });

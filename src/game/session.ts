@@ -132,7 +132,7 @@ export const isCampaignPaywalled = (
 };
 
 export const isMissionPaywalled = (campaignType: string, missionIndex: number): boolean => {
-    if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return missionIndex !== 1 && !isUnlocked();
+    if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return missionIndex !== 1 && missionIndex !== 3 && !isUnlocked();
     return false;
 };
 
@@ -162,8 +162,8 @@ export const isMissionUnlocked = (
     missionMinRank = 0,
 ): boolean => {
     if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) {
-        // Only mission index 1 (Seenotrettung) is free; all others require full version
-        if (missionIndex !== 1 && !isUnlocked()) return false;
+        // Mission 1 (Seenotrettung) and 3 (Metalstorm) are free; others require full version
+        if (missionIndex !== 1 && missionIndex !== 3 && !isUnlocked()) return false;
         return true;
     }
     if (missionIndex === 0) return true;

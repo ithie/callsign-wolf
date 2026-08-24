@@ -46,6 +46,7 @@ export type EmitterParticle = {
     color: string;
     isSmoke: boolean;
     isFire?: boolean;
+    isSpark?: boolean;
 };
 
 export type ParticleEmitter = {

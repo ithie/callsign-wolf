@@ -31,16 +31,36 @@ const _circleOffset = (r: number): [number, number] => {
 // Intervals in dt-units (dt≈1 at 30fps): one spawn every 4–5 frames
 // Fire steady-state: ~16 fire + ~34 smoke ≈ 50 particles per emitter
 // Smoke steady-state: ~27 smoke particles
-const FIRE_SPAWN_INTERVAL = 4;
+const FIRE_SPAWN_INTERVAL = 2;
 const SMOKE_SPAWN_INTERVAL = 5;
-const MAX_PARTICLES = 60;
+const MAX_PARTICLES = 100;
 
 const WIND_PARTICLE_SCALE = 200;
 const WIND_CONV = 0.08;
 
-const DEFAULT_FIRE_RADIUS = 0.18;
+const DEFAULT_FIRE_RADIUS = 0.25;
 
-const _spawnFire = (e: ParticleEmitter, ox: number, oy: number): EmitterParticle => {
+const _spawnSpark = (e: ParticleEmitter, ox: number, oy: number): EmitterParticle => ({
+    x: e.x + ox, y: e.y + oy,
+    z: e.gz + 0.1 + Math.random() * 0.2,
+    vx: (Math.random() - 0.5) * 0.06,
+    vy: (Math.random() - 0.5) * 0.06,
+    vz: 0.14 + Math.random() * 0.14,
+    life: 0.3 + Math.random() * 0.5,
+    maxLife: 0.8,
+    size: 0.5 + Math.random() * 1.0,
+    color: `255, ${180 + Math.floor(Math.random() * 75)}, ${Math.floor(Math.random() * 80)}`,
+    isSmoke: false,
+    isSpark: true,
+});
+
+// Per-emitter spatial phase gives each fire its own flicker rhythm (~8 Hz)
+const _flickerForEmitter = (e: ParticleEmitter): number => {
+    const phase = (e.x * 1.3 + e.y * 0.7) % (Math.PI * 2);
+    return 0.65 + 0.35 * Math.sin(Date.now() * 0.05 + phase);
+};
+
+const _spawnFire = (e: ParticleEmitter, ox: number, oy: number, flicker: number): EmitterParticle => {
     const r = Math.random();
     // Colour gradient: fresh (r≈1) = white-yellow → mid = orange → old (r≈0) = dark red
     const red   = 255;
@@ -48,12 +68,12 @@ const _spawnFire = (e: ParticleEmitter, ox: number, oy: number): EmitterParticle
     return {
         x: e.x + ox, y: e.y + oy,
         z: e.gz + 0.05,
-        vx: (Math.random() - 0.5) * 0.008,
-        vy: (Math.random() - 0.5) * 0.008,
-        vz: 0.09 + Math.random() * 0.08,
+        vx: ox * 0.014 + (Math.random() - 0.5) * 0.01,
+        vy: oy * 0.014 + (Math.random() - 0.5) * 0.01,
+        vz: (0.07 + Math.random() * 0.10) * flicker,
         life: r * 0.6 + 0.6 + Math.random() * 0.4,
         maxLife: 1.6,
-        size: 1.2 + Math.random() * 1.0,
+        size: 1.5 + Math.random() * 2.0,
         color: `${red}, ${green}, 0`,
         isSmoke: false,
         isFire: true,
@@ -62,13 +82,13 @@ const _spawnFire = (e: ParticleEmitter, ox: number, oy: number): EmitterParticle
 
 const _spawnSmoke = (e: ParticleEmitter, ox: number, oy: number, isFire: boolean): EmitterParticle => ({
     x: e.x + ox, y: e.y + oy,
-    z: e.gz + (isFire ? 0.5 : 0.1),
-    vx: (Math.random() - 0.5) * 0.006,
-    vy: (Math.random() - 0.5) * 0.006,
+    z: e.gz + (isFire ? 0.9 : 0.1),
+    vx: (isFire ? ox * 0.006 : 0) + (Math.random() - 0.5) * 0.006,
+    vy: (isFire ? oy * 0.006 : 0) + (Math.random() - 0.5) * 0.006,
     vz: 0.04 + Math.random() * 0.04,
     life: 2.0 + Math.random() * 1.5,
     maxLife: 3.5,
-    size: 1.0 + Math.random() * 1.0,
+    size: isFire ? 2.0 + Math.random() * 2.0 : 1.0 + Math.random() * 1.0,
     color: isFire
         ? `${50 + Math.floor(Math.random() * 20)}, ${45 + Math.floor(Math.random() * 15)}, ${40 + Math.floor(Math.random() * 15)}`
         : `${130 + Math.floor(Math.random() * 40)}, ${125 + Math.floor(Math.random() * 35)}, ${120 + Math.floor(Math.random() * 30)}`,
@@ -100,13 +120,15 @@ export const update = ({ ctx, dt }: ParticleSystemArgs) => {
         } else {
             const isFire = e.type === 'fire';
             const spawnInterval = isFire ? FIRE_SPAWN_INTERVAL : SMOKE_SPAWN_INTERVAL;
-            const spawnR = (e.radius ?? DEFAULT_FIRE_RADIUS);
+            const flicker = isFire ? _flickerForEmitter(e) : 1;
+            const spawnR = (e.radius ?? DEFAULT_FIRE_RADIUS) * flicker;
 
             while (e.spawnTimer >= spawnInterval && e.particles.length < MAX_PARTICLES) {
                 e.spawnTimer -= spawnInterval;
                 const [ox, oy] = _circleOffset(spawnR);
-                if (isFire) e.particles.push(_spawnFire(e, ox, oy));
-                e.particles.push(_spawnSmoke(e, ox, oy, isFire));
+                if (isFire) e.particles.push(_spawnFire(e, ox, oy, flicker));
+                if (!isFire || Math.random() < 0.35) e.particles.push(_spawnSmoke(e, ox, oy, isFire));
+                if (isFire && Math.random() < 0.18) e.particles.push(_spawnSpark(e, ..._circleOffset((e.radius ?? DEFAULT_FIRE_RADIUS) * 1.1)));
             }
             if (e.particles.length >= MAX_PARTICLES) e.spawnTimer = 0;
         }

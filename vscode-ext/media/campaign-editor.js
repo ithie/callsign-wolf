@@ -17586,7 +17586,7 @@
         broadcastPreview();
       }));
       if (isFire) {
-        popup.appendChild(makeRow("Radius:", em.radius ?? 0.18, 0.1, 0.1, 5, "#ff9", (v) => {
+        popup.appendChild(makeRow("Radius:", em.radius ?? 0.25, 0.05, 0.05, 5, "#ff9", (v) => {
           em.radius = v;
           drawMap();
           notifyWorkbench();

@@ -1,5 +1,25 @@
 # SAR: Callsign WOLF — Changelog
 
+## v31.0.2 — Fire & Sparks
+
+### Added
+
+- **Fire particle sparks** — Fire emitters now spawn small sparks (1–3 px, bright orange/white) that shoot upward from the flame edge and burn out quickly.
+- **Metalstorm free** — The "Metalstorm" Free Flight scenario is now accessible without the full version.
+
+### Changed
+
+- **Fire visual overhaul** — Particles are smaller and denser (radius 1.5–3.5 instead of 4.5–7.5, spawn rate doubled, cap raised from 60 to 100). Each fire now flickers independently at ~8 Hz (radius and upward velocity modulated by a per-emitter phase). Smoke decoupled from fire particles (35 % spawn chance instead of 100 %). Smoke and spark sizes scaled proportionally.
+- **Fire size curve** — Particles grow to full size at ~28 % of their lifetime, then taper to a tip — giving the flame a natural belly shape instead of shrinking monotonically from spawn.
+- **Radial fire spread** — New fire particles inherit a small outward velocity based on their spawn position within the emitter radius, widening the flame base naturally.
+
+### Fixed
+
+- **Fire rendering triangle** — Multiple `arc()` calls inside one `beginPath()`/`fill()` drew implicit connecting lines between particle positions, producing a visible filled polygon across the emitter. Fixed by inserting `moveTo` before each arc to start a new subpath.
+- **R-button position** — The rescue toggle button on the right side of the screen was overlapping the minimap. It is now positioned explicitly below the minimap and as close as possible to the right joystick.
+
+---
+
 ## v31.0.1 — Localisation Fix
 
 ### Fixed
