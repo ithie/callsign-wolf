@@ -189,6 +189,33 @@
                 text-overflow: ellipsis;
                 white-space: nowrap;
             }
+            .face-item .drag-handle {
+                cursor: grab;
+                color: var(--dim);
+                font-size: 9px;
+                flex-shrink: 0;
+                line-height: 1;
+            }
+            .face-item.drag-over {
+                border-top: 2px solid var(--accent);
+            }
+
+            .node-group { margin-bottom: 4px; }
+            .node-header {
+                font-size: 9px;
+                font-weight: 600;
+                color: var(--dim);
+                padding: 2px 5px;
+                background: var(--bg3);
+                border-radius: 2px;
+                margin-bottom: 1px;
+                user-select: none;
+            }
+            .node-header.drag-over {
+                background: var(--accent);
+                color: #fff;
+            }
+            .node-faces { padding-left: 0; }
 
             .part-item {
                 border-radius: 2px;

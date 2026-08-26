@@ -1241,6 +1241,106 @@
     ]
   };
 
+  // ../src/game/models/spinner.zdef
+  var spinner_default = {
+    version: 2,
+    id: "spinner",
+    label: "Police Spinner",
+    static: false,
+    movementType: "none",
+    collisionBoxes: [
+      { id: "body", xMin: -0.9, xMax: 0, yMin: -0.9, yMax: 0.9, zMin: 0, zMax: 0.85 },
+      { id: "prong_r", xMin: 0, xMax: 1.5, yMin: -0.9, yMax: -0.5, zMin: 0, zMax: 0.45 },
+      { id: "prong_l", xMin: 0, xMax: 1.5, yMin: 0.5, yMax: 0.9, zMin: 0, zMax: 0.45 }
+    ],
+    nodes: [
+      {
+        id: "front_headlights",
+        faces: [
+          { id: "tip_r_back", verts: [[1.48, -0.6, 0], [1.48, -0.8, 0], [1.48, -0.8, 0.35], [1.48, -0.6, 0.35]], color: "#192538", shade: 1 },
+          { id: "tip_l_back", verts: [[1.48, 0.6, 0], [1.48, 0.6, 0.35], [1.48, 0.8, 0.35], [1.48, 0.8, 0]], color: "#192538", shade: 1 },
+          { id: "tip_r", verts: [[1.5, -0.6, 0], [1.5, -0.8, 0], [1.5, -0.8, 0.35], [1.5, -0.6, 0.35]], color: "#ffffff", shade: 1 },
+          { id: "tip_l", verts: [[1.5, 0.6, 0], [1.5, 0.6, 0.35], [1.5, 0.8, 0.35], [1.5, 0.8, 0]], color: "#ffffff", shade: 1 }
+        ]
+      },
+      {
+        id: "chassis_base",
+        faces: [
+          { id: "belly_body", verts: [[0, -0.9, 0], [-0.9, -0.75, 0], [-0.9, 0.75, 0], [0, 0.9, 0]], color: "#192538" },
+          { id: "belly_prong_r", verts: [[0, -0.5, 0], [1.2, -0.5, 0], [1.2, -0.9, 0], [0, -0.9, 0]], color: "#192538" },
+          { id: "belly_prong_r_tip", verts: [[1.2, -0.5, 0], [1.5, -0.6, 0], [1.5, -0.8, 0], [1.2, -0.9, 0]], color: "#192538" },
+          { id: "belly_prong_l", verts: [[0, 0.5, 0], [0, 0.9, 0], [1.2, 0.9, 0], [1.2, 0.5, 0]], color: "#192538" },
+          { id: "belly_prong_l_tip", verts: [[1.2, 0.5, 0], [1.2, 0.9, 0], [1.5, 0.8, 0], [1.5, 0.6, 0]], color: "#192538" },
+          { id: "rear_wall", verts: [[-0.9, 0.75, 0], [-0.9, -0.75, 0], [-0.9, -0.75, 0.45], [-0.9, 0.75, 0.45]], color: "#192538" },
+          { id: "body_front_inner", verts: [[0, -0.5, 0], [0, 0.5, 0], [0, 0.5, 0.45], [0, -0.5, 0.45]], color: "#192538" },
+          { id: "body_outer_r", verts: [[0, -0.9, 0], [-0.9, -0.75, 0], [-0.9, -0.75, 0.45], [0, -0.9, 0.45]], color: "#192538" },
+          { id: "prong_outer_r_back", verts: [[0, -0.9, 0], [0.9, -0.9, 0], [0.9, -0.9, 0.45], [0, -0.9, 0.45]], color: "#192538" },
+          { id: "prong_outer_r_front", verts: [[0.9, -0.9, 0], [1.2, -0.9, 0], [1.2, -0.9, 0.4], [0.9, -0.9, 0.45]], color: "#192538" },
+          { id: "prong_r_bevel_out", verts: [[1.2, -0.9, 0], [1.5, -0.8, 0], [1.5, -0.8, 0.35], [1.2, -0.9, 0.4]], color: "#192538" },
+          { id: "body_outer_l", verts: [[-0.9, 0.75, 0], [0, 0.9, 0], [0, 0.9, 0.45], [-0.9, 0.75, 0.45]], color: "#192538" },
+          { id: "prong_outer_l_back", verts: [[0, 0.9, 0], [0.9, 0.9, 0], [0.9, 0.9, 0.45], [0, 0.9, 0.45]], color: "#192538" },
+          { id: "prong_outer_l_front", verts: [[0.9, 0.9, 0], [1.2, 0.9, 0], [1.2, 0.9, 0.4], [0.9, 0.9, 0.45]], color: "#192538" },
+          { id: "prong_l_bevel_out", verts: [[1.2, 0.9, 0], [1.5, 0.8, 0], [1.5, 0.8, 0.35], [1.2, 0.9, 0.4]], color: "#192538" },
+          { id: "inner_prong_r", verts: [[1.2, -0.5, 0], [0, -0.5, 0], [0, -0.5, 0.45], [1.2, -0.5, 0.4]], color: "#192538" },
+          { id: "inner_prong_r_bevel", verts: [[1.5, -0.6, 0], [1.2, -0.5, 0], [1.2, -0.5, 0.4], [1.5, -0.6, 0.35]], color: "#192538" },
+          { id: "inner_prong_l", verts: [[0, 0.5, 0], [1.2, 0.5, 0], [1.2, 0.5, 0.4], [0, 0.5, 0.45]], color: "#192538" },
+          { id: "inner_prong_l_bevel", verts: [[1.2, 0.5, 0], [1.5, 0.6, 0], [1.5, 0.6, 0.35], [1.2, 0.5, 0.4]], color: "#192538" },
+          { id: "top_body_rear", verts: [[-0.9, -0.75, 0.45], [-0.9, 0.75, 0.45], [-0.4, 0.8, 0.45], [-0.4, -0.8, 0.45]], color: "#192538" },
+          { id: "top_body_front", verts: [[-0.4, -0.8, 0.45], [-0.4, 0.8, 0.45], [0, 0.9, 0.45], [0, -0.9, 0.45]], color: "#192538" },
+          { id: "top_prong_r", verts: [[0, -0.5, 0.45], [0.9, -0.5, 0.45], [0.9, -0.9, 0.45], [0, -0.9, 0.45]], color: "#192538" },
+          { id: "top_prong_r_front", verts: [[0.9, -0.5, 0.45], [1.2, -0.5, 0.4], [1.2, -0.9, 0.4], [0.9, -0.9, 0.45]], color: "#192538" },
+          { id: "top_prong_r_tip", verts: [[1.2, -0.5, 0.4], [1.5, -0.6, 0.35], [1.5, -0.8, 0.35], [1.2, -0.9, 0.4]], color: "#192538" },
+          { id: "top_prong_l", verts: [[0, 0.9, 0.45], [0.9, 0.9, 0.45], [0.9, 0.5, 0.45], [0, 0.5, 0.45]], color: "#192538" },
+          { id: "top_prong_l_front", verts: [[0.9, 0.9, 0.45], [1.2, 0.9, 0.4], [1.2, 0.5, 0.4], [0.9, 0.5, 0.45]], color: "#192538" },
+          { id: "top_prong_l_tip", verts: [[1.2, 0.9, 0.4], [1.5, 0.8, 0.35], [1.5, 0.6, 0.35], [1.2, 0.5, 0.4]], color: "#192538" },
+          { type: "line", verts: [[-0.4, -0.8, 0.46], [-0.4, 0.8, 0.46]], color: "#080a0f", lineWidth: 1.5 },
+          { type: "line", verts: [[0.9, -0.9, 0.46], [0.9, -0.5, 0.46]], color: "#080a0f", lineWidth: 1.5 },
+          { type: "line", verts: [[0.9, 0.5, 0.46], [0.9, 0.9, 0.46]], color: "#080a0f", lineWidth: 1.5 }
+        ],
+        lights: [
+          { x: 1.52, y: -0.7, z: 0.175, color: "#ffffff", radius: 2.5 },
+          { x: 1.52, y: 0.7, z: 0.175, color: "#ffffff", radius: 2.5 }
+        ]
+      },
+      {
+        id: "wheels",
+        faces: [
+          { id: "wheel_r_outer", verts: [[0.84, -0.49, 0.04], [1.12, -0.49, 0.04], [1.12, -0.49, 0.32], [0.84, -0.49, 0.32]], color: "#080e18", shade: 1, normal: [0, 1] },
+          { id: "wheel_r_inner", verts: [[0.89, -0.48, 0.09], [1.07, -0.48, 0.09], [1.07, -0.48, 0.27], [0.89, -0.48, 0.27]], color: "#0d1828", shade: 1, normal: [0, 1] },
+          { id: "wheel_l_outer", verts: [[0.84, 0.49, 0.04], [1.12, 0.49, 0.04], [1.12, 0.49, 0.32], [0.84, 0.49, 0.32]], color: "#080e18", shade: 1, normal: [0, -1] },
+          { id: "wheel_l_inner", verts: [[0.89, 0.48, 0.09], [1.07, 0.48, 0.09], [1.07, 0.48, 0.27], [0.89, 0.48, 0.27]], color: "#0d1828", shade: 1, normal: [0, -1] }
+        ]
+      },
+      {
+        id: "dark_cockpit",
+        faces: [
+          { id: "cockpit_rear", verts: [[-0.6, -0.4, 0.45], [-0.6, -0.4, 0.75], [-0.6, 0.4, 0.75], [-0.6, 0.4, 0.45]], color: "#080a0f" },
+          { id: "cockpit_side_r", verts: [[-0.6, -0.4, 0.45], [0, -0.4, 0.45], [-0.1, -0.38, 0.75], [-0.6, -0.38, 0.75]], color: "#080a0f" },
+          { id: "cockpit_side_l", verts: [[0, 0.4, 0.45], [-0.6, 0.4, 0.45], [-0.6, 0.38, 0.75], [-0.1, 0.38, 0.75]], color: "#080a0f" },
+          { id: "cockpit_front", verts: [[0, -0.4, 0.45], [0, 0.4, 0.45], [-0.1, 0.38, 0.75], [-0.1, -0.38, 0.75]], color: "#080a0f" },
+          { id: "cockpit_top", verts: [[-0.6, -0.38, 0.75], [-0.1, -0.38, 0.75], [-0.1, 0.38, 0.75], [-0.6, 0.38, 0.75]], color: "#080a0f" },
+          { type: "line", verts: [[0, -0.4, 0.46], [-0.1, -0.38, 0.76]], color: "#192538", lineWidth: 1.5 },
+          { type: "line", verts: [[0, 0.4, 0.46], [-0.1, 0.38, 0.76]], color: "#192538", lineWidth: 1.5 }
+        ]
+      },
+      {
+        id: "roof_lightbar",
+        faces: [
+          { id: "lightbar_base", verts: [[-0.4, -0.25, 0.75], [-0.3, -0.25, 0.75], [-0.3, 0.25, 0.75], [-0.4, 0.25, 0.75]], color: "#080a0f" },
+          { id: "lightbar_top", verts: [[-0.4, -0.25, 0.8], [-0.3, -0.25, 0.8], [-0.3, 0.25, 0.8], [-0.4, 0.25, 0.8]], color: "#192538" }
+        ]
+      },
+      {
+        id: "blink_lights",
+        faces: [],
+        lights: [
+          { x: -0.35, y: -0.18, z: 0.83, color: "#ff1122", colorOff: "#330005", blink: true, radius: 2.2 },
+          { x: -0.35, y: 0.18, z: 0.83, color: "#0066ff", colorOff: "#000d33", blink: true, radius: 2.2 }
+        ]
+      }
+    ]
+  };
+
   // ../src/game/heli-types.ts
   var HELI_TYPES = [
     {
@@ -1331,6 +1431,37 @@
       soundProfile: "rotor",
       bladeCount: 3,
       audioPreset: [4, 90, 3]
+    },
+    {
+      id: "spinner",
+      label: "Spinner",
+      def: spinner_default,
+      maxLoad: 3,
+      accel: 13e-4,
+      friction: 0.994,
+      tiltSpeed: 0.048,
+      fuelRate: 0.01,
+      liftPower: 85e-5,
+      cargoResist: 0.28,
+      scale: 0.75,
+      previewScale: 1.4,
+      collisionBox: { xMin: -0.68, xMax: 1.35, yMin: -0.68, yMax: 0.68, zMax: 0.64 },
+      rotorOffsets: [0],
+      extraRotorDebris: false,
+      canCarryCargo: false,
+      selectLabel: "SPINNER",
+      selectSub: { de: "Fliegend / Fahrend", en: "Flying / Driving" },
+      selectCap: { de: "Kap.: 3 (Hybrid)", en: "Cap.: 3 (Hybrid)" },
+      description: {
+        de: "Ein Polizei-Spinner aus einer anderen Zeit. Fliegt wie ein Heli \u2014 landet wie ein Auto. Personen werden beim \xDCberfahren direkt aufgenommen.",
+        en: "A police spinner from another time. Flies like a helicopter \u2014 lands like a car. Persons are picked up on ground contact."
+      },
+      minRankIndex: 3,
+      hideWhenLocked: true,
+      soundProfile: "rotor",
+      bladeCount: 6,
+      audioPreset: [1, 300, 1.6],
+      canGroundDrive: true
     },
     {
       id: "ornithopter",
@@ -2780,6 +2911,82 @@
           actualCtx.lineTo(end.x, end.y);
           actualCtx.stroke();
         }
+      } else if (type === "spinner") {
+        if (isShadow) {
+          const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : hZ;
+          actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.04)})`;
+          actualCtx.beginPath();
+          actualCtx.moveTo(p(-0.68, 0.68, 0).x, p(-0.68, 0.68, 0).y);
+          actualCtx.lineTo(p(1.35, 0.68, 0).x, p(1.35, 0.68, 0).y);
+          actualCtx.lineTo(p(1.35, -0.68, 0).x, p(1.35, -0.68, 0).y);
+          actualCtx.lineTo(p(-0.68, -0.68, 0).x, p(-0.68, -0.68, 0).y);
+          actualCtx.closePath();
+          actualCtx.fill();
+          return;
+        }
+        const wf = (lx, ly, lz) => ({
+          x: lx * s * cosA - ly * s * sinA + hX,
+          y: lx * s * sinA + ly * s * cosA + hY,
+          z: hZ + (lz * s + ly * s * hRoll * 1 + lx * s * hTilt * 1)
+        });
+        const _baked = applyNodes(getHeliType(type).def, {});
+        const _def2 = getHeliType(type).def;
+        const _blinkOn = Math.floor(Date.now() / 500) % 2 === 0;
+        const _items = [];
+        for (const _face of _baked.faces) {
+          if (_face.normal) {
+            const [nx, ny] = _face.normal;
+            if (nx * (cosA + sinA) + ny * (cosA - sinA) < 0) continue;
+          }
+          const pts = _face.verts.map(([lx, ly, lz]) => wf(lx, ly, lz));
+          const depth = pts.reduce((sum, pt) => sum + pt.x + pt.y, 0) / pts.length;
+          _items.push({ depth, fn: () => faceFn(pts, _face.color, _face.stroke ?? null, 0, camX, camY) });
+        }
+        const wfScreen = (lx, ly, lz) => {
+          const w = wf(lx, ly, lz);
+          return actualIso(w.x, w.y, w.z, camX, camY);
+        };
+        const _blinkFns = [];
+        for (const _node of _def2.nodes ?? []) {
+          for (const _light of _node.lights ?? []) {
+            const lw = wf(_light.x, _light.y, _light.z);
+            const depth = lw.x + lw.y;
+            const sp = wfScreen(_light.x, _light.y, _light.z);
+            const isOn = !_light.blink || _blinkOn;
+            const color = isOn ? _light.color : _light.colorOff ?? _light.color;
+            const r = Math.max(1.2, (_light.radius ?? 2) * lineScale);
+            const drawFn = () => {
+              actualCtx.fillStyle = color;
+              actualCtx.beginPath();
+              actualCtx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
+              actualCtx.fill();
+            };
+            if (_light.blink) {
+              _blinkFns.push(drawFn);
+            } else {
+              _items.push({ depth, fn: drawFn });
+            }
+          }
+          for (const _lf of _node.faces ?? []) {
+            if (_lf.type !== "line") continue;
+            const v0w = wf(_lf.verts[0][0], _lf.verts[0][1], _lf.verts[0][2]);
+            const v1w = wf(_lf.verts[1][0], _lf.verts[1][1], _lf.verts[1][2]);
+            const depth = (v0w.x + v0w.y + (v1w.x + v1w.y)) / 2;
+            const sp0 = actualIso(v0w.x, v0w.y, v0w.z, camX, camY);
+            const sp1 = actualIso(v1w.x, v1w.y, v1w.z, camX, camY);
+            _items.push({ depth, fn: () => {
+              actualCtx.strokeStyle = _lf.color;
+              actualCtx.lineWidth = (_lf.lineWidth ?? 1) * lineScale;
+              actualCtx.beginPath();
+              actualCtx.moveTo(sp0.x, sp0.y);
+              actualCtx.lineTo(sp1.x, sp1.y);
+              actualCtx.stroke();
+            } });
+          }
+        }
+        _items.sort((a, b) => a.depth - b.depth);
+        _items.forEach((item) => item.fn());
+        _blinkFns.forEach((fn) => fn());
       } else if (type === "ornithopter") {
         const flapPhase = hRotor * 0.22 * flapRate;
         const wingAngle = Math.sin(flapPhase) * 0.32;

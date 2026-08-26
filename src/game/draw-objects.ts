@@ -1031,6 +1031,83 @@ export const createDrawObjects = (
                 actualCtx.lineTo(end.x, end.y);
                 actualCtx.stroke();
             }
+        } else if (type === 'spinner') {
+            if (isShadow) {
+                const groundZ = shadowGetGround ? shadowGetGround(hX, hY) : hZ;
+                actualCtx.fillStyle = `rgba(0,0,0,${Math.max(0, 0.4 - (hZ - groundZ) * 0.04)})`;
+                actualCtx.beginPath();
+                actualCtx.moveTo(p(-0.68, 0.68, 0).x, p(-0.68, 0.68, 0).y);
+                actualCtx.lineTo(p(1.35, 0.68, 0).x, p(1.35, 0.68, 0).y);
+                actualCtx.lineTo(p(1.35, -0.68, 0).x, p(1.35, -0.68, 0).y);
+                actualCtx.lineTo(p(-0.68, -0.68, 0).x, p(-0.68, -0.68, 0).y);
+                actualCtx.closePath();
+                actualCtx.fill();
+                return;
+            }
+            const wf = (lx: number, ly: number, lz: number) => ({
+                x: lx * s * cosA - ly * s * sinA + hX,
+                y: lx * s * sinA + ly * s * cosA + hY,
+                z: hZ + (lz * s + ly * s * hRoll * 1.0 + lx * s * hTilt * 1.0),
+            });
+            // Collect faces, lights, and lines into one depth-sorted list so faces
+            // at higher iso depth naturally occlude lights/lines behind them.
+            const _baked = applyNodes(getHeliType(type).def as any, {});
+            const _def2 = getHeliType(type).def as any;
+            const _blinkOn = Math.floor(Date.now() / 500) % 2 === 0;
+            type _DrawItem = { depth: number; fn: () => void };
+            const _items: _DrawItem[] = [];
+            for (const _face of _baked.faces) {
+                // Back-face cull: skip faces whose rotated normal faces away from camera
+                if (_face.normal) {
+                    const [nx, ny] = _face.normal as [number, number];
+                    if (nx * (cosA + sinA) + ny * (cosA - sinA) < 0) continue;
+                }
+                const pts = _face.verts.map(([lx, ly, lz]: number[]) => wf(lx, ly, lz));
+                const depth = pts.reduce((sum, pt) => sum + pt.x + pt.y, 0) / pts.length;
+                _items.push({ depth, fn: () => faceFn(pts, _face.color, _face.stroke ?? null, 0, camX, camY) });
+            }
+            // Project local coords through wf() (same tilt/roll as faces) then iso
+            const wfScreen = (lx: number, ly: number, lz: number) => {
+                const w = wf(lx, ly, lz);
+                return actualIso(w.x, w.y, w.z, camX, camY);
+            };
+            const _blinkFns: Array<() => void> = [];
+            for (const _node of _def2.nodes ?? []) {
+                for (const _light of _node.lights ?? []) {
+                    const lw = wf(_light.x, _light.y, _light.z);
+                    const depth = lw.x + lw.y;
+                    const sp = wfScreen(_light.x, _light.y, _light.z);
+                    const isOn = !_light.blink || _blinkOn;
+                    const color = isOn ? _light.color : (_light.colorOff ?? _light.color);
+                    const r = Math.max(1.2, (_light.radius ?? 2) * lineScale);
+                    const drawFn = () => {
+                        actualCtx.fillStyle = color;
+                        actualCtx.beginPath();
+                        actualCtx.arc(sp.x, sp.y, r, 0, Math.PI * 2);
+                        actualCtx.fill();
+                    };
+                    if (_light.blink) { _blinkFns.push(drawFn); } else { _items.push({ depth, fn: drawFn }); }
+                }
+                for (const _lf of _node.faces ?? []) {
+                    if (_lf.type !== 'line') continue;
+                    const v0w = wf(_lf.verts[0][0], _lf.verts[0][1], _lf.verts[0][2]);
+                    const v1w = wf(_lf.verts[1][0], _lf.verts[1][1], _lf.verts[1][2]);
+                    const depth = ((v0w.x + v0w.y) + (v1w.x + v1w.y)) / 2;
+                    const sp0 = actualIso(v0w.x, v0w.y, v0w.z, camX, camY);
+                    const sp1 = actualIso(v1w.x, v1w.y, v1w.z, camX, camY);
+                    _items.push({ depth, fn: () => {
+                        actualCtx.strokeStyle = _lf.color;
+                        actualCtx.lineWidth = (_lf.lineWidth ?? 1) * lineScale;
+                        actualCtx.beginPath();
+                        actualCtx.moveTo(sp0.x, sp0.y);
+                        actualCtx.lineTo(sp1.x, sp1.y);
+                        actualCtx.stroke();
+                    }});
+                }
+            }
+            _items.sort((a, b) => a.depth - b.depth);
+            _items.forEach(item => item.fn());
+            _blinkFns.forEach(fn => fn());
         } else if (type === 'ornithopter') {
             const flapPhase = hRotor * 0.22 * flapRate;
             const wingAngle = Math.sin(flapPhase) * 0.32;

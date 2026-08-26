@@ -1,4 +1,7 @@
 import type { EmitterParticle, ParticleEmitter, ParticleSystemArgs } from './ctx';
+import { tileW } from '../../render-config';
+
+const PARTICLE_SCALE = tileW / 20;  // 1.0 on iPhone (reference), 2.0 on Preview, 2.6 on Mac
 
 const CHIMNEY_SPAWN_INTERVAL = 6;
 const MAX_CHIMNEY_PARTICLES = 20;
@@ -15,7 +18,7 @@ const _spawnChimney = (e: ParticleEmitter, ox: number, oy: number): EmitterParti
         vz: 0.018 + Math.random() * 0.014,
         life: 3.0 + Math.random() * 2.0,
         maxLife: 5.0,
-        size: 2.2 + Math.random() * 1.8,
+        size: (2.2 + Math.random() * 1.8) * PARTICLE_SCALE,
         color: `${gray}, ${gray}, ${gray}`,
         isSmoke: true,
     };
@@ -48,7 +51,7 @@ const _spawnSpark = (e: ParticleEmitter, ox: number, oy: number): EmitterParticl
     vz: 0.14 + Math.random() * 0.14,
     life: 0.3 + Math.random() * 0.5,
     maxLife: 0.8,
-    size: 0.5 + Math.random() * 1.0,
+    size: (0.5 + Math.random() * 1.0) * PARTICLE_SCALE,
     color: `255, ${180 + Math.floor(Math.random() * 75)}, ${Math.floor(Math.random() * 80)}`,
     isSmoke: false,
     isSpark: true,
@@ -73,7 +76,7 @@ const _spawnFire = (e: ParticleEmitter, ox: number, oy: number, flicker: number)
         vz: (0.07 + Math.random() * 0.10) * flicker,
         life: r * 0.6 + 0.6 + Math.random() * 0.4,
         maxLife: 1.6,
-        size: 1.5 + Math.random() * 2.0,
+        size: (1.5 + Math.random() * 2.0) * PARTICLE_SCALE,
         color: `${red}, ${green}, 0`,
         isSmoke: false,
         isFire: true,
@@ -88,7 +91,7 @@ const _spawnSmoke = (e: ParticleEmitter, ox: number, oy: number, isFire: boolean
     vz: 0.04 + Math.random() * 0.04,
     life: 2.0 + Math.random() * 1.5,
     maxLife: 3.5,
-    size: isFire ? 2.0 + Math.random() * 2.0 : 1.0 + Math.random() * 1.0,
+    size: isFire ? (2.0 + Math.random() * 2.0) * PARTICLE_SCALE : (1.0 + Math.random() * 1.0) * PARTICLE_SCALE,
     color: isFire
         ? `${50 + Math.floor(Math.random() * 20)}, ${45 + Math.floor(Math.random() * 15)}, ${40 + Math.floor(Math.random() * 15)}`
         : `${130 + Math.floor(Math.random() * 40)}, ${125 + Math.floor(Math.random() * 35)}, ${120 + Math.floor(Math.random() * 30)}`,
@@ -102,6 +105,13 @@ export const update = ({ ctx, dt }: ParticleSystemArgs) => {
     const conv = Math.min(1, WIND_CONV * dt);
 
     emitters.forEach((e: ParticleEmitter) => {
+        const dx = e.x - ctx.heli.x, dy = e.y - ctx.heli.y;
+        if (dx * dx + dy * dy > 30 * 30) {
+            e.particles = [];
+            e.spawnTimer = 0;
+            return;
+        }
+
         e.spawnTimer += dt;
 
         if (e.type === 'chimney') {

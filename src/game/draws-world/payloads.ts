@@ -47,11 +47,14 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
                 !payload.hanging &&
                 G.waterLevel > 0 &&
                 getGround(payload.x, payload.y) < G.waterLevel;
+            const _rescuerColors = payload.type === PAYLOAD.RESCUER && G.heli.type === 'spinner'
+                ? { shirt: '#0044cc', pants: '#001f80' }
+                : payload.outfitColors;
             drawPerson(
                 payload.x, payload.y, payload.z, 0, !payload.hanging,
                 cx, cy,
                 payload.type === PAYLOAD.RESCUER ? PAYLOAD.RESCUER : undefined,
-                payload.outfitColors,
+                _rescuerColors,
                 inWater,
             );
             if (inWater && payload.type === PAYLOAD.PERSON) {

@@ -319,7 +319,8 @@ const _drawSceneInner = () => {
                                     ? 0.35
                                     : 0)
                               : Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
-                          drawPerson(rs.x, rs.y, winchTipZ, 0, false, cx, cy, PAYLOAD.RESCUER, undefined);
+                          drawPerson(rs.x, rs.y, winchTipZ, 0, false, cx, cy, PAYLOAD.RESCUER,
+                              G.heli.type === 'spinner' ? { shirt: '#0044cc', pants: '#001f80' } : undefined);
                       }
 
                       drawHeli(

@@ -8,6 +8,7 @@ import COASTHAWK_DEF from './models/coasthawk.zdef';
 import DOLPHIN_DEF from './models/dolphin.zdef';
 import ATLAS_DEF from './models/atlas.zdef';
 import ORNITHOPTER_RAW from './models/ornithopter.zdef';
+import SPINNER_RAW from './models/spinner.zdef';
 
 export interface HeliType {
     id: string;
@@ -49,6 +50,8 @@ export interface HeliType {
     bladeCount: number;
     /** Rotor sound preset: [clipAmount, filterCutHz, filterQ]. Unused for non-rotor types. */
     audioPreset: [number, number, number];
+    /** If true, heli can land on any terrain without crashing and picks up persons on ground contact */
+    canGroundDrive?: boolean;
 }
 
 export const HELI_TYPES: HeliType[] = [
@@ -140,6 +143,37 @@ export const HELI_TYPES: HeliType[] = [
         soundProfile: 'rotor',
         bladeCount: 3,
         audioPreset: [4.0, 90, 3.0],
+    },
+    {
+        id: 'spinner',
+        label: 'Spinner',
+        def: SPINNER_RAW as unknown as DEF,
+        maxLoad: 3,
+        accel: 0.00130,
+        friction: 0.994,
+        tiltSpeed: 0.048,
+        fuelRate: 0.010,
+        liftPower: 0.00085,
+        cargoResist: 0.28,
+        scale: 0.75,
+        previewScale: 1.4,
+        collisionBox: { xMin: -0.68, xMax: 1.35, yMin: -0.68, yMax: 0.68, zMax: 0.64 },
+        rotorOffsets: [0],
+        extraRotorDebris: false,
+        canCarryCargo: false,
+        selectLabel: 'SPINNER',
+        selectSub: { de: 'Fliegend / Fahrend', en: 'Flying / Driving' },
+        selectCap: { de: 'Kap.: 3 (Hybrid)', en: 'Cap.: 3 (Hybrid)' },
+        description: {
+            de: 'Ein Polizei-Spinner aus einer anderen Zeit. Fliegt wie ein Heli — landet wie ein Auto. Personen werden beim Überfahren direkt aufgenommen.',
+            en: 'A police spinner from another time. Flies like a helicopter — lands like a car. Persons are picked up on ground contact.',
+        },
+        minRankIndex: 3,
+        hideWhenLocked: true,
+        soundProfile: 'rotor',
+        bladeCount: 6,
+        audioPreset: [1.0, 300, 1.6],
+        canGroundDrive: true,
     },
     {
         id: 'ornithopter',

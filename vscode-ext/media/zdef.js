@@ -5287,7 +5287,20 @@
   var grids = [mkGrid(), mkGrid(), mkGrid(), mkGrid()];
   var gridVs = [mkGrid(), mkGrid(), mkGrid(), mkGrid()];
   var getActiveFaces = () => {
-    if (!state.def || state.def2) return [];
+    if (!state.def) return [];
+    if (state.def2) {
+      const result = [];
+      const recurse = (nodes) => {
+        for (const node of nodes ?? []) {
+          for (const f of node.faces ?? []) {
+            if (f.type !== "line") result.push(f);
+          }
+          if (node.children) recurse(node.children);
+        }
+      };
+      recurse(state.def2.nodes ?? []);
+      return result;
+    }
     if (state.activePart) {
       const part = state.def.parts?.find((p) => p.id === state.activePart);
       return part?.faces ?? [];
@@ -5490,8 +5503,12 @@
         const testParams = buildTestParams();
         const activeFaces = getActiveFaces();
         if (state.def2) {
+          const colors2 = {};
+          if (state.selectedFaceIdx >= 0 && activeFaces[state.selectedFaceIdx]) {
+            colors2[activeFaces[state.selectedFaceIdx].id] = "#ffdd44";
+          }
           SceneRenderer.debugCollision = showCboxes;
-          renderNodes(state.def2, {}, { x: 0, y: 0, angle: renderViewAngle }, SceneRenderer, renderCam.x, renderCam.y, { ctx, isoFn: iso, tileW: TW * renderZoom });
+          renderNodes(state.def2, {}, { x: 0, y: 0, angle: renderViewAngle, colors: colors2 }, SceneRenderer, renderCam.x, renderCam.y, { ctx, isoFn: iso, tileW: TW * renderZoom });
         } else {
           const colors = {};
           if (state.activePart) {
@@ -5647,8 +5664,7 @@
     const sec = document.getElementById("parts-sec");
     const list = document.getElementById("parts-list");
     if (state.def2) {
-      sec.style.display = "";
-      list.innerHTML = '<div class="empty" style="color:#aaa;font-style:italic">ZDEF2 \u2014 Nodes im JSON-Editor bearbeiten</div>';
+      sec.style.display = "none";
       return;
     }
     if (!state.def?.parts?.length) {
@@ -5728,6 +5744,51 @@
       sel.addEventListener("click", (e) => e.stopPropagation());
     });
   };
+  var _def2FindFaceNode = (faceRef) => {
+    if (!state.def2) return null;
+    const search = (nodes) => {
+      for (const node of nodes) {
+        const idx = (node.faces ?? []).indexOf(faceRef);
+        if (idx >= 0) return { node, localIdx: idx };
+        if (node.children) {
+          const r = search(node.children);
+          if (r) return r;
+        }
+      }
+      return null;
+    };
+    return search(state.def2.nodes);
+  };
+  var _def2MoveFace = (srcFlatIdx, dstFlatIdx) => {
+    if (!state.def2) return;
+    const allFaces = getActiveFaces();
+    const srcFace = allFaces[srcFlatIdx];
+    const dstFace = allFaces[dstFlatIdx];
+    const srcFound = _def2FindFaceNode(srcFace);
+    if (!srcFound) return;
+    srcFound.node.faces.splice(srcFound.localIdx, 1);
+    const dstFound = _def2FindFaceNode(dstFace);
+    if (!dstFound) return;
+    dstFound.node.faces.splice(dstFound.localIdx, 0, srcFace);
+    state.selectedFaceIdx = getActiveFaces().indexOf(srcFace);
+    markDirty();
+    renderAll();
+  };
+  var _def2MoveFaceToNode = (srcFlatIdx, nodeIdx) => {
+    if (!state.def2) return;
+    const allFaces = getActiveFaces();
+    const srcFace = allFaces[srcFlatIdx];
+    const srcFound = _def2FindFaceNode(srcFace);
+    if (!srcFound) return;
+    const targetNode = state.def2.nodes[nodeIdx];
+    if (!targetNode || srcFound.node === targetNode) return;
+    srcFound.node.faces.splice(srcFound.localIdx, 1);
+    if (!targetNode.faces) targetNode.faces = [];
+    targetNode.faces.push(srcFace);
+    state.selectedFaceIdx = getActiveFaces().indexOf(srcFace);
+    markDirty();
+    renderAll();
+  };
   var renderFaceList = () => {
     const list = document.getElementById("face-list");
     const count = document.getElementById("face-count");
@@ -5737,12 +5798,61 @@
       count.textContent = "";
       return;
     }
+    count.textContent = `(${faces.length})`;
     if (state.def2) {
-      list.innerHTML = '<div class="empty" style="color:#aaa;font-style:italic">ZDEF2 \u2014 Faces in nodes</div>';
-      count.textContent = "";
+      let html = "";
+      let fi = 0;
+      const buildFacesHtml = (node, depth) => {
+        let h = "";
+        for (const f of node.faces ?? []) {
+          if (f.type === "line") continue;
+          const idx = fi++;
+          const indent = depth > 0 ? ` style="padding-left:${4 + depth * 10}px"` : "";
+          h += `<div class="face-item${idx === state.selectedFaceIdx ? " active" : ""}" data-i="${idx}" draggable="true"${indent}><span class="drag-handle">\u283F</span><div class="face-swatch" style="background:${f.color}"></div><div class="face-id" title="${f.id ?? ""}">${f.id ?? "\u2014"}</div></div>`;
+        }
+        for (const child of node.children ?? []) h += buildFacesHtml(child, depth + 1);
+        return h;
+      };
+      state.def2.nodes.forEach((node, ni) => {
+        html += `<div class="node-group"><div class="node-header" data-ni="${ni}">Node ${ni}${node.rotate ? " \u21BB" : ""}</div><div class="node-faces" data-ni="${ni}">${buildFacesHtml(node, 0)}</div></div>`;
+      });
+      list.innerHTML = html;
+      let dragSrcIdx = -1;
+      list.querySelectorAll(".face-item").forEach((el) => {
+        el.addEventListener("click", () => selectFace(parseInt(el.dataset["i"] ?? "0")));
+        el.addEventListener("dragstart", (e) => {
+          dragSrcIdx = parseInt(el.dataset["i"] ?? "-1");
+          e.dataTransfer.effectAllowed = "move";
+        });
+        el.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          el.classList.add("drag-over");
+        });
+        el.addEventListener("dragleave", () => el.classList.remove("drag-over"));
+        el.addEventListener("drop", (e) => {
+          e.preventDefault();
+          el.classList.remove("drag-over");
+          const dstIdx = parseInt(el.dataset["i"] ?? "-1");
+          if (dragSrcIdx >= 0 && dragSrcIdx !== dstIdx) _def2MoveFace(dragSrcIdx, dstIdx);
+          dragSrcIdx = -1;
+        });
+      });
+      list.querySelectorAll(".node-header").forEach((el) => {
+        el.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          el.classList.add("drag-over");
+        });
+        el.addEventListener("dragleave", () => el.classList.remove("drag-over"));
+        el.addEventListener("drop", (e) => {
+          e.preventDefault();
+          el.classList.remove("drag-over");
+          const ni = parseInt(el.dataset["ni"] ?? "0");
+          if (dragSrcIdx >= 0) _def2MoveFaceToNode(dragSrcIdx, ni);
+          dragSrcIdx = -1;
+        });
+      });
       return;
     }
-    count.textContent = `(${faces.length})`;
     list.innerHTML = faces.map((f, i) => `
     <div class="face-item ${i === state.selectedFaceIdx ? "active" : ""}" data-i="${i}">
       <div class="face-swatch" style="background:${f.color}"></div>
@@ -6713,6 +6823,20 @@
     draw();
   });
   document.getElementById("btn-del-face").addEventListener("click", () => {
+    if (state.def2) {
+      const allFaces = getActiveFaces();
+      if (state.selectedFaceIdx < 0 || !allFaces.length) return;
+      const found = _def2FindFaceNode(allFaces[state.selectedFaceIdx]);
+      if (!found) return;
+      found.node.faces.splice(found.localIdx, 1);
+      const newFaces = getActiveFaces();
+      state.selectedFaceIdx = Math.min(state.selectedFaceIdx, newFaces.length - 1);
+      if (!newFaces.length) state.selectedFaceIdx = -1;
+      state.selectedVertIdx = -1;
+      markDirty();
+      renderAll();
+      return;
+    }
     const faces = getActiveFaces();
     if (state.selectedFaceIdx < 0 || !faces.length) return;
     faces.splice(state.selectedFaceIdx, 1);
@@ -6724,6 +6848,22 @@
   });
   document.getElementById("btn-add-face").addEventListener("click", () => {
     if (!state.def) return;
+    if (state.def2) {
+      const allFaces = getActiveFaces();
+      let targetNode = state.def2.nodes[0];
+      if (state.selectedFaceIdx >= 0 && allFaces[state.selectedFaceIdx]) {
+        const found = _def2FindFaceNode(allFaces[state.selectedFaceIdx]);
+        if (found) targetNode = found.node;
+      }
+      if (!targetNode.faces) targetNode.faces = [];
+      const newFace = { id: "face_" + allFaces.length, verts: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], color: "#1a4080" };
+      targetNode.faces.push(newFace);
+      state.selectedFaceIdx = getActiveFaces().indexOf(newFace);
+      state.selectedVertIdx = -1;
+      markDirty();
+      renderAll();
+      return;
+    }
     const faces = getActiveFaces();
     faces.push({ id: "face_" + faces.length, verts: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], color: "#888888" });
     state.selectedFaceIdx = faces.length - 1;

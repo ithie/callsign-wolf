@@ -285,12 +285,40 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                             _ctx.fill();
                         });
                     };
-                    _drawPass(p => !!p.isFire, '240,100,0');
-                    _drawPass(p => !!p.isSmoke, '130,125,120');
-                    _drawPass(p => !!p.isSpark, '255,220,80');
+                    _drawPass(p => !!p.isFire || !!p.isSpark, '240,100,0');
                     _ctx.globalAlpha = 1.0;
                 },
             });
+            // Smoke at depth +0.5 so it draws in front of the heli when overhead.
+            if (_eParticles.some((p: any) => p.isSmoke)) {
+                SceneRenderer.add(null, {
+                    x: 0, y: 0, depth: e.x + e.y + 0.5,
+                    drawFn: (cx: number, cy: number) => {
+                        const ALPHA_STEP = 0.05;
+                        const buckets = new Map<number, { color: string; arcs: { x: number; y: number; r: number }[] }>();
+                        _eParticles.forEach((p: any) => {
+                            if (!p.isSmoke) return;
+                            const lifeRatio = Math.min(1, p.life / (p.maxLife ?? 2.0));
+                            const alpha = Math.min(0.55, lifeRatio * 0.7);
+                            if (alpha <= 0.01) return;
+                            const key = Math.round(alpha / ALPHA_STEP) * ALPHA_STEP;
+                            const pos = _iso(p.x, p.y, Math.max(p.z, 0), cx, cy);
+                            const ageRatio = 1 - lifeRatio;
+                            const r = Math.max(1, (p.size ?? 5) * (0.5 + ageRatio * 0.8));
+                            if (!buckets.has(key)) buckets.set(key, { color: p.color, arcs: [] });
+                            buckets.get(key)!.arcs.push({ x: pos.x, y: pos.y, r });
+                        });
+                        buckets.forEach(({ color, arcs }, alpha) => {
+                            _ctx.globalAlpha = alpha;
+                            _ctx.fillStyle = `rgb(${color})`;
+                            _ctx.beginPath();
+                            arcs.forEach(({ x, y, r }) => { _ctx.moveTo(x + r, y); _ctx.arc(x, y, r, 0, Math.PI * 2); });
+                            _ctx.fill();
+                        });
+                        _ctx.globalAlpha = 1.0;
+                    },
+                });
+            }
         });
         // Carrier deck objects are queued inside _drawVectorCarrier between hull and tower passes.
         // Vessel-deck payloads enqueued BEFORE the heli so that on an equal depth value

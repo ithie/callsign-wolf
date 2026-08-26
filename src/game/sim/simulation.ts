@@ -756,13 +756,30 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
     }
 
     // crash detection
+    const _canGroundDrive = !!(getHeliType(G.heli.type).canGroundDrive);
     if (!onPad && G.heli.z <= G.waterLevel + 0.1 && getGround(G.heli.x, G.heli.y, G.points, G.CARRIER) <= G.waterLevel + 0.01)
         ctx.triggerCrash();
     if (G.heli.z < groundH + 0.25) {
-        if (!onPad && !onFlatTerrain && groundH > G.waterLevel + 0.1) ctx.triggerCrash();
-        else if (Math.hypot(G.heli.vx, G.heli.vy) > 0.12) ctx.triggerCrash();
+        if (!_canGroundDrive && !onPad && !onFlatTerrain && groundH > G.waterLevel + 0.1) ctx.triggerCrash();
+        else if (!_canGroundDrive && Math.hypot(G.heli.vx, G.heli.vy) > 0.12) ctx.triggerCrash();
         else if (vzAtImpact < -0.15) ctx.triggerCrash();
         else if (G.heli.fuel < 0) ctx.triggerCrash();
+    }
+
+    // ground contact pickup (spinner / canGroundDrive vehicles)
+    if (_canGroundDrive && !G.activePayload && !G.deliverMode && G.heli.z <= groundH + 0.5) {
+        for (let _gi = G.payloads.length - 1; _gi >= 0; _gi--) {
+            const _gp = G.payloads[_gi];
+            if (_gp.rescued || _gp.hanging || _gp.npcTarget || _gp.isDelivery) continue;
+            if (_gp.type !== PAYLOAD.PERSON && _gp.type !== PAYLOAD.RESCUER) continue;
+            if (Math.hypot(G.heli.x - _gp.x, G.heli.y - _gp.y) < 1.2) {
+                G.payloads.splice(_gi, 1);
+                G.heli.onboard++;
+                G.heli.onboardDeliverQueue.push((_gp as any).deliverTo);
+                voiceEvents.emit('package-secured');
+                break;
+            }
+        }
     }
 
     // ring passage detection (plane-crossing + in-ring check)
