@@ -35,9 +35,9 @@ export interface HeliType {
     canCarryCargo: boolean;
     // Select screen display
     selectLabel: string; // e.g. "DOLPHIN"
-    selectSub: string | { de: string; en: string };
-    selectCap: string | { de: string; en: string };
-    description?: string | { de: string; en: string };
+    selectSub: string | { de: string; en: string; fr?: string; es?: string; pt?: string };
+    selectCap: string | { de: string; en: string; fr?: string; es?: string; pt?: string };
+    description?: string | { de: string; en?: string; fr?: string; es?: string; pt?: string };
     // Minimum rank index required to fly this type (0=Leutnant, 1=Oberleutnant, 2=Hauptmann)
     minRankIndex: number;
     /** If true, player must also complete the type-rating parkour before flying this heli */
@@ -73,11 +73,14 @@ export const HELI_TYPES: HeliType[] = [
         extraRotorDebris: false,
         canCarryCargo: false,
         selectLabel: 'DOLPHIN',
-        selectSub: { de: 'Wendig / Schnell', en: 'Agile / Fast' },
-        selectCap: { de: 'Kap.: 3 (Leichtgewicht)', en: 'Cap.: 3 (Lightweight)' },
+        selectSub: { de: 'Wendig / Schnell', en: 'Agile / Fast', fr: 'Agile / Rapide', es: 'Ágil / Rápido', pt: 'Ágil / Rápido' },
+        selectCap: { de: 'Kap.: 3 (Leichtgewicht)', en: 'Cap.: 3 (Lightweight)', fr: 'Cap. : 3 (Légèreté)', es: 'Cap.: 3 (Peso ligero)', pt: 'Cap.: 3 (Leve)' },
         description: {
             de: 'Ein wendiger Küstenwachthubschrauber — ideal für schnelle Einsätze in schwierigem Gelände. Leicht, präzise, reaktionsschnell. Das bevorzugte Werkzeug erfahrener Piloten.',
             en: 'An agile coast guard helicopter — ideal for rapid deployment in difficult terrain. Light, precise, responsive. The preferred tool of experienced pilots.',
+            fr: 'Un hélicoptère de garde-côtes agile — idéal pour les interventions rapides en terrain difficile. Léger, précis, réactif. L\'outil préféré des pilotes expérimentés.',
+            es: 'Un helicóptero de guardacostas ágil — ideal para despliegues rápidos en terreno difícil. Ligero, preciso, reactivo. La herramienta preferida de los pilotos experimentados.',
+            pt: 'Um helicóptero ágil da guarda costeira — ideal para missões rápidas em terreno difícil. Leve, preciso, responsivo. A ferramenta preferida dos pilotos experientes.',
         },
         minRankIndex: 1,
         typeRatingRequired: true,
@@ -103,11 +106,14 @@ export const HELI_TYPES: HeliType[] = [
         extraRotorDebris: false,
         canCarryCargo: true,
         selectLabel: 'Coast-Hawk',
-        selectSub: { de: 'Schwer / Stabil', en: 'Heavy / Stable' },
-        selectCap: { de: 'Kap.: 10 (Schwerlast)', en: 'Cap.: 10 (Heavy lift)' },
+        selectSub: { de: 'Schwer / Stabil', en: 'Heavy / Stable', fr: 'Lourd / Stable', es: 'Pesado / Estable', pt: 'Pesado / Estável' },
+        selectCap: { de: 'Kap.: 10 (Schwerlast)', en: 'Cap.: 10 (Heavy lift)', fr: 'Cap. : 10 (Charges lourdes)', es: 'Cap.: 10 (Carga pesada)', pt: 'Cap.: 10 (Carga pesada)' },
         description: {
             de: 'Das Arbeitstier der Seenotrettung. Trägt schwere Lasten über weite Strecken, auch bei rauem Wetter. Einmal in Fahrt gebracht, ist er schwer aufzuhalten.',
             en: 'The workhorse of maritime rescue. Carries heavy loads over long distances, even in rough weather. Once up to speed, it is hard to stop.',
+            fr: 'Le cheval de bataille du sauvetage maritime. Transporte de lourdes charges sur de longues distances, même par mauvais temps. Une fois lancé, rien ne l\'arrête.',
+            es: 'El caballo de batalla del rescate marítimo. Transporta cargas pesadas a largas distancias, incluso con mal tiempo. Una vez en marcha, es difícil de parar.',
+            pt: 'O cavalo de trabalho do resgate marítimo. Transporta cargas pesadas em longas distâncias, mesmo com mau tempo. Uma vez em movimento, é difícil de parar.',
         },
         minRankIndex: 0,
         soundProfile: 'rotor',
@@ -132,11 +138,14 @@ export const HELI_TYPES: HeliType[] = [
         extraRotorDebris: true,
         canCarryCargo: true,
         selectLabel: 'Atlas',
-        selectSub: { de: 'Tandem / Extraschwer', en: 'Tandem / Extra-heavy' },
-        selectCap: { de: 'Kap.: 20 (Schwerlast)', en: 'Cap.: 20 (Heavy lift)' },
+        selectSub: { de: 'Tandem / Extraschwer', en: 'Tandem / Extra-heavy', fr: 'Tandem / Extra-lourd', es: 'Tándem / Superpesado', pt: 'Tândem / Extra-pesado' },
+        selectCap: { de: 'Kap.: 20 (Schwerlast)', en: 'Cap.: 20 (Heavy lift)', fr: 'Cap. : 20 (Charges lourdes)', es: 'Cap.: 20 (Carga pesada)', pt: 'Cap.: 20 (Carga pesada)' },
         description: {
             de: 'Zwei Rotoren, keine Ausrede. Der Atlas ist für den Masseneinsatz gebaut — wenn normale Helikopter kapitulieren, fliegt der Atlas.',
             en: 'Two rotors, no excuses. The Atlas is built for mass operations — when ordinary helicopters give up, the Atlas flies on.',
+            fr: 'Deux rotors, pas d\'excuses. L\'Atlas est conçu pour les opérations massives — quand les hélicoptères ordinaires abandonnent, l\'Atlas continue de voler.',
+            es: 'Dos rotores, sin excusas. El Atlas está construido para operaciones masivas — cuando los helicópteros ordinarios se rinden, el Atlas sigue volando.',
+            pt: 'Dois rotores, sem desculpas. O Atlas foi construído para operações em massa — quando os helicópteros comuns desistem, o Atlas continua voando.',
         },
         minRankIndex: 2,
         typeRatingRequired: true,
@@ -162,11 +171,14 @@ export const HELI_TYPES: HeliType[] = [
         extraRotorDebris: false,
         canCarryCargo: false,
         selectLabel: 'SPINNER',
-        selectSub: { de: 'Fliegend / Fahrend', en: 'Flying / Driving' },
-        selectCap: { de: 'Kap.: 3 (Hybrid)', en: 'Cap.: 3 (Hybrid)' },
+        selectSub: { de: 'Fliegend / Fahrend', en: 'Flying / Driving', fr: 'Vol / Conduite', es: 'Volando / Conduciendo', pt: 'Voando / Dirigindo' },
+        selectCap: { de: 'Kap.: 3 (Hybrid)', en: 'Cap.: 3 (Hybrid)', fr: 'Cap. : 3 (Hybride)', es: 'Cap.: 3 (Híbrido)', pt: 'Cap.: 3 (Híbrido)' },
         description: {
-            de: 'Ein Polizei-Spinner aus einer anderen Zeit. Fliegt wie ein Heli — landet wie ein Auto. Personen werden beim Überfahren direkt aufgenommen.',
-            en: 'A police spinner from another time. Flies like a helicopter — lands like a car. Persons are picked up on ground contact.',
+            de: 'Der Polizei-Spinner hat schon Deckhard und McCoy gute Dienste geleistet.',
+            en: 'This police spinner has served Deckhard and McCoy well.',
+            fr: 'Ce spinner de police a bien servi Deckhard et McCoy.',
+            es: 'Este spinner policial le ha servido bien a Deckhard y McCoy.',
+            pt: 'Este spinner policial prestou bons serviços a Deckhard e McCoy.',
         },
         minRankIndex: 3,
         hideWhenLocked: true,
@@ -193,11 +205,14 @@ export const HELI_TYPES: HeliType[] = [
         extraRotorDebris: false,
         canCarryCargo: true,
         selectLabel: 'ORNITHOPTER',
-        selectSub: { de: 'Schläger / Wendig', en: 'Flapper / Agile' },
-        selectCap: { de: 'Kap.: 2 (Schnelleinsatz)', en: 'Cap.: 2 (Quick deploy)' },
+        selectSub: { de: 'Schläger / Wendig', en: 'Flapper / Agile', fr: 'Batteur / Agile', es: 'Batidor / Ágil', pt: 'Batedor / Ágil' },
+        selectCap: { de: 'Kap.: 2 (Schnelleinsatz)', en: 'Cap.: 2 (Quick deploy)', fr: 'Cap. : 2 (Déploiement rapide)', es: 'Cap.: 2 (Despliegue rápido)', pt: 'Cap.: 2 (Implantação rápida)' },
         description: {
             de: 'Ein Flügelschläger der nächsten Generation. Zwei Mann, maximale Wendigkeit. Mit Fracht überraschend schnell — kein Helikopter, kein Flugzeug, etwas dazwischen.',
             en: 'A next-generation ornithopter. Two crew, maximum agility. Surprisingly fast with cargo — not a helicopter, not a plane, something in between.',
+            fr: 'Un ornithoptère de nouvelle génération. Deux membres d\'équipage, agilité maximale. Étonnamment rapide avec du fret — ni hélicoptère, ni avion, quelque chose entre les deux.',
+            es: 'Un ornitóptero de nueva generación. Dos tripulantes, agilidad máxima. Sorprendentemente rápido con carga — ni helicóptero, ni avión, algo entre los dos.',
+            pt: 'Um ornitóptero de nova geração. Dois tripulantes, agilidade máxima. Surpreendentemente rápido com carga — nem helicóptero, nem avião, algo entre os dois.',
         },
         minRankIndex: 3,
         typeRatingRequired: true,

@@ -1361,11 +1361,14 @@
       extraRotorDebris: false,
       canCarryCargo: false,
       selectLabel: "DOLPHIN",
-      selectSub: { de: "Wendig / Schnell", en: "Agile / Fast" },
-      selectCap: { de: "Kap.: 3 (Leichtgewicht)", en: "Cap.: 3 (Lightweight)" },
+      selectSub: { de: "Wendig / Schnell", en: "Agile / Fast", fr: "Agile / Rapide", es: "\xC1gil / R\xE1pido", pt: "\xC1gil / R\xE1pido" },
+      selectCap: { de: "Kap.: 3 (Leichtgewicht)", en: "Cap.: 3 (Lightweight)", fr: "Cap. : 3 (L\xE9g\xE8ret\xE9)", es: "Cap.: 3 (Peso ligero)", pt: "Cap.: 3 (Leve)" },
       description: {
         de: "Ein wendiger K\xFCstenwachthubschrauber \u2014 ideal f\xFCr schnelle Eins\xE4tze in schwierigem Gel\xE4nde. Leicht, pr\xE4zise, reaktionsschnell. Das bevorzugte Werkzeug erfahrener Piloten.",
-        en: "An agile coast guard helicopter \u2014 ideal for rapid deployment in difficult terrain. Light, precise, responsive. The preferred tool of experienced pilots."
+        en: "An agile coast guard helicopter \u2014 ideal for rapid deployment in difficult terrain. Light, precise, responsive. The preferred tool of experienced pilots.",
+        fr: "Un h\xE9licopt\xE8re de garde-c\xF4tes agile \u2014 id\xE9al pour les interventions rapides en terrain difficile. L\xE9ger, pr\xE9cis, r\xE9actif. L'outil pr\xE9f\xE9r\xE9 des pilotes exp\xE9riment\xE9s.",
+        es: "Un helic\xF3ptero de guardacostas \xE1gil \u2014 ideal para despliegues r\xE1pidos en terreno dif\xEDcil. Ligero, preciso, reactivo. La herramienta preferida de los pilotos experimentados.",
+        pt: "Um helic\xF3ptero \xE1gil da guarda costeira \u2014 ideal para miss\xF5es r\xE1pidas em terreno dif\xEDcil. Leve, preciso, responsivo. A ferramenta preferida dos pilotos experientes."
       },
       minRankIndex: 1,
       typeRatingRequired: true,
@@ -1391,11 +1394,14 @@
       extraRotorDebris: false,
       canCarryCargo: true,
       selectLabel: "Coast-Hawk",
-      selectSub: { de: "Schwer / Stabil", en: "Heavy / Stable" },
-      selectCap: { de: "Kap.: 10 (Schwerlast)", en: "Cap.: 10 (Heavy lift)" },
+      selectSub: { de: "Schwer / Stabil", en: "Heavy / Stable", fr: "Lourd / Stable", es: "Pesado / Estable", pt: "Pesado / Est\xE1vel" },
+      selectCap: { de: "Kap.: 10 (Schwerlast)", en: "Cap.: 10 (Heavy lift)", fr: "Cap. : 10 (Charges lourdes)", es: "Cap.: 10 (Carga pesada)", pt: "Cap.: 10 (Carga pesada)" },
       description: {
         de: "Das Arbeitstier der Seenotrettung. Tr\xE4gt schwere Lasten \xFCber weite Strecken, auch bei rauem Wetter. Einmal in Fahrt gebracht, ist er schwer aufzuhalten.",
-        en: "The workhorse of maritime rescue. Carries heavy loads over long distances, even in rough weather. Once up to speed, it is hard to stop."
+        en: "The workhorse of maritime rescue. Carries heavy loads over long distances, even in rough weather. Once up to speed, it is hard to stop.",
+        fr: "Le cheval de bataille du sauvetage maritime. Transporte de lourdes charges sur de longues distances, m\xEAme par mauvais temps. Une fois lanc\xE9, rien ne l'arr\xEAte.",
+        es: "El caballo de batalla del rescate mar\xEDtimo. Transporta cargas pesadas a largas distancias, incluso con mal tiempo. Una vez en marcha, es dif\xEDcil de parar.",
+        pt: "O cavalo de trabalho do resgate mar\xEDtimo. Transporta cargas pesadas em longas dist\xE2ncias, mesmo com mau tempo. Uma vez em movimento, \xE9 dif\xEDcil de parar."
       },
       minRankIndex: 0,
       soundProfile: "rotor",
@@ -1420,11 +1426,14 @@
       extraRotorDebris: true,
       canCarryCargo: true,
       selectLabel: "Atlas",
-      selectSub: { de: "Tandem / Extraschwer", en: "Tandem / Extra-heavy" },
-      selectCap: { de: "Kap.: 20 (Schwerlast)", en: "Cap.: 20 (Heavy lift)" },
+      selectSub: { de: "Tandem / Extraschwer", en: "Tandem / Extra-heavy", fr: "Tandem / Extra-lourd", es: "T\xE1ndem / Superpesado", pt: "T\xE2ndem / Extra-pesado" },
+      selectCap: { de: "Kap.: 20 (Schwerlast)", en: "Cap.: 20 (Heavy lift)", fr: "Cap. : 20 (Charges lourdes)", es: "Cap.: 20 (Carga pesada)", pt: "Cap.: 20 (Carga pesada)" },
       description: {
         de: "Zwei Rotoren, keine Ausrede. Der Atlas ist f\xFCr den Masseneinsatz gebaut \u2014 wenn normale Helikopter kapitulieren, fliegt der Atlas.",
-        en: "Two rotors, no excuses. The Atlas is built for mass operations \u2014 when ordinary helicopters give up, the Atlas flies on."
+        en: "Two rotors, no excuses. The Atlas is built for mass operations \u2014 when ordinary helicopters give up, the Atlas flies on.",
+        fr: "Deux rotors, pas d'excuses. L'Atlas est con\xE7u pour les op\xE9rations massives \u2014 quand les h\xE9licopt\xE8res ordinaires abandonnent, l'Atlas continue de voler.",
+        es: "Dos rotores, sin excusas. El Atlas est\xE1 construido para operaciones masivas \u2014 cuando los helic\xF3pteros ordinarios se rinden, el Atlas sigue volando.",
+        pt: "Dois rotores, sem desculpas. O Atlas foi constru\xEDdo para opera\xE7\xF5es em massa \u2014 quando os helic\xF3pteros comuns desistem, o Atlas continua voando."
       },
       minRankIndex: 2,
       typeRatingRequired: true,
@@ -1450,11 +1459,14 @@
       extraRotorDebris: false,
       canCarryCargo: false,
       selectLabel: "SPINNER",
-      selectSub: { de: "Fliegend / Fahrend", en: "Flying / Driving" },
-      selectCap: { de: "Kap.: 3 (Hybrid)", en: "Cap.: 3 (Hybrid)" },
+      selectSub: { de: "Fliegend / Fahrend", en: "Flying / Driving", fr: "Vol / Conduite", es: "Volando / Conduciendo", pt: "Voando / Dirigindo" },
+      selectCap: { de: "Kap.: 3 (Hybrid)", en: "Cap.: 3 (Hybrid)", fr: "Cap. : 3 (Hybride)", es: "Cap.: 3 (H\xEDbrido)", pt: "Cap.: 3 (H\xEDbrido)" },
       description: {
-        de: "Ein Polizei-Spinner aus einer anderen Zeit. Fliegt wie ein Heli \u2014 landet wie ein Auto. Personen werden beim \xDCberfahren direkt aufgenommen.",
-        en: "A police spinner from another time. Flies like a helicopter \u2014 lands like a car. Persons are picked up on ground contact."
+        de: "Der Polizei-Spinner hat schon Deckhard und McCoy gute Dienste geleistet.",
+        en: "This police spinner has served Deckhard and McCoy well.",
+        fr: "Ce spinner de police a bien servi Deckhard et McCoy.",
+        es: "Este spinner policial le ha servido bien a Deckhard y McCoy.",
+        pt: "Este spinner policial prestou bons servi\xE7os a Deckhard e McCoy."
       },
       minRankIndex: 3,
       hideWhenLocked: true,
@@ -1481,11 +1493,14 @@
       extraRotorDebris: false,
       canCarryCargo: true,
       selectLabel: "ORNITHOPTER",
-      selectSub: { de: "Schl\xE4ger / Wendig", en: "Flapper / Agile" },
-      selectCap: { de: "Kap.: 2 (Schnelleinsatz)", en: "Cap.: 2 (Quick deploy)" },
+      selectSub: { de: "Schl\xE4ger / Wendig", en: "Flapper / Agile", fr: "Batteur / Agile", es: "Batidor / \xC1gil", pt: "Batedor / \xC1gil" },
+      selectCap: { de: "Kap.: 2 (Schnelleinsatz)", en: "Cap.: 2 (Quick deploy)", fr: "Cap. : 2 (D\xE9ploiement rapide)", es: "Cap.: 2 (Despliegue r\xE1pido)", pt: "Cap.: 2 (Implanta\xE7\xE3o r\xE1pida)" },
       description: {
         de: "Ein Fl\xFCgelschl\xE4ger der n\xE4chsten Generation. Zwei Mann, maximale Wendigkeit. Mit Fracht \xFCberraschend schnell \u2014 kein Helikopter, kein Flugzeug, etwas dazwischen.",
-        en: "A next-generation ornithopter. Two crew, maximum agility. Surprisingly fast with cargo \u2014 not a helicopter, not a plane, something in between."
+        en: "A next-generation ornithopter. Two crew, maximum agility. Surprisingly fast with cargo \u2014 not a helicopter, not a plane, something in between.",
+        fr: "Un ornithopt\xE8re de nouvelle g\xE9n\xE9ration. Deux membres d'\xE9quipage, agilit\xE9 maximale. \xC9tonnamment rapide avec du fret \u2014 ni h\xE9licopt\xE8re, ni avion, quelque chose entre les deux.",
+        es: "Un ornit\xF3ptero de nueva generaci\xF3n. Dos tripulantes, agilidad m\xE1xima. Sorprendentemente r\xE1pido con carga \u2014 ni helic\xF3ptero, ni avi\xF3n, algo entre los dos.",
+        pt: "Um ornit\xF3ptero de nova gera\xE7\xE3o. Dois tripulantes, agilidade m\xE1xima. Surpreendentemente r\xE1pido com carga \u2014 nem helic\xF3ptero, nem avi\xE3o, algo entre os dois."
       },
       minRankIndex: 3,
       typeRatingRequired: true,

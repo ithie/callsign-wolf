@@ -12,8 +12,8 @@ const _session = (overrides: Partial<PlayerSession> = {}): PlayerSession => ({
 
 const _campaign: CampaignExport = {
     type: 'standard',
-    campaignTitle: { de: 'Operation Nordsee', en: 'Operation North Sea' },
-    campaignSublines: [{ de: '5 Rettungsmissionen', en: '5 rescue missions' }],
+    campaignTitle: { de: 'Operation Nordsee', en: 'Operation North Sea', fr: 'Opération Mer du Nord', es: 'Operación Mar del Norte', pt: 'Operação Mar do Norte' },
+    campaignSublines: [{ de: '5 Rettungsmissionen', en: '5 rescue missions', fr: '5 missions de sauvetage', es: '5 misiones de rescate', pt: '5 missões de resgate' }],
     levels: [
         { name: 'mission-1' } as any,
         { name: 'mission-2' } as any,

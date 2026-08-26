@@ -14,26 +14,26 @@ const _baseSession = (): PlayerSession => ({
 const _campaigns: CampaignExport[] = [
     {
         type: 'tutorial',
-        campaignTitle: { de: 'Tutorial', en: 'Tutorial' },
-        campaignSublines: [{ de: 'Grundlagen lernen', en: 'Learn the basics' }],
+        campaignTitle: { de: 'Tutorial', en: 'Tutorial', fr: 'Tutoriel', es: 'Tutorial', pt: 'Tutorial' },
+        campaignSublines: [{ de: 'Grundlagen lernen', en: 'Learn the basics', fr: 'Apprendre les bases', es: 'Aprender lo básico', pt: 'Aprender o básico' }],
         levels: [{ name: 'tut-1' } as any],
     },
     {
         type: 'standard',
-        campaignTitle: { de: 'Operation Nordsee', en: 'Operation North Sea' },
-        campaignSublines: [{ de: '5 Missionen', en: '5 Missions' }],
+        campaignTitle: { de: 'Operation Nordsee', en: 'Operation North Sea', fr: 'Opération Mer du Nord', es: 'Operación Mar del Norte', pt: 'Operação Mar do Norte' },
+        campaignSublines: [{ de: '5 Missionen', en: '5 Missions', fr: '5 missions', es: '5 misiones', pt: '5 missões' }],
         levels: Array.from({ length: 5 }, (_, i) => ({ name: `m${i}` }) as any),
     },
     {
         type: 'standard',
-        campaignTitle: { de: 'Operation Atlantik', en: 'Operation Atlantic' },
-        campaignSublines: [{ de: '4 Missionen', en: '4 Missions' }],
+        campaignTitle: { de: 'Operation Atlantik', en: 'Operation Atlantic', fr: 'Opération Atlantique', es: 'Operación Atlántico', pt: 'Operação Atlântico' },
+        campaignSublines: [{ de: '4 Missionen', en: '4 Missions', fr: '4 missions', es: '4 misiones', pt: '4 missões' }],
         levels: Array.from({ length: 4 }, (_, i) => ({ name: `a${i}` }) as any),
     },
     {
         type: 'free-flight',
-        campaignTitle: { de: 'Freier Flug', en: 'Free Flight' },
-        campaignSublines: [{ de: 'Kein Ziel, freie Erkundung', en: 'No goal, free exploration' }],
+        campaignTitle: { de: 'Freier Flug', en: 'Free Flight', fr: 'Vol libre', es: 'Vuelo libre', pt: 'Voo livre' },
+        campaignSublines: [{ de: 'Kein Ziel, freie Erkundung', en: 'No goal, free exploration', fr: 'Sans objectif, exploration libre', es: 'Sin objetivo, exploración libre', pt: 'Sem objetivo, exploração livre' }],
         levels: [{ name: 'ff' } as any],
     },
 ];
