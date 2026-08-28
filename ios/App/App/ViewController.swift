@@ -124,6 +124,20 @@ class ViewController: UIViewController {
         try? AVAudioSession.sharedInstance().setActive(true)
         NotificationCenter.default.addObserver(self, selector: #selector(_appDidBecomeActive),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
+        // Dark background visible during the brief entitlement check
+        view.backgroundColor = UIColor(red: 5/255, green: 5/255, blue: 5/255, alpha: 1)
+
+        Task {
+            // Resolve entitlements BEFORE building the WebView so injectNativeStorage
+            // already sees z_unlocked = '1' for grandfathered / returning buyers.
+            // Already-unlocked users hit the early return immediately — no delay.
+            await checkEntitlementsOnLaunch()
+            await MainActor.run { _setupAndLoadWebView() }
+        }
+    }
+
+    @MainActor
+    private func _setupAndLoadWebView() {
         let config = WKWebViewConfiguration()
         config.allowsInlineMediaPlayback = true
         config.mediaTypesRequiringUserActionForPlayback = []
@@ -164,8 +178,6 @@ class ViewController: UIViewController {
             fatalError("[SAR] index.html not found in bundle")
         }
         webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
-
-        Task { await checkEntitlementsOnLaunch() }
     }
 
     // MARK: - Audio resume
@@ -269,7 +281,6 @@ class ViewController: UIViewController {
            case .verified(let tx) = appTx,
            _compareVersions(tx.originalAppVersion, kConversionVersion) == .orderedAscending {
             UserDefaults.standard.set("1", forKey: "z_unlocked")
-            _notifyWebViewUnlocked()
             return
         }
 
@@ -277,21 +288,8 @@ class ViewController: UIViewController {
         for await result in Transaction.currentEntitlements {
             if case .verified(let tx) = result, tx.productID == kProductID {
                 UserDefaults.standard.set("1", forKey: "z_unlocked")
-                _notifyWebViewUnlocked()
                 return
             }
-        }
-    }
-
-    private func _notifyWebViewUnlocked() {
-        DispatchQueue.main.async {
-            // Update the injected storage snapshot so isUnlocked() returns true immediately,
-            // then fire the same callback as a successful IAP purchase.
-            self.webView.evaluateJavaScript(
-                "window.__nativeStorage=window.__nativeStorage||{};" +
-                "window.__nativeStorage['z_unlocked']='1';" +
-                "window.__iapResult&&window.__iapResult('success');"
-            )
         }
     }
 

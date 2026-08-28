@@ -3,7 +3,7 @@ import '@/ui/screens.css';
 import { ensureEl } from '@/ui/dom-helpers';
 import { createIsoFn } from './render';
 import { campaignHandler, soundHandler, zinit } from './main';
-import { loadSession, saveSession, STORAGE_KEY } from './session';
+import { loadSession, saveSession, STORAGE_KEY, UNLOCK_KEY } from './session';
 import { initAppStorage, storageGet, storageSet } from './storage';
 import { G, zstate } from './state';
 import { initHeliSound, stopHeliSound, setSfxEnabled, isSfxEnabled, updateHeliSound } from './heli-sound';
@@ -668,6 +668,14 @@ window.onload = () => {
 };
 
 window.toCampaignSelect = Flow.toCampaignSelect;
+
+// Called by Swift after async entitlement/grandfathering check completes.
+// Updates the storage cache so isUnlocked() returns true immediately,
+// then fires __iapResult if the paywall happens to be open.
+(window as any).__grantUnlock = () => {
+    storageSet(UNLOCK_KEY, '1');
+    (window as any).__iapResult?.('success');
+};
 window.toMainMenu = Flow.toMainMenu;
 window.toCredits = CreditsScreen.show;
 window.backFromHeliSelect = Flow.backFromHeliSelect;
