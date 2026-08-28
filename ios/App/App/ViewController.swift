@@ -276,6 +276,9 @@ class ViewController: UIViewController {
         // Already unlocked in storage — nothing to do
         if UserDefaults.standard.string(forKey: "z_unlocked") == "1" { return }
 
+        // Sync local transaction store so AppTransaction and currentEntitlements are fresh
+        try? await AppStore.sync()
+
         // 1. Grandfathering: original purchase was before the freemium conversion (v1.5)
         if let appTx = try? await AppTransaction.shared,
            case .verified(let tx) = appTx,
