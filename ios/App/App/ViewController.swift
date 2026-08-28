@@ -269,6 +269,7 @@ class ViewController: UIViewController {
            case .verified(let tx) = appTx,
            _compareVersions(tx.originalAppVersion, kConversionVersion) == .orderedAscending {
             UserDefaults.standard.set("1", forKey: "z_unlocked")
+            _notifyWebViewUnlocked()
             return
         }
 
@@ -276,8 +277,21 @@ class ViewController: UIViewController {
         for await result in Transaction.currentEntitlements {
             if case .verified(let tx) = result, tx.productID == kProductID {
                 UserDefaults.standard.set("1", forKey: "z_unlocked")
+                _notifyWebViewUnlocked()
                 return
             }
+        }
+    }
+
+    private func _notifyWebViewUnlocked() {
+        DispatchQueue.main.async {
+            // Update the injected storage snapshot so isUnlocked() returns true immediately,
+            // then fire the same callback as a successful IAP purchase.
+            self.webView.evaluateJavaScript(
+                "window.__nativeStorage=window.__nativeStorage||{};" +
+                "window.__nativeStorage['z_unlocked']='1';" +
+                "window.__iapResult&&window.__iapResult('success');"
+            )
         }
     }
 
