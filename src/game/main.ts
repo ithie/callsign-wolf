@@ -2,7 +2,7 @@ import { CampaignExport, MissionData } from '@/shared/types';
 import Tutorial from './campaigns/tutorial.zcampaign';
 import FreeFlight from './campaigns/freeFlight.zcampaign';
 import CallsignWolf from './campaigns/callsignwolf.zcampaign';
-//import Zephyr from './campaigns/Zephyr.zcampaign';
+import Zephyr from './campaigns/Zephyr.zcampaign';
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
 import SoundSuccess from './music/success.zsong';
@@ -118,7 +118,7 @@ const createCampaignHandler = () => {
         Tutorial as unknown as CampaignExport,
         FreeFlight as unknown as CampaignExport,
         CallsignWolf as unknown as CampaignExport,
-        //Zephyr as unknown as CampaignExport,
+        Zephyr as unknown as CampaignExport,
     ];
 
     let campaignMap = new Map<string, CampaignExport>(campaigns.map(c => [(c as any)._key as string, c]));
@@ -263,20 +263,34 @@ if (import.meta.env.DEV) {
     (campaignHandler as any).setPreviewMission = (levelData: MissionData) => {
         _previewLevel = levelData;
         _previewTerrain = null;
-        campaignHandler.getCurrentMissionData = () => _previewLevel ?? _origGetMission();
+        campaignHandler.getCurrentMissionData = () => {
+            if (!_previewLevel) return _origGetMission();
+            // Resolve gridSize from terrainRef when the level doesn't have its own
+            const terrainRef = (_previewLevel as any).terrainRef;
+            const terrainLevel: any =
+                terrainRef !== undefined
+                    ? (campaignHandler.getCampaigns()[0]?.levels[terrainRef] ?? _previewLevel)
+                    : _previewLevel;
+            return { ..._previewLevel, gridSize: _previewLevel.gridSize ?? terrainLevel.gridSize ?? 0 };
+        };
         campaignHandler.getTerrain = () => {
             if (!_previewLevel) return _origGetTerrain();
-            if (!_previewTerrain)
+            if (!_previewTerrain) {
+                // Resolve terrainRef if present (mission reuses terrain from another level)
+                const terrainRef = (_previewLevel as any).terrainRef;
+                const terrainLevel: any =
+                    terrainRef !== undefined
+                        ? (campaignHandler.getCampaigns()[0]?.levels[terrainRef] ?? _previewLevel)
+                        : _previewLevel;
                 _previewTerrain = {
-                    terrain: decompressTerrain(_previewLevel.terrain as string, _previewLevel.gridSize),
-                    gridSize: _previewLevel.gridSize,
-                    sand: _previewLevel.sand
-                        ? decompressTerrain(_previewLevel.sand, _previewLevel.gridSize)
-                        : undefined,
-                    pavement: (_previewLevel as any).pavement
-                        ? decompressTerrain((_previewLevel as any).pavement, _previewLevel.gridSize)
+                    terrain: decompressTerrain(terrainLevel.terrain as string, terrainLevel.gridSize),
+                    gridSize: terrainLevel.gridSize,
+                    sand: terrainLevel.sand ? decompressTerrain(terrainLevel.sand, terrainLevel.gridSize) : undefined,
+                    pavement: terrainLevel.pavement
+                        ? decompressTerrain(terrainLevel.pavement, terrainLevel.gridSize)
                         : undefined,
                 };
+            }
             return _previewTerrain;
         };
     };
