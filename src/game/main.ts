@@ -114,14 +114,14 @@ const createCampaignHandler = () => {
     let cachedTerrain: { terrain: number[][]; gridSize: number; sand?: number[][]; pavement?: number[][] } | null =
         null;
 
-    const campaigns: CampaignExport[] = [
+    let campaigns: CampaignExport[] = [
         Tutorial as unknown as CampaignExport,
         FreeFlight as unknown as CampaignExport,
         CallsignWolf as unknown as CampaignExport,
         //Zephyr as unknown as CampaignExport,
     ];
 
-    const campaignMap = new Map<string, CampaignExport>(campaigns.map(c => [(c as any)._key as string, c]));
+    let campaignMap = new Map<string, CampaignExport>(campaigns.map(c => [(c as any)._key as string, c]));
 
     const campaignState = {
         activeCampaign: 0,
@@ -241,6 +241,11 @@ const createCampaignHandler = () => {
         getTerrain,
         prewarmTerrain,
         prewarmLevel,
+        _replaceCampaigns: (newCampaigns: CampaignExport[]) => {
+            campaigns = newCampaigns;
+            campaignMap = new Map(newCampaigns.map(c => [(c as any)._key as string, c]));
+            cachedTerrain = null;
+        },
     };
 };
 

@@ -2,13 +2,56 @@ import { campaignHandler } from '../main';
 import { G } from '../state';
 import { getGround } from './terrain';
 import { VESSEL, PAYLOAD, VESSEL_PATH } from '../../shared/types';
+import { registerObjectDef } from '../def-registry';
 import FRIGATE_DEF from '../models/frigate.zdef';
 import CARRIER_DEF from '../models/carrier.zdef';
 import SUPPLY_VESSEL_DEF from '../models/supply_vessel.zdef';
-import WIND_TURBINE_DEF from '../models/objects/wind_turbine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
+import LIGHTHOUSE_DEF from '../models/objects/lighthouse.zdef';
+import WIND_TURBINE_DEF from '../models/objects/wind_turbine.zdef';
+import PLANE_WRECK_DEF from '../models/objects/plane_wreck.zdef';
+import SAILBOAT_BROKEN_DEF from '../models/objects/sailboat_broken.zdef';
+import BAYWATCH_CAR_DEF from '../models/objects/baywatch_car.zdef';
+import BAYWATCH_HQ_DEF from '../models/objects/baywatch_hq.zdef';
+import BAYWATCH_TOWER_DEF from '../models/objects/baywatch_tower.zdef';
+import BUOY_DEF from '../models/objects/buoy.zdef';
+import CONCERT_STAGE_DEF from '../models/objects/concert_stage.zdef';
+import FESTIVAL_TENT_DEF from '../models/objects/festival_tent.zdef';
+import FESTIVAL_TENT_BROKEN_DEF from '../models/objects/festival_tent_broken.zdef';
+import FESTIVAL_CAR_DEF from '../models/objects/festival_car.zdef';
 import XMAS_HOUSE_A_DEF from '../models/objects/xmas_house_a.zdef';
 import XMAS_HOUSE_B_DEF from '../models/objects/xmas_house_b.zdef';
+import XMAS_HOUSE_C_DEF from '../models/objects/xmas_house_c.zdef';
+import XMAS_LANTERN_DEF from '../models/objects/xmas_lantern.zdef';
+import XMAS_CANDY_CANE_DEF from '../models/objects/xmas_candy_cane.zdef';
+import XMAS_TREE_DEF from '../models/objects/xmas_tree.zdef';
+import SLEIGH_DEF from '../models/objects/sleigh.zdef';
+import REINDEER_DEF from '../models/objects/reindeer.zdef';
+import DOM_DEF from '../models/objects/dom.zdef';
+import MESSE_HALLE_DEF from '../models/objects/messe_halle.zdef';
+
+registerObjectDef(VESSEL.LIGHTHOUSE,          LIGHTHOUSE_DEF);
+registerObjectDef(VESSEL.WIND_TURBINE,        WIND_TURBINE_DEF);
+registerObjectDef(VESSEL.PLANE_WRECK,         PLANE_WRECK_DEF);
+registerObjectDef(VESSEL.SAILBOAT_BROKEN,     SAILBOAT_BROKEN_DEF);
+registerObjectDef(VESSEL.BAYWATCH_CAR,        BAYWATCH_CAR_DEF);
+registerObjectDef(VESSEL.BAYWATCH_HQ,         BAYWATCH_HQ_DEF);
+registerObjectDef(VESSEL.BAYWATCH_TOWER,      BAYWATCH_TOWER_DEF);
+registerObjectDef(VESSEL.BUOY,                BUOY_DEF);
+registerObjectDef(VESSEL.CONCERT_STAGE,       CONCERT_STAGE_DEF);
+registerObjectDef(VESSEL.FESTIVAL_TENT,       FESTIVAL_TENT_DEF);
+registerObjectDef(VESSEL.FESTIVAL_TENT_BROKEN,FESTIVAL_TENT_BROKEN_DEF);
+registerObjectDef(VESSEL.FESTIVAL_CAR,        FESTIVAL_CAR_DEF);
+registerObjectDef(VESSEL.XMAS_HOUSE_A,        XMAS_HOUSE_A_DEF);
+registerObjectDef(VESSEL.XMAS_HOUSE_B,        XMAS_HOUSE_B_DEF);
+registerObjectDef(VESSEL.XMAS_HOUSE_C,        XMAS_HOUSE_C_DEF);
+registerObjectDef(VESSEL.XMAS_LANTERN,        XMAS_LANTERN_DEF);
+registerObjectDef(VESSEL.XMAS_CANDY_CANE,     XMAS_CANDY_CANE_DEF);
+registerObjectDef(VESSEL.XMAS_TREE,           XMAS_TREE_DEF);
+registerObjectDef(VESSEL.SLEIGH,              SLEIGH_DEF);
+registerObjectDef(VESSEL.REINDEER,            REINDEER_DEF);
+registerObjectDef(VESSEL.DOM,                 DOM_DEF);
+registerObjectDef(VESSEL.MESSE_HALLE,         MESSE_HALLE_DEF);
 
 const getObjects = () => campaignHandler.getCurrentMissionData().objects || [];
 const getObjectByType = (type: string) => getObjects().find((o: any) => o.type === type) || null;
@@ -51,6 +94,12 @@ export const resolveAttachTo = (attachTo: any): { x: number; y: number; z: numbe
             if (!rp) return null;
             const lz = (RESEARCH_PLATFORM_DEF as any).landingZone;
             return { x: rp.x + lx, y: rp.y + ly, z: G.waterLevel + (lz?.z ?? 6.65) };
+        }
+        case VESSEL.DOM: {
+            const dom = G.SCENARIO_PROPS.find((p: any) => p.type === VESSEL.DOM);
+            if (!dom) return null;
+            const rzZ = (DOM_DEF as any).rescueZones?.[0]?.z ?? 6.0;
+            return { x: dom.x + lx, y: dom.y + ly, z: dom.gz + rzZ };
         }
     }
     return null;
@@ -402,14 +451,23 @@ export const initStaticObjectsFromMission = () => {
         ...getObjectsByType(VESSEL.XMAS_HOUSE_A).map((obj: any) => ({
             type: VESSEL.XMAS_HOUSE_A, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+            colorVariant: obj.colorVariant as string | undefined,
             chimneyPos: (XMAS_HOUSE_A_DEF as any).chimneyPos,
             rescueZones: (XMAS_HOUSE_A_DEF as any).rescueZones,
         })),
         ...getObjectsByType(VESSEL.XMAS_HOUSE_B).map((obj: any) => ({
             type: VESSEL.XMAS_HOUSE_B, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+            colorVariant: obj.colorVariant as string | undefined,
             chimneyPos: (XMAS_HOUSE_B_DEF as any).chimneyPos,
             rescueZones: (XMAS_HOUSE_B_DEF as any).rescueZones,
+        })),
+        ...getObjectsByType(VESSEL.XMAS_HOUSE_C).map((obj: any) => ({
+            type: VESSEL.XMAS_HOUSE_C, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
+            gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+            colorVariant: obj.colorVariant as string | undefined,
+            chimneyPos: (XMAS_HOUSE_C_DEF as any).chimneyPos,
+            rescueZones: (XMAS_HOUSE_C_DEF as any).rescueZones,
         })),
     ];
     G.XMAS_LANTERNS = getObjectsByType(VESSEL.XMAS_LANTERN).map((obj: any) => ({
@@ -428,6 +486,28 @@ export const initStaticObjectsFromMission = () => {
         x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
         gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
     }));
+    G.SCENARIO_PROPS = [
+        ...getObjectsByType(VESSEL.DOM).map((obj: any) => ({
+            type: VESSEL.DOM, x: obj.x, y: obj.y,
+            gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+        })),
+        ...getObjectsByType(VESSEL.MESSE_HALLE).map((obj: any) => ({
+            type: VESSEL.MESSE_HALLE, x: obj.x, y: obj.y,
+            gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+            angle: 0,
+            rescueZones: (MESSE_HALLE_DEF as any).rescueZones ?? [],
+        })),
+        ...getObjectsByType(VESSEL.XMAS_CANDY_CANE).map((obj: any) => ({
+            type: VESSEL.XMAS_CANDY_CANE, x: obj.x, y: obj.y,
+            gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+            angle: (obj.angle ?? 0) * Math.PI / 180,
+        })),
+        ...getObjectsByType(VESSEL.XMAS_TREE).map((obj: any) => ({
+            type: VESSEL.XMAS_TREE, x: obj.x, y: obj.y,
+            gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+            angle: 0,
+        })),
+    ];
     const missionData = campaignHandler.getCurrentMissionData() as any;
     const _startOnboard = Math.max(0, Math.min(6, missionData?.startOnboard ?? 0));
     const _spawnOnboardPersons = (missionData?.payloads ?? []).filter(

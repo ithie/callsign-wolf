@@ -1,6 +1,7 @@
 // ── Input Handlers ────────────────────────────────────────────────────────────
 // Sets up all window-level input: keyboard, native touch controls, Mac bridge.
 // Deps are injected via initInputHandlers() to avoid circular imports.
+import { CANVAS_SCALE } from './render-config';
 
 export interface InputDeps {
     keys: Record<string, boolean>;
@@ -14,9 +15,8 @@ export const initInputHandlers = (deps: InputDeps): void => {
     const { keys, isKeyAllowed, isTutorialRunning, notifyTutorialInput, canvas } = deps;
 
     const _resizeCanvas = () => {
-        const scale = 2;
-        canvas.width = Math.round(window.innerWidth / scale);
-        canvas.height = Math.round(window.innerHeight / scale);
+        canvas.width = Math.round(window.innerWidth * CANVAS_SCALE);
+        canvas.height = Math.round(window.innerHeight * CANVAS_SCALE);
         canvas.style.width = window.innerWidth + 'px';
         canvas.style.height = window.innerHeight + 'px';
     };

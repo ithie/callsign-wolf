@@ -35,6 +35,13 @@ const createZstate = () => {
 
 export const zstate = createZstate();
 
+export interface SnowFlake {
+    wx: number; wy: number; wz: number;
+    vz: number;
+    r: number;
+    alpha: number;
+}
+
 export const G = {
     goalCount: 0,
     totalRescued: 0,
@@ -71,11 +78,13 @@ export const G = {
     SLEIGHS: [] as any[],
     REINDEER_OBJECTS: [] as any[],
     VOLLEYBALL_COURTS: [] as { x: number; y: number; gz: number; angle: number }[],
+    SCENARIO_PROPS: [] as { type: string; x: number; y: number; gz: number }[],
     RINGS: [] as { x: number; y: number; z: number; radius: number; angle: number; flown: boolean; _lastD: number }[],
     seaTime: 0,
     payloads: [] as any[],
     activePayload: null as any,
     rescuerSwing: { x: 0, y: 0, vx: 0, vy: 0 },
+    snowFlakes: [] as SnowFlake[],
     npcHelis: [] as NpcHeli[],
     deliverMode: false,
     heli: {

@@ -97,11 +97,15 @@ Point light attached to a node. Coordinates are **model-local** (rotated with th
 {
   "x": -8.7, "y": -4.2, "z": 0.05,
   "color":    "#ff0000",         // on-color
-  "colorOff": "#550000",         // optional: off-color when blinking (default: omit = no blink)
-  "blink":    true,              // 500ms period; editor always renders as "on"
-  "radius":   1.5                // canvas pixels (default: 2)
+  "colorOff": "#550000",         // optional: off-color when blink=false (default: same as color)
+  "blink":    true,              // enables independent blink animation
+  "radius":   1.5,               // canvas pixels (default: 2)
+  "blinkHz":  5.0,               // blink frequency in Hz (default: 2.0); ignored when blink=false
+  "phase":    0.0                // cycle offset 0–1 — use to desync lights of the same object
 }
 ```
+
+`blinkHz` and `phase` make each light's blink independent. Without them, all blink-lights share a 2 Hz square wave. Duty cycle is fixed at 45% (on for 45% of each period).
 
 ---
 

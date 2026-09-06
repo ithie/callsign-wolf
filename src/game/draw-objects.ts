@@ -367,6 +367,70 @@ export const createDrawObjects = (
             ctx.beginPath();
             ctx.ellipse(pHead.x, pHead.y, hw, hw * 0.75, 0, 0, Math.PI * 2);
             ctx.fill();
+        } else if (type === 'xmas_elf') {
+            const base = iso(tX, tY, z0, cx, cy);
+            const s = (tileW / 64) * scale;
+            const headR = Math.max(1, 2.2 * s);
+            const bw = Math.max(1.5, 4.5 * s);
+            const legH = Math.max(1.5, 6.5 * s);
+            const torsoH = Math.max(1.5, 7 * s);
+            const bx = base.x, by = base.y;
+            const waving = heliPos !== undefined
+                && Math.hypot(heliPos.x - tX, heliPos.y - tY) < 5
+                && heliPos.z < 8;
+            // Ground shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.15)';
+            ctx.beginPath();
+            ctx.ellipse(bx, by, tileW * 0.12 * scale, tileH * 0.08 * scale, 0, 0, Math.PI * 2);
+            ctx.fill();
+            // Legs — dark green pants
+            ctx.fillStyle = '#1a5c28';
+            ctx.fillRect(bx - bw / 2, by - legH, bw * 0.38, legH);
+            ctx.fillRect(bx + bw / 2 - bw * 0.38, by - legH, bw * 0.38, legH);
+            // Tunic — bright green
+            ctx.fillStyle = '#2d8c3c';
+            ctx.fillRect(bx - bw / 2, by - legH - torsoH, bw, torsoH);
+            // Belt
+            ctx.fillStyle = '#8b4513';
+            ctx.fillRect(bx - bw / 2, by - legH - torsoH * 0.28, bw, Math.max(1, 1.5 * s));
+            // Left arm (always down)
+            ctx.fillStyle = '#2d8c3c';
+            ctx.fillRect(bx - bw, by - legH - torsoH * 0.7, bw * 0.5, Math.max(1, 2 * s));
+            // Right arm — waves when heli nearby
+            if (waving) {
+                const waveOff = Math.sin(Date.now() / 260) * headR * 0.9;
+                ctx.strokeStyle = '#2d8c3c';
+                ctx.lineWidth = Math.max(0.8, bw * 0.35);
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                ctx.moveTo(bx + bw * 0.5, by - legH - torsoH * 0.65);
+                ctx.lineTo(bx + bw * 0.9, by - legH - torsoH - headR * 0.8 + waveOff);
+                ctx.stroke();
+                ctx.lineCap = 'butt';
+            } else {
+                ctx.fillStyle = '#2d8c3c';
+                ctx.fillRect(bx + bw / 2, by - legH - torsoH * 0.7, bw * 0.5, Math.max(1, 2 * s));
+            }
+            // Head — skin
+            const headCY = by - legH - torsoH - headR + s * 0.5;
+            ctx.fillStyle = '#f2c898';
+            ctx.beginPath();
+            ctx.arc(bx, headCY, headR, 0, Math.PI * 2);
+            ctx.fill();
+            // Hat — red floppy triangle
+            const hatH = headR * 2.8;
+            ctx.fillStyle = '#cc2020';
+            ctx.beginPath();
+            ctx.moveTo(bx - headR * 1.1, headCY - headR * 0.7);
+            ctx.lineTo(bx + headR * 1.1, headCY - headR * 0.7);
+            ctx.lineTo(bx + headR * 0.4, headCY - headR * 0.7 - hatH);
+            ctx.closePath();
+            ctx.fill();
+            // White pompom at tip
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(bx + headR * 0.4, headCY - headR * 0.7 - hatH, headR * 0.28, 0, Math.PI * 2);
+            ctx.fill();
         }
     }
 
@@ -1053,7 +1117,6 @@ export const createDrawObjects = (
             // at higher iso depth naturally occlude lights/lines behind them.
             const _baked = applyNodes(getHeliType(type).def as any, {});
             const _def2 = getHeliType(type).def as any;
-            const _blinkOn = Math.floor(Date.now() / 500) % 2 === 0;
             type _DrawItem = { depth: number; fn: () => void };
             const _items: _DrawItem[] = [];
             for (const _face of _baked.faces) {
@@ -1077,7 +1140,12 @@ export const createDrawObjects = (
                     const lw = wf(_light.x, _light.y, _light.z);
                     const depth = lw.x + lw.y;
                     const sp = wfScreen(_light.x, _light.y, _light.z);
-                    const isOn = !_light.blink || _blinkOn;
+                    const isOn = !_light.blink || (() => {
+                        const hz = _light.blinkHz ?? 2;
+                        const period = 1000 / hz;
+                        const t = (Date.now() + (_light.phase ?? 0) * period) % period;
+                        return t < period * 0.45;
+                    })();
                     const color = isOn ? _light.color : (_light.colorOff ?? _light.color);
                     const r = Math.max(1.2, (_light.radius ?? 2) * lineScale);
                     const drawFn = () => {

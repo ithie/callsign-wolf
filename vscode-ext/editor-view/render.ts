@@ -7,65 +7,61 @@ import { renderNodes, applyParts } from '../../src/game/def-utils';
 import { createDrawObjects } from '../../src/game/draw-objects';
 import type { DEF, DEF2 } from '../../src/game/defs';
 
-import LIGHTHOUSE_RAW        from '../../src/game/models/objects/lighthouse.zdef';
-import WIND_TURBINE_RAW      from '../../src/game/models/objects/wind_turbine.zdef';
-import BUOY_RAW              from '../../src/game/models/objects/buoy.zdef';
-import BAYWATCH_CAR_RAW      from '../../src/game/models/objects/baywatch_car.zdef';
-import BAYWATCH_HQ_RAW       from '../../src/game/models/objects/baywatch_hq.zdef';
-import BAYWATCH_TOWER_RAW    from '../../src/game/models/objects/baywatch_tower.zdef';
-import CONCERT_STAGE_RAW     from '../../src/game/models/objects/concert_stage.zdef';
-import FESTIVAL_TENT_RAW     from '../../src/game/models/objects/festival_tent.zdef';
-import FESTIVAL_TENT_BRK_RAW from '../../src/game/models/objects/festival_tent_broken.zdef';
-import FESTIVAL_CAR_RAW      from '../../src/game/models/objects/festival_car.zdef';
-import XMAS_HOUSE_A_RAW      from '../../src/game/models/objects/xmas_house_a.zdef';
-import XMAS_HOUSE_B_RAW      from '../../src/game/models/objects/xmas_house_b.zdef';
-import XMAS_LANTERN_RAW      from '../../src/game/models/objects/xmas_lantern.zdef';
-import SLEIGH_RAW            from '../../src/game/models/objects/sleigh.zdef';
-import REINDEER_RAW          from '../../src/game/models/objects/reindeer.zdef';
-import VOLLEYBALL_COURT_RAW  from '../../src/game/models/objects/volleyball_court.zdef';
-import HANGAR_RAW            from '../../src/game/models/objects/hangar.zdef';
-import TOWER_RAW             from '../../src/game/models/objects/tower.zdef';
-import HANGAR_TOWER_RAW      from '../../src/game/models/objects/hangar_tower.zdef';
-import PLANE_WRECK_RAW       from '../../src/game/models/objects/plane_wreck.zdef';
-import SAILBOAT_BROKEN_RAW   from '../../src/game/models/objects/sailboat_broken.zdef';
-import RESEARCH_PLATFORM_RAW from '../../src/game/models/research_platform.zdef';
-import SUBMARINE_RAW         from '../../src/game/models/submarine.zdef';
-import CARRIER_RAW           from '../../src/game/models/carrier.zdef';
-import FRIGATE_RAW           from '../../src/game/models/frigate.zdef';
-import SUPPLY_VESSEL_RAW     from '../../src/game/models/supply_vessel.zdef';
-import SAILBOAT_RAW          from '../../src/game/models/sailboat.zdef';
-import SAR_BOAT_RAW          from '../../src/game/models/sar_boat.zdef';
-import PILOT_BOAT_RAW        from '../../src/game/models/pilot_boat.zdef';
+const _DEF_REGISTRY: Record<string, { path: string; v2: boolean }> = {
+    hangar:               { path: 'src/game/models/objects/hangar.zdef',               v2: false },
+    tower:                { path: 'src/game/models/objects/tower.zdef',                v2: false },
+    lighthouse:           { path: 'src/game/models/objects/lighthouse.zdef',           v2: false },
+    wind_turbine:         { path: 'src/game/models/objects/wind_turbine.zdef',         v2: false },
+    buoy:                 { path: 'src/game/models/objects/buoy.zdef',                 v2: false },
+    baywatch_car:         { path: 'src/game/models/objects/baywatch_car.zdef',         v2: false },
+    baywatch_hq:          { path: 'src/game/models/objects/baywatch_hq.zdef',          v2: false },
+    baywatch_tower:       { path: 'src/game/models/objects/baywatch_tower.zdef',       v2: false },
+    concert_stage:        { path: 'src/game/models/objects/concert_stage.zdef',        v2: false },
+    festival_tent:        { path: 'src/game/models/objects/festival_tent.zdef',        v2: false },
+    festival_tent_broken: { path: 'src/game/models/objects/festival_tent_broken.zdef', v2: false },
+    festival_car:         { path: 'src/game/models/objects/festival_car.zdef',         v2: false },
+    xmas_house_a:         { path: 'src/game/models/objects/xmas_house_a.zdef',         v2: false },
+    xmas_house_b:         { path: 'src/game/models/objects/xmas_house_b.zdef',         v2: false },
+    xmas_house_c:         { path: 'src/game/models/objects/xmas_house_c.zdef',         v2: false },
+    xmas_lantern:         { path: 'src/game/models/objects/xmas_lantern.zdef',         v2: false },
+    xmas_candy_cane:      { path: 'src/game/models/objects/xmas_candy_cane.zdef',      v2: false },
+    xmas_tree:            { path: 'src/game/models/objects/xmas_tree.zdef',            v2: false },
+    sleigh:               { path: 'src/game/models/objects/sleigh.zdef',               v2: false },
+    reindeer:             { path: 'src/game/models/objects/reindeer.zdef',             v2: false },
+    volleyball_court:     { path: 'src/game/models/objects/volleyball_court.zdef',     v2: false },
+    hangar_tower:         { path: 'src/game/models/objects/hangar_tower.zdef',         v2: false },
+    plane_wreck:          { path: 'src/game/models/objects/plane_wreck.zdef',          v2: false },
+    sailboat_broken:      { path: 'src/game/models/objects/sailboat_broken.zdef',      v2: false },
+    dom:                  { path: 'src/game/models/objects/dom.zdef',                  v2: false },
+    messe_halle:          { path: 'src/game/models/objects/messe_halle.zdef',          v2: false },
+    research_platform:    { path: 'src/game/models/research_platform.zdef',            v2: false },
+    submarine:            { path: 'src/game/models/submarine.zdef',                    v2: false },
+    carrier:              { path: 'src/game/models/carrier.zdef',                      v2: true  },
+    frigate:              { path: 'src/game/models/frigate.zdef',                      v2: true  },
+    supply_vessel:        { path: 'src/game/models/supply_vessel.zdef',                v2: true  },
+    salvage_tug:          { path: 'src/game/models/supply_vessel.zdef',                v2: true  },
+    boat:                 { path: 'src/game/models/sailboat.zdef',                     v2: false },
+    sar_boat:             { path: 'src/game/models/sar_boat.zdef',                     v2: true  },
+    pilot_boat:           { path: 'src/game/models/pilot_boat.zdef',                   v2: true  },
+};
 
-const _DEF_MAP: Record<string, { def: unknown; v2: boolean }> = {
-    lighthouse:           { def: LIGHTHOUSE_RAW,        v2: false },
-    wind_turbine:         { def: WIND_TURBINE_RAW,      v2: false },
-    buoy:                 { def: BUOY_RAW,              v2: false },
-    baywatch_car:         { def: BAYWATCH_CAR_RAW,      v2: false },
-    baywatch_hq:          { def: BAYWATCH_HQ_RAW,       v2: false },
-    baywatch_tower:       { def: BAYWATCH_TOWER_RAW,    v2: false },
-    concert_stage:        { def: CONCERT_STAGE_RAW,     v2: false },
-    festival_tent:        { def: FESTIVAL_TENT_RAW,     v2: false },
-    festival_tent_broken: { def: FESTIVAL_TENT_BRK_RAW, v2: false },
-    festival_car:         { def: FESTIVAL_CAR_RAW,      v2: false },
-    xmas_house_a:         { def: XMAS_HOUSE_A_RAW,      v2: false },
-    xmas_house_b:         { def: XMAS_HOUSE_B_RAW,      v2: false },
-    xmas_lantern:         { def: XMAS_LANTERN_RAW,      v2: false },
-    sleigh:               { def: SLEIGH_RAW,             v2: false },
-    reindeer:             { def: REINDEER_RAW,           v2: false },
-    volleyball_court:     { def: VOLLEYBALL_COURT_RAW,  v2: false },
-    hangar_tower:         { def: HANGAR_TOWER_RAW,       v2: false },
-    plane_wreck:          { def: PLANE_WRECK_RAW,        v2: false },
-    sailboat_broken:      { def: SAILBOAT_BROKEN_RAW,   v2: false },
-    research_platform:    { def: RESEARCH_PLATFORM_RAW, v2: false },
-    submarine:            { def: SUBMARINE_RAW,          v2: false },
-    carrier:              { def: CARRIER_RAW,            v2: true  },
-    frigate:              { def: FRIGATE_RAW,            v2: true  },
-    supply_vessel:        { def: SUPPLY_VESSEL_RAW,      v2: true  },
-    sar_boat:             { def: SAR_BOAT_RAW,           v2: true  },
-    pilot_boat:           { def: PILOT_BOAT_RAW,         v2: true  },
-    boat:                 { def: SAILBOAT_RAW,           v2: false },
-    salvage_tug:          { def: SUPPLY_VESSEL_RAW,      v2: true  },
+const _defCache  = new Map<string, { def: unknown; v2: boolean }>();
+const _pending   = new Set<string>();
+let _onRequestDef: ((name: string, path: string, v2: boolean) => void) | null = null;
+
+export const setDefRequestCallback = (fn: (name: string, path: string, v2: boolean) => void): void => {
+    _onRequestDef = fn;
+};
+
+const _getDefEntry = (name: string): { def: unknown; v2: boolean } | null => {
+    const cached = _defCache.get(name);
+    if (cached) return cached;
+    const reg = _DEF_REGISTRY[name];
+    if (reg && !_pending.has(name)) {
+        _pending.add(name);
+        _onRequestDef?.(name, reg.path, reg.v2);
+    }
+    return null;
 };
 
 // ── ISO Camera ────────────────────────────────────────────────────────────────
@@ -369,7 +365,7 @@ export const drawMap = (): void => {
         const cy    = toSY(obj.x + 0.5, obj.y + 0.5);
         const objAngle    = (obj as any).angle ?? 0;           // degrees — for _isoArrow
         const objAngleRad = objAngle * Math.PI / 180;          // radians — for _renderDEF
-        const defEntry = obj.type !== 'pad' ? _DEF_MAP[obj.type] : undefined;
+        const defEntry = obj.type !== 'pad' ? _getDefEntry(obj.type) : null;
 
         if (isSel) { ctx.shadowBlur = 14; ctx.shadowColor = '#fff'; }
 
@@ -393,11 +389,12 @@ export const drawMap = (): void => {
             if (isSel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
             ctx.shadowBlur = 0;
             // Hangar building — same offset as game: xMax-3 = obj.x+4, yMin-1 = obj.y-1
-            _renderDEF(HANGAR_RAW, false, obj.x + 4, obj.y - 1, wl, 0);
+            const _hn = _getDefEntry('hangar');
+            if (_hn) _renderDEF(_hn.def, false, obj.x + 4, obj.y - 1, wl, 0);
             // Tower (variant-dependent)
-            const towerDef = towerVariant === 'new' ? HANGAR_TOWER_RAW : TOWER_RAW;
-            const towerX   = towerVariant === 'new' ? obj.x + 7 : obj.x + 6.5;
-            _renderDEF(towerDef, false, towerX, obj.y - 1, wl, 0);
+            const towerX  = towerVariant === 'new' ? obj.x + 7 : obj.x + 6.5;
+            const _tw = _getDefEntry(towerVariant === 'new' ? 'hangar_tower' : 'tower');
+            if (_tw) _renderDEF(_tw.def, false, towerX, obj.y - 1, wl, 0);
             // Corner lights matching game _drawPadLights positions
             ([
                 [obj.x + 0.5, obj.y + 0.5], [obj.x + 7.5, obj.y + 0.5],
@@ -508,7 +505,7 @@ export const drawMap = (): void => {
                 baywatch_hq: 'ui_baywatch_hq', baywatch_tower: 'ui_baywatch_tower',
                 concert_stage: 'ui_concert_stage', festival_tent: 'ui_festival_tent',
                 festival_tent_broken: 'ui_festival_tent_broken', festival_car: 'ui_festival_car',
-                xmas_house_a: 'ui_xmas_house', xmas_house_b: 'ui_xmas_house',
+                xmas_house_a: 'ui_xmas_house', xmas_house_b: 'ui_xmas_house', xmas_house_c: 'ui_xmas_house',
                 xmas_lantern: 'ui_xmas_lantern', sleigh: 'ui_sleigh', reindeer: 'ui_reindeer',
             };
 
@@ -579,9 +576,11 @@ export const drawMap = (): void => {
                 };
                 const aEl = document.getElementById(simpleId[obj.type] || '') as HTMLInputElement | null;
                 if (aEl) aEl.value = ((obj as any).angle ?? 0).toString();
-                if (obj.type === 'xmas_house_a' || obj.type === 'xmas_house_b') {
+                if (obj.type === 'xmas_house_a' || obj.type === 'xmas_house_b' || obj.type === 'xmas_house_c') {
                     const typeSel = document.getElementById('m_xmas_house_type') as HTMLSelectElement | null;
                     if (typeSel) typeSel.value = obj.type;
+                    const colorSel = document.getElementById('m_xmas_house_color') as HTMLSelectElement | null;
+                    if (colorSel) colorSel.value = (obj as any).colorVariant ?? '';
                 }
                 if (obj.type === 'festival_tent' || obj.type === 'festival_tent_broken') {
                     const cid = obj.type === 'festival_tent' ? 'm_tent_color' : 'm_tent_broken_color';
@@ -618,16 +617,25 @@ export const drawMap = (): void => {
 
     // ── Payloads ──────────────────────────────────────────────────────────────
     const payloads = m.payloads || [];
-    payloads.forEach((p, idx) => {
-        const { sx: px, sy: py } = { sx: toSX(p.x + 0.5, p.y + 0.5), sy: toSY(p.x + 0.5, p.y + 0.5) };
+    payloads.forEach((p: any, idx: number) => {
+        const pAny = p as any;
+        // Resolve effective world position — handles attachTo (no absolute x/y)
+        let effX = pAny.x, effY = pAny.y;
+        if ((effX === undefined || isNaN(effX)) && pAny.attachTo?.objectType) {
+            const ref = (m.objects as any[]).find((o: any) => o.type === pAny.attachTo.objectType);
+            if (ref) { effX = ref.x + (pAny.attachTo.localX ?? 0); effY = ref.y + (pAny.attachTo.localY ?? 0); }
+        }
+        if (effX === undefined || isNaN(effX)) return; // still unresolved — skip
+
+        const { sx: px, sy: py } = { sx: toSX(effX + 0.5, effY + 0.5), sy: toSY(effX + 0.5, effY + 0.5) };
         const r = Math.max(4, hw * 0.6);
-        const isAtt = !!(p as any).attachTo;
+        const isAtt = !!pAny.attachTo;
         const isSel = state.selectedPayloadIdx === idx;
 
         if (isSel) { ctx.shadowBlur = 10; ctx.shadowColor = '#fff'; }
 
         if (p.type === 'person' || p.type === 'rescuer') {
-            drawPerson(p.x + 0.5, p.y + 0.5, wl, 0, true, defCamX, defCamY,
+            drawPerson(effX + 0.5, effY + 0.5, wl, 0, true, defCamX, defCamY,
                 p.type === 'rescuer' ? 'rescuer' : undefined, (p as any).outfitColors);
             // selection ring
             if (isSel) {
@@ -636,7 +644,7 @@ export const drawMap = (): void => {
                 ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
             }
         } else if (p.type === 'crate') {
-            const cp = defIso(p.x + 0.5, p.y + 0.5, wl, defCamX, defCamY);
+            const cp = defIso(effX + 0.5, effY + 0.5, wl, defCamX, defCamY);
             const cs = defTW * 0.22;
             ctx.fillStyle = isAtt ? '#44ccff' : '#d84';
             ctx.strokeStyle = '#530';
@@ -873,4 +881,10 @@ export const minimapHitToGrid = (sx: number, sy: number, gs: number): { gx: numb
     if (sx < MX || sx > MX + MW || sy < MY || sy > MY + MH) return null;
     const ts = Math.min(MW / gs, MH / gs);
     return { gx: (sx - MX) / ts, gy: (sy - MY) / ts };
+};
+
+export const receiveDefData = (name: string, data: unknown, v2: boolean): void => {
+    _defCache.set(name, { def: data, v2 });
+    _pending.delete(name);
+    drawMap();
 };

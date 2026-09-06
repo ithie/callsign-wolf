@@ -5275,6 +5275,7 @@
     filename: null,
     selectedFragmentIdx: -1
   };
+  var wireframe = [false, false, false, false];
   var buildTestParams = () => {
     const p = {};
     for (const part of state.def?.parts ?? []) {
@@ -5340,6 +5341,11 @@
       btn.style.display = q === GAME_VIEW_Q ? "none" : "";
       btn.style.top = Math.floor(q / 2) * qh + 4 + "px";
       btn.style.left = q % 2 * qw + qw - 48 + "px";
+    });
+    document.querySelectorAll(".quad-wireframe-toggle").forEach((btn, q) => {
+      btn.style.display = q === GAME_VIEW_Q ? "none" : "";
+      btn.style.top = Math.floor(q / 2) * qh + 4 + "px";
+      btn.style.left = q % 2 * qw + qw - 72 + "px";
     });
   };
   var resize = () => {
@@ -5499,6 +5505,29 @@
       ctx.beginPath();
       ctx.rect(ox, oy, qw, qh);
       ctx.clip();
+      const _computeModelDepth = (faces) => {
+        if (!faces.length) return 0;
+        const cosA = Math.cos(renderViewAngle), sinA = Math.sin(renderViewAngle);
+        let sum = 0;
+        for (const f of faces) {
+          let cx = 0, cy = 0;
+          for (const v of f.verts) {
+            cx += v[0];
+            cy += v[1];
+          }
+          sum += cx / f.verts.length * cosA + cy / f.verts.length * sinA;
+        }
+        return sum / faces.length;
+      };
+      const _gridDepth = (grid) => grid.x * Math.cos(renderViewAngle) + grid.y * Math.sin(renderViewAngle);
+      if (state.def) {
+        const _md0 = _computeModelDepth(getActiveFaces());
+        if (_gridDepth(g) <= _md0) drawGrid(g);
+        if (_gridDepth(gv) <= _md0) drawGridV(gv);
+      } else {
+        drawGrid(g);
+        drawGridV(gv);
+      }
       if (state.def) {
         const testParams = buildTestParams();
         const activeFaces = getActiveFaces();
@@ -5633,8 +5662,27 @@
         ctx.textAlign = "center";
         ctx.fillText("Kein Modell", ox + qw / 2, oy + qh / 2);
       }
-      drawGrid(g);
-      drawGridV(gv);
+      if (state.def) {
+        const _md2 = _computeModelDepth(getActiveFaces());
+        if (_gridDepth(g) > _md2) drawGrid(g);
+        if (_gridDepth(gv) > _md2) drawGridV(gv);
+      }
+      if (wireframe[q] && state.def) {
+        const _allFaces = getActiveFaces();
+        ctx.save();
+        ctx.strokeStyle = "rgba(180,220,255,0.45)";
+        ctx.lineWidth = 0.7;
+        for (const f of _allFaces) {
+          if (!f.verts.length) continue;
+          const pts = f.verts.map((v) => localToScreen(v[0], v[1], v[2]));
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.closePath();
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
       const isGameView = q === GAME_VIEW_Q;
       const activeColor = isGameView ? "rgba(255,190,60,0.7)" : "rgba(100,180,255,0.55)";
       ctx.strokeStyle = q === activeQ ? activeColor : isGameView ? "rgba(255,180,50,0.2)" : "rgba(255,255,255,0.07)";
@@ -5857,13 +5905,49 @@
     <div class="face-item ${i === state.selectedFaceIdx ? "active" : ""}" data-i="${i}">
       <div class="face-swatch" style="background:${f.color}"></div>
       <div class="face-id" title="${f.id}">${f.id}</div>
+      <button class="face-del-btn" data-i="${i}" title="Fl\xE4che l\xF6schen">\u2715</button>
     </div>`).join("");
     list.querySelectorAll(".face-item").forEach((el) => {
-      el.addEventListener("click", () => selectFace(parseInt(el.dataset["i"] ?? "0")));
+      const i = parseInt(el.dataset["i"] ?? "0");
+      el.addEventListener("click", (e) => {
+        if (e.target.closest(".face-del-btn")) return;
+        selectFace(i);
+      });
+      el.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        selectFace(i);
+        _showFaceCtxMenu(e.clientX, e.clientY, i);
+      });
+      const swatch = el.querySelector(".face-swatch");
+      if (swatch) {
+        swatch.addEventListener("dblclick", (e) => {
+          e.stopPropagation();
+          selectFace(i);
+          _showFaceCtxMenu(e.clientX, e.clientY - 10, i);
+          setTimeout(() => {
+            const picker = document.querySelector('.ctx-menu input[type="color"]');
+            if (picker) picker.click();
+          }, 50);
+        });
+      }
+    });
+    list.querySelectorAll(".face-del-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const i = parseInt(btn.dataset["i"] ?? "0");
+        const allFaces = getActiveFaces();
+        allFaces.splice(i, 1);
+        state.selectedFaceIdx = Math.min(state.selectedFaceIdx, allFaces.length - 1);
+        if (!allFaces.length) state.selectedFaceIdx = -1;
+        state.selectedVertIdx = -1;
+        markDirty();
+        renderAll();
+      });
     });
   };
   var renderFaceEditor = () => {
-    const sec = document.getElementById("face-editor");
+    const sec = document.getElementById("vert-sec");
+    const label = document.getElementById("vert-sec-label");
     const faces = getActiveFaces();
     if (state.selectedFaceIdx < 0 || !state.def || !faces.length) {
       sec.style.display = "none";
@@ -5875,18 +5959,7 @@
       return;
     }
     sec.style.display = "";
-    document.getElementById("face-id-input").value = face.id;
-    document.getElementById("face-color").value = toColorInput(face.color);
-    document.getElementById("face-color-hex").value = face.color;
-    const hasStroke = !!face.stroke;
-    document.getElementById("face-has-stroke").checked = hasStroke;
-    document.getElementById("face-stroke").value = toColorInput(face.stroke || "#aaaaaa");
-    document.getElementById("face-stroke-hex").value = face.stroke || "#aaaaaa";
-    document.getElementById("face-stroke-w").value = String(face.strokeWidth ?? 1);
-    const hasNormal = Array.isArray(face.normal);
-    document.getElementById("face-has-normal").checked = hasNormal;
-    document.getElementById("face-nx").value = String(hasNormal ? face.normal[0] : 0);
-    document.getElementById("face-ny").value = String(hasNormal ? face.normal[1] : 0);
+    label.textContent = face.id;
     renderVertList(face);
   };
   var renderVertList = (face) => {
@@ -5897,6 +5970,7 @@
       <input type="number" class="vx" step="0.01" value="${v[0].toFixed(3)}" style="width:52px">
       <input type="number" class="vy" step="0.01" value="${v[1].toFixed(3)}" style="width:52px">
       <input type="number" class="vz" step="0.01" value="${v[2].toFixed(3)}" style="width:52px">
+      <button class="vert-del-btn" data-i="${i}" title="Vertex l\xF6schen">\u2715</button>
     </div>`).join("");
     list.querySelectorAll(".vert-row").forEach((row) => {
       const i = parseInt(row.dataset["i"] ?? "0");
@@ -5918,6 +5992,15 @@
       row.querySelector(".vz").addEventListener("input", (e) => {
         face.verts[i][2] = parseFloat(e.target.value) || 0;
         markDirty();
+        draw();
+      });
+      row.querySelector(".vert-del-btn").addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (face.verts.length <= 3) return;
+        face.verts.splice(i, 1);
+        state.selectedVertIdx = Math.min(state.selectedVertIdx, face.verts.length - 1);
+        markDirty();
+        renderFaceEditor();
         draw();
       });
     });
@@ -6052,6 +6135,51 @@
         lz[t.dataset["f"]] = parseFloat(t.value) || 0;
         markDirty();
         draw();
+      });
+    });
+  };
+  var renderLights = () => {
+    const panel = document.getElementById("lights-panel");
+    const lights = state.def?.lights;
+    if (!lights?.length) {
+      panel.innerHTML = '<div class="empty">\u2013</div>';
+      return;
+    }
+    panel.innerHTML = lights.map((l, i) => `
+    <div class="cbox-block" style="margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${l.color ?? "#fff"};border:1px solid #444;flex-shrink:0"></span>
+        <span style="font-size:10px;opacity:0.6">[${l.pos.map((v) => v.toFixed(2)).join(", ")}]</span>
+      </div>
+      <div class="cbox-grid">
+        <label>Hz</label>
+        <input type="number" step="0.1" min="0" value="${l.blinkHz ?? ""}" class="li-hz" data-idx="${i}" placeholder="immer an" style="grid-column:2/4">
+        <label>Phase</label>
+        <input type="number" step="0.01" min="0" max="1" value="${l.phase ?? 0}" class="li-ph" data-idx="${i}" style="grid-column:2/4">
+        <label>Duty</label>
+        <input type="number" step="0.05" min="0.05" max="1" value="${l.dutyCycle ?? 0.5}" class="li-dc" data-idx="${i}" style="grid-column:2/4">
+      </div>
+    </div>`).join("");
+    panel.querySelectorAll(".li-hz").forEach((inp) => {
+      inp.addEventListener("input", () => {
+        const idx = parseInt(inp.dataset["idx"]);
+        const v = parseFloat(inp.value);
+        lights[idx].blinkHz = isNaN(v) || v <= 0 ? void 0 : v;
+        markDirty();
+      });
+    });
+    panel.querySelectorAll(".li-ph").forEach((inp) => {
+      inp.addEventListener("input", () => {
+        const idx = parseInt(inp.dataset["idx"]);
+        lights[idx].phase = Math.max(0, Math.min(1, parseFloat(inp.value) || 0));
+        markDirty();
+      });
+    });
+    panel.querySelectorAll(".li-dc").forEach((inp) => {
+      inp.addEventListener("input", () => {
+        const idx = parseInt(inp.dataset["idx"]);
+        lights[idx].dutyCycle = Math.max(0.05, Math.min(1, parseFloat(inp.value) || 0.5));
+        markDirty();
       });
     });
   };
@@ -6304,6 +6432,7 @@
     renderCboxList();
     renderZoneList();
     renderLandingZone();
+    renderLights();
     renderFragmentList();
     draw();
   };
@@ -6676,6 +6805,7 @@
   });
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
+      _closeCtxMenu();
       const g = grids[activeQ], gv = gridVs[activeQ];
       if (g.selected) {
         g.selected = false;
@@ -6723,85 +6853,6 @@
     markDirty();
   });
   document.getElementById("show-cboxes").addEventListener("change", () => draw());
-  document.getElementById("face-id-input").addEventListener("input", (e) => {
-    const faces = getActiveFaces();
-    if (state.selectedFaceIdx < 0 || !faces.length) return;
-    faces[state.selectedFaceIdx].id = e.target.value;
-    markDirty();
-    renderFaceList();
-  });
-  var setupColorPair = (colorId, hexId, apply) => {
-    document.getElementById(colorId).addEventListener("input", (e) => {
-      const v = e.target.value;
-      document.getElementById(hexId).value = v;
-      apply(v);
-    });
-    document.getElementById(hexId).addEventListener("change", (e) => {
-      const v = e.target.value.trim();
-      if (/^#[0-9a-fA-F]{3,8}$/.test(v) || v.startsWith("rgba")) {
-        document.getElementById(colorId).value = toColorInput(v);
-        apply(v);
-      }
-    });
-  };
-  setupColorPair("face-color", "face-color-hex", (v) => {
-    const faces = getActiveFaces();
-    if (state.selectedFaceIdx < 0 || !faces.length) return;
-    faces[state.selectedFaceIdx].color = v;
-    markDirty();
-    renderFaceList();
-    draw();
-  });
-  setupColorPair("face-stroke", "face-stroke-hex", (v) => {
-    const faces = getActiveFaces();
-    if (state.selectedFaceIdx < 0 || !faces.length) return;
-    if (document.getElementById("face-has-stroke").checked) {
-      faces[state.selectedFaceIdx].stroke = v;
-      markDirty();
-      draw();
-    }
-  });
-  document.getElementById("face-has-stroke").addEventListener("change", (e) => {
-    const faces = getActiveFaces();
-    if (state.selectedFaceIdx < 0 || !faces.length) return;
-    faces[state.selectedFaceIdx].stroke = e.target.checked ? document.getElementById("face-stroke-hex").value || "#aaaaaa" : null;
-    markDirty();
-    draw();
-  });
-  document.getElementById("face-stroke-w").addEventListener("input", (e) => {
-    const faces = getActiveFaces();
-    if (state.selectedFaceIdx < 0 || !faces.length) return;
-    faces[state.selectedFaceIdx].strokeWidth = parseFloat(e.target.value) || 1;
-    markDirty();
-    draw();
-  });
-  document.getElementById("face-has-normal").addEventListener("change", (e) => {
-    const faces = getActiveFaces();
-    if (state.selectedFaceIdx < 0 || !faces.length) return;
-    const face = faces[state.selectedFaceIdx];
-    if (e.target.checked) {
-      face.normal = [
-        parseFloat(document.getElementById("face-nx").value) || 0,
-        parseFloat(document.getElementById("face-ny").value) || 0
-      ];
-    } else {
-      delete face.normal;
-    }
-    markDirty();
-    draw();
-  });
-  ["face-nx", "face-ny"].forEach((id) => {
-    document.getElementById(id).addEventListener("input", () => {
-      const faces = getActiveFaces();
-      if (state.selectedFaceIdx < 0 || !faces.length || !document.getElementById("face-has-normal").checked) return;
-      faces[state.selectedFaceIdx].normal = [
-        parseFloat(document.getElementById("face-nx").value) || 0,
-        parseFloat(document.getElementById("face-ny").value) || 0
-      ];
-      markDirty();
-      draw();
-    });
-  });
   document.getElementById("btn-add-vert").addEventListener("click", () => {
     const faces = getActiveFaces();
     if (state.selectedFaceIdx < 0 || !faces.length) return;
@@ -6816,7 +6867,8 @@
     if (state.selectedFaceIdx < 0 || !faces.length) return;
     const face = faces[state.selectedFaceIdx];
     if (face.verts.length <= 3) return;
-    face.verts.pop();
+    const delIdx = state.selectedVertIdx >= 0 && state.selectedVertIdx < face.verts.length ? state.selectedVertIdx : face.verts.length - 1;
+    face.verts.splice(delIdx, 1);
     state.selectedVertIdx = Math.min(state.selectedVertIdx, face.verts.length - 1);
     markDirty();
     renderFaceEditor();
@@ -6865,7 +6917,7 @@
       return;
     }
     const faces = getActiveFaces();
-    faces.push({ id: "face_" + faces.length, verts: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], color: "#888888" });
+    faces.push({ id: "face_" + faces.length, verts: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], color: "#1a70c8" });
     state.selectedFaceIdx = faces.length - 1;
     state.selectedVertIdx = -1;
     markDirty();
@@ -6957,6 +7009,215 @@
       draw();
     });
   });
+  document.querySelectorAll(".quad-wireframe-toggle").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const q = parseInt(btn.dataset["q"] ?? "0");
+      wireframe[q] = !wireframe[q];
+      btn.classList.toggle("active", wireframe[q]);
+      draw();
+    });
+  });
+  document.getElementById("btn-clear-grid").addEventListener("click", () => {
+    const g = grids[activeQ];
+    g.visible = false;
+    g.selected = false;
+    g.x = 0;
+    g.y = 0;
+    g.z = 0;
+    syncGridUI();
+    draw();
+  });
+  document.getElementById("btn-clear-gridv").addEventListener("click", () => {
+    const gv = gridVs[activeQ];
+    gv.visible = false;
+    gv.selected = false;
+    gv.x = 0;
+    gv.y = 0;
+    gv.z = 0;
+    syncGridUI();
+    draw();
+  });
+  var _closeCtxMenu = () => {
+    document.querySelectorAll(".ctx-menu").forEach((m) => m.remove());
+  };
+  var _showFaceCtxMenu = (clientX, clientY, faceIdx) => {
+    _closeCtxMenu();
+    const faces = getActiveFaces();
+    const face = faces[faceIdx];
+    if (!face) return;
+    const menu = document.createElement("div");
+    menu.className = "ctx-menu";
+    const colorRow = document.createElement("div");
+    colorRow.className = "ctx-menu-sub";
+    const colorPicker = document.createElement("input");
+    colorPicker.type = "color";
+    colorPicker.value = toColorInput(face.color);
+    colorPicker.addEventListener("input", (e) => {
+      face.color = e.target.value;
+      markDirty();
+      renderAll();
+    });
+    const colorLabel = document.createElement("label");
+    colorLabel.textContent = "Farbe";
+    colorRow.appendChild(colorPicker);
+    colorRow.appendChild(colorLabel);
+    menu.appendChild(colorRow);
+    const strokeRow = document.createElement("div");
+    strokeRow.className = "ctx-menu-sub";
+    const strokeCheck = document.createElement("input");
+    strokeCheck.type = "checkbox";
+    strokeCheck.checked = !!face.stroke;
+    const strokePicker = document.createElement("input");
+    strokePicker.type = "color";
+    strokePicker.value = toColorInput(face.stroke || "#aaaaaa");
+    strokePicker.style.display = face.stroke ? "" : "none";
+    strokeCheck.addEventListener("change", (e) => {
+      if (e.target.checked) {
+        face.stroke = strokePicker.value;
+        face.strokeWidth = face.strokeWidth ?? 1;
+        strokePicker.style.display = "";
+      } else {
+        delete face.stroke;
+        delete face.strokeWidth;
+        strokePicker.style.display = "none";
+      }
+      markDirty();
+      renderAll();
+    });
+    strokePicker.addEventListener("input", (e) => {
+      if (face.stroke !== void 0) {
+        face.stroke = e.target.value;
+        markDirty();
+        renderAll();
+      }
+    });
+    const strokeLabel = document.createElement("label");
+    strokeLabel.textContent = "Kontur";
+    strokeRow.appendChild(strokeCheck);
+    strokeRow.appendChild(strokeLabel);
+    strokeRow.appendChild(strokePicker);
+    menu.appendChild(strokeRow);
+    const sep1 = document.createElement("div");
+    sep1.className = "ctx-menu-sep";
+    menu.appendChild(sep1);
+    const normalCheck = document.createElement("div");
+    normalCheck.className = "ctx-menu-sub";
+    const normalToggle = document.createElement("input");
+    normalToggle.type = "checkbox";
+    normalToggle.checked = Array.isArray(face.normal);
+    const nlabel = document.createElement("label");
+    nlabel.textContent = "Normal";
+    normalCheck.appendChild(normalToggle);
+    normalCheck.appendChild(nlabel);
+    menu.appendChild(normalCheck);
+    const normalInputs = document.createElement("div");
+    normalInputs.className = "ctx-menu-sub";
+    normalInputs.style.display = normalToggle.checked ? "" : "none";
+    ["nx", "ny"].forEach((lbl, idx) => {
+      const l = document.createElement("label");
+      l.textContent = lbl;
+      const inp = document.createElement("input");
+      inp.type = "number";
+      inp.step = "0.1";
+      inp.style.width = "46px";
+      inp.value = String(Array.isArray(face.normal) ? face.normal[idx] : 0);
+      inp.addEventListener("input", () => {
+        if (!Array.isArray(face.normal)) face.normal = [0, 0];
+        face.normal[idx] = parseFloat(inp.value) || 0;
+        markDirty();
+        renderAll();
+      });
+      normalInputs.appendChild(l);
+      normalInputs.appendChild(inp);
+    });
+    menu.appendChild(normalInputs);
+    normalToggle.addEventListener("change", (e) => {
+      const inputs = normalInputs.querySelectorAll("input");
+      if (e.target.checked) {
+        face.normal = [parseFloat(inputs[0].value) || 0, parseFloat(inputs[1].value) || 0];
+        normalInputs.style.display = "";
+      } else {
+        delete face.normal;
+        normalInputs.style.display = "none";
+      }
+      markDirty();
+      renderAll();
+    });
+    const sep2 = document.createElement("div");
+    sep2.className = "ctx-menu-sep";
+    menu.appendChild(sep2);
+    const renameRow = document.createElement("div");
+    renameRow.className = "ctx-menu-sub";
+    const renameLabel = document.createElement("label");
+    renameLabel.textContent = "ID:";
+    const renameInput = document.createElement("input");
+    renameInput.type = "text";
+    renameInput.value = face.id;
+    renameInput.addEventListener("input", (e) => {
+      face.id = e.target.value;
+      markDirty();
+      renderFaceList();
+      const secLabel = document.getElementById("vert-sec-label");
+      if (secLabel) secLabel.textContent = face.id;
+    });
+    renameRow.appendChild(renameLabel);
+    renameRow.appendChild(renameInput);
+    menu.appendChild(renameRow);
+    const sep3 = document.createElement("div");
+    sep3.className = "ctx-menu-sep";
+    menu.appendChild(sep3);
+    const delItem = document.createElement("div");
+    delItem.className = "ctx-menu-item danger";
+    delItem.textContent = "\u2715 L\xF6schen";
+    delItem.addEventListener("click", () => {
+      faces.splice(faceIdx, 1);
+      state.selectedFaceIdx = Math.min(state.selectedFaceIdx, faces.length - 1);
+      if (!faces.length) state.selectedFaceIdx = -1;
+      state.selectedVertIdx = -1;
+      _closeCtxMenu();
+      markDirty();
+      renderAll();
+    });
+    menu.appendChild(delItem);
+    document.body.appendChild(menu);
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let x = clientX, y = clientY;
+    if (x + menu.offsetWidth > vw) x = vw - menu.offsetWidth - 4;
+    if (y + menu.offsetHeight > vh) y = vh - menu.offsetHeight - 4;
+    menu.style.left = x + "px";
+    menu.style.top = y + "px";
+    const onOutside = (e) => {
+      if (!menu.contains(e.target)) {
+        _closeCtxMenu();
+        document.removeEventListener("mousedown", onOutside);
+      }
+    };
+    setTimeout(() => document.addEventListener("mousedown", onOutside), 0);
+  };
+  area.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    setRenderContext(lockedQ);
+    if (!state.def) return;
+    const activeFaces = getActiveFaces();
+    if (!activeFaces.length) return;
+    const order = activeFaces.map((_, i) => i).sort((a, b) => faceCentroidDepth(activeFaces[b]) - faceCentroidDepth(activeFaces[a]));
+    for (const i of order) {
+      const f = activeFaces[i];
+      if (f.normal) {
+        const [nx, ny] = f.normal, cosA = Math.cos(renderViewAngle), sinA = Math.sin(renderViewAngle);
+        if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;
+      }
+      const pts = f.verts.map((v) => localToScreen(v[0], v[1], v[2]));
+      if (pointInPolygon(mx, my, pts)) {
+        selectFace(i);
+        _showFaceCtxMenu(e.clientX, e.clientY, i);
+        return;
+      }
+    }
+  });
   var toJSON = () => {
     if (state.def2) {
       const out2 = {
@@ -6984,6 +7245,7 @@
     if (d.fragments?.length) out["fragments"] = d.fragments;
     if (d.rescueZones?.length) out["rescueZones"] = d.rescueZones;
     if (d.landingZone) out["landingZone"] = d.landingZone;
+    if (d.lights?.length) out["lights"] = d.lights;
     return JSON.stringify(out, null, 2);
   };
   var fromJSON = (content) => {
@@ -7008,7 +7270,8 @@
         fragments: d["fragments"],
         rotateNodes: d["rotateNodes"],
         rescueZones: d["rescueZones"],
-        landingZone: d["landingZone"]
+        landingZone: d["landingZone"],
+        lights: d["lights"]
       };
     }
     state.meta = {

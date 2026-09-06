@@ -30,6 +30,8 @@ export interface HudUpdateState {
     maxTimeRemaining: number | null;
     ringsFlown: number;
     ringsTotal: number;
+    altLimit: number | null;
+    altViolationStart: number | null;
 }
 
 interface HudOpts {
@@ -68,6 +70,8 @@ export const createHud = ({ isoFn, canvas }: HudOpts) => {
     panel.appendChild(countdown);
     const rings = document.createElement('div');
     panel.appendChild(rings);
+    const altWarn = document.createElement('div');
+    panel.appendChild(altWarn);
     const callsign = document.createElement('div');
     callsign.style.cssText = 'font-size:11px;color:#888;';
     panel.appendChild(callsign);
@@ -126,6 +130,25 @@ export const createHud = ({ isoFn, canvas }: HudOpts) => {
             rings.style.display = 'block';
         } else {
             rings.style.display = 'none';
+        }
+
+        if (s.altLimit !== null) {
+            const aboveGround = s.heli.z - s.groundUnderHeli;
+            const ratio = aboveGround / s.altLimit;
+            if (ratio >= 1.0 && s.altViolationStart !== null) {
+                const secLeft = Math.max(0, 5 - (Date.now() - s.altViolationStart) / 1000);
+                altWarn.textContent = `MAX ALT! ${secLeft.toFixed(1)}s`;
+                altWarn.style.color = '#f44';
+                altWarn.style.display = 'block';
+            } else if (ratio >= 0.8) {
+                altWarn.textContent = `MAX ALT: ${Math.round(s.altLimit * 10)}m`;
+                altWarn.style.color = '#ff0';
+                altWarn.style.display = 'block';
+            } else {
+                altWarn.style.display = 'none';
+            }
+        } else {
+            altWarn.style.display = 'none';
         }
 
         callsign.textContent = s.playerName || '';

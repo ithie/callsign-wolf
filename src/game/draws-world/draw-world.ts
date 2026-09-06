@@ -37,10 +37,11 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         _drawFestivalObjects,
         _drawXmasObjects,
         _drawRings,
+        _drawScenarioProps,
     } = createStructuresDraw(dwCtx);
     const { drawPayloadObjects, queueAttachedPayloads } = createPayloadsDraw(dwCtx);
     const { handleCollisionBoxes, drawDebugOverlay } = createCollisionDraw(dwCtx);
-    const { drawBirds, drawDebris, renderRain } = createMiscDraw(dwCtx);
+    const { drawBirds, drawDebris, renderRain, renderSnow } = createMiscDraw(dwCtx);
     const { _drawVolleyballCourts } = createVolleyballDraw(dwCtx);
 
     const drawWorldObjects = (
@@ -225,6 +226,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         _drawVolleyballCourts(_inNightCone);
         _drawFestivalObjects(_inNightCone);
         _drawXmasObjects(_inNightCone);
+        _drawScenarioProps(_inNightCone);
         _drawRings(_inNightCone);
         const lh = dwCtx.getLighthouse();
         if (lh && isVisible(lh.x, lh.y, visMargin) && _inNightCone(lh.x, lh.y)) _drawLighthouse(camX, camY);
@@ -361,6 +363,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         drawDebris,
         drawPayloadObjects,
         renderRain,
+        renderSnow,
         drawDebugOverlay,
         handleCollisionBoxes,
     };

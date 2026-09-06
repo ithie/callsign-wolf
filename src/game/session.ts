@@ -97,11 +97,11 @@ export const isCampaignUnlocked = (
 ): boolean => {
     const type = campaigns[index]?.type;
     if (!type) return false;
-    if (type === CAMPAIGN_TYPE.TUTORIAL) return true;
+    if (type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.SCENARIO) return true;
     // Cross-device import: highest reached campaign unlocks all up to that index
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return true;
 
-    // Paywall: non-tutorial, non-free-flight campaigns require full version
+    // Paywall: non-tutorial, non-free-flight, non-scenario campaigns require full version
     if (type !== CAMPAIGN_TYPE.FREE_FLIGHT && !isUnlocked()) return false;
 
     // Coast Hawk type rating is the gate for all non-tutorial content
@@ -127,12 +127,14 @@ export const isCampaignPaywalled = (
     index: number
 ): boolean => {
     const type = campaigns[index]?.type;
-    if (!type || type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT) return false;
+    if (!type || type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT || type === CAMPAIGN_TYPE.SCENARIO) return false;
     return !isUnlocked();
 };
 
+const FREE_FLIGHT_FREE_INDICES = new Set([1, 3]);
+
 export const isMissionPaywalled = (campaignType: string, missionIndex: number): boolean => {
-    if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return missionIndex !== 1 && missionIndex !== 3 && !isUnlocked();
+    if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return !FREE_FLIGHT_FREE_INDICES.has(missionIndex) && !isUnlocked();
     return false;
 };
 
@@ -142,7 +144,7 @@ export const isCampaignLockedByTutorial = (
     index: number
 ): boolean => {
     const type = campaigns[index]?.type;
-    if (!type || type === CAMPAIGN_TYPE.TUTORIAL) return false;
+    if (!type || type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.SCENARIO) return false;
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return false;
     // Missing Coast Hawk type rating → training required stamp for everything
     if (!s.typeRatings?.['coasthawk']) return true;
@@ -162,8 +164,8 @@ export const isMissionUnlocked = (
     missionMinRank = 0,
 ): boolean => {
     if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) {
-        // Mission 1 (Seenotrettung) and 3 (Metalstorm) are free; others require full version
-        if (missionIndex !== 1 && missionIndex !== 3 && !isUnlocked()) return false;
+        // Missions 1 (Seenotrettung), 3 (Metalstorm) and 4 (Gamescom) are free
+        if (!FREE_FLIGHT_FREE_INDICES.has(missionIndex) && !isUnlocked()) return false;
         return true;
     }
     if (missionIndex === 0) return true;

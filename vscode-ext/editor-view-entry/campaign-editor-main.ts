@@ -4,6 +4,7 @@ const vscode = acquireVsCodeApi();
 
 import styleContent from '../editor-view/style.css';
 import { initUI, loadMission, syncToData, renderPayloadList, renderObjectList, renderFoliageList, setOnStateChanged, setOnOpenFile } from '../editor-view/ui';
+import { setDefRequestCallback, receiveDefData } from '../editor-view/render';
 import { initEventsEditor } from '../editor-view/events-editor';
 import { state } from '../editor-view/state';
 import { compressTerrain, compressFoliage, decompressFoliage, decompressTerrain } from '../../src/shared/utils';
@@ -48,12 +49,13 @@ const scheduleNotify = (): void => {
 // Wire up the state-changed callback before initUI so all changes are captured
 setOnStateChanged(scheduleNotify);
 setOnOpenFile(path => vscode.postMessage({ type: 'open-zdef', path }));
+setDefRequestCallback((name, path, v2) => vscode.postMessage({ type: 'getZdef', name, path, v2 }));
 
 initUI();
 initEventsEditor(scheduleNotify);
 loadMission(0);
 
-window.addEventListener('message', (e: MessageEvent<{ type: string; content?: string }>) => {
+window.addEventListener('message', (e: MessageEvent<{ type: string; content?: string; name?: string; data?: unknown; v2?: boolean }>) => {
     if (e.data.type === 'load' && e.data.content !== undefined) {
         let campaignType = '';
         try { campaignType = (JSON.parse(e.data.content) as { type?: string }).type ?? ''; } catch { /* ignore */ }
@@ -61,6 +63,8 @@ window.addEventListener('message', (e: MessageEvent<{ type: string; content?: st
         doImport(e.data.content);
         isLoading = false;
         setTimeout(() => (window as any).__onEditorStateChanged?.(), 100);
+    } else if (e.data.type === 'zdefData' && e.data.name !== undefined) {
+        receiveDefData(e.data.name, e.data.data, e.data.v2 ?? false);
     }
 });
 

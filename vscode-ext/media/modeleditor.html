@@ -199,6 +199,33 @@
             .face-item.drag-over {
                 border-top: 2px solid var(--accent);
             }
+            .face-del-btn {
+                display: none;
+                background: none;
+                border: none;
+                color: var(--danger, #c04040);
+                cursor: pointer;
+                padding: 0 2px;
+                font-size: 11px;
+                line-height: 1;
+                flex-shrink: 0;
+                opacity: 0.7;
+            }
+            .face-del-btn:hover { opacity: 1; }
+            .face-item:hover .face-del-btn { display: block; }
+            .face-item.active .face-del-btn { display: block; }
+            .vert-del-btn {
+                background: none;
+                border: none;
+                color: var(--danger, #c04040);
+                cursor: pointer;
+                padding: 0 2px;
+                font-size: 11px;
+                line-height: 1;
+                flex-shrink: 0;
+                opacity: 0.5;
+            }
+            .vert-del-btn:hover { opacity: 1; }
 
             .node-group { margin-bottom: 4px; }
             .node-header {
@@ -403,6 +430,31 @@
                 color: #fff;
                 border-color: rgba(100, 180, 255, 0.5);
             }
+            .quad-wireframe-toggle {
+                position: absolute;
+                width: 20px;
+                height: 20px;
+                padding: 0;
+                font-size: 11px;
+                line-height: 20px;
+                text-align: center;
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                background: rgba(30, 30, 30, 0.75);
+                color: rgba(255, 255, 255, 0.35);
+                border-radius: 2px;
+                cursor: pointer;
+                pointer-events: all;
+            }
+            .quad-wireframe-toggle:hover {
+                background: rgba(100, 180, 255, 0.25);
+                color: #fff;
+                border-color: rgba(100, 180, 255, 0.5);
+            }
+            .quad-wireframe-toggle.active {
+                color: #7be6ff;
+                border-color: rgba(100, 220, 255, 0.6);
+                background: rgba(0, 160, 220, 0.25);
+            }
             .quad-grid-toggle {
                 position: absolute;
                 width: 20px;
@@ -427,6 +479,79 @@
                 color: rgba(255, 100, 100, 0.5);
                 border-color: rgba(255, 100, 100, 0.3);
             }
+
+            /* Context menu */
+            .ctx-menu {
+                position: fixed;
+                z-index: 9999;
+                background: var(--bg2);
+                border: 1px solid var(--border);
+                border-radius: 3px;
+                box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+                min-width: 160px;
+                padding: 3px 0;
+                font-size: 12px;
+            }
+            .ctx-menu-item {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 5px 12px;
+                cursor: pointer;
+                color: var(--text);
+                user-select: none;
+            }
+            .ctx-menu-item:hover {
+                background: var(--accent);
+                color: #fff;
+            }
+            .ctx-menu-item.danger { color: #c04040; }
+            .ctx-menu-item.danger:hover { background: #7a2020; color: #fff; }
+            .ctx-menu-sep {
+                height: 1px;
+                background: var(--border);
+                margin: 3px 0;
+            }
+            .ctx-menu-sub {
+                padding: 5px 12px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .ctx-menu-sub label {
+                font-size: 10px;
+                color: var(--dim);
+                white-space: nowrap;
+            }
+            .ctx-menu-sub input[type='number'] {
+                width: 46px;
+                background: var(--bg3);
+                color: var(--text);
+                border: 1px solid var(--border);
+                border-radius: 2px;
+                padding: 1px 4px;
+                font-size: 11px;
+            }
+            .ctx-menu-sub input[type='color'] {
+                width: 32px;
+                height: 22px;
+                border: 1px solid var(--border);
+                border-radius: 2px;
+                background: none;
+                padding: 1px;
+                cursor: pointer;
+                flex-shrink: 0;
+            }
+            .ctx-menu-sub input[type='text'] {
+                flex: 1;
+                background: var(--bg3);
+                color: var(--text);
+                border: 1px solid var(--border);
+                border-radius: 2px;
+                padding: 1px 4px;
+                font-size: 11px;
+            }
+            .face-swatch { cursor: pointer; }
         </style>
     </head>
     <body>
@@ -493,48 +618,13 @@
                     </div>
                 </div>
 
-                <div class="sec" id="face-editor" style="display: none">
-                    <div class="sec-title">Fläche</div>
-                    <div class="row"><label>ID:</label><input type="text" id="face-id-input" /></div>
-                    <div class="row">
-                        <label>Farbe:</label>
-                        <input type="color" id="face-color" />
-                        <input
-                            type="text"
-                            id="face-color-hex"
-                            style="flex: 1; font-family: monospace; font-size: 10px"
-                        />
-                    </div>
-                    <div class="row">
-                        <label><input type="checkbox" id="face-has-stroke" /> Kontur</label>
-                        <input type="color" id="face-stroke" />
-                        <input
-                            type="text"
-                            id="face-stroke-hex"
-                            style="flex: 1; font-family: monospace; font-size: 10px"
-                        />
-                        <label>W:</label>
-                        <input
-                            type="number"
-                            id="face-stroke-w"
-                            value="1"
-                            min="0.5"
-                            max="5"
-                            step="0.5"
-                            style="width: 40px"
-                        />
-                    </div>
-                    <div class="row">
-                        <label><input type="checkbox" id="face-has-normal" /> Normal:</label>
-                        <label>nx</label><input type="number" id="face-nx" step="0.1" style="width: 44px" />
-                        <label>ny</label><input type="number" id="face-ny" step="0.1" style="width: 44px" />
-                    </div>
-                    <div class="sec-title" style="margin-top: 8px">Vertices</div>
+                <div class="sec" id="vert-sec" style="display: none">
+                    <div class="sec-title">Vertices <span id="vert-sec-label" style="font-weight:400;color:var(--dim);font-size:9px"></span></div>
                     <div id="vert-list"></div>
                     <div class="flex-row">
                         <button class="btn btn-sm" id="btn-add-vert">+ Vertex</button>
-                        <button class="btn btn-sm btn-danger" id="btn-del-vert">– Letzter</button>
-                        <button class="btn btn-sm btn-danger" id="btn-del-face">Fläche ✕</button>
+                        <button class="btn btn-sm btn-danger" id="btn-del-vert">– Vertex</button>
+                        <button class="btn btn-sm btn-danger" id="btn-del-face" style="display:none">Fläche ✕</button>
                     </div>
                 </div>
 
@@ -565,6 +655,11 @@
                     </div>
                 </div>
 
+                <div class="sec">
+                    <div class="sec-title">Lichter</div>
+                    <div id="lights-panel"><div class="empty">–</div></div>
+                </div>
+
                 <div class="sec" id="fragments-sec">
                     <div class="sec-title" style="display:flex;align-items:center;justify-content:space-between">
                         Fragments
@@ -578,7 +673,10 @@
                 </div>
 
                 <div class="sec">
-                    <div class="sec-title">Boden-Gitter <span class="grid-q-tag" id="grid-q-label"></span></div>
+                    <div class="sec-title" style="display:flex;align-items:center;justify-content:space-between">
+                        Boden-Gitter <span class="grid-q-tag" id="grid-q-label"></span>
+                        <button class="btn btn-sm btn-danger" id="btn-clear-grid" title="Gitter ausblenden & zurücksetzen">✕</button>
+                    </div>
                     <label><input type="checkbox" id="grid-visible" checked /> Sichtbar</label>
                     <div class="row" style="margin-top: 5px">
                         <label>X:</label><input type="number" id="grid-x" step="0.5" value="0" style="width: 52px" />
@@ -591,7 +689,10 @@
                 </div>
 
                 <div class="sec">
-                    <div class="sec-title">Wand-Gitter <span class="grid-q-tag" id="gridv-q-label"></span></div>
+                    <div class="sec-title" style="display:flex;align-items:center;justify-content:space-between">
+                        Wand-Gitter <span class="grid-q-tag" id="gridv-q-label"></span>
+                        <button class="btn btn-sm btn-danger" id="btn-clear-gridv" title="Gitter ausblenden & zurücksetzen">✕</button>
+                    </div>
                     <label><input type="checkbox" id="gridv-visible" checked /> Sichtbar</label>
                     <div class="row" style="margin-top: 5px">
                         <label>X:</label><input type="number" id="gridv-x" step="0.5" value="0" style="width: 52px" />
@@ -615,6 +716,10 @@
                     <button class="quad-grid-toggle" data-q="1" title="Gitter ein/aus">#</button>
                     <button class="quad-grid-toggle" data-q="2" title="Gitter ein/aus">#</button>
                     <button class="quad-grid-toggle" data-q="3" title="Gitter ein/aus">#</button>
+                    <button class="quad-wireframe-toggle" data-q="0" title="Gittermodell (alle Kanten)">⬡</button>
+                    <button class="quad-wireframe-toggle" data-q="1" title="Gittermodell (alle Kanten)">⬡</button>
+                    <button class="quad-wireframe-toggle" data-q="2" title="Gittermodell (alle Kanten)">⬡</button>
+                    <button class="quad-wireframe-toggle" data-q="3" title="Gittermodell (alle Kanten)">⬡</button>
                 </div>
                 <div id="hint">
                     Scrollen = Zoom · Ziehen = Kamera · Shift+Ziehen = Rotation · Vertex ziehen = XY · Shift+Vertex = Z
@@ -695,6 +800,7 @@
                 dirty: false,
                 filename: null,
             };
+            const wireframe = [false, false, false, false];
 
             const buildTestParams = () => {
                 const p = {};
@@ -752,6 +858,10 @@
                 document.querySelectorAll('.quad-grid-toggle').forEach((btn, q) => {
                     btn.style.top = Math.floor(q / 2) * qh + 4 + 'px';
                     btn.style.left = (q % 2) * qw + qw - 48 + 'px';
+                });
+                document.querySelectorAll('.quad-wireframe-toggle').forEach((btn, q) => {
+                    btn.style.top = Math.floor(q / 2) * qh + 4 + 'px';
+                    btn.style.left = (q % 2) * qw + qw - 72 + 'px';
                 });
             };
             const resize = () => {
@@ -940,6 +1050,29 @@
                     ctx.rect(ox, oy, qw, qh);
                     ctx.clip();
 
+                    // Grid lines BEHIND model → draw first, model paints over
+                    const _computeModelDepth = faces => {
+                        if (!faces.length) return 0;
+                        const cosA = Math.cos(renderViewAngle), sinA = Math.sin(renderViewAngle);
+                        let sum = 0;
+                        for (const f of faces) {
+                            let cx = 0, cy = 0;
+                            for (const v of f.verts) { cx += v[0]; cy += v[1]; }
+                            sum += (cx / f.verts.length) * cosA + (cy / f.verts.length) * sinA;
+                        }
+                        return sum / faces.length;
+                    };
+                    const _gridDepth = (grid) => grid.x * Math.cos(renderViewAngle) + grid.y * Math.sin(renderViewAngle);
+
+                    if (state.def) {
+                        const _md = _computeModelDepth(getActiveFaces());
+                        if (_gridDepth(g) <= _md) drawGrid(g);
+                        if (_gridDepth(gv) <= _md) drawGridV(gv);
+                    } else {
+                        drawGrid(g);
+                        drawGridV(gv);
+                    }
+
                     if (state.def) {
                         const activeFaces = getActiveFaces();
                         const colors = {};
@@ -1071,8 +1204,29 @@
                         ctx.fillText('Kein Modell', ox + qw / 2, oy + qh / 2);
                     }
 
-                    drawGrid(g);
-                    drawGridV(gv);
+                    // Grid lines IN FRONT of model → draw after, on top
+                    if (state.def) {
+                        const _md2 = _computeModelDepth(getActiveFaces());
+                        if (_gridDepth(g) > _md2) drawGrid(g);
+                        if (_gridDepth(gv) > _md2) drawGridV(gv);
+                    }
+
+                    if (wireframe[q] && state.def) {
+                        const allFaces = getActiveFaces();
+                        ctx.save();
+                        ctx.strokeStyle = 'rgba(180,220,255,0.45)';
+                        ctx.lineWidth = 0.7;
+                        for (const f of allFaces) {
+                            if (!f.verts.length) continue;
+                            const pts = f.verts.map(v => localToScreen(v[0], v[1], v[2]));
+                            ctx.beginPath();
+                            ctx.moveTo(pts[0].x, pts[0].y);
+                            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+                            ctx.closePath();
+                            ctx.stroke();
+                        }
+                        ctx.restore();
+                    }
 
                     // Quadrant border + angle label (normal compositing, always on top)
                     ctx.strokeStyle = q === activeQ ? 'rgba(100,180,255,0.55)' : 'rgba(255,255,255,0.07)';
@@ -1186,6 +1340,166 @@
                 });
             };
 
+            const _closeCtxMenu = () => {
+                document.querySelectorAll('.ctx-menu').forEach(m => m.remove());
+            };
+
+            const _showFaceCtxMenu = (clientX, clientY, faceIdx) => {
+                _closeCtxMenu();
+                const faces = getActiveFaces();
+                const face = faces[faceIdx];
+                if (!face) return;
+
+                const menu = document.createElement('div');
+                menu.className = 'ctx-menu';
+
+                // ── Farbe ───────────────────────────────────────────
+                const colorRow = document.createElement('div');
+                colorRow.className = 'ctx-menu-sub';
+                const colorPicker = document.createElement('input');
+                colorPicker.type = 'color';
+                colorPicker.value = toColorInput(face.color);
+                colorPicker.addEventListener('input', e => {
+                    face.color = e.target.value;
+                    markDirty(); renderAll();
+                });
+                const colorLabel = document.createElement('label');
+                colorLabel.textContent = 'Farbe';
+                colorRow.appendChild(colorPicker);
+                colorRow.appendChild(colorLabel);
+                menu.appendChild(colorRow);
+
+                // ── Kontur ──────────────────────────────────────────
+                const strokeRow = document.createElement('div');
+                strokeRow.className = 'ctx-menu-sub';
+                const strokeCheck = document.createElement('input');
+                strokeCheck.type = 'checkbox';
+                strokeCheck.checked = !!face.stroke;
+                const strokePicker = document.createElement('input');
+                strokePicker.type = 'color';
+                strokePicker.value = toColorInput(face.stroke || '#aaaaaa');
+                strokePicker.style.display = face.stroke ? '' : 'none';
+                strokeCheck.addEventListener('change', e => {
+                    if (e.target.checked) {
+                        face.stroke = strokePicker.value;
+                        face.strokeWidth = face.strokeWidth ?? 1;
+                        strokePicker.style.display = '';
+                    } else {
+                        delete face.stroke;
+                        delete face.strokeWidth;
+                        strokePicker.style.display = 'none';
+                    }
+                    markDirty(); renderAll();
+                });
+                strokePicker.addEventListener('input', e => {
+                    if (face.stroke !== undefined) { face.stroke = e.target.value; markDirty(); renderAll(); }
+                });
+                const strokeLabel = document.createElement('label');
+                strokeLabel.textContent = 'Kontur';
+                strokeRow.appendChild(strokeCheck);
+                strokeRow.appendChild(strokeLabel);
+                strokeRow.appendChild(strokePicker);
+                menu.appendChild(strokeRow);
+
+                // ── Normal ──────────────────────────────────────────
+                const sep1 = document.createElement('div');
+                sep1.className = 'ctx-menu-sep';
+                menu.appendChild(sep1);
+
+                const normalCheck = document.createElement('div');
+                normalCheck.className = 'ctx-menu-sub';
+                const normalToggle = document.createElement('input');
+                normalToggle.type = 'checkbox';
+                normalToggle.checked = Array.isArray(face.normal);
+                const nlabel = document.createElement('label');
+                nlabel.textContent = 'Normal';
+                normalCheck.appendChild(normalToggle);
+                normalCheck.appendChild(nlabel);
+                menu.appendChild(normalCheck);
+
+                const normalInputs = document.createElement('div');
+                normalInputs.className = 'ctx-menu-sub';
+                normalInputs.style.display = normalToggle.checked ? '' : 'none';
+                ['nx', 'ny'].forEach((lbl, idx) => {
+                    const l = document.createElement('label'); l.textContent = lbl;
+                    const inp = document.createElement('input');
+                    inp.type = 'number'; inp.step = '0.1'; inp.style.width = '46px';
+                    inp.value = Array.isArray(face.normal) ? face.normal[idx] : 0;
+                    inp.addEventListener('input', () => {
+                        if (!Array.isArray(face.normal)) face.normal = [0, 0];
+                        face.normal[idx] = parseFloat(inp.value) || 0;
+                        markDirty(); renderAll();
+                    });
+                    normalInputs.appendChild(l);
+                    normalInputs.appendChild(inp);
+                });
+                menu.appendChild(normalInputs);
+                normalToggle.addEventListener('change', e => {
+                    if (e.target.checked) {
+                        face.normal = [parseFloat(normalInputs.querySelectorAll('input')[0].value) || 0,
+                                       parseFloat(normalInputs.querySelectorAll('input')[1].value) || 0];
+                        normalInputs.style.display = '';
+                    } else {
+                        delete face.normal;
+                        normalInputs.style.display = 'none';
+                    }
+                    markDirty(); renderAll();
+                });
+
+                // ── Umbenennen ──────────────────────────────────────
+                const sep2 = document.createElement('div');
+                sep2.className = 'ctx-menu-sep';
+                menu.appendChild(sep2);
+
+                const renameRow = document.createElement('div');
+                renameRow.className = 'ctx-menu-sub';
+                const renameLabel = document.createElement('label');
+                renameLabel.textContent = 'ID:';
+                const renameInput = document.createElement('input');
+                renameInput.type = 'text';
+                renameInput.value = face.id;
+                renameInput.addEventListener('input', e => {
+                    face.id = e.target.value;
+                    markDirty(); renderFaceList();
+                    document.getElementById('vert-sec-label').textContent = face.id;
+                });
+                renameRow.appendChild(renameLabel);
+                renameRow.appendChild(renameInput);
+                menu.appendChild(renameRow);
+
+                // ── Löschen ─────────────────────────────────────────
+                const sep3 = document.createElement('div');
+                sep3.className = 'ctx-menu-sep';
+                menu.appendChild(sep3);
+
+                const delItem = document.createElement('div');
+                delItem.className = 'ctx-menu-item danger';
+                delItem.textContent = '✕ Löschen';
+                delItem.addEventListener('click', () => {
+                    faces.splice(faceIdx, 1);
+                    state.selectedFaceIdx = Math.min(state.selectedFaceIdx, faces.length - 1);
+                    if (!faces.length) state.selectedFaceIdx = -1;
+                    state.selectedVertIdx = -1;
+                    _closeCtxMenu();
+                    markDirty(); renderAll();
+                });
+                menu.appendChild(delItem);
+
+                // ── Positionieren ───────────────────────────────────
+                document.body.appendChild(menu);
+                const vw = window.innerWidth, vh = window.innerHeight;
+                let x = clientX, y = clientY;
+                if (x + menu.offsetWidth > vw) x = vw - menu.offsetWidth - 4;
+                if (y + menu.offsetHeight > vh) y = vh - menu.offsetHeight - 4;
+                menu.style.left = x + 'px';
+                menu.style.top = y + 'px';
+
+                const onOutside = e => {
+                    if (!menu.contains(e.target)) { _closeCtxMenu(); document.removeEventListener('mousedown', onOutside); }
+                };
+                setTimeout(() => document.addEventListener('mousedown', onOutside), 0);
+            };
+
             const renderFaceList = () => {
                 const list = document.getElementById('face-list');
                 const count = document.getElementById('face-count');
@@ -1204,39 +1518,59 @@
     <div class="face-item ${i === state.selectedFaceIdx ? 'active' : ''}" data-i="${i}">
       <div class="face-swatch" style="background:${f.color}"></div>
       <div class="face-id" title="${f.id}">${f.id}</div>
+      <button class="face-del-btn" data-i="${i}" title="Fläche löschen">✕</button>
     </div>`
                     )
                     .join('');
                 list.querySelectorAll('.face-item').forEach(el => {
-                    el.addEventListener('click', () => selectFace(parseInt(el.dataset.i)));
+                    const i = parseInt(el.dataset.i);
+                    el.addEventListener('click', e => {
+                        if (e.target.closest('.face-del-btn')) return;
+                        selectFace(i);
+                    });
+                    el.addEventListener('contextmenu', e => {
+                        e.preventDefault();
+                        selectFace(i);
+                        _showFaceCtxMenu(e.clientX, e.clientY, i);
+                    });
+                    const swatch = el.querySelector('.face-swatch');
+                    swatch.addEventListener('dblclick', e => {
+                        e.stopPropagation();
+                        selectFace(i);
+                        _showFaceCtxMenu(e.clientX, e.clientY - 10, i);
+                        // focus the color picker immediately
+                        setTimeout(() => {
+                            const picker = document.querySelector('.ctx-menu input[type="color"]');
+                            if (picker) picker.click();
+                        }, 50);
+                    });
+                });
+                list.querySelectorAll('.face-del-btn').forEach(btn => {
+                    btn.addEventListener('click', e => {
+                        e.stopPropagation();
+                        const i = parseInt(btn.dataset.i);
+                        const allFaces = getActiveFaces();
+                        allFaces.splice(i, 1);
+                        state.selectedFaceIdx = Math.min(state.selectedFaceIdx, allFaces.length - 1);
+                        if (!allFaces.length) state.selectedFaceIdx = -1;
+                        state.selectedVertIdx = -1;
+                        markDirty(); renderAll();
+                    });
                 });
             };
 
             const renderFaceEditor = () => {
-                const sec = document.getElementById('face-editor');
+                const sec = document.getElementById('vert-sec');
+                const label = document.getElementById('vert-sec-label');
                 const faces = getActiveFaces();
                 if (state.selectedFaceIdx < 0 || !state.def || !faces.length) {
                     sec.style.display = 'none';
                     return;
                 }
                 const face = faces[state.selectedFaceIdx];
-                if (!face) {
-                    sec.style.display = 'none';
-                    return;
-                }
+                if (!face) { sec.style.display = 'none'; return; }
                 sec.style.display = '';
-                document.getElementById('face-id-input').value = face.id;
-                document.getElementById('face-color').value = toColorInput(face.color);
-                document.getElementById('face-color-hex').value = face.color;
-                const hasStroke = !!face.stroke;
-                document.getElementById('face-has-stroke').checked = hasStroke;
-                document.getElementById('face-stroke').value = toColorInput(face.stroke || '#aaaaaa');
-                document.getElementById('face-stroke-hex').value = face.stroke || '#aaaaaa';
-                document.getElementById('face-stroke-w').value = face.strokeWidth ?? 1;
-                const hasNormal = Array.isArray(face.normal);
-                document.getElementById('face-has-normal').checked = hasNormal;
-                document.getElementById('face-nx').value = hasNormal ? face.normal[0] : 0;
-                document.getElementById('face-ny').value = hasNormal ? face.normal[1] : 0;
+                label.textContent = face.id;
                 renderVertList(face);
             };
 
@@ -1250,6 +1584,7 @@
       <input type="number" class="vx" step="0.01" value="${v[0].toFixed(3)}" style="width:52px">
       <input type="number" class="vy" step="0.01" value="${v[1].toFixed(3)}" style="width:52px">
       <input type="number" class="vz" step="0.01" value="${v[2].toFixed(3)}" style="width:52px">
+      <button class="vert-del-btn" data-i="${i}" title="Vertex löschen">✕</button>
     </div>`
                     )
                     .join('');
@@ -1274,6 +1609,13 @@
                         face.verts[i][2] = parseFloat(e.target.value) || 0;
                         markDirty();
                         draw();
+                    });
+                    row.querySelector('.vert-del-btn').addEventListener('click', e => {
+                        e.stopPropagation();
+                        if (face.verts.length <= 3) return;
+                        face.verts.splice(i, 1);
+                        state.selectedVertIdx = Math.min(state.selectedVertIdx, face.verts.length - 1);
+                        markDirty(); renderFaceEditor(); draw();
                     });
                 });
             };
@@ -1843,8 +2185,37 @@
                 }
             });
 
+            area.addEventListener('contextmenu', e => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+                setRenderContext(lockedQ);
+                if (!state.def) return;
+                const activeFaces = getActiveFaces();
+                if (!activeFaces.length) return;
+                const order = activeFaces
+                    .map((_, i) => i)
+                    .sort((a, b) => faceCentroidDepth(activeFaces[b]) - faceCentroidDepth(activeFaces[a]));
+                for (const i of order) {
+                    const f = activeFaces[i];
+                    if (f.normal) {
+                        const [nx, ny] = f.normal,
+                            cosA = Math.cos(renderViewAngle),
+                            sinA = Math.sin(renderViewAngle);
+                        if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;
+                    }
+                    const pts = f.verts.map(v => localToScreen(v[0], v[1], v[2]));
+                    if (pointInPolygon(mx, my, pts)) {
+                        selectFace(i);
+                        _showFaceCtxMenu(e.clientX, e.clientY, i);
+                        return;
+                    }
+                }
+            });
+
             window.addEventListener('keydown', e => {
                 if (e.key === 'Escape') {
+                    _closeCtxMenu();
                     const g = grids[activeQ],
                         gv = gridVs[activeQ];
                     if (g.selected) {
@@ -1900,92 +2271,6 @@
             });
             document.getElementById('show-cboxes').addEventListener('change', () => draw());
 
-            document.getElementById('face-id-input').addEventListener('input', e => {
-                const faces = getActiveFaces();
-                if (state.selectedFaceIdx < 0 || !faces.length) return;
-                faces[state.selectedFaceIdx].id = e.target.value;
-                markDirty();
-                renderFaceList();
-            });
-
-            const setupColorPair = (colorId, hexId, apply) => {
-                document.getElementById(colorId).addEventListener('input', e => {
-                    document.getElementById(hexId).value = e.target.value;
-                    apply(e.target.value);
-                });
-                document.getElementById(hexId).addEventListener('change', e => {
-                    const v = e.target.value.trim();
-                    if (/^#[0-9a-fA-F]{3,8}$/.test(v) || v.startsWith('rgba')) {
-                        document.getElementById(colorId).value = toColorInput(v);
-                        apply(v);
-                    }
-                });
-            };
-            setupColorPair('face-color', 'face-color-hex', v => {
-                const faces = getActiveFaces();
-                if (state.selectedFaceIdx < 0 || !faces.length) return;
-                faces[state.selectedFaceIdx].color = v;
-                markDirty();
-                renderFaceList();
-                draw();
-            });
-            setupColorPair('face-stroke', 'face-stroke-hex', v => {
-                const faces = getActiveFaces();
-                if (state.selectedFaceIdx < 0 || !faces.length) return;
-                if (document.getElementById('face-has-stroke').checked) {
-                    faces[state.selectedFaceIdx].stroke = v;
-                    markDirty();
-                    draw();
-                }
-            });
-            document.getElementById('face-has-stroke').addEventListener('change', e => {
-                const faces = getActiveFaces();
-                if (state.selectedFaceIdx < 0 || !faces.length) return;
-                faces[state.selectedFaceIdx].stroke = e.target.checked
-                    ? document.getElementById('face-stroke-hex').value || '#aaaaaa'
-                    : null;
-                markDirty();
-                draw();
-            });
-            document.getElementById('face-stroke-w').addEventListener('input', e => {
-                const faces = getActiveFaces();
-                if (state.selectedFaceIdx < 0 || !faces.length) return;
-                faces[state.selectedFaceIdx].strokeWidth = parseFloat(e.target.value) || 1;
-                markDirty();
-                draw();
-            });
-            document.getElementById('face-has-normal').addEventListener('change', e => {
-                const faces = getActiveFaces();
-                if (state.selectedFaceIdx < 0 || !faces.length) return;
-                const face = faces[state.selectedFaceIdx];
-                if (e.target.checked) {
-                    face.normal = [
-                        parseFloat(document.getElementById('face-nx').value) || 0,
-                        parseFloat(document.getElementById('face-ny').value) || 0,
-                    ];
-                } else {
-                    delete face.normal;
-                }
-                markDirty();
-                draw();
-            });
-            ['face-nx', 'face-ny'].forEach(id => {
-                document.getElementById(id).addEventListener('input', () => {
-                    const faces = getActiveFaces();
-                    if (
-                        state.selectedFaceIdx < 0 ||
-                        !faces.length ||
-                        !document.getElementById('face-has-normal').checked
-                    )
-                        return;
-                    faces[state.selectedFaceIdx].normal = [
-                        parseFloat(document.getElementById('face-nx').value) || 0,
-                        parseFloat(document.getElementById('face-ny').value) || 0,
-                    ];
-                    markDirty();
-                    draw();
-                });
-            });
             document.getElementById('btn-add-vert').addEventListener('click', () => {
                 const faces = getActiveFaces();
                 if (state.selectedFaceIdx < 0 || !faces.length) return;
@@ -2000,7 +2285,9 @@
                 if (state.selectedFaceIdx < 0 || !faces.length) return;
                 const face = faces[state.selectedFaceIdx];
                 if (face.verts.length <= 3) return;
-                face.verts.pop();
+                const delIdx = state.selectedVertIdx >= 0 && state.selectedVertIdx < face.verts.length
+                    ? state.selectedVertIdx : face.verts.length - 1;
+                face.verts.splice(delIdx, 1);
                 state.selectedVertIdx = Math.min(state.selectedVertIdx, face.verts.length - 1);
                 markDirty();
                 renderFaceEditor();
@@ -2027,7 +2314,7 @@
                         [1, 1, 0],
                         [0, 1, 0],
                     ],
-                    color: '#888888',
+                    color: '#1a70c8',
                 });
                 state.selectedFaceIdx = faces.length - 1;
                 state.selectedVertIdx = -1;
@@ -2075,6 +2362,16 @@
             });
 
             // Grid UI events — all operate on the ACTIVE quadrant's grid
+            document.getElementById('btn-clear-grid').addEventListener('click', () => {
+                const g = grids[activeQ];
+                g.visible = false; g.selected = false; g.x = 0; g.y = 0; g.z = 0;
+                syncGridUI(); draw();
+            });
+            document.getElementById('btn-clear-gridv').addEventListener('click', () => {
+                const gv = gridVs[activeQ];
+                gv.visible = false; gv.selected = false; gv.x = 0; gv.y = 0; gv.z = 0;
+                syncGridUI(); draw();
+            });
             document.getElementById('grid-visible').addEventListener('change', e => {
                 grids[activeQ].visible = e.target.checked;
                 if (!grids[activeQ].visible) grids[activeQ].selected = false;
@@ -2130,6 +2427,16 @@
                     if (!gridVs[q].visible) gridVs[q].selected = false;
                     btn.classList.toggle('hidden', !grids[q].visible);
                     syncGridUI();
+                    draw();
+                });
+            });
+
+            document.querySelectorAll('.quad-wireframe-toggle').forEach(btn => {
+                btn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const q = parseInt(btn.dataset.q);
+                    wireframe[q] = !wireframe[q];
+                    btn.classList.toggle('active', wireframe[q]);
                     draw();
                 });
             });

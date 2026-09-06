@@ -3,6 +3,9 @@
   "pivot": [0, 0, 0],
   "chimneyPos": { "x": 0.4, "y": 0.1, "z": 2.75 },
   "rescueZones": [{ "x": 0.4, "y": 0.1, "w": 0.3, "h": 0.3, "role": "deliver" }],
+  "collisionBoxes": [
+    { "id": "body", "xMin": -0.97, "xMax": 0.97, "yMin": -0.68, "yMax": 0.70, "zMin": 0, "zMax": 2.75 }
+  ],
   "faces": [
     { "id": "rw_wall",  "normal": [1,0], "verts": [[0.95,-0.65,0],[0.95,0.65,0],[0.95,0.65,1.5],[0.95,-0.65,1.5]], "color": "#b8ccd8" },
     { "id": "rw_gable", "verts": [[0.95,-0.65,1.5],[0.95,0.65,1.5],[0.95,0,2.4]], "color": "#a8bcc8" },
@@ -21,6 +24,12 @@
     { "id": "ch_south", "normal": [0,1], "verts": [[0.3,0.2,1.75],[0.5,0.2,1.75],[0.5,0.2,2.75],[0.3,0.2,2.75]], "color": "#777777" },
     { "id": "ch_top",   "verts": [[0.3,0.0,2.75],[0.5,0.0,2.75],[0.5,0.2,2.75],[0.3,0.2,2.75]], "color": "#888888" }
   ],
+  "palettes": {
+    "red":   { "roof_r": "#8b3030", "roof_l": "#7a2828" },
+    "green": { "roof_r": "#2c5020", "roof_l": "#243f18" },
+    "blue":  { "roof_r": "#1a3a6a", "roof_l": "#12305a" },
+    "brown": { "roof_r": "#5c3a1a", "roof_l": "#4a2e14" }
+  },
   "lights": [
     { "id": "win_r1", "pos": [0.96, -0.3, 0.75], "color": "#ffe0a0", "glowColor": "rgba(255,220,120,0.15)", "radius": 0.35, "glowRadius": 1.1 },
     { "id": "win_r2", "pos": [0.96,  0.3, 0.75], "color": "#ffe0a0", "glowColor": "rgba(255,220,120,0.15)", "radius": 0.35, "glowRadius": 1.1 },

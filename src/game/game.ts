@@ -110,6 +110,7 @@ const {
     drawDebris,
     drawPayloadObjects,
     renderRain,
+    renderSnow,
     drawDebugOverlay,
     handleCollisionBoxes,
 } = _drawWorldFns;
@@ -153,19 +154,29 @@ const setTouchVisible = (v: boolean) => {
     if (touchEl) touchEl.style.display = v ? 'flex' : 'none';
 };
 
+const _CRASH_KEY = '_lastCrash';
+
 const _showDebugError = (msg: string) => {
+    try { localStorage.setItem(_CRASH_KEY, msg); } catch { /* storage unavailable */ }
+    const stored = msg === 'Script error.' ? (() => { try { return localStorage.getItem(_CRASH_KEY); } catch { return null; } })() : null;
+    const display = stored && stored !== 'Script error.' ? stored : msg;
     const session = (window as any).__nativeStorage?.z_session ?? localStorage.getItem?.('z_session') ?? '(nicht lesbar)';
     const el = document.createElement('div');
     el.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#900;color:#fff;font:14px monospace;padding:20px;z-index:99999;overflow:auto;white-space:pre-wrap';
-    el.textContent = 'Something went wrong. Please take a screenshot of this screen and send it to the developer.\n\nERROR:\n' + msg + '\n\nSESSION:\n' + session;
+    el.textContent = 'Something went wrong. Please take a screenshot of this screen and send it to the developer.\n\nERROR:\n' + display + '\n\nSESSION:\n' + session;
     document.body.appendChild(el);
 };
 
-window.addEventListener('unhandledrejection', e => _showDebugError(String(e.reason?.stack ?? e.reason)));
+window.addEventListener('unhandledrejection', e => {
+    const msg = e.reason instanceof Error ? (e.reason.stack ?? e.reason.message) : String(e.reason);
+    try { localStorage.setItem(_CRASH_KEY, msg); } catch { /* storage unavailable */ }
+    _showDebugError(msg);
+}, { capture: true });
 window.addEventListener('error', e => {
-    const detail = e.error?.stack ?? (e.filename ? `${e.filename}:${e.lineno}:${e.colno}` : e.message);
+    const detail = e.error?.stack ?? (e.filename ? `${e.message}\n${e.filename}:${e.lineno}:${e.colno}` : e.message);
+    try { localStorage.setItem(_CRASH_KEY, detail); } catch { /* storage unavailable */ }
     _showDebugError(detail);
-});
+}, { capture: true });
 
 // ─── Physics context ──────────────────────────────────────────────────────────
 // Preview-mode crash handler (DEV only): replays the current preview mission.
@@ -241,6 +252,16 @@ const _drawSceneInner = () => {
         if (remaining <= 0) Flow.triggerCrash();
     } else if (Flow.missionMaxTime === null) {
         Flow.setHudMaxTimeRemaining(null);
+    }
+
+    if (Flow.missionAltLimit !== null && !Flow.briefingActive && !zstate.crashed) {
+        const aboveGround = G.heli.z - getGround(G.heli.x, G.heli.y);
+        if (aboveGround > Flow.missionAltLimit) {
+            if (Flow.altViolationStart === null) Flow.setAltViolationStart(Date.now());
+            else if ((Date.now() - Flow.altViolationStart) / 1000 >= 5) Flow.triggerCrash();
+        } else {
+            if (Flow.altViolationStart !== null) Flow.setAltViolationStart(null);
+        }
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -381,6 +402,7 @@ const _drawSceneInner = () => {
 
     if (!zstate.crashed) {
         renderRain();
+        renderSnow(camX, camY);
         handleCollisionBoxes();
         if (import.meta.env.DEV && showCollisionBoxes) drawDebugOverlay(camX, camY);
     }
@@ -398,6 +420,8 @@ const _drawSceneInner = () => {
         maxTimeRemaining: Flow.hudMaxTimeRemaining,
         ringsFlown: G.RINGS.filter(r => r.flown).length,
         ringsTotal: G.RINGS.length,
+        altLimit: Flow.missionAltLimit,
+        altViolationStart: Flow.altViolationStart,
         minimap: {
             gridSize,
             pad: hasPad() ? G.PAD : null,

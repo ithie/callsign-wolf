@@ -2,6 +2,7 @@ import { campaignHandler } from '../main';
 import { G, zstate } from '../state';
 import { VESSEL, PAYLOAD, VEHICLE_STATE, RESCUE_ZONE_ROLE, OBJECTIVE_TYPE, VESSEL_PATH, type RescueZone } from '../../shared/types';
 import WIND_TURBINE_DEF from '../models/objects/wind_turbine.zdef';
+import MESSE_HALLE_DEF from '../models/objects/messe_halle.zdef';
 import CARRIER_DEF from '../models/carrier.zdef';
 import SUBMARINE_DEF from '../models/submarine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
@@ -42,6 +43,7 @@ const DEF_RESCUE_ZONES: Partial<Record<string, RescueZone[]>> = {
     [VESSEL.SUBMARINE]:         (SUBMARINE_DEF.rescueZones         ?? []) as RescueZone[],
     [VESSEL.RESEARCH_PLATFORM]: (RESEARCH_PLATFORM_DEF.rescueZones ?? []) as RescueZone[],
     [VESSEL.WIND_TURBINE]:      ((WIND_TURBINE_DEF as any).rescueZones ?? []) as RescueZone[],
+    [VESSEL.MESSE_HALLE]:       ((MESSE_HALLE_DEF as any).rescueZones  ?? []) as RescueZone[],
 };
 
 const _zonesFor = (vessel: any, type: string | null): RescueZone[] =>
@@ -76,6 +78,9 @@ const _dropzoneVessels = (): Array<{ vessel: any; type: string | null }> => [
     ...G.RESEARCH_PLATFORMS.map(v => ({ vessel: v, type: VESSEL.RESEARCH_PLATFORM as string | null })),
     ...G.WIND_TURBINES.map(v => ({ vessel: v, type: VESSEL.WIND_TURBINE as string | null })),
     ...G.XMAS_HOUSES.map((h: any) => ({ vessel: h, type: h.type as string | null })),
+    ...G.SCENARIO_PROPS
+        .filter((p: any) => p.type === VESSEL.MESSE_HALLE)
+        .map((p: any) => ({ vessel: p, type: VESSEL.MESSE_HALLE as string | null })),
 ];
 
 const _inDropzone = (wx: number, wy: number, deliverTo?: string, wz?: number): boolean =>

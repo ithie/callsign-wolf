@@ -81,6 +81,10 @@ export let missionTypeRatingFor: string | undefined;
 export let hudMaxTimeRemaining: number | null = null;
 export const setHudMaxTimeRemaining = (v: number | null): void => { hudMaxTimeRemaining = v; };
 
+export let missionAltLimit: number | null = null;
+export let altViolationStart: number | null = null;
+export const setAltViolationStart = (v: number | null): void => { altViolationStart = v; };
+
 // ─── Render-side deps (set by initFlow before first use) ─────────────────────
 
 interface FlowDeps {
@@ -131,8 +135,22 @@ export const makePCtx = (): ParticlesCtx => ({
 
 export const showSnowOverlay = (active: boolean): void => {
     const el = document.getElementById('snow-overlay');
-    if (!el) return;
-    el.style.display = active ? 'block' : 'none';
+    if (el) el.style.display = 'none'; // CSS overlay replaced by canvas snow
+    if (!active) { G.snowFlakes.length = 0; return; }
+    G.snowFlakes.length = 0;
+    const cx = zstate.cam.x, cy = zstate.cam.y;
+    for (let i = 0; i < 80; i++) {
+        const wx = cx + (Math.random() - 0.5) * 44;
+        const wy = cy + (Math.random() - 0.5) * 44;
+        const gz = getGround(wx, wy, G.points, G.CARRIER);
+        G.snowFlakes.push({
+            wx, wy,
+            wz: gz + Math.random() * 12,
+            vz: 0.007 + Math.random() * 0.007,
+            r: 1.0 + Math.random() * 0.8,
+            alpha: 0.5 + Math.random() * 0.45,
+        });
+    }
 };
 
 export const showRainOverlay = (active: boolean, windDir = 225, windStr = 1): void => {
@@ -148,11 +166,23 @@ export const showRainOverlay = (active: boolean, windDir = 225, windStr = 1): vo
 };
 
 export const updateSnowDrift = (): void => {
-    if (!missionSnow) return;
-    const el = document.getElementById('snow-overlay');
-    if (!el) return;
-    const driftX = Math.cos(G.wind.angle) * G.wind.rawStr * 80;
-    el.style.setProperty('--snow-drift-x', `${driftX.toFixed(1)}px`);
+    if (!missionSnow || !G.snowFlakes.length) return;
+    const RANGE = 22;
+    const cx = zstate.cam.x, cy = zstate.cam.y;
+    const driftDx = Math.cos(G.wind.angle) * G.wind.rawStr * 0.002;
+    const driftDy = Math.sin(G.wind.angle) * G.wind.rawStr * 0.002;
+    for (const f of G.snowFlakes) {
+        f.wz -= f.vz;
+        f.wx += driftDx;
+        f.wy += driftDy;
+        const tooFar = Math.abs(f.wx - cx) > RANGE || Math.abs(f.wy - cy) > RANGE;
+        if (tooFar || f.wz <= getGround(f.wx, f.wy, G.points, G.CARRIER)) {
+            f.wx = cx + (Math.random() - 0.5) * RANGE * 2;
+            f.wy = cy + (Math.random() - 0.5) * RANGE * 2;
+            const gz = getGround(f.wx, f.wy, G.points, G.CARRIER);
+            f.wz = gz + 10 + Math.random() * 8;
+        }
+    }
 };
 
 // ─── Core mission lifecycle ───────────────────────────────────────────────────
@@ -275,7 +305,7 @@ export const missionComplete = (): void => {
     const firstCompletion = allDone && !(selectedCampaignIndex < (session.highestUnlockedCampaignIndex ?? 0));
     if (allDone) {
         cp.completed = true;
-        if (campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT) {
+        if (campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT && campaignType !== CAMPAIGN_TYPE.SCENARIO) {
             session.highestUnlockedCampaignIndex = Math.max(
                 session.highestUnlockedCampaignIndex ?? 0,
                 selectedCampaignIndex + 1
@@ -316,7 +346,7 @@ export const missionComplete = (): void => {
     if (firstCompletion || rankUpRank) requestReview();
 
     if (firstCompletion) {
-        const isStoryCampaign = campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT;
+        const isStoryCampaign = campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT && campaignType !== CAMPAIGN_TYPE.SCENARIO;
         soundHandler.play('success');
         const showEndScreen = isStoryCampaign
             ? () => {
@@ -454,7 +484,7 @@ export const selectCampaign = (index: string): void => {
 const _doSelectCampaign = (idx: number): void => {
     const campaigns = campaignHandler.getCampaigns();
     const type = campaigns[idx]?.type;
-    const isAlwaysAvailable = type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT;
+    const isAlwaysAvailable = type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT || type === CAMPAIGN_TYPE.SCENARIO;
     if (!isAlwaysAvailable) saveSession(session);
 
     selectedCampaignIndex = idx;
@@ -572,6 +602,8 @@ const _maybeSpawnOrniWreck = (): void => {
 };
 
 export const launchMission = async (showLoader = true): Promise<void> => {
+    try { localStorage.removeItem('_lastCrash'); } catch { /* storage unavailable */ }
+    try {
     await decompressMissionAssets();
     await campaignHandler.prewarmLevel();
     const _lmd = campaignHandler.getCurrentMissionData();
@@ -601,6 +633,9 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     missionMaxTime = (_lmd as any).maxTime ?? null;
     missionTypeRatingFor = (_lmd as any).typeRatingFor as string | undefined;
     hudMaxTimeRemaining = null;
+    const _altObj = ((_lmd.objectives as any[]) || []).find((o: any) => o.type === 'max_altitude');
+    missionAltLimit = _altObj ? (_altObj.limit as number) : null;
+    altViolationStart = null;
 
     const handle = showLoader ? LoadingScreen.show(localize(_lmd.headline) || 'MISSION') : null;
 
@@ -712,4 +747,9 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     });
 
     // Note: zstate.cam is not initialised here — drawScene sets it on the first frame.
+    } catch (err) {
+        const msg = err instanceof Error ? (err.stack ?? err.message) : String(err);
+        try { localStorage.setItem('_lastCrash', msg); } catch { /* storage unavailable */ }
+        throw err;
+    }
 };

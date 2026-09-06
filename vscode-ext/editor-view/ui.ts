@@ -13,37 +13,6 @@ export const setOnStateChanged = (fn: (() => void) | null): void => {
 let _onOpenFile: ((path: string) => void) | null = null;
 export const setOnOpenFile = (fn: (path: string) => void): void => { _onOpenFile = fn; };
 
-const _TYPE_TO_ZDEF: Partial<Record<string, string>> = {
-    lighthouse:           'src/game/models/objects/lighthouse.zdef',
-    wind_turbine:         'src/game/models/objects/wind_turbine.zdef',
-    buoy:                 'src/game/models/objects/buoy.zdef',
-    baywatch_car:         'src/game/models/objects/baywatch_car.zdef',
-    baywatch_hq:          'src/game/models/objects/baywatch_hq.zdef',
-    baywatch_tower:       'src/game/models/objects/baywatch_tower.zdef',
-    concert_stage:        'src/game/models/objects/concert_stage.zdef',
-    festival_tent:        'src/game/models/objects/festival_tent.zdef',
-    festival_tent_broken: 'src/game/models/objects/festival_tent_broken.zdef',
-    festival_car:         'src/game/models/objects/festival_car.zdef',
-    xmas_house_a:         'src/game/models/objects/xmas_house_a.zdef',
-    xmas_house_b:         'src/game/models/objects/xmas_house_b.zdef',
-    xmas_lantern:         'src/game/models/objects/xmas_lantern.zdef',
-    sleigh:               'src/game/models/objects/sleigh.zdef',
-    reindeer:             'src/game/models/objects/reindeer.zdef',
-    volleyball_court:     'src/game/models/objects/volleyball_court.zdef',
-    hangar_tower:         'src/game/models/objects/hangar_tower.zdef',
-    plane_wreck:          'src/game/models/objects/plane_wreck.zdef',
-    sailboat_broken:      'src/game/models/objects/sailboat_broken.zdef',
-    research_platform:    'src/game/models/research_platform.zdef',
-    submarine:            'src/game/models/submarine.zdef',
-    carrier:              'src/game/models/carrier.zdef',
-    frigate:              'src/game/models/frigate.zdef',
-    supply_vessel:        'src/game/models/supply_vessel.zdef',
-    salvage_tug:          'src/game/models/supply_vessel.zdef',
-    boat:                 'src/game/models/sailboat.zdef',
-    sar_boat:             'src/game/models/sar_boat.zdef',
-    pilot_boat:           'src/game/models/pilot_boat.zdef',
-};
-
 // Notify the Electron workbench parent frame that editor state has changed
 export const notifyWorkbench = () => {
     if (window.parent !== window) window.parent.postMessage({ type: 'editor-state-changed' }, '*');
@@ -660,6 +629,7 @@ export const initUI = () => {
         if (m.objects.some((o: any) => o.type === 'submarine')) opts.push(['submarine', 'U-Boot']);
         if (m.objects.some((o: any) => ['boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'supply_vessel', 'frigate'].includes(o.type)))
             opts.push(['boat', 'Boot']);
+        if (m.objects.some((o: any) => o.type === 'messe_halle')) opts.push(['messe_halle', 'Messehalle']);
         opts.forEach(([val, lbl]) => {
             const opt = document.createElement('option');
             opt.value = val;
@@ -725,6 +695,43 @@ export const initUI = () => {
             };
             swimRow.append(swimLabel, swimSel);
             popup.appendChild(swimRow);
+
+            // ── attachTo: spawn-Ort ────────────────────────────────────────────
+            const attachOpts: Array<{ type: string; label: string }> = [];
+            if (m.objects.some((o: any) => o.type === 'dom')) attachOpts.push({ type: 'dom', label: '⛪ Dom-Dach' });
+            if (attachOpts.length > 0) {
+                const attachRow = document.createElement('div');
+                attachRow.style.cssText = 'margin:6px 0 2px;border-top:1px solid #333;padding-top:6px';
+                const attachLabel = document.createElement('div');
+                attachLabel.style.cssText = 'color:#aaa;font-size:11px;margin-bottom:4px';
+                attachLabel.textContent = 'Spawn-Ort:';
+                attachRow.appendChild(attachLabel);
+                attachOpts.forEach(({ type, label }) => {
+                    const btnRow = document.createElement('label');
+                    btnRow.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;color:#8cf;margin-bottom:2px';
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = pa.attachTo?.objectType === type;
+                    cb.onchange = () => {
+                        if (cb.checked) {
+                            const ref = m.objects.find((o: any) => o.type === type) as any;
+                            const lx = pa.x !== undefined ? pa.x - (ref?.x ?? 0) : 0;
+                            const ly = pa.y !== undefined ? pa.y - (ref?.y ?? 0) : 0;
+                            pa.attachTo = { objectType: type, localX: lx, localY: ly };
+                            delete pa.x; delete pa.y;
+                        } else {
+                            const ref = m.objects.find((o: any) => o.type === type) as any;
+                            pa.x = (ref?.x ?? 0) + (pa.attachTo?.localX ?? 0);
+                            pa.y = (ref?.y ?? 0) + (pa.attachTo?.localY ?? 0);
+                            delete pa.attachTo;
+                        }
+                        drawMap(); renderPayloadList(); notifyWorkbench(); broadcastPreview();
+                    };
+                    btnRow.append(cb, label);
+                    attachRow.appendChild(btnRow);
+                });
+                popup.appendChild(attachRow);
+            }
         }
 
         const vw = window.innerWidth,
@@ -1042,7 +1049,7 @@ export const initUI = () => {
     wireAngle('m_pw_angle', ['plane_wreck']);
     wireAngle('m_sb_angle', ['sailboat_broken']);
     wireAngle('m_ow_angle', ['ornithopter_wreck']);
-    wireAngle('m_xmas_house_angle', ['xmas_house_a', 'xmas_house_b']);
+    wireAngle('m_xmas_house_angle', ['xmas_house_a', 'xmas_house_b', 'xmas_house_c']);
     wireAngle('m_xmas_lantern_angle', ['xmas_lantern']);
     wireAngle('m_sleigh_angle', ['sleigh']);
     wireAngle('m_reindeer_angle', ['reindeer']);
@@ -1075,7 +1082,17 @@ export const initUI = () => {
     wireColorVariant('m_tent_color', 'festival_tent');
     wireColorVariant('m_tent_broken_color', 'festival_tent_broken');
     wireColorVariant('m_fcar_color', 'festival_car');
-    wireTypeSelect('m_xmas_house_type', ['xmas_house_a', 'xmas_house_b']);
+    wireTypeSelect('m_xmas_house_type', ['xmas_house_a', 'xmas_house_b', 'xmas_house_c']);
+    const _xmasHouseTypes = ['xmas_house_a', 'xmas_house_b', 'xmas_house_c'];
+    document.getElementById('m_xmas_house_color')?.addEventListener('change', () => {
+        const m = getCurrentMission();
+        if (!m || state.selectedObjectIdx === null) return;
+        const obj = m.objects[state.selectedObjectIdx] as any;
+        if (!_xmasHouseTypes.includes(obj?.type)) return;
+        const v = (document.getElementById('m_xmas_house_color') as HTMLSelectElement).value;
+        if (v === '') delete obj.colorVariant; else obj.colorVariant = v;
+        drawMap(); broadcastPreview(); notifyWorkbench();
+    });
 
     document.getElementById('m_wt_spinning')?.addEventListener('change', () => {
         const m = getCurrentMission();
@@ -1167,6 +1184,8 @@ export const initUI = () => {
         'xmas_lantern',
         'sleigh',
         'reindeer',
+        'dom',
+        'messe_halle',
         'person',
         'rescuer',
         'crate',
@@ -1191,9 +1210,12 @@ export const initUI = () => {
         buoy: '#dd3300',
         xmas_house_a: '#aaddff',
         xmas_house_b: '#88bbee',
+        xmas_house_c: '#99cc88',
         xmas_lantern: '#ffdd44',
         sleigh: '#cc3333',
         reindeer: '#8b5228',
+        dom: '#8888aa',
+        messe_halle: '#7799bb',
         person: '#ffe033',
         crate: '#ff8800',
     };
@@ -1443,6 +1465,12 @@ export const initUI = () => {
             case 'volleyball_court':
                 m.objects.push({ type: 'volleyball_court' as any, x: gx, y: gy, angle: 0 });
                 break;
+            case 'dom':
+                m.objects.push({ type: 'dom' as any, x: gx, y: gy });
+                break;
+            case 'messe_halle':
+                m.objects.push({ type: 'messe_halle' as any, x: gx, y: gy });
+                break;
         }
         renderObjectList();
         drawMap();
@@ -1457,6 +1485,8 @@ export const initUI = () => {
                 { v: 'lighthouse', l: '🔦 Leuchtturm' },
                 { v: 'research_platform', l: '🏗 Plattform' },
                 { v: 'ring', l: '⭕ Ring' },
+                { v: 'dom', l: '⛪ Kölner Dom' },
+                { v: 'messe_halle', l: '🏛 Messehalle' },
             ]},
             { cat: 'Fahr.', emoji: '🚢', items: [
                 { v: 'carrier', l: '🚢 Träger' },
@@ -1573,6 +1603,16 @@ export const initUI = () => {
         });
     }
 
+    // Resolve effective world x,y for a payload (handles attachTo with no absolute position)
+    const payloadXY = (p: any, m: Mission): { x: number; y: number } | null => {
+        if (p.x !== undefined && !isNaN(p.x)) return { x: p.x, y: p.y };
+        if (p.attachTo?.objectType) {
+            const ref = (m.objects as any[]).find((o: any) => o.type === p.attachTo.objectType);
+            if (ref) return { x: ref.x + (p.attachTo.localX ?? 0), y: ref.y + (p.attachTo.localY ?? 0) };
+        }
+        return null;
+    };
+
     // ── Mouse down: object selection or paint ──────────────────────────────────
     canvas.onmousedown = e => {
         const rect = canvas.getBoundingClientRect();
@@ -1608,12 +1648,17 @@ export const initUI = () => {
                 renderObjectList();
             } else if (state.selectedPayloadIdx !== null) {
                 const p = m.payloads[state.selectedPayloadIdx] as any;
-                const snapped = makePayload(p.type, Math.floor(gx), Math.floor(gy), m);
-                m.payloads[state.selectedPayloadIdx] = {
-                    ...snapped,
-                    ...(p.deliverTo ? { deliverTo: p.deliverTo } : {}),
-                    ...(p.npcTarget ? { npcTarget: p.npcTarget } : {}),
-                } as any;
+                if (p.attachTo?.objectType) {
+                    const ref = (m.objects as any[]).find((o: any) => o.type === p.attachTo.objectType);
+                    if (ref) { p.attachTo.localX = Math.floor(gx) - ref.x; p.attachTo.localY = Math.floor(gy) - ref.y; }
+                } else {
+                    const snapped = makePayload(p.type, Math.floor(gx), Math.floor(gy), m);
+                    m.payloads[state.selectedPayloadIdx] = {
+                        ...snapped,
+                        ...(p.deliverTo ? { deliverTo: p.deliverTo } : {}),
+                        ...(p.npcTarget ? { npcTarget: p.npcTarget } : {}),
+                    } as any;
+                }
                 renderPayloadList();
             }
             state.moveMode = false;
@@ -1654,14 +1699,16 @@ export const initUI = () => {
             const payloads = m.payloads || [];
             for (let i = 0; i < payloads.length; i++) {
                 const p = payloads[i] as any;
-                if (Math.hypot(gx - p.x, gy - p.y) < 2) {
+                const pxy = payloadXY(p, m);
+                if (!pxy) continue;
+                if (Math.hypot(gx - pxy.x, gy - pxy.y) < 2) {
                     if (state.selectedPayloadIdx !== i) {
                         state.selectedPayloadIdx = i;
                         state.selectedObjectIdx = null;
                         state.selectedUI = null;
                         drawMap();
                     } else {
-                        startDrag('payload', i, p.x, p.y);
+                        startDrag('payload', i, pxy.x, pxy.y);
                     }
                     return;
                 }
@@ -1677,12 +1724,14 @@ export const initUI = () => {
                 else if (['plane_wreck', 'sailboat_broken', 'ornithopter_wreck', 'baywatch_car', 'baywatch_hq', 'baywatch_tower',
                     'concert_stage',
                     'festival_tent', 'festival_tent_broken', 'festival_car',
-                    'xmas_house_a', 'xmas_house_b', 'sleigh', 'reindeer'].includes(obj.type))
+                    'xmas_house_a', 'xmas_house_b', 'xmas_house_c', 'sleigh', 'reindeer'].includes(obj.type))
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
                 else if (obj.type === 'volleyball_court')
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
                 else if (obj.type === 'xmas_lantern')
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < 2.5;
+                else if (['dom', 'messe_halle'].includes(obj.type))
+                    hit = Math.hypot(gx - obj.x, gy - obj.y) < 8;
                 else if ((obj as any).type === 'ring')
                     hit = Math.hypot(gx - obj.x, gy - obj.y) < ((obj as any).radius ?? 2.5) + 1;
                 if (hit) {
@@ -1852,12 +1901,19 @@ export const initUI = () => {
                 const m = getCurrentMission()!;
                 if (state.dragItemType === 'payload') {
                     const p = m.payloads[state.dragItemIdx!] as any;
-                    const snapped = makePayload(p.type, p.x, p.y, m);
-                    m.payloads[state.dragItemIdx!] = {
-                        ...snapped,
-                        ...(p.deliverTo ? { deliverTo: p.deliverTo } : {}),
-                        ...(p.npcTarget ? { npcTarget: p.npcTarget } : {}),
-                    } as any;
+                    if (p.attachTo?.objectType) {
+                        // Update local offset relative to the reference object; drop temp absolute x/y
+                        const ref = (m.objects as any[]).find((o: any) => o.type === p.attachTo.objectType);
+                        if (ref) { p.attachTo.localX = p.x - ref.x; p.attachTo.localY = p.y - ref.y; }
+                        delete p.x; delete p.y;
+                    } else {
+                        const snapped = makePayload(p.type, p.x, p.y, m);
+                        m.payloads[state.dragItemIdx!] = {
+                            ...snapped,
+                            ...(p.deliverTo ? { deliverTo: p.deliverTo } : {}),
+                            ...(p.npcTarget ? { npcTarget: p.npcTarget } : {}),
+                        } as any;
+                    }
                     renderPayloadList();
                 } else if (state.dragItemType === 'emitter') {
                     // emitters just need save + redraw, no list rebuild

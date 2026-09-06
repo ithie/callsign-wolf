@@ -517,6 +517,15 @@
                                 <select id="m_xmas_house_type">
                                     <option value="xmas_house_a">Haus A (klein)</option>
                                     <option value="xmas_house_b">Haus B (groß)</option>
+                                    <option value="xmas_house_c">Haus C (Chalet)</option>
+                                </select><br />
+                                Dach:
+                                <select id="m_xmas_house_color">
+                                    <option value="">– Standard –</option>
+                                    <option value="red">🔴 Rot</option>
+                                    <option value="green">🟢 Grün</option>
+                                    <option value="blue">🔵 Blau</option>
+                                    <option value="brown">🟤 Braun</option>
                                 </select><br />
                                 Angle (°):
                                 <input type="number" id="m_xmas_house_angle" value="0" min="0" max="359" style="width: 45px" />
@@ -1174,6 +1183,7 @@ Viel Glück, Pilot.</textarea
                             if (!m.objectives) m.objectives = [];
                             var newObj = { type: data.type };
                             if (data.target) newObj.target = data.target;
+                            if (data.limit !== undefined) newObj.limit = data.limit;
                             m.objectives.push(newObj);
                             ed.syncToData();
                         }
@@ -1181,6 +1191,12 @@ Viel Glück, Pilot.</textarea
                     case 'delete-objective':
                         if (m && m.objectives) {
                             m.objectives.splice(data.idx, 1);
+                            ed.syncToData();
+                        }
+                        break;
+                    case 'set-altitude-limit':
+                        if (m && m.objectives && m.objectives[data.idx]) {
+                            m.objectives[data.idx].limit = data.value;
                             ed.syncToData();
                         }
                         break;
@@ -1714,12 +1730,18 @@ Viel Glück, Pilot.</textarea
                             ? cm.objectives
                                   .map(
                                       o =>
-                                          '<div class="ed-list-row"><span>' +
-                                          (o.type === 'rescue_all' ? '🚁 Alle retten' : o.type === 'ring_all' ? '⭕ Alle Ringe' : '🎯 Landen: ' + o.target) +
-                                          '</span>' +
-                                          '<button class="ed-btn-sm ed-del" style="color:#f55" onclick="edDispatch(\'delete-objective\',{idx:' +
-                                          o.idx +
-                                          '})">✕</button></div>'
+                                          o.type === 'max_altitude'
+                                              ? '<div class="ed-list-row"><span style="display:flex;align-items:center;gap:4px">⬆ Max. Höhe:' +
+                                                '<input type="number" value="' + (o.limit || 8) + '" min="1" max="100" step="1"' +
+                                                ' style="width:45px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:2px;padding:1px 3px;font-size:10px"' +
+                                                ' oninput="edDispatch(\'set-altitude-limit\',{idx:' + o.idx + ',value:parseFloat(this.value)||8})"> Einh.</span>' +
+                                                '<button class="ed-btn-sm ed-del" style="color:#f55" onclick="edDispatch(\'delete-objective\',{idx:' + o.idx + '})">✕</button></div>'
+                                              : '<div class="ed-list-row"><span>' +
+                                                (o.type === 'rescue_all' ? '🚁 Alle retten' : o.type === 'ring_all' ? '⭕ Alle Ringe' : '🎯 Landen: ' + o.target) +
+                                                '</span>' +
+                                                '<button class="ed-btn-sm ed-del" style="color:#f55" onclick="edDispatch(\'delete-objective\',{idx:' +
+                                                o.idx +
+                                                '})">✕</button></div>'
                                   )
                                   .join('')
                             : '<div class="ed-empty">Keine Ziele</div>') +
@@ -1728,6 +1750,7 @@ Viel Glück, Pilot.</textarea
                         '<button class="ed-btn" style="width:auto;font-size:10px;padding:3px 6px" onclick="edDispatch(\'add-objective\',{type:\'land_at\',target:\'pad\'})">+ Landen: Pad</button>' +
                         '<button class="ed-btn" style="width:auto;font-size:10px;padding:3px 6px" onclick="edDispatch(\'add-objective\',{type:\'land_at\',target:\'carrier\'})">+ Landen: Carrier</button>' +
                         '<button class="ed-btn" style="width:auto;font-size:10px;padding:3px 6px" onclick="edDispatch(\'add-objective\',{type:\'land_at\',target:\'frigate\'})">+ Landen: Fregatte</button>' +
+                        '<button class="ed-btn" style="width:auto;font-size:10px;padding:3px 6px" onclick="edDispatch(\'add-objective\',{type:\'max_altitude\',limit:8})">+ Max. Höhe</button>' +
                         '</div>' +
                         '<div class="ed-row" style="margin-top:8px"><label style="color:var(--text-dim)">⏱ Max. Zeit (s)</label>' +
                         '<input type="number" value="' +

@@ -3,7 +3,10 @@ import '@/ui/nav-screens.css';
 import { iso } from '../../render';
 import { HELI_TYPES, type HeliType } from '../../heli-types';
 import { RANKS } from '../rank-badge/rank-badge';
-import { tileW, tileH, stepH, CANVAS_SCALE } from '../../render-config';
+import { CANVAS_SCALE } from '../../render-config';
+
+// Fixed tile size for UI previews — decoupled from game zoom (tileW)
+const _PT = 20, _PTH = _PT / 2, _PTSH = _PTH * 0.78;
 import { zstate } from '../../state';
 import { I18N, localize } from '../../i18n';
 import { ensureEl } from '@/ui/dom-helpers';
@@ -42,7 +45,7 @@ export const animMainMenuBg = (ts: number = performance.now()) => {
     else cx.clearRect(0, 0, c.width, c.height);
     const t = Date.now() * 0.001;
     const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
-        iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
+        iso(wx, wy, wz, camX, camY, { canvas: c, tileW: _PT, tileH: _PTH, stepH: _PTSH });
     const _mc = _getPlayerColor();
     _drawHeli('dolphin', 0, 0, 0, t * 0.25, Math.sin(t * 0.4) * 0.07, Math.cos(t * 0.35) * 0.07, t * 8, 0, 0, {
         targetCtx: cx, targetIso: offIso, scaleOverride: 5,
@@ -63,7 +66,7 @@ export const drawMenuHeli = (ts: number = performance.now()) => {
     else cx.clearRect(0, 0, c.width, c.height);
     const t = Date.now() * 0.001;
     const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
-        iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
+        iso(wx, wy, wz, camX, camY, { canvas: c, tileW: _PT, tileH: _PTH, stepH: _PTSH });
     const _mc = _getPlayerColor();
     _drawHeli('dolphin', 1.5, 1.5, 0.8, t * 0.5, Math.sin(t) * 0.1, Math.cos(t) * 0.1, t * 12, 0, 0, {
         targetCtx: cx, targetIso: offIso, scaleOverride: 3,
@@ -106,7 +109,7 @@ const _heliPreviewLoop = () => {
             if (c.width !== tW || c.height !== tH) { c.width = tW; c.height = tH; }
             else cx.clearRect(0, 0, c.width, c.height);
             const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
-                iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
+                iso(wx, wy, wz, camX, camY, { canvas: c, tileW: _PT, tileH: _PTH, stepH: _PTSH });
             _drawHeli(ht.id, 0, 0, 0, cardAngle, 0, 0, 0, 0, 0, {
                 targetCtx: cx, targetIso: offIso, scaleOverride: ht.previewScale,
                 colorVariant: ht.id === 'ornithopter' ? undefined : _getPlayerColor(),
@@ -122,7 +125,7 @@ const _heliPreviewLoop = () => {
                 if (oc.width !== oW || oc.height !== oH) { oc.width = oW; oc.height = oH; }
                 else ocx.clearRect(0, 0, oc.width, oc.height);
                 const overlayIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
-                    iso(wx, wy, wz, camX, camY, { canvas: oc, tileW, tileH, stepH });
+                    iso(wx, wy, wz, camX, camY, { canvas: oc, tileW: _PT, tileH: _PTH, stepH: _PTSH });
                 _drawHeli(ht.id, 0, 0, 0, _overlayAngle, 0, 0, _rotorPos, 0, 0, {
                     targetCtx: ocx, targetIso: overlayIso, scaleOverride: ht.previewScale * OVERLAY_SCALE_RATIO,
                     colorVariant: ht.id === 'ornithopter' ? undefined : _getPlayerColor(),

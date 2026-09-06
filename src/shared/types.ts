@@ -52,10 +52,15 @@ export const VESSEL = {
     FESTIVAL_CAR:         'festival_car',
     XMAS_HOUSE_A:       'xmas_house_a',
     XMAS_HOUSE_B:       'xmas_house_b',
+    XMAS_HOUSE_C:       'xmas_house_c',
     XMAS_LANTERN:       'xmas_lantern',
+    XMAS_CANDY_CANE:    'xmas_candy_cane',
+    XMAS_TREE:          'xmas_tree',
     SLEIGH:             'sleigh',
     REINDEER:           'reindeer',
     VOLLEYBALL_COURT:   'volleyball_court',
+    DOM:                'dom',
+    MESSE_HALLE:        'messe_halle',
 } as const;
 
 export const PAYLOAD = {
@@ -93,6 +98,7 @@ export type VesselPath = typeof VESSEL_PATH[keyof typeof VESSEL_PATH];
 export const CAMPAIGN_TYPE = {
     TUTORIAL:    'tutorial',
     FREE_FLIGHT: 'free-flight',
+    SCENARIO:    'scenario',
 } as const;
 export type CampaignType = typeof CAMPAIGN_TYPE[keyof typeof CAMPAIGN_TYPE];
 
@@ -105,9 +111,10 @@ export type RescueZoneRole = typeof RESCUE_ZONE_ROLE[keyof typeof RESCUE_ZONE_RO
 export type RescueZone = { x: number; y: number; w: number; h: number; role: RescueZoneRole; z?: number; dz?: number };
 
 export const OBJECTIVE_TYPE = {
-    RESCUE_ALL: 'rescue_all',
-    LAND_AT:    'land_at',
-    RING_ALL:   'ring_all',
+    RESCUE_ALL:   'rescue_all',
+    LAND_AT:      'land_at',
+    RING_ALL:     'ring_all',
+    MAX_ALTITUDE: 'max_altitude',
 } as const;
 export type ObjectiveType = typeof OBJECTIVE_TYPE[keyof typeof OBJECTIVE_TYPE];
 
@@ -194,19 +201,25 @@ type FrigateObject = {
     radioSilent?: boolean;
 };
 
-type XmasHouseAObject   = { type: 'xmas_house_a'; x: number; y: number; angle?: number };
-type XmasHouseBObject   = { type: 'xmas_house_b'; x: number; y: number; angle?: number };
+type XmasHouseAObject   = { type: 'xmas_house_a'; x: number; y: number; angle?: number; colorVariant?: string };
+type XmasHouseBObject   = { type: 'xmas_house_b'; x: number; y: number; angle?: number; colorVariant?: string };
+type XmasHouseCObject   = { type: 'xmas_house_c'; x: number; y: number; angle?: number; colorVariant?: string };
 type XmasLanternObject  = { type: 'xmas_lantern'; x: number; y: number; angle?: number };
 type SleighObject       = { type: 'sleigh'; x: number; y: number; angle?: number };
 type ReindeerObject     = { type: 'reindeer'; x: number; y: number; angle?: number };
+type XmasCandyCaneObject = { type: 'xmas_candy_cane'; x: number; y: number; angle?: number };
+type XmasTreeObject      = { type: 'xmas_tree'; x: number; y: number; angle?: number };
 
 type RingObject = { type: 'ring'; x: number; y: number; z: number; radius?: number; angle?: number };
-type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | SupplyVesselObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject | FrigateObject | XmasHouseAObject | XmasHouseBObject | XmasLanternObject | SleighObject | ReindeerObject | RingObject;
+type DomObject       = { type: 'dom'; x: number; y: number };
+type MesseHalleObject = { type: 'messe_halle'; x: number; y: number };
+type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | SupplyVesselObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject | FrigateObject | XmasHouseAObject | XmasHouseBObject | XmasHouseCObject | XmasLanternObject | SleighObject | ReindeerObject | RingObject | DomObject | MesseHalleObject | XmasCandyCaneObject | XmasTreeObject;
 
 export type Objective =
     | { type: 'rescue_all' }
     | { type: 'land_at'; target: 'pad' | 'carrier' | 'frigate' }
-    | { type: 'ring_all' };
+    | { type: 'ring_all' }
+    | { type: 'max_altitude'; limit: number };
 
 export type MissionPayload = {
     type: 'person' | 'crate' | 'rescuer' | 'orni_wreck' | 'reindeer';
