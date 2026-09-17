@@ -157,7 +157,7 @@ export const showRainOverlay = (active: boolean, windDir = 225, windStr = 1): vo
     const el = document.getElementById('rain-overlay');
     if (!el) return;
     if (active) {
-        const angleDeg = -10 + ((windDir - 225) / 360) * 20 * windStr;
+        const angleDeg = ((windDir - 225) / 360) * 20 * windStr;
         el.style.setProperty('--rain-angle', `${angleDeg.toFixed(1)}deg`);
         el.style.display = 'block';
     } else {
@@ -481,7 +481,13 @@ export const selectCampaign = (index: string): void => {
     _doSelectCampaign(Number(index));
 };
 
+const _bc = (step: string): void => {
+    session._dbgStep = step;
+    try { saveSession(session); } catch { /* ignore */ }
+};
+
 const _doSelectCampaign = (idx: number): void => {
+    _bc(`doSelectCampaign:${idx}`);
     const campaigns = campaignHandler.getCampaigns();
     const type = campaigns[idx]?.type;
     const isAlwaysAvailable = type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT || type === CAMPAIGN_TYPE.SCENARIO;
@@ -489,6 +495,7 @@ const _doSelectCampaign = (idx: number): void => {
 
     selectedCampaignIndex = idx;
     selectedMissionIndex = 0;
+    _bc(`setActiveCampaign:${idx}`);
     campaignHandler.campaign.setActiveCampaign(idx);
 
     if (type === CAMPAIGN_TYPE.TUTORIAL) {
@@ -496,11 +503,14 @@ const _doSelectCampaign = (idx: number): void => {
         const m0done = !!session.campaignProgress[tutKey]?.missions[0]?.completed;
         if (!m0done) { selectMission(0); return; }
     }
+    _bc(`openMissionSelect:${idx}`);
     _openMissionSelect();
 };
 
 const _openMissionSelect = (): void => {
+    _bc(`openMissionSelect:camp${selectedCampaignIndex}`);
     const campaigns = campaignHandler.getCampaigns();
+    _bc(`MissionSelect.show:camp${selectedCampaignIndex}`);
     MissionSelect.show({
         campaign: campaigns[selectedCampaignIndex],
         campaignIndex: selectedCampaignIndex,
@@ -513,27 +523,42 @@ const _openMissionSelect = (): void => {
 };
 
 export const selectMission = (missionIndex: number): void => {
-    selectedMissionIndex = missionIndex;
-    campaignHandler.campaign.setActiveMission(missionIndex);
+    try {
+        _bc(`selectMission:${missionIndex}`);
+        selectedMissionIndex = missionIndex;
+        _bc(`setActiveMission:${missionIndex}`);
+        campaignHandler.campaign.setActiveMission(missionIndex);
 
-    const { gridSize, objects: selObjects, campaignType } = campaignHandler.getCurrentMissionData();
-    const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
-    G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant };
-    G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
-    initGrid(gridSize, G.points);
+        _bc(`getCurrentMissionData:${missionIndex}`);
+        const { gridSize, objects: selObjects, campaignType } = campaignHandler.getCurrentMissionData();
+        _bc(`findPad:camp${selectedCampaignIndex}m${missionIndex}gridSize${gridSize}`);
+        const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
+        G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant };
+        G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
+        _bc(`initGrid:${gridSize}`);
+        initGrid(gridSize, G.points);
 
-    if (campaignType === CAMPAIGN_TYPE.TUTORIAL) {
-        const _tutMd = campaignHandler.getCurrentMissionData();
-        startGame((_tutMd as any).heliOverride || 'dolphin');
-        return;
+        if (campaignType === CAMPAIGN_TYPE.TUTORIAL) {
+            const _tutMd = campaignHandler.getCurrentMissionData();
+            _bc(`startGame:tutorial`);
+            startGame((_tutMd as any).heliOverride || 'dolphin');
+            return;
+        }
+
+        _bc(`HeliSelect.show:rank${RANKS.indexOf(getRank(session.rankOverride ?? 0, getRankMissions()))}`);
+        HeliSelect.show({
+            rankIndex: RANKS.indexOf(getRank(session.rankOverride ?? 0, getRankMissions())),
+            typeRatings: session.typeRatings ?? {},
+            onSelect: startGame,
+            onBack: backFromHeliSelect,
+            onStep: _bc,
+        });
+        _bc(`HeliSelect.shown`);
+    } catch (err) {
+        const _base = err instanceof Error ? (err.stack ?? err.message) : String(err);
+        try { localStorage.setItem('_lastCrash', session._dbgStep ? `[${session._dbgStep}] ${_base}` : _base); } catch { /* ignore */ }
+        throw err;
     }
-
-    HeliSelect.show({
-        rankIndex: RANKS.indexOf(getRank(session.rankOverride ?? 0, getRankMissions())),
-        typeRatings: session.typeRatings ?? {},
-        onSelect: startGame,
-        onBack: backFromHeliSelect,
-    });
 };
 
 export const backFromHeliSelect = (): void => {
@@ -603,9 +628,14 @@ const _maybeSpawnOrniWreck = (): void => {
 
 export const launchMission = async (showLoader = true): Promise<void> => {
     try { localStorage.removeItem('_lastCrash'); } catch { /* storage unavailable */ }
+    session._dbgStep = undefined;
+    try { saveSession(session); } catch { /* storage unavailable */ }
     try {
+    _bc('decompressMissionAssets');
     await decompressMissionAssets();
+    _bc('prewarmLevel');
     await campaignHandler.prewarmLevel();
+    _bc('getCurrentMissionData');
     const _lmd = campaignHandler.getCurrentMissionData();
     const _lmdObjs = _lmd.objects || [];
     const _padObj = _lmdObjs.find((o: any) => o.type === VESSEL.PAD);
@@ -628,6 +658,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     const _lhObj = _lmdObjs.find((o: any) => o.type === VESSEL.LIGHTHOUSE);
     lighthouseX = _lhObj ? _lhObj.x : -1;
     lighthouseY = _lhObj ? _lhObj.y : -1;
+    _bc('prewarmTerrain');
     await campaignHandler.prewarmTerrain();
     missionGridSize = campaignHandler.getTerrain().gridSize;
     missionMaxTime = (_lmd as any).maxTime ?? null;
@@ -639,6 +670,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
 
     const handle = showLoader ? LoadingScreen.show(localize(_lmd.headline) || 'MISSION') : null;
 
+    _bc('generateTerrain');
     generateTerrain(G.points, missionHasPad ? { ...G.PAD, yMin: G.PAD.yMin - 3 } : null);
     G.sandPoints = campaignHandler.getTerrain().sand ?? [];
     G.pavementPoints = campaignHandler.getTerrain().pavement ?? [];
@@ -647,6 +679,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     handle?.step('Gelände…', 0.25);
     if (handle) await _tick();
 
+    _bc('initCarrierFromMission');
     initCarrierFromMission();
     if (missionHasCarrier) carrierCar.init();
     initBoatsFromMission();
@@ -669,10 +702,12 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     handle?.step('Objekte…', 0.5);
     if (handle) await _tick();
 
+    _bc('initFoliageFromMission');
     await initFoliageFromMission();
     _deps.rebuildEntryCache();
     initParticles({ ctx: makePCtx(), dt: 0 });
     G.deliverMode = false;
+    _bc('initPayloadsFromMission');
     initPayloadsFromMission();
     initEventSystem(
         () => {
@@ -692,6 +727,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     handle?.step('Umgebung…', 0.75);
     if (handle) await _tick();
 
+    _bc('loadingDone');
     handle?.step(I18N.LOADING_READY, 1.0);
     if (handle) await handle.done();
 
@@ -700,6 +736,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     zstate.gameStarted = true;
     _deps.hud.showAll(true);
 
+    _bc('buildStartZone');
     const _startZone = buildStartZone();
     const _sp = _startZone.getPos();
     G.heli.x = _sp.x;
@@ -748,8 +785,8 @@ export const launchMission = async (showLoader = true): Promise<void> => {
 
     // Note: zstate.cam is not initialised here — drawScene sets it on the first frame.
     } catch (err) {
-        const msg = err instanceof Error ? (err.stack ?? err.message) : String(err);
-        try { localStorage.setItem('_lastCrash', msg); } catch { /* storage unavailable */ }
+        const _base = err instanceof Error ? (err.stack ?? err.message) : String(err);
+        try { localStorage.setItem('_lastCrash', session._dbgStep ? `[${session._dbgStep}] ${_base}` : _base); } catch { /* storage unavailable */ }
         throw err;
     }
 };

@@ -157,13 +157,17 @@ const setTouchVisible = (v: boolean) => {
 const _CRASH_KEY = '_lastCrash';
 
 const _showDebugError = (msg: string) => {
-    try { localStorage.setItem(_CRASH_KEY, msg); } catch { /* storage unavailable */ }
-    const stored = msg === 'Script error.' ? (() => { try { return localStorage.getItem(_CRASH_KEY); } catch { return null; } })() : null;
-    const display = stored && stored !== 'Script error.' ? stored : msg;
+    const _dbgStep = Flow.session._dbgStep;
+    const _fullError = msg === 'Script error.'
+        ? (() => { try { return localStorage.getItem(_CRASH_KEY); } catch { return null; } })() ?? msg
+        : msg;
+    try { localStorage.setItem(_CRASH_KEY, _fullError); } catch { /* storage unavailable */ }
     const session = (window as any).__nativeStorage?.z_session ?? localStorage.getItem?.('z_session') ?? '(nicht lesbar)';
     const el = document.createElement('div');
     el.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#900;color:#fff;font:14px monospace;padding:20px;z-index:99999;overflow:auto;white-space:pre-wrap';
-    el.textContent = 'Something went wrong. Please take a screenshot of this screen and send it to the developer.\n\nERROR:\n' + display + '\n\nSESSION:\n' + session;
+    el.textContent = 'Something went wrong. Please take a screenshot of this screen and send it to the developer.'
+        + (_dbgStep ? '\n\nLAST STEP:\n' + _dbgStep : '')
+        + '\n\nSESSION:\n' + session;
     document.body.appendChild(el);
 };
 

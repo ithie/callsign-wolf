@@ -27,6 +27,7 @@ export interface PlayerSession {
     typeRatings?: Record<string, true>;         // heliId → passed
     typeRatingBestTime?: Record<string, number>; // heliId → best time ms
     typeRatingSystemSince?: number;             // absent/0 = old save (gets migrated), 1 = system active
+    _dbgStep?: string;                          // last breadcrumb before crash (cleared on mission start)
 }
 
 

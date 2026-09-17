@@ -7,7 +7,7 @@ const _isIPad =
 const _isLarge = !_isMac && !_isIPad && window.screen.width > 500;
 
 export const CANVAS_SCALE = 0.4;
-export const gameRenderScale = CANVAS_SCALE / 0.5;
+export const gameRenderScale = CANVAS_SCALE / 0.35;
 
 // Target ~20 visible tiles across the screen width (same as iPhone).
 // Mac (~1200 pt wide): tileW 52 → ~23 tiles. _isLarge (800 pt preview): tileW 40 → ~20 tiles.

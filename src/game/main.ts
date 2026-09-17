@@ -12,38 +12,48 @@ import SoundFinal from './music/final.zsong';
 import SoundMaintheme from './music/maintheme.zsong';
 import SlowWay from './music/slowway.zsong';
 import SoundSpocktribute from './music/spocktribute.zsong';
-import ThunderScene from './music/thunderscene.zsong';
-import PartyTime from './music/partytime.zsong';
-import CarrierOps from './music/carrierops.zsong';
-import Coastal from './music/coastal.zsong';
-import Ignition from './music/ignition.zsong';
-import Offshore from './music/offshore.zsong';
-import Vigil from './music/vigil.zsong';
-import Baywatch from './music/baywatch.zsong';
+import CarrierOps from './music/callsignwolf_carrierops.zsong';
+import Coastal from './music/callsignwolf_coastal.zsong';
+import Ignition from './music/callsignwolf_ignition.zsong';
+import Offshore from './music/callsignwolf_offshore.zsong';
+import Vigil from './music/callsignwolf_vigil.zsong';
+import PartyTime from './music/freeflight_partytime.zsong';
+import ThunderScene from './music/freeflight_thunderscene.zsong';
+import Baywatch from './music/freeflight_baywatch.zsong';
+import Metalstorm from './music/freeflight_metalstorm.zsong';
 import Fanfare from './music/fanfare.zsong';
-import Metalstorm from './music/metalstorm.zsong';
 import Unlock from './music/unlock.zsong';
+import ZephyrMorning from './music/zephyr_morning.zsong';
+import ZephyrWind from './music/zephyr_wind.zsong';
+import ZephyrBlackout from './music/zephyr_blackout.zsong';
+import ZephyrIkarus from './music/zephyr_ikarus.zsong';
+import ZephyrRapture from './music/zephyr_rapture.zsong';
 
 const soundHandler = (() => {
     const songList: Record<string, string> = {
         success: SoundSuccess,
-        carrierops: CarrierOps,
+        callsignwolf_carrierops: CarrierOps,
+        callsignwolf_coastal: Coastal,
+        callsignwolf_ignition: Ignition,
+        callsignwolf_offshore: Offshore,
+        callsignwolf_vigil: Vigil,
+        freeflight_partytime: PartyTime,
+        freeflight_thunderscene: ThunderScene,
+        freeflight_baywatch: Baywatch,
+        freeflight_metalstorm: Metalstorm,
         clike: SoundClike,
-        coastal: Coastal,
-        ignition: Ignition,
-        offshore: Offshore,
-        vigil: Vigil,
-        baywatch: Baywatch,
         destroid: SoundDestroid,
         final: SoundFinal,
         maintheme: SoundMaintheme,
-        partytime: PartyTime,
         slowway: SlowWay,
         spocktribute: SoundSpocktribute,
-        thunderscene: ThunderScene,
         fanfare: Fanfare,
-        metalstorm: Metalstorm,
         unlock: Unlock,
+        zephyr_morning: ZephyrMorning,
+        zephyr_wind: ZephyrWind,
+        zephyr_blackout: ZephyrBlackout,
+        zephyr_ikarus: ZephyrIkarus,
+        zephyr_rapture: ZephyrRapture,
     };
 
     const state: { activeTheme: string; isMuted: boolean } = {

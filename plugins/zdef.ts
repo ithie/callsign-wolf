@@ -55,7 +55,7 @@ const LOADER_SRC_DEV =
     `export const decompressHelis=()=>Promise.resolve();` +
     `export const decompressMissionAssets=()=>Promise.resolve();`;
 
-const HELI_MODELS = new Set(['atlas', 'dolphin', 'ornithopter', 'coasthawk']);
+const HELI_MODELS = new Set(['atlas', 'dolphin', 'ornithopter', 'coasthawk', 'spinner']);
 
 const compress = (val: unknown, key?: string): unknown => {
     if (key === 'verts' && Array.isArray(val)) return (val as number[][]).flat();
