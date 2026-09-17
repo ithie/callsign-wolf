@@ -228,6 +228,7 @@ if (import.meta.env.DEV) {
 }
 
 let _fpsLastTime = 0;
+let _dynZoom = 1.0;
 const drawScene = () => {
     try { _drawSceneInner(); } catch (err) {
         _showDebugError(err instanceof Error ? (err.stack ?? err.message) : String(err));
@@ -268,6 +269,15 @@ const _drawSceneInner = () => {
         }
     }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const _speed = Math.hypot(G.heli.vx, G.heli.vy);
+    const _zoomTarget = 1.0 - Math.min(_speed / 0.3, 1.0) * 0.26;
+    _dynZoom += (_zoomTarget - _dynZoom) * 0.05;
+    const _zCx = canvas.width / 2, _zCy = canvas.height / 2;
+    ctx.save();
+    ctx.translate(_zCx, _zCy);
+    ctx.scale(_dynZoom, _dynZoom);
+    ctx.translate(-_zCx, -_zCy);
 
     const tx = (G.heli.x - G.heli.y) * (tileW / 2);
     const ty = (G.heli.x + G.heli.y) * (tileH / 2) - (isMac() ? 0 : G.heli.z * stepH);
@@ -443,6 +453,8 @@ const _drawSceneInner = () => {
             rings: G.RINGS.map(r => ({ x: r.x, y: r.y, flown: r.flown })),
         },
     });
+
+    ctx.restore();
 
     updateHeliSound(G.heli.rotorRPM, G.heli.engineOn, G.heli.type, Math.hypot(G.wind.x, G.wind.y), _flapRate);
     if (isTutorialRunning()) tutorialTick(G);

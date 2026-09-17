@@ -553,7 +553,11 @@
             ]
           ],
           "color": "#3f3f3f"
-        },
+        }
+      ]
+    },
+    {
+      "faces": [
         {
           "id": "cab_f_L",
           "normal": [
