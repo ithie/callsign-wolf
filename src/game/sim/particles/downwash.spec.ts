@@ -4,6 +4,7 @@ import type { ParticlesCtx, ParticleSystemArgs } from './ctx';
 
 const mkCtx = (overrides: Partial<ParticlesCtx> = {}): ParticlesCtx => ({
     particles: [],
+    foamParticles: [],
     debris: [],
     flocks: [],
     emitters: [],

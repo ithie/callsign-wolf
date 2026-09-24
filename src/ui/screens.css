@@ -1,3 +1,11 @@
+@font-face {
+    font-family: 'PressStart2P';
+    src: url('./PressStart2P.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: block;
+}
+
 /* ─── shared full-screen overlay base ───────────────────────────────────── */
 .screen-body {
     width: 100%;
@@ -14,6 +22,11 @@
     padding-top: max(clamp(14px, 3vh, 28px), env(safe-area-inset-top));
     padding-bottom: max(clamp(14px, 3vh, 28px), env(safe-area-inset-bottom));
     touch-action: pan-y manipulation;
+    font-family: 'PressStart2P';
+}
+.ui-screen .title {
+    font-size: var(--ps-7);
+    margin-bottom: 18px;
 }
 @media (max-height: 600px) {
     .ui-screen { justify-content: flex-start; }
@@ -22,22 +35,22 @@
 
 .box-label {
     font-weight: bold;
-    font-size: 18px;
+    font-size: var(--ps-3);
     margin-top: 10px;
     text-transform: uppercase;
 }
 .box-sub {
-    font-size: 13px;
+    font-size: var(--ps-2);
     margin-top: 5px;
     opacity: 0.8;
 }
 @media (max-height: 520px) {
     .box-label {
-        font-size: 13px;
+        font-size: var(--ps-2);
         margin-top: 4px;
     }
     .box-sub {
-        font-size: 11px;
+        font-size: var(--ps-1);
     }
 }
 

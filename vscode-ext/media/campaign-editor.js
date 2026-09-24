@@ -2763,8 +2763,8 @@
         actualCtx.strokeStyle = "rgba(210,235,255,0.7)";
         actualCtx.lineWidth = 1.2 * s * lineScale;
         actualCtx.lineCap = "round";
-        for (let i = 0; i < 8; i++) {
-          const a = hRotor * 2 * tailRotorRate + i * (Math.PI / 4);
+        for (let i = 0; i < 4; i++) {
+          const a = hRotor * 2 * tailRotorRate + i * (Math.PI / 2);
           const ca = Math.cos(a), sa = Math.sin(a);
           actualCtx.beginPath();
           actualCtx.moveTo(
@@ -3844,6 +3844,14 @@
       ctx.fillStyle = o.type === "pad" ? COLORS.padFill : o.type === "carrier" ? COLORS.carrierBase : "#4af";
       ctx.fillRect(mx - 2, my - 2, 4, 4);
     });
+    m.payloads.forEach((p) => {
+      if (p.x == null || p.y == null) return;
+      const mx = MX + (p.x + 0.5) * ts, my = MY + (p.y + 0.5) * ts;
+      ctx.fillStyle = p.type === "crate" ? "#fa0" : "#f55";
+      ctx.beginPath();
+      ctx.arc(mx, my, Math.max(1.5, ts * 0.6), 0, Math.PI * 2);
+      ctx.fill();
+    });
     const W = canvas.width, H = canvas.height;
     const corners = [[0, 0], [W, 0], [W, H], [0, H]].map(([sx, sy]) => {
       const dx = sx - ox, dy = sy - oy;
@@ -4012,6 +4020,7 @@
     m.snow = getInput("m_snow").checked;
     m.night = getInput("m_night").checked;
     m.padPayloadRefill = getInput("m_pad_payload_refill").checked || void 0;
+    m.endless = getInput("m_endless").checked || void 0;
     const _startOnboard = parseInt(getInput("m_start_onboard").value);
     m.startOnboard = _startOnboard > 0 ? _startOnboard : void 0;
     m.waterLevel = parseFloat(getInput("m_water_level").value) || 0;
@@ -4070,6 +4079,7 @@
     getInput("m_snow").checked = !!m.snow;
     getInput("m_night").checked = m.night;
     getInput("m_pad_payload_refill").checked = !!m.padPayloadRefill;
+    getInput("m_endless").checked = !!m.endless;
     getInput("m_start_onboard").value = (m.startOnboard ?? 0).toString();
     getInput("m_water_level").value = (m.waterLevel ?? 0).toString();
     getInput("m_max_time").value = m.maxTime != null ? m.maxTime.toString() : "";
@@ -5069,6 +5079,7 @@
       "m_rain",
       "m_snow",
       "m_night",
+      "m_endless",
       "m_water_level",
       "m_max_time",
       "m_heli_override",
@@ -6069,7 +6080,7 @@
     }
   });
   vscode.postMessage({ type: "ready" });
-  window.__editor = { state, getCurrentMission: () => state.campaign[state.curIdx], loadMission, syncToData, renderPayloadList, renderObjectList, renderFoliageList };
+  window.__editor = { state, getCurrentMission: () => state.campaign[state.curIdx], loadMission, syncToData, renderPayloadList, renderObjectList, renderFoliageList, drawMap };
   window.__editorUtils = { compressTerrain, compressFoliage, decompressFoliage, decompressTerrain };
 })();
 //# sourceMappingURL=campaign-editor.js.map

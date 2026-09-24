@@ -4,7 +4,7 @@ const vscode = acquireVsCodeApi();
 
 import styleContent from '../editor-view/style.css';
 import { initUI, loadMission, syncToData, renderPayloadList, renderObjectList, renderFoliageList, setOnStateChanged, setOnOpenFile } from '../editor-view/ui';
-import { setDefRequestCallback, receiveDefData } from '../editor-view/render';
+import { setDefRequestCallback, receiveDefData, drawMap } from '../editor-view/render';
 import { initEventsEditor } from '../editor-view/events-editor';
 import { state } from '../editor-view/state';
 import { compressTerrain, compressFoliage, decompressFoliage, decompressTerrain } from '../../src/shared/utils';
@@ -71,5 +71,5 @@ window.addEventListener('message', (e: MessageEvent<{ type: string; content?: st
 vscode.postMessage({ type: 'ready' });
 
 // Expose for workbench bridge compatibility
-(window as any).__editor = { state, getCurrentMission: () => state.campaign[state.curIdx], loadMission, syncToData, renderPayloadList, renderObjectList, renderFoliageList };
+(window as any).__editor = { state, getCurrentMission: () => state.campaign[state.curIdx], loadMission, syncToData, renderPayloadList, renderObjectList, renderFoliageList, drawMap };
 (window as any).__editorUtils = { compressTerrain, compressFoliage, decompressFoliage, decompressTerrain };

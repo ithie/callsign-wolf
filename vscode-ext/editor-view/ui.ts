@@ -87,6 +87,7 @@ export const syncToData = () => {
     m.snow = getInput('m_snow').checked;
     m.night = getInput('m_night').checked;
     m.padPayloadRefill = getInput('m_pad_payload_refill').checked || undefined;
+    (m as any).endless = getInput('m_endless').checked || undefined;
     const _startOnboard = parseInt(getInput('m_start_onboard').value);
     (m as any).startOnboard = _startOnboard > 0 ? _startOnboard : undefined;
     (m as any).waterLevel = parseFloat(getInput('m_water_level').value) || 0;
@@ -150,6 +151,7 @@ export const loadMission = (idx: number) => {
     getInput('m_snow').checked = !!m.snow;
     getInput('m_night').checked = m.night;
     getInput('m_pad_payload_refill').checked = !!(m as any).padPayloadRefill;
+    getInput('m_endless').checked = !!(m as any).endless;
     getInput('m_start_onboard').value = ((m as any).startOnboard ?? 0).toString();
     getInput('m_water_level').value = ((m as any).waterLevel ?? 0).toString();
     getInput('m_max_time').value = (m as any).maxTime != null ? (m as any).maxTime.toString() : '';
@@ -1142,7 +1144,7 @@ export const initUI = () => {
     [
         'm_headline_de', 'm_headline_en', 'm_headline_fr', 'm_headline_es', 'm_headline_pt',
         'm_briefing_de', 'm_briefing_en', 'm_briefing_fr', 'm_briefing_es', 'm_briefing_pt',
-        'm_rain', 'm_snow', 'm_night', 'm_water_level', 'm_max_time', 'm_heli_override',
+        'm_rain', 'm_snow', 'm_night', 'm_endless', 'm_water_level', 'm_max_time', 'm_heli_override',
         'm_wind_dir', 'm_wind_str', 'm_wind_var', 'm_npc_heli_count', 'm_npc_heli_type',
         'm_sublines_de', 'm_sublines_en', 'm_sublines_fr', 'm_sublines_es', 'm_sublines_pt',
     ].forEach(id => getEl(id)?.addEventListener('input', syncToData));
@@ -1831,6 +1833,7 @@ export const initUI = () => {
             }
             return;
         }
+
         if (state.isDraggingItem) {
             if (Math.hypot(e.clientX - state.dragStartMX, e.clientY - state.dragStartMY) > 3) state.dragHasMoved = true;
             if (state.dragHasMoved) {
@@ -1896,6 +1899,7 @@ export const initUI = () => {
             state.isDraggingMinimap = false;
             return;
         }
+
         if (state.isDraggingItem) {
             if (state.dragHasMoved) {
                 const m = getCurrentMission()!;

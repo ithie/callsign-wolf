@@ -2,7 +2,6 @@ import { CampaignExport, MissionData } from '@/shared/types';
 import Tutorial from './campaigns/tutorial.zcampaign';
 import FreeFlight from './campaigns/freeFlight.zcampaign';
 import CallsignWolf from './campaigns/callsignwolf.zcampaign';
-import Zephyr from './campaigns/Zephyr.zcampaign';
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
 import SoundSuccess from './music/success.zsong';
@@ -23,11 +22,6 @@ import Baywatch from './music/freeflight_baywatch.zsong';
 import Metalstorm from './music/freeflight_metalstorm.zsong';
 import Fanfare from './music/fanfare.zsong';
 import Unlock from './music/unlock.zsong';
-import ZephyrMorning from './music/zephyr_morning.zsong';
-import ZephyrWind from './music/zephyr_wind.zsong';
-import ZephyrBlackout from './music/zephyr_blackout.zsong';
-import ZephyrIkarus from './music/zephyr_ikarus.zsong';
-import ZephyrRapture from './music/zephyr_rapture.zsong';
 
 const soundHandler = (() => {
     const songList: Record<string, string> = {
@@ -49,11 +43,6 @@ const soundHandler = (() => {
         spocktribute: SoundSpocktribute,
         fanfare: Fanfare,
         unlock: Unlock,
-        zephyr_morning: ZephyrMorning,
-        zephyr_wind: ZephyrWind,
-        zephyr_blackout: ZephyrBlackout,
-        zephyr_ikarus: ZephyrIkarus,
-        zephyr_rapture: ZephyrRapture,
     };
 
     const state: { activeTheme: string; isMuted: boolean } = {
@@ -128,7 +117,6 @@ const createCampaignHandler = () => {
         Tutorial as unknown as CampaignExport,
         FreeFlight as unknown as CampaignExport,
         CallsignWolf as unknown as CampaignExport,
-        Zephyr as unknown as CampaignExport,
     ];
 
     let campaignMap = new Map<string, CampaignExport>(campaigns.map(c => [(c as any)._key as string, c]));

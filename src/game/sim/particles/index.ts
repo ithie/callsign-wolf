@@ -1,6 +1,7 @@
 export type {
     Particle, DebrisPiece, Bird, Flock,
     EmitterParticle, ParticleEmitter,
+    FoamParticle,
     HeliRef, WindState,
     ParticlesCtx, ParticleSystem, ParticleSystemArgs,
 } from './ctx';
@@ -10,11 +11,13 @@ import * as Birds from './birds';
 import * as WorldEmitters from './world-emitters';
 import * as Downwash from './downwash';
 import * as Explosion from './explosion';
+import * as SeaFoam from './sea-foam';
+export { resetFoam } from './sea-foam';
 
 // Systems initialized on mission start (Birds only — Explosion.init is the crash trigger)
 const _initSystems: ParticleSystem[] = [Birds];
 // All systems ticked every physics frame
-const _particleSystems: ParticleSystem[] = [Birds, WorldEmitters, Downwash, Explosion];
+const _particleSystems: ParticleSystem[] = [Birds, WorldEmitters, Downwash, Explosion, SeaFoam];
 
 export const initParticles = (args: ParticleSystemArgs) =>
     _initSystems.forEach(s => s.init!(args));

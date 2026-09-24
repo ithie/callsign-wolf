@@ -9,6 +9,7 @@
     justify-content: center;
     align-items: center;
     z-index: 300;
+    font-family: 'PressStart2P';
 }
 
 #briefing-panel {
@@ -43,14 +44,14 @@
 }
 
 #briefing-address {
-    font-size: 11px;
+    font-size: var(--ps-2);
     color: #cc9900;
     letter-spacing: 3px;
     margin-bottom: 2px;
 }
 
 #briefing-headline {
-    font-size: 19px;
+    font-size: var(--ps-5);
     color: #ff6600;
     text-shadow: 0 0 10px #ff6600;
     font-weight: bold;
@@ -58,14 +59,14 @@
 }
 
 #briefing-sublines {
-    font-size: 12px;
+    font-size: var(--ps-2);
     color: #5f5;
     line-height: 1.8;
     letter-spacing: 1px;
 }
 
 #briefing-body {
-    font-size: 12px;
+    font-size: var(--ps-2);
     color: #aaa;
     line-height: 1.7;
 }
@@ -73,8 +74,8 @@
 #briefing-ok-btn {
     align-self: flex-end;
     margin-top: 6px;
-    font-family: monospace;
-    font-size: 13px;
+    font-family: 'PressStart2P';
+    font-size: var(--ps-3);
     letter-spacing: 3px;
     color: #0f0;
     background: transparent;
@@ -102,18 +103,18 @@
         gap: 6px;
     }
     #briefing-headline {
-        font-size: 17px;
+        font-size: var(--ps-4);
     }
     #briefing-address {
-        font-size: 10px;
+        font-size: var(--ps-2);
         letter-spacing: 2px;
     }
     #briefing-sublines,
     #briefing-body {
-        font-size: 11px;
+        font-size: var(--ps-2);
     }
     #briefing-ok-btn {
-        font-size: 12px;
+        font-size: var(--ps-2);
         padding: 5px 16px;
     }
 }

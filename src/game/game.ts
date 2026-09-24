@@ -148,7 +148,18 @@ const { drawTerrain, precomputeDayColors } = createDrawTerrain({
 const _rafRef = { id: 0 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+const _HELI_COLOR_HEX: Record<string, string> = {
+    orange: '#ff6600',
+    blue:   '#55aadd',
+    sand:   '#c8a45a',
+    green:  '#4e8c38',
+};
+
 const setTouchVisible = (v: boolean) => {
+    if (v) {
+        const hex = _HELI_COLOR_HEX[storageGet('z_heli_color') ?? ''] ?? _HELI_COLOR_HEX['orange'];
+        window.webkit?.messageHandlers?.controls?.postMessage({ type: 'setTintColor', hex });
+    }
     window.webkit?.messageHandlers?.controls?.postMessage({ type: 'showControls', visible: v });
     const touchEl = document.getElementById('touch-controls');
     if (touchEl) touchEl.style.display = v ? 'flex' : 'none';
@@ -217,6 +228,7 @@ const _physicsCtx = createPhysicsCtx({
     getTriggerCrash: () => _getPreviewTriggerCrash() ?? Flow.triggerCrash,
     orniWreckDelivered: Flow.orniWreckDelivered,
     onBoatTurbineCollision: Flow.onBoatTurbineCollision,
+    onPersonPickedUp: () => { if (Flow.endlessMode) Flow.spawnEndlessPerson(); },
 });
 
 // ─── Render loop ──────────────────────────────────────────────────────────────
@@ -229,6 +241,7 @@ if (import.meta.env.DEV) {
 
 let _fpsLastTime = 0;
 let _dynZoom = 1.0;
+let _dynZoomFastSince = 0;
 const drawScene = () => {
     try { _drawSceneInner(); } catch (err) {
         _showDebugError(err instanceof Error ? (err.stack ?? err.message) : String(err));
@@ -271,7 +284,11 @@ const _drawSceneInner = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     const _speed = Math.hypot(G.heli.vx, G.heli.vy);
-    const _zoomTarget = 1.0 - Math.min(_speed / 0.3, 1.0) * 0.26;
+    const _now2 = performance.now();
+    if (_speed > 0.06) { if (!_dynZoomFastSince) _dynZoomFastSince = _now2; }
+    else { _dynZoomFastSince = 0; }
+    const _timerF = _dynZoomFastSince ? Math.min((_now2 - _dynZoomFastSince) / 2000, 1) : 0;
+    const _zoomTarget = 1.0 - Math.min(_speed / 0.3, 1.0) * 0.26 * _timerF;
     _dynZoom += (_zoomTarget - _dynZoom) * 0.05;
     const _zCx = canvas.width / 2, _zCy = canvas.height / 2;
     ctx.save();
@@ -412,6 +429,22 @@ const _drawSceneInner = () => {
     });
     G.particles = G.particles.filter(p => p.life > 0);
 
+    // Sea foam — flat white flecks on the water surface
+    const _foamScale = tileW / 64;
+    G.foamParticles.forEach(p => {
+        const pos = isoFn(p.x, p.y, G.waterLevel, camX, camY);
+        const fadeIn  = Math.min(1, p.phase * 1.2);
+        const fadeOut = Math.min(1, (p.maxLife - p.phase) * 0.8);
+        const alpha   = Math.min(fadeIn, fadeOut) * 0.55;
+        if (alpha <= 0) return;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle   = 'rgb(230,242,250)';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, Math.max(0.5, p.size * _foamScale), 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1.0;
+
     if (G.debris.length > 0) drawDebris(G.debris, camX, camY);
 
     if (!zstate.crashed) {
@@ -429,6 +462,7 @@ const _drawSceneInner = () => {
         groundUnderHeli: getGround(G.heli.x, G.heli.y),
         totalRescued: G.totalRescued,
         goalCount: G.goalCount,
+        endlessMode: Flow.endlessMode,
         playerName: Flow.session.playerName || '',
         deliverMode: G.deliverMode,
         maxTimeRemaining: Flow.hudMaxTimeRemaining,

@@ -3,7 +3,7 @@ import { initParticles, updateParticles, spawnExplosion } from './index';
 import type { ParticlesCtx } from './ctx';
 
 const makeCtx = (): ParticlesCtx => ({
-    particles: [], debris: [], flocks: [], emitters: [],
+    particles: [], foamParticles: [], debris: [], flocks: [], emitters: [],
     heli: { x: 10, y: 10, z: 5, vx: 0.2, vy: 0, vz: -0.1, type: 'dolphin', angle: 0, rotorRPM: 0 },
     wind: { x: 0, y: 0, angle: 0, phase: 0, varOffset: 0, rawStr: 0 },
     waterLevel: 0, gridSize: 28,

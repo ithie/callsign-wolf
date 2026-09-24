@@ -93,7 +93,7 @@ export const mount = () => {
     importRow.append(importInput, applyBtn);
     const importMsg = document.createElement('div');
     importMsg.id = 'import-code-msg';
-    importMsg.style.cssText = 'font-size:12px;letter-spacing:2px;min-height:18px;margin-top:4px';
+    importMsg.style.cssText = 'font-size:9px;letter-spacing:1px;min-height:18px;margin-top:4px';
     const importField = document.createElement('div');
     importField.id = 'settings-import-field';
     importField.className = 'settings-field';
@@ -142,7 +142,7 @@ export const mount = () => {
     const iapRestoreBtn = createSettingsBtn(I18N.IAP_RESTORE, { id: 'iap-restore-btn' });
     const iapStatus = document.createElement('div');
     iapStatus.id = 'iap-restore-status';
-    iapStatus.style.cssText = 'font-size:12px;letter-spacing:2px;min-height:18px';
+    iapStatus.style.cssText = 'font-size:9px;letter-spacing:1px;min-height:18px';
     iapSection.append(iapRestoreBtn, iapStatus);
 
     // Delete section
@@ -151,7 +151,7 @@ export const mount = () => {
     const deleteBtn = createSettingsBtn(I18N.DELETE_SESSION, { id: 'delete-session-btn', danger: true });
     const deleteMsg = document.createElement('div');
     deleteMsg.id = 'delete-session-msg';
-    deleteMsg.style.cssText = 'font-size:12px;letter-spacing:2px;color:#c44;min-height:18px;margin-top:6px';
+    deleteMsg.style.cssText = 'font-size:9px;letter-spacing:1px;color:#c44;min-height:18px;margin-top:6px';
     deleteSection.append(deleteBtn, deleteMsg);
 
     body.append(badge, callsignField, stats, codeField, importField, audioSection, iapSection, deleteSection);

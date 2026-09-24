@@ -849,6 +849,16 @@ const _drawMinimap = (
         ctx.fillRect(mx - 2, my - 2, 4, 4);
     });
 
+    // Payloads
+    m.payloads.forEach(p => {
+        if (p.x == null || p.y == null) return;
+        const mx = MX + (p.x + 0.5) * ts, my = MY + (p.y + 0.5) * ts;
+        ctx.fillStyle = p.type === 'crate' ? '#fa0' : '#f55';
+        ctx.beginPath();
+        ctx.arc(mx, my, Math.max(1.5, ts * 0.6), 0, Math.PI * 2);
+        ctx.fill();
+    });
+
     // Viewport indicator
     // Convert canvas corners to grid, then to minimap coords
     const W = canvas.width, H = canvas.height;

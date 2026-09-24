@@ -19,7 +19,7 @@ import {
 } from './sim/world-init';
 import { carrierCar } from './sim/vehicles/carrier-car';
 import { fuelTruck } from './sim/vehicles/fuel-truck';
-import { initParticles, spawnExplosion, spawnPositionExplosion, type ParticlesCtx } from './sim/particles';
+import { initParticles, resetFoam, spawnExplosion, spawnPositionExplosion, type ParticlesCtx } from './sim/particles';
 import { initEventSystem, markEventSystemStarted } from './sim/event-system';
 import { initNpcHelisFromMission } from './sim/npc-helis';
 import { initFoliageFromMission } from './foliage';
@@ -85,6 +85,28 @@ export let missionAltLimit: number | null = null;
 export let altViolationStart: number | null = null;
 export const setAltViolationStart = (v: number | null): void => { altViolationStart = v; };
 
+// ─── Endless mode ─────────────────────────────────────────────────────────────
+export let endlessMode = false;
+
+export const spawnEndlessPerson = (): void => {
+    const payloads = (campaignHandler.getCurrentMissionData() as any)?.payloads as { type: string; x: number; y: number }[] | undefined;
+    if (!payloads?.length) return;
+    const tmpl = payloads[Math.floor(Math.random() * payloads.length)];
+    spawnPayload({ ...tmpl }, false);
+};
+
+const _saveEndlessScore = (): void => {
+    const score = G.totalRescued;
+    if (score <= 0) return;
+    const key = String(selectedCampaignIndex);
+    if (!session.campaignProgress[key]) session.campaignProgress[key] = { completed: false, missions: [] };
+    const cp = session.campaignProgress[key];
+    if (!cp.missions[selectedMissionIndex]) cp.missions[selectedMissionIndex] = { completed: false, bestTimeMs: null, count: 0 };
+    const mp = cp.missions[selectedMissionIndex];
+    if (!mp.endlessBest || score > mp.endlessBest) mp.endlessBest = score;
+    saveSession(session);
+};
+
 // ─── Render-side deps (set by initFlow before first use) ─────────────────────
 
 interface FlowDeps {
@@ -122,6 +144,7 @@ export const getRankMissions = (): number => {
 
 export const makePCtx = (): ParticlesCtx => ({
     particles: G.particles,
+    foamParticles: G.foamParticles,
     debris: G.debris,
     flocks: G.flocks,
     emitters: G.PARTICLE_EMITTERS,
@@ -215,6 +238,8 @@ export const resetHeliState = (): void => {
     G.heli.vy = 0;
     G.heli.vz = 0;
     G.particles = [];
+    G.foamParticles = [];
+    resetFoam();
     G.debris = [];
     G.totalRescued = 0;
 };
@@ -226,18 +251,27 @@ export const triggerCrash = (): void => {
     soundHandler.play('final');
     spawnExplosion({ ctx: makePCtx(), dt: 0 });
     zstate.crashed = true;
+    if (endlessMode) _saveEndlessScore();
     setTimeout(() => {
         stopMission();
+        const _prevBest = (() => {
+            const cp = session.campaignProgress[String(selectedCampaignIndex)];
+            return cp?.missions[selectedMissionIndex]?.endlessBest ?? null;
+        })();
         MissionFailedScreen.mount(
             returnToBase,
             retryMission,
-            missionTypeRatingFor ? I18N.TYPE_RATING_FAILED : undefined
+            endlessMode
+                ? I18N.ENDLESS_SCORE(G.totalRescued, _prevBest)
+                : (missionTypeRatingFor ? I18N.TYPE_RATING_FAILED : undefined)
         );
         MissionFailedScreen.show();
     }, 1800);
 };
 
 export const returnToBase = (): void => {
+    if (endlessMode && !zstate.crashed) _saveEndlessScore();
+    endlessMode = false;
     stopMission();
     zstate.gameStarted = false;
     resetHeliState();
@@ -516,7 +550,7 @@ const _openMissionSelect = (): void => {
         campaignIndex: selectedCampaignIndex,
         session,
         rankIndex: RANKS.indexOf(getRank(session.rankOverride ?? 0, getRankMissions())),
-        onSelect: selectMission,
+        onSelect: (idx, endless) => { endlessMode = endless ?? false; selectMission(idx); },
         onBack: toCampaignSelect,
         onShowPaywall: () => _openPaywall(_openMissionSelect),
     });

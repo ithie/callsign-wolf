@@ -849,8 +849,8 @@ export const createDrawObjects = (
             actualCtx.strokeStyle = 'rgba(210,235,255,0.7)';
             actualCtx.lineWidth = 1.2 * s * lineScale;
             actualCtx.lineCap = 'round';
-            for (let i = 0; i < 8; i++) {
-                const a = hRotor * 2.0 * tailRotorRate + i * (Math.PI / 4);
+            for (let i = 0; i < 4; i++) {
+                const a = hRotor * 2.0 * tailRotorRate + i * (Math.PI / 2);
                 const ca = Math.cos(a),
                     sa = Math.sin(a);
                 actualCtx.beginPath();

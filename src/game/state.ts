@@ -1,6 +1,6 @@
 import { HELI_TYPES } from './heli-types';
 import { VEHICLE_STATE, VehicleState, NpcHeliState } from '../shared/types';
-import type { Particle, DebrisPiece, Flock, ParticleEmitter, WindState } from './sim/particles/ctx';
+import type { Particle, DebrisPiece, Flock, ParticleEmitter, WindState, FoamParticle } from './sim/particles/ctx';
 
 // ─── NPC heli ─────────────────────────────────────────────────────────────────
 export interface NpcHeli {
@@ -54,6 +54,7 @@ export const G = {
     sandPoints: [] as number[][],
     pavementPoints: [] as number[][],
     particles: [] as Particle[],
+    foamParticles: [] as FoamParticle[],
     debris: [] as DebrisPiece[],
     CARRIER: {} as any,
     BOATS: [] as any[],

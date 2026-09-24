@@ -813,6 +813,7 @@
             <input type="checkbox" id="m_rain" />
             <input type="checkbox" id="m_snow" />
             <input type="checkbox" id="m_night" />
+            <input type="checkbox" id="m_endless" />
             <input type="checkbox" id="m_pad_payload_refill" />
             <input type="number" id="m_start_onboard" value="0" min="0" max="6" />
             <input type="number" id="m_water_level" value="0" min="-5" max="30" step="0.5" />
@@ -957,6 +958,7 @@ Viel Glück, Pilot.</textarea
                               gridSize: m.gridSize,
                               rain: m.rain,
                               night: m.night,
+                              endless: !!m.endless,
                               waterLevel: m.waterLevel || 0,
                               windDir: m.windDir,
                               windStr: m.windStr,
@@ -1137,6 +1139,10 @@ Viel Glück, Pilot.</textarea
                     case 'set-night':
                         chk('m_night', data.value);
                         fire('m_night', 'input');
+                        break;
+                    case 'set-endless':
+                        chk('m_endless', data.value);
+                        fire('m_endless', 'input');
                         break;
                     case 'set-pad-payload-refill':
                         chk('m_pad_payload_refill', data.value);
@@ -1474,7 +1480,7 @@ Viel Glück, Pilot.</textarea
                     '" min="1" max="50" style="width:42px;background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:2px;padding:1px 4px;font-size:10px" ' +
                     (isPaint ? '' : 'disabled ') +
                     "oninput=\"if(document.querySelector('input[name=ed-brush][value=custom]').checked) edDispatch('set-brush',{value:this.value})\">" +
-                    '<div style="display:flex;gap:3px;margin-left:auto">' +
+                    '<div style="display:flex;gap:3px;margin-left:auto;align-items:center">' +
                     '<button class="ed-brush-btn" onclick="edDispatch(\'zoom-out\')">−</button>' +
                     '<button class="ed-brush-btn" onclick="edDispatch(\'zoom-in\')">+</button>' +
                     '</div>' +
@@ -1780,6 +1786,9 @@ Viel Glück, Pilot.</textarea
                         '<label><input type="checkbox" ' +
                         (cm.night ? 'checked' : '') +
                         ' onchange="edDispatch(\'set-night\',{value:this.checked})"> 🌙 Nacht</label>' +
+                        '<label><input type="checkbox" ' +
+                        (cm.endless ? 'checked' : '') +
+                        ' onchange="edDispatch(\'set-endless\',{value:this.checked})"> ♾ Endlosmodus</label>' +
                         '<label style="margin-top:4px"><input type="checkbox" ' +
                         (cm.padPayloadRefill ? 'checked' : '') +
                         ' onchange="edDispatch(\'set-pad-payload-refill\',{value:this.checked})"> 🎁 Pad lädt Pakete nach</label>' +

@@ -12,7 +12,6 @@
     gap: 12px;
 }
 #paywall .title {
-    font-size: 36px;
     margin-bottom: 0;
 }
 #paywall .screen-body {
@@ -24,22 +23,22 @@
 
 #paywall-description {
     color: #aaa;
-    font-size: 13px;
-    letter-spacing: 1.5px;
-    line-height: 1.7;
+    font-size: var(--ps-1);
+    letter-spacing: 0.5px;
+    line-height: 2.2;
     margin: 0;
 }
 
 #paywall-price {
-    font-size: 28px;
-    letter-spacing: 4px;
+    font-size: var(--ps-4);
+    letter-spacing: 3px;
     color: #ffcc00;
 }
 
 #paywall-status {
     min-height: 20px;
-    font-size: 13px;
-    letter-spacing: 3px;
+    font-size: var(--ps-1);
+    letter-spacing: 2px;
     text-align: center;
 }
 
@@ -68,7 +67,7 @@
 }
 
 .paywall-heli-label {
-    font-size: 9px;
+    font-size: var(--ps-1);
     letter-spacing: 2px;
     color: #555;
 }

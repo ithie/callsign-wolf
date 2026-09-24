@@ -20,6 +20,7 @@ export interface PhysicsCtxDeps {
     getTriggerCrash: () => () => void;
     orniWreckDelivered: () => void;
     onBoatTurbineCollision: (boatIdx: number, wtIdx: number) => void;
+    onPersonPickedUp?: () => void;
 }
 
 export const createPhysicsCtx = (deps: PhysicsCtxDeps): PhysicsCtx => ({
@@ -41,4 +42,5 @@ export const createPhysicsCtx = (deps: PhysicsCtxDeps): PhysicsCtx => ({
     },
     orniWreckDelivered:       deps.orniWreckDelivered,
     onBoatTurbineCollision:   deps.onBoatTurbineCollision,
+    get onPersonPickedUp() { return deps.onPersonPickedUp; },
 } as PhysicsCtx);

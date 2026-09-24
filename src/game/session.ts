@@ -12,6 +12,7 @@ export interface MissionProgress {
     completed: boolean;
     bestTimeMs: number | null;
     count: number;
+    endlessBest?: number; // best rescued count in endless mode
 }
 
 export interface CampaignProgress {
@@ -56,22 +57,43 @@ export const loadSession = (): PlayerSession => {
         const raw = storageGet(STORAGE_KEY);
         if (!raw) return _default();
         const parsed = JSON.parse(raw);
-        // Strip legacy fields from old saves
         delete parsed.activeCampaignIndex;
         delete parsed.allUnlocked;
         delete parsed.lastSeenVersion;
         delete parsed.cookieConsent;
         delete parsed.consentTimestamp;
         delete parsed.consentVersion;
-        const merged = { ..._default(), ...parsed };
-        for (const key of Object.keys(merged.campaignProgress)) {
-            const cp = merged.campaignProgress[key];
-            if (!Array.isArray(cp?.missions)) cp.missions = [];
+        const s = { ..._default(), ...parsed };
+
+        if (typeof s.playerName !== 'string') s.playerName = '';
+        if (typeof s.rankOverride !== 'number' || !isFinite(s.rankOverride)) s.rankOverride = 0;
+        if (typeof s.highestUnlockedCampaignIndex !== 'number' || !isFinite(s.highestUnlockedCampaignIndex)) s.highestUnlockedCampaignIndex = 0;
+
+        if (typeof s.campaignProgress !== 'object' || s.campaignProgress === null || Array.isArray(s.campaignProgress)) {
+            s.campaignProgress = {};
+        } else {
+            for (const key of Object.keys(s.campaignProgress)) {
+                const cp = s.campaignProgress[key] as any;
+                if (typeof cp !== 'object' || cp === null) { delete s.campaignProgress[key]; continue; }
+                if (typeof cp.completed !== 'boolean') cp.completed = false;
+                if (!Array.isArray(cp.missions)) {
+                    cp.missions = [];
+                } else {
+                    cp.missions = cp.missions.map((m: any): MissionProgress => ({
+                        completed: typeof m?.completed === 'boolean' ? m.completed : false,
+                        bestTimeMs: typeof m?.bestTimeMs === 'number' ? m.bestTimeMs : null,
+                        count:      typeof m?.count      === 'number' ? m.count      : 0,
+                        ...(typeof m?.endlessBest === 'number' ? { endlessBest: m.endlessBest } : {}),
+                    }));
+                }
+            }
         }
-        if (!merged.typeRatings) merged.typeRatings = {};
-        if (!merged.typeRatingBestTime) merged.typeRatingBestTime = {};
-        migrateSession(merged);
-        return merged;
+
+        if (typeof s.typeRatings !== 'object' || s.typeRatings === null)     s.typeRatings = {};
+        if (typeof s.typeRatingBestTime !== 'object' || s.typeRatingBestTime === null) s.typeRatingBestTime = {};
+
+        migrateSession(s);
+        return s;
     } catch {
         return _default();
     }
@@ -132,10 +154,7 @@ export const isCampaignPaywalled = (
     return !isUnlocked();
 };
 
-const FREE_FLIGHT_FREE_INDICES = new Set([1, 3]);
-
-export const isMissionPaywalled = (campaignType: string, missionIndex: number): boolean => {
-    if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return !FREE_FLIGHT_FREE_INDICES.has(missionIndex) && !isUnlocked();
+export const isMissionPaywalled = (_campaignType: string, _missionIndex: number): boolean => {
     return false;
 };
 
@@ -165,8 +184,6 @@ export const isMissionUnlocked = (
     missionMinRank = 0,
 ): boolean => {
     if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) {
-        // Missions 1 (Seenotrettung), 3 (Metalstorm) and 4 (Gamescom) are free
-        if (!FREE_FLIGHT_FREE_INDICES.has(missionIndex) && !isUnlocked()) return false;
         return true;
     }
     if (missionIndex === 0) return true;

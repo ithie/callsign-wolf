@@ -24,6 +24,7 @@ export interface HudUpdateState {
     groundUnderHeli: number;
     totalRescued: number;
     goalCount: number;
+    endlessMode: boolean;
     playerName: string;
     deliverMode: boolean;
     minimap: MinimapData;
@@ -111,7 +112,9 @@ export const createHud = ({ isoFn, canvas }: HudOpts) => {
         pax.textContent = `PAX: ${s.heli.onboard}/${s.heli.maxLoad}`;
         pax.style.color = s.heli.onboard >= s.heli.maxLoad ? '#f90' : '#5f5';
 
-        obj.textContent = s.goalCount > 0 ? `SAVED: ${s.totalRescued}/${s.goalCount}` : '';
+        obj.textContent = s.endlessMode
+            ? `SAVED: ${s.totalRescued}`
+            : (s.goalCount > 0 ? `SAVED: ${s.totalRescued}/${s.goalCount}` : '');
 
         if (s.maxTimeRemaining !== null) {
             const secs = Math.max(0, Math.ceil(s.maxTimeRemaining));

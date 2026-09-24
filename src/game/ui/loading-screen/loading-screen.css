@@ -17,7 +17,7 @@
 }
 
 #loading-screen .loading-title {
-    font-size: clamp(22px, 5vw, 42px);
+    font-size: var(--ps-7);
     color: #ff6600;
     text-shadow: 0 0 20px #ff6600;
     letter-spacing: 4px;
@@ -41,7 +41,7 @@
 }
 
 #loading-screen .loading-label {
-    font-size: 11px;
+    font-size: var(--ps-2);
     letter-spacing: 4px;
     color: #3a6e3a;
     text-transform: uppercase;

@@ -262,6 +262,7 @@ export interface Mission {
     heliOverride?: string;    // force this heli for the mission (tutorial ring missions)
     terrainRef?: number;      // index into campaign.levels — share terrain with that mission
     events?: MissionEvent[];
+    endless?: boolean;
 }
 
 export type MissionData = Omit<Mission, 'terrain' | 'foliage'> & {

@@ -71,10 +71,10 @@
     box-sizing: border-box;
     display: flex;
     align-items: center;
-    padding: 20px 24px;
-    font-size: 13px;
+    padding: 20px 16px;
+    font-size: var(--ps-2);
     color: #aaa;
-    line-height: 1.8;
+    line-height: 2.0;
     cursor: pointer;
     border-left: 1px solid #1a1a1a;
     position: relative;
@@ -104,14 +104,14 @@
     align-items: center;
     width: 100%;
     margin: 4px 0;
-    font-size: 11px;
+    font-size: var(--ps-1);
     gap: 8px;
 }
 
 #heli-select .heli-stat-label {
-    letter-spacing: 1px;
+    letter-spacing: 0px;
     color: #aaa;
-    width: 72px;
+    width: 90px;
     flex-shrink: 0;
     text-align: left;
 }
@@ -141,8 +141,8 @@
     border: 1px solid #ff6600;
     color: #ff6600;
     font-family: inherit;
-    font-size: 13px;
-    letter-spacing: 3px;
+    font-size: var(--ps-2);
+    letter-spacing: 2px;
     cursor: pointer;
     border-radius: 3px;
     text-transform: uppercase;
@@ -207,7 +207,7 @@
 
 
 #heli-select .heli-color-swatch-label {
-    font-size: 9px;
+    font-size: var(--ps-1);
     letter-spacing: 1px;
     color: #666;
     text-transform: uppercase;

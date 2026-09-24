@@ -12,4 +12,5 @@ export interface PhysicsCtx {
     triggerCrash: () => void;
     orniWreckDelivered: () => void;
     onBoatTurbineCollision?: (boatIdx: number, wtIdx: number) => void;
+    onPersonPickedUp?: () => void;
 }

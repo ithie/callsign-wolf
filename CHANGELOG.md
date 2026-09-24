@@ -1,5 +1,23 @@
 # SAR: Callsign WOLF — Changelog
 
+## v32.0.0 — Endless Mode & Open Water
+
+### Added
+
+- **Endless mode for scenario missions** — Scenario missions now offer an Endless option alongside the timed mode. Selected on the mission screen before launch; no rank progression applies to endless runs.
+- **Sea foam particles** — Sparse white foam drifts across open water, giving the ocean subtle movement. Spawns only where sufficient open water exists (minimum 16 water tiles in a 5 × 5 neighbourhood), so narrow rivers such as Metalstorm remain unaffected.
+
+### Changed
+
+- **Scenario missions free for all players** — All scenario missions are now accessible without the full version. Rank progression and helicopter unlocks still require the full game.
+- **Touch controls match helicopter colour** — The on-screen joystick and buttons tint to the selected helicopter colour (orange, blue, sand, green). The tint is applied before the controls appear; no manual reset needed.
+
+### Fixed
+
+- **Swift audio initialisation** — `AVAudioSession.setActive()` was blocking the main thread on startup; moved to a background thread to prevent a potential UI stall during audio session activation.
+
+---
+
 ## v31.0.2 — Fire & Sparks
 
 ### Added

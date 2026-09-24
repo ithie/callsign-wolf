@@ -158,12 +158,13 @@ const _deliveryDeposit = (p: any, { ctx, onCarrierDeck, onPadSurface, onFrigateD
     if (G.heli.onboard === 0) G.deliverMode = false;
 };
 
-const _personDeposit = (p: any, _state: _DepositState) => {
+const _personDeposit = (p: any, { ctx }: _DepositState) => {
     if (G.heli.onboard < G.heli.maxLoad) {
         p.hanging = false; p.rescued = true; G.activePayload = null;
         G.heli.onboardDeliverQueue.push((p as any).deliverTo as string | undefined);
         G.heli.onboard++;
         hapticNotification(NotificationType.Success);
+        ctx.onPersonPickedUp?.();
     } else hapticNotification(NotificationType.Error);
 };
 
@@ -396,7 +397,8 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
 
     updateParticles({
         ctx: {
-            particles: G.particles, debris: G.debris, flocks: G.flocks,
+            particles: G.particles, foamParticles: G.foamParticles,
+            debris: G.debris, flocks: G.flocks,
             emitters: G.PARTICLE_EMITTERS, heli: G.heli, wind: G.wind,
             waterLevel: G.waterLevel, gridSize: campaignHandler.getTerrain().gridSize,
             getGround: (x, y) => getGround(x, y, G.points, G.CARRIER),
