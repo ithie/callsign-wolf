@@ -256,7 +256,7 @@ const _DE = {
 
     FULL_VERSION_BADGE: 'VOLLVERSION',
     PAYWALL_TITLE: 'VOLLVERSION',
-    PAYWALL_DESCRIPTION: 'Alle Kampagnen, alle Szenarien, alle Helikopter — und die volle Rang-Progression.',
+    PAYWALL_DESCRIPTION: 'Alle Kampagnen, alle Helikopter — und die volle Rang-Progression.',
     PAYWALL_BUY: 'FREISCHALTEN',
     PAYWALL_RESTORE: 'KÄUFE WIEDERHERSTELLEN',
     PAYWALL_PENDING: 'BITTE WARTEN…',
@@ -438,7 +438,7 @@ const _EN = {
 
     FULL_VERSION_BADGE: 'FULL VERSION',
     PAYWALL_TITLE: 'FULL VERSION',
-    PAYWALL_DESCRIPTION: 'All campaigns, all scenarios, all helicopters — and complete rank progression.',
+    PAYWALL_DESCRIPTION: 'All campaigns, all helicopters — and complete rank progression.',
     PAYWALL_BUY: 'UNLOCK',
     PAYWALL_RESTORE: 'RESTORE PURCHASES',
     PAYWALL_PENDING: 'PLEASE WAIT…',
@@ -590,7 +590,7 @@ const _FR = {
     FULL_VERSION_BADGE: 'VERSION COMPLÈTE',
     PAYWALL_TITLE: 'VERSION COMPLÈTE',
     PAYWALL_DESCRIPTION:
-        'Toutes les campagnes, tous les scénarios, tous les hélicoptères — et la progression de grade complète.',
+        'Toutes les campagnes, tous les hélicoptères — et la progression de grade complète.',
     PAYWALL_BUY: 'DÉBLOQUER',
     PAYWALL_RESTORE: 'RESTAURER LES ACHATS',
     PAYWALL_PENDING: 'VEUILLEZ PATIENTER…',
@@ -739,7 +739,7 @@ const _ES = {
     FULL_VERSION_BADGE: 'VERSIÓN COMPLETA',
     PAYWALL_TITLE: 'VERSIÓN COMPLETA',
     PAYWALL_DESCRIPTION:
-        'Todas las campañas, todos los escenarios, todos los helicópteros — y la progresión de rango completa.',
+        'Todas las campañas, todos los helicópteros — y la progresión de rango completa.',
     PAYWALL_BUY: 'DESBLOQUEAR',
     PAYWALL_RESTORE: 'RESTAURAR COMPRAS',
     PAYWALL_PENDING: 'POR FAVOR ESPERA…',
@@ -888,7 +888,7 @@ const _PT = {
     FULL_VERSION_BADGE: 'VERSÃO COMPLETA',
     PAYWALL_TITLE: 'VERSÃO COMPLETA',
     PAYWALL_DESCRIPTION:
-        'Todas as campanhas, todos os cenários, todos os helicópteros — e a progressão de posto completa.',
+        'Todas as campanhas, todos os helicópteros — e a progressão de posto completa.',
     PAYWALL_BUY: 'DESBLOQUEAR',
     PAYWALL_RESTORE: 'RESTAURAR COMPRAS',
     PAYWALL_PENDING: 'AGUARDE…',
