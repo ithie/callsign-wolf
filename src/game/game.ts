@@ -155,9 +155,19 @@ const _HELI_COLOR_HEX: Record<string, string> = {
     green:  '#4e8c38',
 };
 
+const _applyHeliTintCss = () => {
+    const hex = _HELI_COLOR_HEX[storageGet('z_heli_color') ?? ''] ?? _HELI_COLOR_HEX['orange'];
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    document.documentElement.style.setProperty('--heli-color', hex);
+    document.documentElement.style.setProperty('--heli-color-rgb', `${r}, ${g}, ${b}`);
+    return hex;
+};
+
 const setTouchVisible = (v: boolean) => {
     if (v) {
-        const hex = _HELI_COLOR_HEX[storageGet('z_heli_color') ?? ''] ?? _HELI_COLOR_HEX['orange'];
+        const hex = _applyHeliTintCss();
         window.webkit?.messageHandlers?.controls?.postMessage({ type: 'setTintColor', hex });
     }
     window.webkit?.messageHandlers?.controls?.postMessage({ type: 'showControls', visible: v });
@@ -337,6 +347,22 @@ const _drawSceneInner = () => {
 
     if (!zstate.crashed) drawPayloadObjects(false);
 
+    // Sea foam — drawn before ships so it appears under hulls
+    const _foamScale = tileW / 64;
+    G.foamParticles.forEach(p => {
+        const pos = isoFn(p.x, p.y, G.waterLevel, camX, camY);
+        const fadeIn  = Math.min(1, p.phase * 1.2);
+        const fadeOut = Math.min(1, (p.maxLife - p.phase) * 0.8);
+        const alpha   = Math.min(fadeIn, fadeOut) * 0.55;
+        if (alpha <= 0) return;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle   = 'rgb(230,242,250)';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, Math.max(0.5, p.size * _foamScale), 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1.0;
+
     drawWorldObjects(
         camX, camY, _visMargin,
         !zstate.crashed
@@ -428,22 +454,6 @@ const _drawSceneInner = () => {
         ctx.globalAlpha = 1.0;
     });
     G.particles = G.particles.filter(p => p.life > 0);
-
-    // Sea foam — flat white flecks on the water surface
-    const _foamScale = tileW / 64;
-    G.foamParticles.forEach(p => {
-        const pos = isoFn(p.x, p.y, G.waterLevel, camX, camY);
-        const fadeIn  = Math.min(1, p.phase * 1.2);
-        const fadeOut = Math.min(1, (p.maxLife - p.phase) * 0.8);
-        const alpha   = Math.min(fadeIn, fadeOut) * 0.55;
-        if (alpha <= 0) return;
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle   = 'rgb(230,242,250)';
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, Math.max(0.5, p.size * _foamScale), 0, Math.PI * 2);
-        ctx.fill();
-    });
-    ctx.globalAlpha = 1.0;
 
     if (G.debris.length > 0) drawDebris(G.debris, camX, camY);
 
@@ -733,6 +743,7 @@ window.onload = () => {
                 return;
             }
             await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, 'z_music', 'z_sfx', 'z_heli_color', 'z_unlocked']);
+            _applyHeliTintCss();
             Flow.setSession(loadSession());
             const _sl = storageGet(LANG_PREF_KEY);
             if (_sl === 'de' || _sl === 'en') setLanguage(_sl);
