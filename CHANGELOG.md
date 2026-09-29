@@ -1,5 +1,17 @@
 # SAR: Callsign WOLF — Changelog
 
+## v32.0.1 — Colour Consistency
+
+### Changed
+
+- **Minimap and pause button match helicopter colour** — Extends the touch-control tinting from v32.0.0 to the minimap border/dot and the pause button icon. The tint is now applied globally on app start instead of only when touch controls become visible.
+
+### Fixed
+
+- **Sea foam rendering order** — Foam particles are now drawn before ships instead of after, so they no longer appear on top of vessel hulls.
+
+---
+
 ## v32.0.0 — Endless Mode & Open Water
 
 ### Added
