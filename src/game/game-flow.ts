@@ -19,7 +19,7 @@ import {
 } from './sim/world-init';
 import { carrierCar } from './sim/vehicles/carrier-car';
 import { fuelTruck } from './sim/vehicles/fuel-truck';
-import { initParticles, spawnExplosion, spawnPositionExplosion, type ParticlesCtx } from './sim/particles';
+import { initParticles, resetFoam, spawnExplosion, spawnPositionExplosion, type ParticlesCtx } from './sim/particles';
 import { initEventSystem, markEventSystemStarted } from './sim/event-system';
 import { initNpcHelisFromMission } from './sim/npc-helis';
 import { initFoliageFromMission } from './foliage';
@@ -81,6 +81,32 @@ export let missionTypeRatingFor: string | undefined;
 export let hudMaxTimeRemaining: number | null = null;
 export const setHudMaxTimeRemaining = (v: number | null): void => { hudMaxTimeRemaining = v; };
 
+export let missionAltLimit: number | null = null;
+export let altViolationStart: number | null = null;
+export const setAltViolationStart = (v: number | null): void => { altViolationStart = v; };
+
+// ─── Endless mode ─────────────────────────────────────────────────────────────
+export let endlessMode = false;
+
+export const spawnEndlessPerson = (): void => {
+    const payloads = (campaignHandler.getCurrentMissionData() as any)?.payloads as { type: string; x: number; y: number }[] | undefined;
+    if (!payloads?.length) return;
+    const tmpl = payloads[Math.floor(Math.random() * payloads.length)];
+    spawnPayload({ ...tmpl }, false);
+};
+
+const _saveEndlessScore = (): void => {
+    const score = G.totalRescued;
+    if (score <= 0) return;
+    const key = String(selectedCampaignIndex);
+    if (!session.campaignProgress[key]) session.campaignProgress[key] = { completed: false, missions: [] };
+    const cp = session.campaignProgress[key];
+    if (!cp.missions[selectedMissionIndex]) cp.missions[selectedMissionIndex] = { completed: false, bestTimeMs: null, count: 0 };
+    const mp = cp.missions[selectedMissionIndex];
+    if (!mp.endlessBest || score > mp.endlessBest) mp.endlessBest = score;
+    saveSession(session);
+};
+
 // ─── Render-side deps (set by initFlow before first use) ─────────────────────
 
 interface FlowDeps {
@@ -118,6 +144,7 @@ export const getRankMissions = (): number => {
 
 export const makePCtx = (): ParticlesCtx => ({
     particles: G.particles,
+    foamParticles: G.foamParticles,
     debris: G.debris,
     flocks: G.flocks,
     emitters: G.PARTICLE_EMITTERS,
@@ -131,15 +158,29 @@ export const makePCtx = (): ParticlesCtx => ({
 
 export const showSnowOverlay = (active: boolean): void => {
     const el = document.getElementById('snow-overlay');
-    if (!el) return;
-    el.style.display = active ? 'block' : 'none';
+    if (el) el.style.display = 'none'; // CSS overlay replaced by canvas snow
+    if (!active) { G.snowFlakes.length = 0; return; }
+    G.snowFlakes.length = 0;
+    const cx = zstate.cam.x, cy = zstate.cam.y;
+    for (let i = 0; i < 80; i++) {
+        const wx = cx + (Math.random() - 0.5) * 44;
+        const wy = cy + (Math.random() - 0.5) * 44;
+        const gz = getGround(wx, wy, G.points, G.CARRIER);
+        G.snowFlakes.push({
+            wx, wy,
+            wz: gz + Math.random() * 12,
+            vz: 0.007 + Math.random() * 0.007,
+            r: 1.0 + Math.random() * 0.8,
+            alpha: 0.5 + Math.random() * 0.45,
+        });
+    }
 };
 
 export const showRainOverlay = (active: boolean, windDir = 225, windStr = 1): void => {
     const el = document.getElementById('rain-overlay');
     if (!el) return;
     if (active) {
-        const angleDeg = -10 + ((windDir - 225) / 360) * 20 * windStr;
+        const angleDeg = ((windDir - 225) / 360) * 20 * windStr;
         el.style.setProperty('--rain-angle', `${angleDeg.toFixed(1)}deg`);
         el.style.display = 'block';
     } else {
@@ -148,11 +189,23 @@ export const showRainOverlay = (active: boolean, windDir = 225, windStr = 1): vo
 };
 
 export const updateSnowDrift = (): void => {
-    if (!missionSnow) return;
-    const el = document.getElementById('snow-overlay');
-    if (!el) return;
-    const driftX = Math.cos(G.wind.angle) * G.wind.rawStr * 80;
-    el.style.setProperty('--snow-drift-x', `${driftX.toFixed(1)}px`);
+    if (!missionSnow || !G.snowFlakes.length) return;
+    const RANGE = 22;
+    const cx = zstate.cam.x, cy = zstate.cam.y;
+    const driftDx = Math.cos(G.wind.angle) * G.wind.rawStr * 0.002;
+    const driftDy = Math.sin(G.wind.angle) * G.wind.rawStr * 0.002;
+    for (const f of G.snowFlakes) {
+        f.wz -= f.vz;
+        f.wx += driftDx;
+        f.wy += driftDy;
+        const tooFar = Math.abs(f.wx - cx) > RANGE || Math.abs(f.wy - cy) > RANGE;
+        if (tooFar || f.wz <= getGround(f.wx, f.wy, G.points, G.CARRIER)) {
+            f.wx = cx + (Math.random() - 0.5) * RANGE * 2;
+            f.wy = cy + (Math.random() - 0.5) * RANGE * 2;
+            const gz = getGround(f.wx, f.wy, G.points, G.CARRIER);
+            f.wz = gz + 10 + Math.random() * 8;
+        }
+    }
 };
 
 // ─── Core mission lifecycle ───────────────────────────────────────────────────
@@ -185,6 +238,8 @@ export const resetHeliState = (): void => {
     G.heli.vy = 0;
     G.heli.vz = 0;
     G.particles = [];
+    G.foamParticles = [];
+    resetFoam();
     G.debris = [];
     G.totalRescued = 0;
 };
@@ -196,18 +251,27 @@ export const triggerCrash = (): void => {
     soundHandler.play('final');
     spawnExplosion({ ctx: makePCtx(), dt: 0 });
     zstate.crashed = true;
+    if (endlessMode) _saveEndlessScore();
     setTimeout(() => {
         stopMission();
+        const _prevBest = (() => {
+            const cp = session.campaignProgress[String(selectedCampaignIndex)];
+            return cp?.missions[selectedMissionIndex]?.endlessBest ?? null;
+        })();
         MissionFailedScreen.mount(
             returnToBase,
             retryMission,
-            missionTypeRatingFor ? I18N.TYPE_RATING_FAILED : undefined
+            endlessMode
+                ? I18N.ENDLESS_SCORE(G.totalRescued, _prevBest)
+                : (missionTypeRatingFor ? I18N.TYPE_RATING_FAILED : undefined)
         );
         MissionFailedScreen.show();
     }, 1800);
 };
 
 export const returnToBase = (): void => {
+    if (endlessMode && !zstate.crashed) _saveEndlessScore();
+    endlessMode = false;
     stopMission();
     zstate.gameStarted = false;
     resetHeliState();
@@ -275,7 +339,7 @@ export const missionComplete = (): void => {
     const firstCompletion = allDone && !(selectedCampaignIndex < (session.highestUnlockedCampaignIndex ?? 0));
     if (allDone) {
         cp.completed = true;
-        if (campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT) {
+        if (campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT && campaignType !== CAMPAIGN_TYPE.SCENARIO) {
             session.highestUnlockedCampaignIndex = Math.max(
                 session.highestUnlockedCampaignIndex ?? 0,
                 selectedCampaignIndex + 1
@@ -316,7 +380,7 @@ export const missionComplete = (): void => {
     if (firstCompletion || rankUpRank) requestReview();
 
     if (firstCompletion) {
-        const isStoryCampaign = campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT;
+        const isStoryCampaign = campaignType !== CAMPAIGN_TYPE.TUTORIAL && campaignType !== CAMPAIGN_TYPE.FREE_FLIGHT && campaignType !== CAMPAIGN_TYPE.SCENARIO;
         soundHandler.play('success');
         const showEndScreen = isStoryCampaign
             ? () => {
@@ -451,14 +515,21 @@ export const selectCampaign = (index: string): void => {
     _doSelectCampaign(Number(index));
 };
 
+const _bc = (step: string): void => {
+    session._dbgStep = step;
+    try { saveSession(session); } catch { /* ignore */ }
+};
+
 const _doSelectCampaign = (idx: number): void => {
+    _bc(`doSelectCampaign:${idx}`);
     const campaigns = campaignHandler.getCampaigns();
     const type = campaigns[idx]?.type;
-    const isAlwaysAvailable = type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT;
+    const isAlwaysAvailable = type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT || type === CAMPAIGN_TYPE.SCENARIO;
     if (!isAlwaysAvailable) saveSession(session);
 
     selectedCampaignIndex = idx;
     selectedMissionIndex = 0;
+    _bc(`setActiveCampaign:${idx}`);
     campaignHandler.campaign.setActiveCampaign(idx);
 
     if (type === CAMPAIGN_TYPE.TUTORIAL) {
@@ -466,44 +537,62 @@ const _doSelectCampaign = (idx: number): void => {
         const m0done = !!session.campaignProgress[tutKey]?.missions[0]?.completed;
         if (!m0done) { selectMission(0); return; }
     }
+    _bc(`openMissionSelect:${idx}`);
     _openMissionSelect();
 };
 
 const _openMissionSelect = (): void => {
+    _bc(`openMissionSelect:camp${selectedCampaignIndex}`);
     const campaigns = campaignHandler.getCampaigns();
+    _bc(`MissionSelect.show:camp${selectedCampaignIndex}`);
     MissionSelect.show({
         campaign: campaigns[selectedCampaignIndex],
         campaignIndex: selectedCampaignIndex,
         session,
         rankIndex: RANKS.indexOf(getRank(session.rankOverride ?? 0, getRankMissions())),
-        onSelect: selectMission,
+        onSelect: (idx, endless) => { endlessMode = endless ?? false; selectMission(idx); },
         onBack: toCampaignSelect,
         onShowPaywall: () => _openPaywall(_openMissionSelect),
     });
 };
 
 export const selectMission = (missionIndex: number): void => {
-    selectedMissionIndex = missionIndex;
-    campaignHandler.campaign.setActiveMission(missionIndex);
+    try {
+        _bc(`selectMission:${missionIndex}`);
+        selectedMissionIndex = missionIndex;
+        _bc(`setActiveMission:${missionIndex}`);
+        campaignHandler.campaign.setActiveMission(missionIndex);
 
-    const { gridSize, objects: selObjects, campaignType } = campaignHandler.getCurrentMissionData();
-    const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
-    G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant };
-    G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
-    initGrid(gridSize, G.points);
+        _bc(`getCurrentMissionData:${missionIndex}`);
+        const { gridSize, objects: selObjects, campaignType } = campaignHandler.getCurrentMissionData();
+        _bc(`findPad:camp${selectedCampaignIndex}m${missionIndex}gridSize${gridSize}`);
+        const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
+        G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant };
+        G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
+        _bc(`initGrid:${gridSize}`);
+        initGrid(gridSize, G.points);
 
-    if (campaignType === CAMPAIGN_TYPE.TUTORIAL) {
-        const _tutMd = campaignHandler.getCurrentMissionData();
-        startGame((_tutMd as any).heliOverride || 'dolphin');
-        return;
+        if (campaignType === CAMPAIGN_TYPE.TUTORIAL) {
+            const _tutMd = campaignHandler.getCurrentMissionData();
+            _bc(`startGame:tutorial`);
+            startGame((_tutMd as any).heliOverride || 'dolphin');
+            return;
+        }
+
+        _bc(`HeliSelect.show:rank${RANKS.indexOf(getRank(session.rankOverride ?? 0, getRankMissions()))}`);
+        HeliSelect.show({
+            rankIndex: RANKS.indexOf(getRank(session.rankOverride ?? 0, getRankMissions())),
+            typeRatings: session.typeRatings ?? {},
+            onSelect: startGame,
+            onBack: backFromHeliSelect,
+            onStep: _bc,
+        });
+        _bc(`HeliSelect.shown`);
+    } catch (err) {
+        const _base = err instanceof Error ? (err.stack ?? err.message) : String(err);
+        try { localStorage.setItem('_lastCrash', session._dbgStep ? `[${session._dbgStep}] ${_base}` : _base); } catch { /* ignore */ }
+        throw err;
     }
-
-    HeliSelect.show({
-        rankIndex: RANKS.indexOf(getRank(session.rankOverride ?? 0, getRankMissions())),
-        typeRatings: session.typeRatings ?? {},
-        onSelect: startGame,
-        onBack: backFromHeliSelect,
-    });
 };
 
 export const backFromHeliSelect = (): void => {
@@ -572,8 +661,15 @@ const _maybeSpawnOrniWreck = (): void => {
 };
 
 export const launchMission = async (showLoader = true): Promise<void> => {
+    try { localStorage.removeItem('_lastCrash'); } catch { /* storage unavailable */ }
+    session._dbgStep = undefined;
+    try { saveSession(session); } catch { /* storage unavailable */ }
+    try {
+    _bc('decompressMissionAssets');
     await decompressMissionAssets();
+    _bc('prewarmLevel');
     await campaignHandler.prewarmLevel();
+    _bc('getCurrentMissionData');
     const _lmd = campaignHandler.getCurrentMissionData();
     const _lmdObjs = _lmd.objects || [];
     const _padObj = _lmdObjs.find((o: any) => o.type === VESSEL.PAD);
@@ -596,14 +692,19 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     const _lhObj = _lmdObjs.find((o: any) => o.type === VESSEL.LIGHTHOUSE);
     lighthouseX = _lhObj ? _lhObj.x : -1;
     lighthouseY = _lhObj ? _lhObj.y : -1;
+    _bc('prewarmTerrain');
     await campaignHandler.prewarmTerrain();
     missionGridSize = campaignHandler.getTerrain().gridSize;
     missionMaxTime = (_lmd as any).maxTime ?? null;
     missionTypeRatingFor = (_lmd as any).typeRatingFor as string | undefined;
     hudMaxTimeRemaining = null;
+    const _altObj = ((_lmd.objectives as any[]) || []).find((o: any) => o.type === 'max_altitude');
+    missionAltLimit = _altObj ? (_altObj.limit as number) : null;
+    altViolationStart = null;
 
     const handle = showLoader ? LoadingScreen.show(localize(_lmd.headline) || 'MISSION') : null;
 
+    _bc('generateTerrain');
     generateTerrain(G.points, missionHasPad ? { ...G.PAD, yMin: G.PAD.yMin - 3 } : null);
     G.sandPoints = campaignHandler.getTerrain().sand ?? [];
     G.pavementPoints = campaignHandler.getTerrain().pavement ?? [];
@@ -612,6 +713,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     handle?.step('Gelände…', 0.25);
     if (handle) await _tick();
 
+    _bc('initCarrierFromMission');
     initCarrierFromMission();
     if (missionHasCarrier) carrierCar.init();
     initBoatsFromMission();
@@ -634,10 +736,12 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     handle?.step('Objekte…', 0.5);
     if (handle) await _tick();
 
+    _bc('initFoliageFromMission');
     await initFoliageFromMission();
     _deps.rebuildEntryCache();
     initParticles({ ctx: makePCtx(), dt: 0 });
     G.deliverMode = false;
+    _bc('initPayloadsFromMission');
     initPayloadsFromMission();
     initEventSystem(
         () => {
@@ -657,6 +761,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     handle?.step('Umgebung…', 0.75);
     if (handle) await _tick();
 
+    _bc('loadingDone');
     handle?.step(I18N.LOADING_READY, 1.0);
     if (handle) await handle.done();
 
@@ -665,6 +770,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     zstate.gameStarted = true;
     _deps.hud.showAll(true);
 
+    _bc('buildStartZone');
     const _startZone = buildStartZone();
     const _sp = _startZone.getPos();
     G.heli.x = _sp.x;
@@ -712,4 +818,9 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     });
 
     // Note: zstate.cam is not initialised here — drawScene sets it on the first frame.
+    } catch (err) {
+        const _base = err instanceof Error ? (err.stack ?? err.message) : String(err);
+        try { localStorage.setItem('_lastCrash', session._dbgStep ? `[${session._dbgStep}] ${_base}` : _base); } catch { /* storage unavailable */ }
+        throw err;
+    }
 };

@@ -2,7 +2,6 @@ import { CampaignExport, MissionData } from '@/shared/types';
 import Tutorial from './campaigns/tutorial.zcampaign';
 import FreeFlight from './campaigns/freeFlight.zcampaign';
 import CallsignWolf from './campaigns/callsignwolf.zcampaign';
-//import Zephyr from './campaigns/Zephyr.zcampaign';
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
 import SoundSuccess from './music/success.zsong';
@@ -12,37 +11,37 @@ import SoundFinal from './music/final.zsong';
 import SoundMaintheme from './music/maintheme.zsong';
 import SlowWay from './music/slowway.zsong';
 import SoundSpocktribute from './music/spocktribute.zsong';
-import ThunderScene from './music/thunderscene.zsong';
-import PartyTime from './music/partytime.zsong';
-import CarrierOps from './music/carrierops.zsong';
-import Coastal from './music/coastal.zsong';
-import Ignition from './music/ignition.zsong';
-import Offshore from './music/offshore.zsong';
-import Vigil from './music/vigil.zsong';
-import Baywatch from './music/baywatch.zsong';
+import CarrierOps from './music/callsignwolf_carrierops.zsong';
+import Coastal from './music/callsignwolf_coastal.zsong';
+import Ignition from './music/callsignwolf_ignition.zsong';
+import Offshore from './music/callsignwolf_offshore.zsong';
+import Vigil from './music/callsignwolf_vigil.zsong';
+import PartyTime from './music/freeflight_partytime.zsong';
+import ThunderScene from './music/freeflight_thunderscene.zsong';
+import Baywatch from './music/freeflight_baywatch.zsong';
+import Metalstorm from './music/freeflight_metalstorm.zsong';
 import Fanfare from './music/fanfare.zsong';
-import Metalstorm from './music/metalstorm.zsong';
 import Unlock from './music/unlock.zsong';
 
 const soundHandler = (() => {
     const songList: Record<string, string> = {
         success: SoundSuccess,
-        carrierops: CarrierOps,
+        callsignwolf_carrierops: CarrierOps,
+        callsignwolf_coastal: Coastal,
+        callsignwolf_ignition: Ignition,
+        callsignwolf_offshore: Offshore,
+        callsignwolf_vigil: Vigil,
+        freeflight_partytime: PartyTime,
+        freeflight_thunderscene: ThunderScene,
+        freeflight_baywatch: Baywatch,
+        freeflight_metalstorm: Metalstorm,
         clike: SoundClike,
-        coastal: Coastal,
-        ignition: Ignition,
-        offshore: Offshore,
-        vigil: Vigil,
-        baywatch: Baywatch,
         destroid: SoundDestroid,
         final: SoundFinal,
         maintheme: SoundMaintheme,
-        partytime: PartyTime,
         slowway: SlowWay,
         spocktribute: SoundSpocktribute,
-        thunderscene: ThunderScene,
         fanfare: Fanfare,
-        metalstorm: Metalstorm,
         unlock: Unlock,
     };
 
@@ -114,14 +113,13 @@ const createCampaignHandler = () => {
     let cachedTerrain: { terrain: number[][]; gridSize: number; sand?: number[][]; pavement?: number[][] } | null =
         null;
 
-    const campaigns: CampaignExport[] = [
+    let campaigns: CampaignExport[] = [
         Tutorial as unknown as CampaignExport,
         FreeFlight as unknown as CampaignExport,
         CallsignWolf as unknown as CampaignExport,
-        //Zephyr as unknown as CampaignExport,
     ];
 
-    const campaignMap = new Map<string, CampaignExport>(campaigns.map(c => [(c as any)._key as string, c]));
+    let campaignMap = new Map<string, CampaignExport>(campaigns.map(c => [(c as any)._key as string, c]));
 
     const campaignState = {
         activeCampaign: 0,
@@ -241,6 +239,11 @@ const createCampaignHandler = () => {
         getTerrain,
         prewarmTerrain,
         prewarmLevel,
+        _replaceCampaigns: (newCampaigns: CampaignExport[]) => {
+            campaigns = newCampaigns;
+            campaignMap = new Map(newCampaigns.map(c => [(c as any)._key as string, c]));
+            cachedTerrain = null;
+        },
     };
 };
 
@@ -258,20 +261,34 @@ if (import.meta.env.DEV) {
     (campaignHandler as any).setPreviewMission = (levelData: MissionData) => {
         _previewLevel = levelData;
         _previewTerrain = null;
-        campaignHandler.getCurrentMissionData = () => _previewLevel ?? _origGetMission();
+        campaignHandler.getCurrentMissionData = () => {
+            if (!_previewLevel) return _origGetMission();
+            // Resolve gridSize from terrainRef when the level doesn't have its own
+            const terrainRef = (_previewLevel as any).terrainRef;
+            const terrainLevel: any =
+                terrainRef !== undefined
+                    ? (campaignHandler.getCampaigns()[0]?.levels[terrainRef] ?? _previewLevel)
+                    : _previewLevel;
+            return { ..._previewLevel, gridSize: _previewLevel.gridSize ?? terrainLevel.gridSize ?? 0 };
+        };
         campaignHandler.getTerrain = () => {
             if (!_previewLevel) return _origGetTerrain();
-            if (!_previewTerrain)
+            if (!_previewTerrain) {
+                // Resolve terrainRef if present (mission reuses terrain from another level)
+                const terrainRef = (_previewLevel as any).terrainRef;
+                const terrainLevel: any =
+                    terrainRef !== undefined
+                        ? (campaignHandler.getCampaigns()[0]?.levels[terrainRef] ?? _previewLevel)
+                        : _previewLevel;
                 _previewTerrain = {
-                    terrain: decompressTerrain(_previewLevel.terrain as string, _previewLevel.gridSize),
-                    gridSize: _previewLevel.gridSize,
-                    sand: _previewLevel.sand
-                        ? decompressTerrain(_previewLevel.sand, _previewLevel.gridSize)
-                        : undefined,
-                    pavement: (_previewLevel as any).pavement
-                        ? decompressTerrain((_previewLevel as any).pavement, _previewLevel.gridSize)
+                    terrain: decompressTerrain(terrainLevel.terrain as string, terrainLevel.gridSize),
+                    gridSize: terrainLevel.gridSize,
+                    sand: terrainLevel.sand ? decompressTerrain(terrainLevel.sand, terrainLevel.gridSize) : undefined,
+                    pavement: terrainLevel.pavement
+                        ? decompressTerrain(terrainLevel.pavement, terrainLevel.gridSize)
                         : undefined,
                 };
+            }
             return _previewTerrain;
         };
     };

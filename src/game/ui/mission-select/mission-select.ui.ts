@@ -23,6 +23,17 @@ const _campaign: CampaignExport = {
     ],
 };
 
+const _campaignWithEndless: CampaignExport = {
+    ..._campaign,
+    levels: [
+        { name: 'mission-1', endless: true } as any,
+        { name: 'mission-2' } as any,
+        { name: 'mission-3', endless: true } as any,
+        { name: 'mission-4' } as any,
+        { name: 'mission-5' } as any,
+    ],
+};
+
 export const FrischerStart = () => {
     mount();
     show({ campaign: _campaign, campaignIndex: 1, session: _session(), rankIndex: 0, onSelect: () => {}, onBack: () => {}, onShowPaywall: () => {} });
@@ -41,6 +52,54 @@ export const TeilweiseFertig = () => {
                         { completed: true, bestTimeMs: 243000, count: 1 },
                         { completed: true, bestTimeMs: 318000, count: 1 },
                         null as any, null as any, null as any,
+                    ],
+                },
+            },
+        }),
+        rankIndex: 0,
+        onSelect: () => {},
+        onBack: () => {},
+        onShowPaywall: () => {},
+    });
+};
+
+export const MitEndlessModeNeu = () => {
+    mount();
+    show({
+        campaign: _campaignWithEndless,
+        campaignIndex: 1,
+        session: _session({
+            campaignProgress: {
+                '1': {
+                    completed: false,
+                    missions: [
+                        { completed: true, bestTimeMs: 243000, count: 1 },
+                        null as any, null as any, null as any, null as any,
+                    ],
+                },
+            },
+        }),
+        rankIndex: 0,
+        onSelect: () => {},
+        onBack: () => {},
+        onShowPaywall: () => {},
+    });
+};
+
+export const MitEndlessModeGespielt = () => {
+    mount();
+    show({
+        campaign: _campaignWithEndless,
+        campaignIndex: 1,
+        session: _session({
+            campaignProgress: {
+                '1': {
+                    completed: false,
+                    missions: [
+                        { completed: true, bestTimeMs: 243000, endlessBest: 12, count: 2 },
+                        null as any,
+                        { completed: true, bestTimeMs: 195000, endlessBest: 7, count: 1 },
+                        null as any, null as any,
                     ],
                 },
             },

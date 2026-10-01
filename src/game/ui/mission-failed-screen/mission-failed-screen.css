@@ -32,13 +32,13 @@
 .failed-btn--primary {
     background: #cc2200;
     color: #fff;
-    font-size: 22px;
+    font-size: var(--ps-4);
     padding: 16px 48px;
 }
 
 .failed-btn--secondary {
     background: transparent;
     color: rgba(255,255,255,0.5);
-    font-size: 14px;
+    font-size: var(--ps-2);
     padding: 8px 24px;
 }

@@ -99,8 +99,8 @@
       "id": "blink_lights",
       "faces": [],
       "lights": [
-        { "x": -0.35, "y": -0.18, "z": 0.83, "color": "#ff1122", "colorOff": "#330005", "blink": true, "radius": 2.2 },
-        { "x": -0.35, "y":  0.18, "z": 0.83, "color": "#0066ff", "colorOff": "#000d33", "blink": true, "radius": 2.2 }
+        { "x": -0.35, "y": -0.18, "z": 0.83, "color": "#ff1122", "colorOff": "#330005", "blink": true, "radius": 2.2, "blinkHz": 5.0, "phase": 0.0 },
+        { "x": -0.35, "y":  0.18, "z": 0.83, "color": "#0066ff", "colorOff": "#000d33", "blink": true, "radius": 2.2, "blinkHz": 3.0, "phase": 0.5 }
       ]
     }
   ]

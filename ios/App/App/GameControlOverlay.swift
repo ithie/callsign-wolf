@@ -42,12 +42,28 @@ final class GameControlOverlay: UIView {
     private var joyRadius:    CGFloat = 75
 
     // ── Colours ───────────────────────────────────────────────────────────────────
-    private let cBorder   = UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.28)
-    private let cFill     = UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.04)
-    private let cKnob     = UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.14)
-    private let cKnobRing = UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.55)
-    private let cLabel    = UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.28)
-    private let cActive   = UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.80)
+    private var tintR: CGFloat = 1.0
+    private var tintG: CGFloat = 0.4
+    private var tintB: CGFloat = 0.0
+
+    private var cBorder:   UIColor { UIColor(red: tintR, green: tintG, blue: tintB, alpha: 0.28) }
+    private var cFill:     UIColor { UIColor(red: tintR, green: tintG, blue: tintB, alpha: 0.04) }
+    private var cKnob:     UIColor { UIColor(red: tintR, green: tintG, blue: tintB, alpha: 0.14) }
+    private var cKnobRing: UIColor { UIColor(red: tintR, green: tintG, blue: tintB, alpha: 0.55) }
+    private var cLabel:    UIColor { UIColor(red: tintR, green: tintG, blue: tintB, alpha: 0.28) }
+    private var cActive:   UIColor { UIColor(red: tintR, green: tintG, blue: tintB, alpha: 0.80) }
+
+    func setTintHex(_ hex: String) {
+        let h = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
+        guard h.count == 6,
+              let rv = UInt8(h.prefix(2), radix: 16),
+              let gv = UInt8(h.dropFirst(2).prefix(2), radix: 16),
+              let bv = UInt8(h.dropFirst(4).prefix(2), radix: 16) else { return }
+        tintR = CGFloat(rv) / 255
+        tintG = CGFloat(gv) / 255
+        tintB = CGFloat(bv) / 255
+        setNeedsDisplay()
+    }
 
     // ── Init ──────────────────────────────────────────────────────────────────────
     override init(frame: CGRect) {
@@ -185,7 +201,7 @@ final class GameControlOverlay: UIView {
 
     private func drawSectors(center: CGPoint, radius: CGFloat,
                               starts: [CGFloat], span: CGFloat, alpha: CGFloat) {
-        UIColor(red: 1, green: 0.4, blue: 0, alpha: alpha).setFill()
+        UIColor(red: tintR, green: tintG, blue: tintB, alpha: alpha).setFill()
         for deg in starts {
             let path = UIBezierPath()
             path.move(to: center)
@@ -206,13 +222,13 @@ final class GameControlOverlay: UIView {
         if isLit {
             ctx.saveGState()
             ctx.setShadow(offset: .zero, blur: 10,
-                          color: UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.85).cgColor)
-            UIColor(red: 1, green: 0.4, blue: 0, alpha: 1.0).setFill()
+                          color: UIColor(red: tintR, green: tintG, blue: tintB, alpha: 0.85).cgColor)
+            UIColor(red: tintR, green: tintG, blue: tintB, alpha: 1.0).setFill()
             UIBezierPath(ovalIn: rect).fill()
             ctx.restoreGState()
         } else {
             // unlit: fully opaque but dark amber — no transparency
-            UIColor(red: 0.35, green: 0.18, blue: 0, alpha: 1.0).setFill()
+            UIColor(red: tintR * 0.35, green: tintG * 0.45, blue: tintB * 0.35, alpha: 1.0).setFill()
             UIBezierPath(ovalIn: rect).fill()
         }
     }
@@ -223,7 +239,7 @@ final class GameControlOverlay: UIView {
         let stripH = rect.height * 0.28
 
         // Background
-        UIColor(red: 1, green: 0.4, blue: 0, alpha: 0.18).setFill()
+        UIColor(red: tintR, green: tintG, blue: tintB, alpha: 0.18).setFill()
         UIBezierPath(roundedRect: rect, cornerRadius: capR).fill()
 
         // Depth strips (clipped to button shape)
@@ -277,7 +293,7 @@ final class GameControlOverlay: UIView {
         let capR: CGFloat = barH * 0.22
         let lr = CGRect(x: cx - barW/2, y: cy - barH/2, width: barW, height: barH)
 
-        UIColor(red: 1, green: 0.4, blue: 0, alpha: active ? 0.75 : 0.18).setFill()
+        UIColor(red: tintR, green: tintG, blue: tintB, alpha: active ? 0.75 : 0.18).setFill()
         UIBezierPath(roundedRect: lr, cornerRadius: capR).fill()
 
         // Depth strips (clipped to bar shape)
@@ -454,11 +470,11 @@ final class GameControlOverlay: UIView {
         let ghostA: CGFloat = 0.60 * (1 - gPhase)
 
         let ghostRect = CGRect(x: ghostX - kR, y: ghostY - kR, width: kR * 2, height: kR * 2)
-        UIColor(red: 1, green: 0.45, blue: 0.1, alpha: ghostA * 0.45).setFill()
+        UIColor(red: tintR, green: tintG, blue: tintB, alpha: ghostA * 0.45).setFill()
         UIBezierPath(ovalIn: ghostRect).fill()
         let ghostRing = UIBezierPath(ovalIn: ghostRect)
         ghostRing.lineWidth = 1.5
-        UIColor(red: 1, green: 0.45, blue: 0.1, alpha: ghostA).setStroke()
+        UIColor(red: tintR, green: tintG, blue: tintB, alpha: ghostA).setStroke()
         ghostRing.stroke()
     }
 

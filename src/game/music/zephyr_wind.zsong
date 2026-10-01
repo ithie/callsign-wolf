@@ -1,0 +1,27 @@
+bpm 118
+
+# Zephyr M2 – Auflandig – Übergang ins Dunkel (Am - Dm - F - G)
+
+[kick]  vol=82
+0 4 8 12 16 20 24 28 32 36 40 44 48 52 56 60
+
+[snare]  vol=72
+8 24 40 56
+
+[hat]  vol=85
+2 6 10 14 18 22 26 30 34 38 42 46 50 54 58 62
+
+[clap]  vol=68
+8 24 40 56
+
+[synth1]  vol=78  wave=sawtooth  filter=550  attack=0.01  release=0.25  inst=bass_gritty  detune=5
+0:A1 4:A1 8:E2 12:C2 16:D1 20:D1 24:A1 28:F1 32:F1 36:F1 40:C2 44:A1 48:G1 52:G1 56:D2 60:B1
+
+[synth2]  vol=62  wave=sawtooth  filter=3000  attack=0.01  release=0.25  inst=supersaw  detune=14
+0:A3 2:C4 4:E4 6:A4 8:E4 10:C4 12:A3 14:C4 16:D3 18:F3 20:A3 22:D4 24:A3 26:F3 28:D3 30:F3 32:F3 34:A3 36:C4 38:F4 40:C4 42:A3 44:F3 46:A3 48:G3 50:B3 52:D4 54:G4 56:D4 58:B3 60:G3 62:B3
+
+[synth3]  vol=88  wave=sawtooth  filter=700  attack=0.01  release=0.28  inst=bass_gritty  detune=5
+0:A2 4:E2 8:A2 12:C2 16:D2 20:A2 24:D2 28:F2 32:F2 36:C2 40:F2 44:A2 48:G2 52:D2 56:G2 60:B2
+
+[synth4]  vol=82  wave=triangle  filter=1700  attack=0.08  release=2.0  inst=pad_warm
+0:A2 8:C3 16:D2 24:F3 32:F2 40:A3 48:G2 56:B3

@@ -15,6 +15,7 @@
     display: none;
     align-items: center;
     justify-content: center;
+    color: var(--heli-color, #ff6600);
 }
 #pause-btn:hover { opacity: 1; }
 
@@ -44,7 +45,9 @@
 }
 
 #pause-title {
-    font: bold 14px monospace;
+    font-family: 'PressStart2P';
+    font-size: var(--ps-3);
+    font-weight: bold;
     letter-spacing: 4px;
     color: #5f5;
 }
@@ -64,7 +67,8 @@
 }
 
 #pause-overlay .pause-field label {
-    font: 11px monospace;
+    font-family: 'PressStart2P';
+    font-size: var(--ps-2);
     letter-spacing: 2px;
     color: #5a5;
 }

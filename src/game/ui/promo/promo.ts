@@ -58,14 +58,19 @@ export const mount = (): void => {
     const c = document.getElementById('ph') as HTMLCanvasElement;
     const cx = c.getContext('2d')!;
 
+    const W = 92;
+    const H = 68;
+    const PS = W / 230; // proportional scale for iso projection
+
+    const pTileW = tileW * PS;
+    const pTileH = tileH * PS;
+    const pStepH = stepH * PS;
+
     const isoFn = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
-        iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
+        iso(wx, wy, wz, camX, camY, { canvas: c, tileW: pTileW, tileH: pTileH, stepH: pStepH });
 
     const stub = { add: () => {}, flush: () => {} } as unknown as Parameters<typeof createDrawObjects>[4];
     const { drawHeli } = createDrawObjects(cx, isoFn, tileW, tileH, stub);
-
-    const W = 230;
-    const H = 170;
 
     const loop = (): void => {
         if (c.width !== W || c.height !== H) {
@@ -81,10 +86,12 @@ export const mount = (): void => {
         const tilt = (Math.cos(t * 0.23) * 0.23 * 0.35 + Math.cos(t * 0.51) * 0.51 * 0.12) * 0.18;
         const roll = (-Math.sin(t * 0.31) * 0.31 * 0.28 - Math.sin(t * 0.43) * 0.43 * 0.1) * 0.18;
 
-        drawHeli('dolphin', hX, hY, 0, Math.PI / 2, tilt, roll, t * 10, 4, 4, {
+        const camCX = 0;
+        const camCY = (6 * pTileH) / 2;
+        drawHeli('dolphin', hX, hY, 0, Math.PI / 2, tilt, roll, t * 10, camCX, camCY, {
             targetCtx: cx,
             targetIso: isoFn,
-            scaleOverride: 8,
+            scaleOverride: 3,
         });
         _rafId = requestAnimationFrame(loop);
     };

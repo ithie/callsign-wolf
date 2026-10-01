@@ -21,9 +21,9 @@
 }
 
 #legal-screen .legal-section-heading {
-    font-size: 12px;
+    font-size: var(--ps-1);
     color: #ff6600;
-    letter-spacing: 4px;
+    letter-spacing: 2px;
     font-weight: bold;
     margin: 24px 0 10px;
     border-bottom: 1px solid #1a1a1a;
@@ -31,11 +31,11 @@
 }
 
 #legal-screen .legal-para {
-    font-size: 12px;
+    font-size: var(--ps-6);
     color: #666;
-    line-height: 1.8;
+    line-height: 2.2;
     margin: 4px 0;
-    letter-spacing: 0.5px;
+    letter-spacing: 0px;
 }
 
 #legal-screen .legal-spacer {
@@ -43,6 +43,7 @@
 }
 
 @media (max-height: 520px) {
-    #legal-screen .legal-section-heading { margin-top: 14px; }
-    #legal-screen .legal-para { font-size: 11px; line-height: 1.6; }
+    #legal-screen .legal-section-heading { margin-top: 14px; font-size: var(--ps-3); }
+    #legal-screen .legal-para { font-size: var(--ps-2); line-height: 1.9; }
 }
+

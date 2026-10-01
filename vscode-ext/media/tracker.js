@@ -740,7 +740,7 @@
     }, 300);
   };
   document.getElementById("btn-play")?.addEventListener("click", () => {
-    ZsynthPlayer_default.init({ preview: getCurrentSong() });
+    ZsynthPlayer_default.songs["preview"] = getCurrentSong();
     ZsynthPlayer_default.onStep = (step) => {
       document.querySelectorAll(".playing").forEach((c) => c.classList.remove("playing"));
       document.querySelectorAll(`[data-step="${step}"]`).forEach((c) => c.classList.add("playing"));

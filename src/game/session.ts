@@ -12,6 +12,7 @@ export interface MissionProgress {
     completed: boolean;
     bestTimeMs: number | null;
     count: number;
+    endlessBest?: number; // best rescued count in endless mode
 }
 
 export interface CampaignProgress {
@@ -27,6 +28,7 @@ export interface PlayerSession {
     typeRatings?: Record<string, true>;         // heliId → passed
     typeRatingBestTime?: Record<string, number>; // heliId → best time ms
     typeRatingSystemSince?: number;             // absent/0 = old save (gets migrated), 1 = system active
+    _dbgStep?: string;                          // last breadcrumb before crash (cleared on mission start)
 }
 
 
@@ -55,22 +57,43 @@ export const loadSession = (): PlayerSession => {
         const raw = storageGet(STORAGE_KEY);
         if (!raw) return _default();
         const parsed = JSON.parse(raw);
-        // Strip legacy fields from old saves
         delete parsed.activeCampaignIndex;
         delete parsed.allUnlocked;
         delete parsed.lastSeenVersion;
         delete parsed.cookieConsent;
         delete parsed.consentTimestamp;
         delete parsed.consentVersion;
-        const merged = { ..._default(), ...parsed };
-        for (const key of Object.keys(merged.campaignProgress)) {
-            const cp = merged.campaignProgress[key];
-            if (!Array.isArray(cp?.missions)) cp.missions = [];
+        const s = { ..._default(), ...parsed };
+
+        if (typeof s.playerName !== 'string') s.playerName = '';
+        if (typeof s.rankOverride !== 'number' || !isFinite(s.rankOverride)) s.rankOverride = 0;
+        if (typeof s.highestUnlockedCampaignIndex !== 'number' || !isFinite(s.highestUnlockedCampaignIndex)) s.highestUnlockedCampaignIndex = 0;
+
+        if (typeof s.campaignProgress !== 'object' || s.campaignProgress === null || Array.isArray(s.campaignProgress)) {
+            s.campaignProgress = {};
+        } else {
+            for (const key of Object.keys(s.campaignProgress)) {
+                const cp = s.campaignProgress[key] as any;
+                if (typeof cp !== 'object' || cp === null) { delete s.campaignProgress[key]; continue; }
+                if (typeof cp.completed !== 'boolean') cp.completed = false;
+                if (!Array.isArray(cp.missions)) {
+                    cp.missions = [];
+                } else {
+                    cp.missions = cp.missions.map((m: any): MissionProgress => ({
+                        completed: typeof m?.completed === 'boolean' ? m.completed : false,
+                        bestTimeMs: typeof m?.bestTimeMs === 'number' ? m.bestTimeMs : null,
+                        count:      typeof m?.count      === 'number' ? m.count      : 0,
+                        ...(typeof m?.endlessBest === 'number' ? { endlessBest: m.endlessBest } : {}),
+                    }));
+                }
+            }
         }
-        if (!merged.typeRatings) merged.typeRatings = {};
-        if (!merged.typeRatingBestTime) merged.typeRatingBestTime = {};
-        migrateSession(merged);
-        return merged;
+
+        if (typeof s.typeRatings !== 'object' || s.typeRatings === null)     s.typeRatings = {};
+        if (typeof s.typeRatingBestTime !== 'object' || s.typeRatingBestTime === null) s.typeRatingBestTime = {};
+
+        migrateSession(s);
+        return s;
     } catch {
         return _default();
     }
@@ -97,11 +120,11 @@ export const isCampaignUnlocked = (
 ): boolean => {
     const type = campaigns[index]?.type;
     if (!type) return false;
-    if (type === CAMPAIGN_TYPE.TUTORIAL) return true;
+    if (type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.SCENARIO) return true;
     // Cross-device import: highest reached campaign unlocks all up to that index
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return true;
 
-    // Paywall: non-tutorial, non-free-flight campaigns require full version
+    // Paywall: non-tutorial, non-free-flight, non-scenario campaigns require full version
     if (type !== CAMPAIGN_TYPE.FREE_FLIGHT && !isUnlocked()) return false;
 
     // Coast Hawk type rating is the gate for all non-tutorial content
@@ -127,12 +150,11 @@ export const isCampaignPaywalled = (
     index: number
 ): boolean => {
     const type = campaigns[index]?.type;
-    if (!type || type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT) return false;
+    if (!type || type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.FREE_FLIGHT || type === CAMPAIGN_TYPE.SCENARIO) return false;
     return !isUnlocked();
 };
 
-export const isMissionPaywalled = (campaignType: string, missionIndex: number): boolean => {
-    if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) return missionIndex !== 1 && missionIndex !== 3 && !isUnlocked();
+export const isMissionPaywalled = (_campaignType: string, _missionIndex: number): boolean => {
     return false;
 };
 
@@ -142,7 +164,7 @@ export const isCampaignLockedByTutorial = (
     index: number
 ): boolean => {
     const type = campaigns[index]?.type;
-    if (!type || type === CAMPAIGN_TYPE.TUTORIAL) return false;
+    if (!type || type === CAMPAIGN_TYPE.TUTORIAL || type === CAMPAIGN_TYPE.SCENARIO) return false;
     if (index <= (s.highestUnlockedCampaignIndex ?? 0)) return false;
     // Missing Coast Hawk type rating → training required stamp for everything
     if (!s.typeRatings?.['coasthawk']) return true;
@@ -162,8 +184,6 @@ export const isMissionUnlocked = (
     missionMinRank = 0,
 ): boolean => {
     if (campaignType === CAMPAIGN_TYPE.FREE_FLIGHT) {
-        // Mission 1 (Seenotrettung) and 3 (Metalstorm) are free; others require full version
-        if (missionIndex !== 1 && missionIndex !== 3 && !isUnlocked()) return false;
         return true;
     }
     if (missionIndex === 0) return true;

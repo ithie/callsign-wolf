@@ -277,7 +277,7 @@ const scheduleNotify = (): void => {
 
 // ── Controls ──────────────────────────────────────────────────────────────────
 document.getElementById('btn-play')?.addEventListener('click', () => {
-    ZsynthPlayer.init({ preview: getCurrentSong() });
+    ZsynthPlayer.songs['preview'] = getCurrentSong();
     ZsynthPlayer.onStep = (step: number) => {
         document.querySelectorAll('.playing').forEach(c => c.classList.remove('playing'));
         document.querySelectorAll(`[data-step="${step}"]`).forEach(c => c.classList.add('playing'));

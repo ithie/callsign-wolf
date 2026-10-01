@@ -22,3 +22,80 @@
     color: #8af;
     font-family: monospace;
 }
+
+.mission-mode-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mission-mode-panel {
+    background: #111;
+    border: 1px solid #333;
+    padding: 20px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 240px;
+    max-width: 320px;
+    width: 80vw;
+}
+
+.mission-mode-panel-title {
+    font-family: 'PressStart2P', monospace;
+    font-size: var(--ps-1);
+    color: #888;
+    text-align: center;
+    margin-bottom: 4px;
+    letter-spacing: 0.05em;
+}
+
+.mission-mode-choice {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+    padding: 14px 12px;
+    border: 1px solid #555;
+    background: #1a1a1a;
+    cursor: pointer;
+    min-height: 64px;
+}
+
+.mission-mode-choice:active {
+    background: #2a2a2a;
+}
+
+.mission-mode-choice--timed {
+    border-color: #5a5;
+}
+
+.mission-mode-choice--endless {
+    border-color: #5a5;
+}
+
+.mission-mode-choice-label {
+    font-family: 'PressStart2P', monospace;
+    font-size: var(--ps-2);
+    color: #ccc;
+    letter-spacing: 0.05em;
+}
+
+.mission-mode-choice--timed .mission-mode-choice-label {
+    color: #7d7;
+}
+
+.mission-mode-choice--endless .mission-mode-choice-label {
+    color: #7d7;
+}
+
+.mission-mode-choice-sub {
+    font-family: monospace;
+    font-size: 11px;
+    color: #8af;
+    min-height: 13px;
+}

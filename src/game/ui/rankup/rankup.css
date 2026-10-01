@@ -17,8 +17,8 @@
 #rankup-badge { animation: rankup-pulse 1.8s ease-in-out infinite; }
 
 #rankup-decree {
-    font-family: monospace;
-    font-size: 15px;
+    font-family: 'PressStart2P';
+    font-size: var(--ps-3);
     color: #eedd88;
     text-align: center;
     white-space: pre-line;

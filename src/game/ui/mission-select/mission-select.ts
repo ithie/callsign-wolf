@@ -16,7 +16,7 @@ type MissionSelectDeps = {
     campaignIndex: number;
     session: PlayerSession;
     rankIndex: number;
-    onSelect: (missionIndex: number) => void;
+    onSelect: (missionIndex: number, endless?: boolean) => void;
     onBack: () => void;
     onShowPaywall: () => void;
 };
@@ -27,6 +27,8 @@ type MissionItem = {
     unlocked: boolean;
     done: boolean;
     bestTime: number | null;
+    endlessBest: number | null;
+    hasEndless: boolean;
 };
 
 export const mount = () => {
@@ -52,6 +54,8 @@ export const show = (deps: MissionSelectDeps) => {
             unlocked: isMissionUnlocked(session, key, i, campaign.type, rankIndex, missionMinRank),
             done: mp?.completed ?? false,
             bestTime: mp?.bestTimeMs ?? null,
+            endlessBest: mp?.endlessBest ?? null,
+            hasEndless: (level as any).endless === true,
         };
     });
 
@@ -59,6 +63,50 @@ export const show = (deps: MissionSelectDeps) => {
     const missionItems = campaign.type === 'tutorial'
         ? allItems.filter(m => m.unlocked)
         : allItems;
+
+    const showModeOverlay = (m: MissionItem) => {
+        hapticImpact(ImpactStyle.Light);
+        const overlay = document.createElement('div');
+        overlay.className = 'mission-mode-overlay';
+
+        const panel = document.createElement('div');
+        panel.className = 'mission-mode-panel';
+
+        const title = document.createElement('div');
+        title.className = 'mission-mode-panel-title';
+        title.textContent = localize(m.level.headline);
+        panel.appendChild(title);
+
+        const btnTime = document.createElement('button');
+        btnTime.className = 'mission-mode-choice mission-mode-choice--timed';
+        btnTime.tabIndex = -1;
+        const timeLabel = document.createElement('span');
+        timeLabel.className = 'mission-mode-choice-label';
+        timeLabel.textContent = I18N.MODE_TIMED;
+        const timeSub = document.createElement('span');
+        timeSub.className = 'mission-mode-choice-sub';
+        timeSub.textContent = m.bestTime !== null ? I18N.BEST_TIME(m.bestTime) : (m.done ? `✓ ${I18N.DONE}` : '');
+        btnTime.append(timeLabel, timeSub);
+
+        const btnEndless = document.createElement('button');
+        btnEndless.className = 'mission-mode-choice mission-mode-choice--endless';
+        btnEndless.tabIndex = -1;
+        const endlessLabel = document.createElement('span');
+        endlessLabel.className = 'mission-mode-choice-label';
+        endlessLabel.textContent = I18N.MODE_ENDLESS;
+        const endlessSub = document.createElement('span');
+        endlessSub.className = 'mission-mode-choice-sub';
+        endlessSub.textContent = m.endlessBest !== null ? I18N.ENDLESS_BEST(m.endlessBest) : '';
+        btnEndless.append(endlessLabel, endlessSub);
+
+        btnTime.addEventListener('click', () => { overlay.remove(); hapticImpact(ImpactStyle.Light); onSelect(m.index, false); });
+        btnEndless.addEventListener('click', () => { overlay.remove(); hapticImpact(ImpactStyle.Light); onSelect(m.index, true); });
+        overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+
+        panel.append(btnTime, btnEndless);
+        overlay.appendChild(panel);
+        document.body.appendChild(overlay);
+    };
 
     const carousel = createSwipeCarousel<MissionItem>({
         items: missionItems,
@@ -81,12 +129,15 @@ export const show = (deps: MissionSelectDeps) => {
                 } else if (m.done) {
                     content += `<div class="box-sub mission-done">✓ ${I18N.DONE}</div>`;
                 }
+                if (m.hasEndless && m.endlessBest !== null) {
+                    content += `<div class="box-sub mission-time">${I18N.ENDLESS_BEST(m.endlessBest)}</div>`;
+                }
             }
 
             card.innerHTML = content;
             return card;
         },
-        onTap: m => onSelect(m.index),
+        onTap: m => { if (m.hasEndless) showModeOverlay(m); else onSelect(m.index, false); },
         onLockedTap: m => {
             if (isMissionPaywalled(campaign.type, m.index)) onShowPaywall();
         },

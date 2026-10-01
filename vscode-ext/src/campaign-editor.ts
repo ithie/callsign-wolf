@@ -74,7 +74,7 @@ export class CampaignEditorProvider implements vscode.CustomEditorProvider<Campa
             } catch { return []; }
         })();
 
-        panel.webview.onDidReceiveMessage((msg: { type: string; content?: string; value?: number; path?: string }) => {
+        panel.webview.onDidReceiveMessage((msg: { type: string; content?: string; value?: number; path?: string; name?: string; v2?: boolean }) => {
             if (msg.type === 'ready') {
                 panel.webview.postMessage({ type: 'load', content: document.content, songKeys });
             } else if (msg.type === 'change' && msg.content !== undefined) {
@@ -89,6 +89,14 @@ export class CampaignEditorProvider implements vscode.CustomEditorProvider<Campa
                 if (ws) {
                     const fileUri = vscode.Uri.file(join(ws, msg.path));
                     vscode.commands.executeCommand('vscode.open', fileUri);
+                }
+            } else if (msg.type === 'getZdef' && msg.name && msg.path) {
+                const ws = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                if (ws) {
+                    try {
+                        const data = JSON.parse(readFileSync(join(ws, msg.path), 'utf-8'));
+                        panel.webview.postMessage({ type: 'zdefData', name: msg.name, data, v2: msg.v2 ?? false });
+                    } catch { /* file not found — silently skip */ }
                 }
             }
         });
@@ -132,6 +140,6 @@ const openPreview = (doc: CampaignDoc, missionIndex: number): void => {
     const filename = doc.uri.path.split('/').pop() ?? '';
     const campaignKey = filename.replace(/\.zcampaign$/i, '');
     const port = vscode.workspace.getConfiguration('zw').get<number>('devServerPort', 5173);
-    const url = `http://localhost:${port}?preview=${encodeURIComponent(campaignKey)}&mission=${missionIndex}`;
+    const url = `http://localhost:${port}/index-campaign-preview.html?preview=${encodeURIComponent(campaignKey)}&mission=${missionIndex}`;
     vscode.commands.executeCommand('simpleBrowser.show', url);
 };

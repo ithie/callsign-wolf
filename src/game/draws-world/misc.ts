@@ -48,6 +48,19 @@ export const createMiscDraw = (dwCtx: DrawWorldCtx) => {
         });
     };
 
+    const renderSnow = (camX: number, camY: number) => {
+        if (!G.snowFlakes.length) return;
+        ctx.fillStyle = '#e8f0ff';
+        for (const f of G.snowFlakes) {
+            const pos = isoFn(f.wx, f.wy, f.wz, camX, camY);
+            ctx.globalAlpha = f.alpha;
+            ctx.beginPath();
+            ctx.arc(pos.x, pos.y, f.r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.globalAlpha = 1.0;
+    };
+
     const renderRain = () => {
         if (!isMissionRain()) return;
         if (Math.random() < 0.005) {
@@ -58,5 +71,5 @@ export const createMiscDraw = (dwCtx: DrawWorldCtx) => {
         }
     };
 
-    return { drawBirds, drawDebris, renderRain };
+    return { drawBirds, drawDebris, renderRain, renderSnow };
 };

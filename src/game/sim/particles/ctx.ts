@@ -73,11 +73,14 @@ export type WindState = {
 };
 
 // ─── Context + interface ───────────────────────────────────────────────────────
+export type { FoamParticle } from './sea-foam';
+
 export type ParticlesCtx = {
     particles: Particle[];
     debris: DebrisPiece[];
     flocks: Flock[];
     emitters: ParticleEmitter[];
+    foamParticles: import('./sea-foam').FoamParticle[];
     heli: HeliRef;
     wind: WindState;
     waterLevel: number;

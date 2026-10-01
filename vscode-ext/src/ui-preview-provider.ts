@@ -4,11 +4,18 @@ import * as fs from 'fs';
 import * as esbuild from 'esbuild';
 
 // CSS-inject plugin: turns `import './foo.css'` into a <style> injection snippet.
+// Inlines url() font references as data URIs so the Webview CSP can load them.
 const _cssInjectPlugin: esbuild.Plugin = {
     name: 'css-inject',
     setup(build) {
         build.onLoad({ filter: /\.css$/ }, args => {
-            const css = fs.readFileSync(args.path, 'utf-8');
+            let css = fs.readFileSync(args.path, 'utf-8');
+            css = css.replace(/url\(['"]?([^'")]+\.woff2)['"]?\)/g, (match, relPath) => {
+                const absPath = path.resolve(path.dirname(args.path), relPath);
+                if (!fs.existsSync(absPath)) return match;
+                const b64 = fs.readFileSync(absPath).toString('base64');
+                return `url('data:font/woff2;base64,${b64}')`;
+            });
             return {
                 contents: `const __el=document.createElement('style');__el.textContent=${JSON.stringify(css)};document.head.appendChild(__el);`,
                 loader: 'js',

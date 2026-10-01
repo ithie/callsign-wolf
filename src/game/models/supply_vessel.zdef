@@ -22,7 +22,7 @@
     }
   ],
   "rescueZones": [
-    { "x": -0.7, "y": 0, "w": 1.8, "h": 1.0, "role": "pickup" }
+    { "x": -0.7, "y": 0, "z": 1.2, "w": 1.8, "h": 1.0, "role": "pickup" }
   ],
   "fragments": [
     {
@@ -399,7 +399,11 @@
             ]
           ],
           "color": "#3a3a3a"
-        },
+        }
+      ]
+    },
+    {
+      "faces": [
         {
           "id": "cab_front_L",
           "normal": [
@@ -833,6 +837,7 @@
         }
       ],
       "children": [
+
         {
           "rotate": {
             "pivot": [

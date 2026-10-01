@@ -1,5 +1,5 @@
-const FOLIAGE_ENCODE: Record<string, string> = { pine: 'p', oak: 'o', bush: 'b', dead: 'd', beach_umbrella: 'u', beach_lounger: 'l', beach_cooler: 'c', beach_umbrella_tilted: 'v', beach_person: 'g', swimmer: 's' };
-const FOLIAGE_DECODE: Record<string, string> = { p: 'pine', o: 'oak', b: 'bush', d: 'dead', u: 'beach_umbrella', l: 'beach_lounger', c: 'beach_cooler', v: 'beach_umbrella_tilted', g: 'beach_person', s: 'swimmer' };
+const FOLIAGE_ENCODE: Record<string, string> = { pine: 'p', oak: 'o', bush: 'b', dead: 'd', beach_umbrella: 'u', beach_lounger: 'l', beach_cooler: 'c', beach_umbrella_tilted: 'v', beach_person: 'g', swimmer: 's', xmas_elf: 'x' };
+const FOLIAGE_DECODE: Record<string, string> = { p: 'pine', o: 'oak', b: 'bush', d: 'dead', u: 'beach_umbrella', l: 'beach_lounger', c: 'beach_cooler', v: 'beach_umbrella_tilted', g: 'beach_person', s: 'swimmer', x: 'xmas_elf' };
 
 // Format pro Baum: {type}{x*10},{y*10},{s*10}  →  z.B. "p123,87,10"
 // Bäume getrennt durch "|"

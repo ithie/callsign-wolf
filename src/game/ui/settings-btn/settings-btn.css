@@ -1,7 +1,7 @@
 .settings-btn {
-    font-family: monospace;
-    font-size: 12px;
-    letter-spacing: 3px;
+    font-family: 'PressStart2P';
+    font-size: var(--ps-2);
+    letter-spacing: 2px;
     color: #5f5;
     border: 1px solid #2a4a2a;
     background: none;

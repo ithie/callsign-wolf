@@ -57,10 +57,47 @@ interface DEFFace {
 
 ### Coordinate System
 
-- `+X` = object's nose / forward direction
-- `+Y` = object's left side
+- `+X` = object's nose / forward direction (vehicles) / east face (buildings)
+- `+Y` = object's left side (vehicles) / south / camera-near face (buildings)
 - `+Z` = up
 - Origin = object center at ground level (z=0)
+
+The isometric camera sits at the **+X / +Y corner** and looks towards the origin. Depth sort key is `world_x + world_y`; higher = closer to camera.
+
+#### Static Building Orientation
+
+For non-rotating structures the axis mapping is fixed. Design buildings with this layout:
+
+| Axis | Screen direction | Camera visibility | Building analogy |
+|------|-----------------|------------------|-----------------|
+| `+X` | right-front | **visible** | main facade / east end |
+| `-X` | left-back | hidden | rear / west end |
+| `+Y` | left-front | **visible** | south arm / camera-near side |
+| `-Y` | right-back | hidden | north arm / camera-far side |
+
+Practical rules:
+- **Main entrance / front facade** → place at the highest +X value, facing `normal: [1, 0]`.
+- **Camera-near side wall** → at the highest +Y value, facing `normal: [0, 1]`.
+- **Camera-far side wall** (y < 0) → facing `normal: [0, -1]`; it will be culled and can be omitted or kept minimal.
+- **Rear wall** (x < 0) → facing `normal: [-1, 0]`; also culled, keep minimal.
+- **Transept / wing that the player sees** → extend in the **+Y direction** (positive y).
+- **Transept / wing behind the building** → extend in the **-Y direction**; only a thin back-wall is needed.
+
+Example — a cross-shaped cathedral (based on `dom.zdef`):
+
+```
+         +X (portal / east)
+              ↑
+  ____________|____________
+ |            |            |
+ |  nave back |   nave      |→ facade at x=+1.5
+ |____________|____________|
+              |
+         +Y direction
+              |
+       south transept arm
+       (visible from camera)
+```
 
 ### Backface Culling via `normal`
 
@@ -160,17 +197,20 @@ Defines point lights that blink and glow at a fixed local position. Rendered as 
 
 ```typescript
 interface DEFLight {
-    id: string;
     pos: [number, number, number]; // local X, Y, Z position
-    color: string;                 // core dot colour (e.g. "#ff2200")
+    color?: string;                // core dot colour (e.g. "#ff2200")
     glowColor?: string;            // outer glow fill (default: "rgba(255,60,0,0.35)")
-    radius?: number;               // core dot radius in screen pixels (default: 4)
-    glowRadius?: number;           // glow circle radius in screen pixels (default: 13)
-    blinkHz?: number;              // blink frequency in Hz (default: 1.0)
+    radius?: number;               // core dot radius in screen pixels (default: 1.5)
+    glowRadius?: number;           // glow circle radius in screen pixels (default: 3)
+    blinkHz?: number;              // blink frequency in Hz; omit = always on
+    phase?: number;                // cycle offset 0–1 (0 = no offset, 0.5 = half-period shift)
+    dutyCycle?: number;            // fraction of period the light is ON (default: 0.5)
 }
 ```
 
-Lights are rendered via `_drawDefLights(x, y, def)` in `structures.ts` — a generic helper that works with any DEF. Unlike geometry, lights are **always visible** within the night cone regardless of `isVisible` culling. This means a wind turbine beacon can be seen even when the turbine itself is scrolled off-screen. The blink period is `500 / blinkHz` ms on / off.
+Animation: `on = (t_in_period < period * dutyCycle)` where `t` is offset by `phase * period`. No `blinkHz` → steady light.
+
+Lights are rendered via `_drawDefLights(x, y, def)` in `structures.ts`. Each light blinks independently according to its own `blinkHz`, `phase` and `dutyCycle` — different values create twinkle/chase effects. The ZDEF editor exposes these three fields per light under the "Lichter" panel.
 
 ---
 

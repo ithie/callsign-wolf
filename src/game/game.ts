@@ -110,6 +110,7 @@ const {
     drawDebris,
     drawPayloadObjects,
     renderRain,
+    renderSnow,
     drawDebugOverlay,
     handleCollisionBoxes,
 } = _drawWorldFns;
@@ -147,25 +148,60 @@ const { drawTerrain, precomputeDayColors } = createDrawTerrain({
 const _rafRef = { id: 0 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+const _HELI_COLOR_HEX: Record<string, string> = {
+    orange: '#ff6600',
+    blue:   '#55aadd',
+    sand:   '#c8a45a',
+    green:  '#4e8c38',
+};
+
+const _applyHeliTintCss = () => {
+    const hex = _HELI_COLOR_HEX[storageGet('z_heli_color') ?? ''] ?? _HELI_COLOR_HEX['orange'];
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    document.documentElement.style.setProperty('--heli-color', hex);
+    document.documentElement.style.setProperty('--heli-color-rgb', `${r}, ${g}, ${b}`);
+    return hex;
+};
+
 const setTouchVisible = (v: boolean) => {
+    if (v) {
+        const hex = _applyHeliTintCss();
+        window.webkit?.messageHandlers?.controls?.postMessage({ type: 'setTintColor', hex });
+    }
     window.webkit?.messageHandlers?.controls?.postMessage({ type: 'showControls', visible: v });
     const touchEl = document.getElementById('touch-controls');
     if (touchEl) touchEl.style.display = v ? 'flex' : 'none';
 };
 
+const _CRASH_KEY = '_lastCrash';
+
 const _showDebugError = (msg: string) => {
+    const _dbgStep = Flow.session._dbgStep;
+    const _fullError = msg === 'Script error.'
+        ? (() => { try { return localStorage.getItem(_CRASH_KEY); } catch { return null; } })() ?? msg
+        : msg;
+    try { localStorage.setItem(_CRASH_KEY, _fullError); } catch { /* storage unavailable */ }
     const session = (window as any).__nativeStorage?.z_session ?? localStorage.getItem?.('z_session') ?? '(nicht lesbar)';
     const el = document.createElement('div');
     el.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:#900;color:#fff;font:14px monospace;padding:20px;z-index:99999;overflow:auto;white-space:pre-wrap';
-    el.textContent = 'Something went wrong. Please take a screenshot of this screen and send it to the developer.\n\nERROR:\n' + msg + '\n\nSESSION:\n' + session;
+    el.textContent = 'Something went wrong. Please take a screenshot of this screen and send it to the developer.'
+        + (_dbgStep ? '\n\nLAST STEP:\n' + _dbgStep : '')
+        + '\n\nSESSION:\n' + session;
     document.body.appendChild(el);
 };
 
-window.addEventListener('unhandledrejection', e => _showDebugError(String(e.reason?.stack ?? e.reason)));
+window.addEventListener('unhandledrejection', e => {
+    const msg = e.reason instanceof Error ? (e.reason.stack ?? e.reason.message) : String(e.reason);
+    try { localStorage.setItem(_CRASH_KEY, msg); } catch { /* storage unavailable */ }
+    _showDebugError(msg);
+}, { capture: true });
 window.addEventListener('error', e => {
-    const detail = e.error?.stack ?? (e.filename ? `${e.filename}:${e.lineno}:${e.colno}` : e.message);
+    const detail = e.error?.stack ?? (e.filename ? `${e.message}\n${e.filename}:${e.lineno}:${e.colno}` : e.message);
+    try { localStorage.setItem(_CRASH_KEY, detail); } catch { /* storage unavailable */ }
     _showDebugError(detail);
-});
+}, { capture: true });
 
 // ─── Physics context ──────────────────────────────────────────────────────────
 // Preview-mode crash handler (DEV only): replays the current preview mission.
@@ -202,6 +238,7 @@ const _physicsCtx = createPhysicsCtx({
     getTriggerCrash: () => _getPreviewTriggerCrash() ?? Flow.triggerCrash,
     orniWreckDelivered: Flow.orniWreckDelivered,
     onBoatTurbineCollision: Flow.onBoatTurbineCollision,
+    onPersonPickedUp: () => { if (Flow.endlessMode) Flow.spawnEndlessPerson(); },
 });
 
 // ─── Render loop ──────────────────────────────────────────────────────────────
@@ -213,6 +250,8 @@ if (import.meta.env.DEV) {
 }
 
 let _fpsLastTime = 0;
+let _dynZoom = 1.0;
+let _dynZoomFastSince = 0;
 const drawScene = () => {
     try { _drawSceneInner(); } catch (err) {
         _showDebugError(err instanceof Error ? (err.stack ?? err.message) : String(err));
@@ -242,7 +281,30 @@ const _drawSceneInner = () => {
     } else if (Flow.missionMaxTime === null) {
         Flow.setHudMaxTimeRemaining(null);
     }
+
+    if (Flow.missionAltLimit !== null && !Flow.briefingActive && !zstate.crashed) {
+        const aboveGround = G.heli.z - getGround(G.heli.x, G.heli.y);
+        if (aboveGround > Flow.missionAltLimit) {
+            if (Flow.altViolationStart === null) Flow.setAltViolationStart(Date.now());
+            else if ((Date.now() - Flow.altViolationStart) / 1000 >= 5) Flow.triggerCrash();
+        } else {
+            if (Flow.altViolationStart !== null) Flow.setAltViolationStart(null);
+        }
+    }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const _speed = Math.hypot(G.heli.vx, G.heli.vy);
+    const _now2 = performance.now();
+    if (_speed > 0.06) { if (!_dynZoomFastSince) _dynZoomFastSince = _now2; }
+    else { _dynZoomFastSince = 0; }
+    const _timerF = _dynZoomFastSince ? Math.min((_now2 - _dynZoomFastSince) / 2000, 1) : 0;
+    const _zoomTarget = 1.0 - Math.min(_speed / 0.3, 1.0) * 0.26 * _timerF;
+    _dynZoom += (_zoomTarget - _dynZoom) * 0.05;
+    const _zCx = canvas.width / 2, _zCy = canvas.height / 2;
+    ctx.save();
+    ctx.translate(_zCx, _zCy);
+    ctx.scale(_dynZoom, _dynZoom);
+    ctx.translate(-_zCx, -_zCy);
 
     const tx = (G.heli.x - G.heli.y) * (tileW / 2);
     const ty = (G.heli.x + G.heli.y) * (tileH / 2) - (isMac() ? 0 : G.heli.z * stepH);
@@ -284,6 +346,22 @@ const _drawSceneInner = () => {
     }
 
     if (!zstate.crashed) drawPayloadObjects(false);
+
+    // Sea foam — drawn before ships so it appears under hulls
+    const _foamScale = tileW / 64;
+    G.foamParticles.forEach(p => {
+        const pos = isoFn(p.x, p.y, G.waterLevel, camX, camY);
+        const fadeIn  = Math.min(1, p.phase * 1.2);
+        const fadeOut = Math.min(1, (p.maxLife - p.phase) * 0.8);
+        const alpha   = Math.min(fadeIn, fadeOut) * 0.55;
+        if (alpha <= 0) return;
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle   = 'rgb(230,242,250)';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y, Math.max(0.5, p.size * _foamScale), 0, Math.PI * 2);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1.0;
 
     drawWorldObjects(
         camX, camY, _visMargin,
@@ -381,6 +459,7 @@ const _drawSceneInner = () => {
 
     if (!zstate.crashed) {
         renderRain();
+        renderSnow(camX, camY);
         handleCollisionBoxes();
         if (import.meta.env.DEV && showCollisionBoxes) drawDebugOverlay(camX, camY);
     }
@@ -393,11 +472,14 @@ const _drawSceneInner = () => {
         groundUnderHeli: getGround(G.heli.x, G.heli.y),
         totalRescued: G.totalRescued,
         goalCount: G.goalCount,
+        endlessMode: Flow.endlessMode,
         playerName: Flow.session.playerName || '',
         deliverMode: G.deliverMode,
         maxTimeRemaining: Flow.hudMaxTimeRemaining,
         ringsFlown: G.RINGS.filter(r => r.flown).length,
         ringsTotal: G.RINGS.length,
+        altLimit: Flow.missionAltLimit,
+        altViolationStart: Flow.altViolationStart,
         minimap: {
             gridSize,
             pad: hasPad() ? G.PAD : null,
@@ -415,6 +497,8 @@ const _drawSceneInner = () => {
             rings: G.RINGS.map(r => ({ x: r.x, y: r.y, flown: r.flown })),
         },
     });
+
+    ctx.restore();
 
     updateHeliSound(G.heli.rotorRPM, G.heli.engineOn, G.heli.type, Math.hypot(G.wind.x, G.wind.y), _flapRate);
     if (isTutorialRunning()) tutorialTick(G);
@@ -659,6 +743,7 @@ window.onload = () => {
                 return;
             }
             await initAppStorage([STORAGE_KEY, LANG_PREF_KEY, 'z_music', 'z_sfx', 'z_heli_color', 'z_unlocked']);
+            _applyHeliTintCss();
             Flow.setSession(loadSession());
             const _sl = storageGet(LANG_PREF_KEY);
             if (_sl === 'de' || _sl === 'en') setLanguage(_sl);

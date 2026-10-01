@@ -1,0 +1,27 @@
+bpm 150
+
+# Zephyr M5 – Götterdämmerung – Maximalsturm, apokalyptisch (Am - Bb - F - Em)
+
+[kick]  vol=100
+0 4 8 12 16 20 24 28 32 36 40 44 48 52 56 60
+
+[snare]  vol=88
+8 24 40 56
+
+[hat]  vol=60
+0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48 50 52 54 56 58 60 62
+
+[clap]  vol=80
+8 24 40 56
+
+[synth1]  vol=95  wave=sawtooth  filter=600  attack=0.01  release=0.28  inst=bass_gritty
+0:A1 4:A1 8:E2 12:C2 16:Bb1 20:Bb1 24:F2 28:D2 32:F1 36:F1 40:C2 44:A1 48:E1 52:E1 56:B1 60:G1
+
+[synth2]  vol=90  wave=sawtooth  filter=3500  attack=0.005  release=0.15  inst=lead_saw
+0:A4 2:E4 4:C4 6:A3 8:E4 10:A4 12:G4 14:E4 16:Bb3 18:D4 20:F4 22:Bb4 24:F4 26:D4 28:Bb3 30:F4 32:F4 34:A4 36:C4 38:F4 40:A4 42:C4 44:A4 46:F4 48:E4 50:G4 52:B3 54:E4 56:G4 58:B3 60:E4 62:G4
+
+[synth3]  vol=72  wave=square  filter=3500  attack=0.005  release=0.08  inst=arp_bright
+0:A3 1:C4 2:E4 3:A4 4:E4 5:C4 6:A3 7:E4 8:C4 9:E4 10:A4 11:E4 12:C4 13:A4 14:G4 15:E4 16:Bb3 17:D4 18:F4 19:Bb4 20:F4 21:D4 22:Bb3 23:D4 24:F4 25:Bb4 26:F4 27:D4 28:Bb3 29:F4 30:D4 31:Bb3 32:F3 33:A3 34:C4 35:F4 36:C4 37:A3 38:F3 39:A3 40:C4 41:F4 42:C4 43:A3 44:F3 45:C4 46:A3 47:F3 48:E3 49:G3 50:B3 51:E4 52:B3 53:G3 54:E3 55:G3 56:B3 57:E4 58:B3 59:G3 60:E3 61:G3 62:B3 63:E4
+
+[synth4]  vol=82  wave=triangle  filter=1300  attack=0.06  release=1.2  detune=18
+0:A2 8:C3 16:Bb2 24:D3 32:F2 40:A3 48:E2 56:G3

@@ -2,21 +2,15 @@ import type { DrawWorldCtx } from './types';
 import { G, zstate } from '../state';
 import { VESSEL, VEHICLE_STATE } from '../../shared/types';
 import { getHeliType } from '../heli-types';
+import { getObjectDef } from '../def-registry';
 import SAILBOAT_DEF from '../models/sailboat.zdef';
 import PILOT_BOAT_DEF from '../models/pilot_boat.zdef';
 import SAR_BOAT_DEF from '../models/sar_boat.zdef';
 import SALVAGE_TUG_DEF from '../models/supply_vessel.zdef';
 import SUBMARINE_DEF from '../models/submarine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
-import WIND_TURBINE_DEF from '../models/objects/wind_turbine.zdef';
-import LIGHTHOUSE_DEF from '../models/objects/lighthouse.zdef';
-import BAYWATCH_CAR_DEF from '../models/objects/baywatch_car.zdef';
-import BAYWATCH_HQ_DEF from '../models/objects/baywatch_hq.zdef';
-import BAYWATCH_TOWER_DEF from '../models/objects/baywatch_tower.zdef';
-import CONCERT_STAGE_DEF from '../models/objects/concert_stage.zdef';
-import FESTIVAL_TENT_DEF from '../models/objects/festival_tent.zdef';
-import FESTIVAL_TENT_BROKEN_DEF from '../models/objects/festival_tent_broken.zdef';
-import FESTIVAL_CAR_DEF from '../models/objects/festival_car.zdef';
+import TOWER_DEF from '../models/objects/tower.zdef';
+import HANGAR_TOWER_DEF from '../models/objects/hangar_tower.zdef';
 
 export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, hasCarrier, hasPad, isVisible, getShowCollisionBoxes, triggerCrash } = dwCtx;
@@ -179,12 +173,12 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
                 if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, hmx, hmy, 0, -2, 2, -1, 1, hZ, hZ + 1.8))
                     triggerCrash();
             }
-            const tmx = G.PAD.xMax - 0.5, tmy = G.PAD.yMin - 1, tZ = G.PAD.z;
-            if (showCB) drawCollisionBox(tmx, tmy, 0, -0.5, 0.5, -0.5, 0.5, tZ, tZ + 5, 'rgba(255,200,0,0.9)');
-            if (!zstate.crashed && G.heli.inAir) {
-                if (checkCollisionBox(G.heli.x, G.heli.y, G.heli.z, tmx, tmy, 0, -0.5, 0.5, -0.5, 0.5, tZ, tZ + 5))
-                    triggerCrash();
-            }
+            const _isNewTower = G.PAD.towerVariant === 'new';
+            const _towerDef = _isNewTower ? HANGAR_TOWER_DEF : TOWER_DEF;
+            const tmx = _isNewTower ? G.PAD.xMax : G.PAD.xMax - 0.5;
+            const tmy = G.PAD.yMin - 1, tZ = G.PAD.z;
+            if (showCB) drawDef(_towerDef as any, tmx, tmy, 0, tZ, 'rgba(255,200,0,0.9)');
+            if (!zstate.crashed && G.heli.inAir && checkDef(_towerDef as any, tmx, tmy, 0, tZ)) triggerCrash();
         }
 
         // ── Fuel Truck ────────────────────────────────────────────────────────────
@@ -200,8 +194,11 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
         // ── Lighthouse ────────────────────────────────────────────────────────────
         const lhPos = dwCtx.getLighthouse();
         if (lhPos) {
-            if (showCB) drawDef(LIGHTHOUSE_DEF, lhPos.x, lhPos.y, 0, 0, 'rgba(255,220,0,0.8)');
-            if (!zstate.crashed && checkDef(LIGHTHOUSE_DEF, lhPos.x, lhPos.y, 0, 0)) triggerCrash();
+            const _lhDef = getObjectDef(VESSEL.LIGHTHOUSE);
+            if (_lhDef) {
+                if (showCB) drawDef(_lhDef, lhPos.x, lhPos.y, 0, 0, 'rgba(255,220,0,0.8)');
+                if (!zstate.crashed && checkDef(_lhDef, lhPos.x, lhPos.y, 0, 0)) triggerCrash();
+            }
         }
 
         // ── Boats ─────────────────────────────────────────────────────────────────
@@ -232,39 +229,74 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
         // ── Wind turbines ─────────────────────────────────────────────────────────
         G.WIND_TURBINES.forEach((wt: any) => {
             const gz = wt.gz ?? 0;
-            if (showCB) drawDef(WIND_TURBINE_DEF, wt.x, wt.y, 0, gz, 'rgba(0,200,255,0.8)');
-            if (!zstate.crashed && checkDef(WIND_TURBINE_DEF, wt.x, wt.y, 0, gz)) triggerCrash();
+            const _def = getObjectDef(VESSEL.WIND_TURBINE);
+            if (!_def) return;
+            if (showCB) drawDef(_def, wt.x, wt.y, 0, gz, 'rgba(0,200,255,0.8)');
+            if (!zstate.crashed && checkDef(_def, wt.x, wt.y, 0, gz)) triggerCrash();
         });
 
         // ── Baywatch objects ──────────────────────────────────────────────────────
         G.BAYWATCH_CARS.forEach((c: any) => {
             const gz = c.gz ?? 0;
-            if (showCB) drawDef(BAYWATCH_CAR_DEF, c.x, c.y, c.angle, gz, 'rgba(255,200,0,0.8)');
-            if (!zstate.crashed && checkDef(BAYWATCH_CAR_DEF, c.x, c.y, c.angle, gz)) triggerCrash();
+            const _def = getObjectDef(VESSEL.BAYWATCH_CAR);
+            if (!_def) return;
+            if (showCB) drawDef(_def, c.x, c.y, c.angle, gz, 'rgba(255,200,0,0.8)');
+            if (!zstate.crashed && checkDef(_def, c.x, c.y, c.angle, gz)) triggerCrash();
         });
         G.BAYWATCH_BUILDINGS.forEach((b: any) => {
             const gz = b.gz ?? 0;
-            const def = b.type === VESSEL.BAYWATCH_HQ ? BAYWATCH_HQ_DEF : BAYWATCH_TOWER_DEF;
-            if (showCB) drawDef(def, b.x, b.y, b.angle, gz, 'rgba(255,80,0,0.9)');
-            if (!zstate.crashed && checkDef(def, b.x, b.y, b.angle, gz)) triggerCrash();
+            const _def = getObjectDef(b.type);
+            if (!_def) return;
+            if (showCB) drawDef(_def, b.x, b.y, b.angle, gz, 'rgba(255,80,0,0.9)');
+            if (!zstate.crashed && checkDef(_def, b.x, b.y, b.angle, gz)) triggerCrash();
         });
 
         // ── Festival objects ──────────────────────────────────────────────────────
         G.CONCERT_STAGES.forEach((s: any) => {
             const gz = s.gz ?? 0;
-            if (showCB) drawDef(CONCERT_STAGE_DEF, s.x, s.y, s.angle, gz, 'rgba(180,0,255,0.8)');
-            if (!zstate.crashed && checkDef(CONCERT_STAGE_DEF, s.x, s.y, s.angle, gz)) triggerCrash();
+            const _def = getObjectDef(VESSEL.CONCERT_STAGE);
+            if (!_def) return;
+            if (showCB) drawDef(_def, s.x, s.y, s.angle, gz, 'rgba(180,0,255,0.8)');
+            if (!zstate.crashed && checkDef(_def, s.x, s.y, s.angle, gz)) triggerCrash();
         });
         G.FESTIVAL_TENTS.forEach((t: any) => {
             const gz = t.gz ?? 0;
-            const def = (t.type === VESSEL.FESTIVAL_TENT_BROKEN ? FESTIVAL_TENT_BROKEN_DEF : FESTIVAL_TENT_DEF) as any;
-            if (showCB) drawDef(def, t.x, t.y, t.angle, gz, 'rgba(0,200,255,0.8)');
-            if (!zstate.crashed && checkDef(def, t.x, t.y, t.angle, gz)) triggerCrash();
+            const _def = getObjectDef(t.type);
+            if (!_def) return;
+            if (showCB) drawDef(_def, t.x, t.y, t.angle, gz, 'rgba(0,200,255,0.8)');
+            if (!zstate.crashed && checkDef(_def, t.x, t.y, t.angle, gz)) triggerCrash();
         });
         G.FESTIVAL_CARS.forEach((c: any) => {
             const gz = c.gz ?? 0;
-            if (showCB) drawDef(FESTIVAL_CAR_DEF as any, c.x, c.y, c.angle, gz, 'rgba(255,200,0,0.8)');
-            if (!zstate.crashed && checkDef(FESTIVAL_CAR_DEF as any, c.x, c.y, c.angle, gz)) triggerCrash();
+            const _def = getObjectDef(VESSEL.FESTIVAL_CAR);
+            if (!_def) return;
+            if (showCB) drawDef(_def, c.x, c.y, c.angle, gz, 'rgba(255,200,0,0.8)');
+            if (!zstate.crashed && checkDef(_def, c.x, c.y, c.angle, gz)) triggerCrash();
+        });
+
+        // ── Scenario Props (Dom, Messe Halle, Xmas Deco) ─────────────────────────
+        G.SCENARIO_PROPS.forEach((p: any) => {
+            if (!isVisible(p.x, p.y)) return;
+            const _def = getObjectDef(p.type);
+            if (!_def) return;
+            if (showCB) drawDef(_def, p.x, p.y, p.angle ?? 0, p.gz, 'rgba(180,140,255,0.8)');
+            if (!zstate.crashed && checkDef(_def, p.x, p.y, p.angle ?? 0, p.gz)) triggerCrash();
+        });
+
+        // ── Xmas objects ──────────────────────────────────────────────────────────
+        G.XMAS_HOUSES.forEach((h: any) => {
+            const gz = h.gz ?? 0;
+            const _def = getObjectDef(h.type) ?? getObjectDef(VESSEL.XMAS_HOUSE_A);
+            if (!_def) return;
+            if (showCB) drawDef(_def, h.x, h.y, h.angle ?? 0, gz, 'rgba(255,80,160,0.85)');
+            if (!zstate.crashed && checkDef(_def, h.x, h.y, h.angle ?? 0, gz)) triggerCrash();
+        });
+        G.XMAS_LANTERNS.forEach((l: any) => {
+            const gz = l.gz ?? 0;
+            const _def = getObjectDef(VESSEL.XMAS_LANTERN);
+            if (!_def) return;
+            if (showCB) drawDef(_def, l.x, l.y, 0, gz, 'rgba(255,180,0,0.85)');
+            if (!zstate.crashed && checkDef(_def, l.x, l.y, 0, gz)) triggerCrash();
         });
 
         // ── Trees ─────────────────────────────────────────────────────────────────

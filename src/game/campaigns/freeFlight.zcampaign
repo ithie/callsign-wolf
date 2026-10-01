@@ -129,8 +129,9 @@
           "type": "rescue_all"
         }
       ],
-      "music": "partytime",
-      "waterLevel": 0
+      "music": "freeflight_partytime",
+      "waterLevel": 0,
+      "endless": true
     },
     {
       "headline": {
@@ -270,8 +271,9 @@
           "pt": "Leve todos os sobreviventes ao porta-aviões."
         }
       ],
-      "music": "thunderscene",
-      "waterLevel": 0
+      "music": "freeflight_thunderscene",
+      "waterLevel": 0,
+      "endless": true
     },
     {
       "headline": {
@@ -522,7 +524,8 @@
       "windDir": 270,
       "windStr": 1,
       "windVar": true,
-      "music": "baywatch"
+      "music": "freeflight_baywatch",
+      "endless": true
     },
     {
       "headline": {
@@ -975,7 +978,7 @@
           "type": "rescue_all"
         }
       ],
-      "music": "metalstorm",
+      "music": "freeflight_metalstorm",
       "waterLevel": 0,
       "particleEmitters": [
         {
@@ -1025,7 +1028,8 @@
           "zOffset": 3.5
         }
       ],
-      "pavement": "0x28907,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x9057"
+      "pavement": "0x28907,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x176,10x25,0x9057",
+      "endless": true
     }
   ]
 }

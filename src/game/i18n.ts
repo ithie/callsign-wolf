@@ -7,7 +7,13 @@ export const LANG_PREF_KEY = 'z_lang';
 
 const _DATENSCHUTZ_DE = [
     'SAR: Callsign WOLF speichert folgende Daten lokal auf deinem Gerät:',
-    '▸ Rufzeichen  ▸ Dienstgrad  ▸ Kampagnenfortschritt  ▸ Spracheinstellung  ▸ Steuerungseinstellung',
+    '- Rufzeichen',
+    '- Dienstgrad und Musterzulassungen',
+    '- Kampagnenfortschritt',
+    '- Hubschrauberfarbe',
+    '- Spracheinstellung',
+    '- Ton- und Musikeinstellungen',
+    '- Vollversionsstatus',
     'Die Daten werden ausschließlich zur Spielfunktion genutzt und nicht an Dritte weitergegeben. Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO.',
     'Gespeicherte Daten können jederzeit über Hauptmenü → Einstellungen → Spielstand löschen gelöscht werden.',
     'Kontakt für Datenschutzanfragen: yarrick@web.de',
@@ -15,7 +21,13 @@ const _DATENSCHUTZ_DE = [
 
 const _DATENSCHUTZ_EN = [
     'SAR: Callsign WOLF stores the following data locally on your device:',
-    '▸ Callsign  ▸ Rank  ▸ Campaign progress  ▸ Language setting  ▸ Control setting',
+    '- Callsign',
+    '- Rank and type ratings',
+    '- Campaign progress',
+    '- Helicopter colour',
+    '- Language setting',
+    '- Audio settings (music & sound effects)',
+    '- Full version status',
     'Data is used exclusively for game functionality and is not shared with third parties. Legal basis: Art. 6 para. 1 lit. b GDPR.',
     'Stored data can be deleted at any time via Main Menu → Settings → Delete Save.',
     'Privacy contact: yarrick@web.de',
@@ -23,7 +35,13 @@ const _DATENSCHUTZ_EN = [
 
 const _DATENSCHUTZ_FR = [
     'SAR : Callsign WOLF stocke les données suivantes localement sur votre appareil :',
-    '▸ Indicatif  ▸ Grade  ▸ Progression  ▸ Langue  ▸ Paramètre de contrôle',
+    '- Indicatif',
+    '- Grade et qualifications',
+    '- Progression de campagne',
+    '- Couleur de l\'hélicoptère',
+    '- Langue',
+    '- Paramètres audio (musique et effets sonores)',
+    '- Statut version complète',
     'Les données sont utilisées exclusivement pour le fonctionnement du jeu et ne sont pas partagées avec des tiers. Base légale : Art. 6 par. 1 lit. b RGPD.',
     'Les données stockées peuvent être supprimées à tout moment via Menu Principal → Paramètres → Supprimer la sauvegarde.',
     'Contact confidentialité : yarrick@web.de',
@@ -31,7 +49,13 @@ const _DATENSCHUTZ_FR = [
 
 const _DATENSCHUTZ_ES = [
     'SAR: Callsign WOLF almacena los siguientes datos localmente en tu dispositivo:',
-    '▸ Indicativo  ▸ Rango  ▸ Progreso  ▸ Idioma  ▸ Configuración de control',
+    '- Indicativo',
+    '- Rango y habilitaciones de tipo',
+    '- Progreso de campaña',
+    '- Color del helicóptero',
+    '- Idioma',
+    '- Ajustes de audio (música y efectos de sonido)',
+    '- Estado de versión completa',
     'Los datos se utilizan exclusivamente para la funcionalidad del juego y no se comparten con terceros. Base legal: Art. 6 apdo. 1 lit. b RGPD.',
     'Los datos almacenados pueden eliminarse en cualquier momento desde Menú Principal → Ajustes → Borrar guardado.',
     'Contacto de privacidad: yarrick@web.de',
@@ -39,7 +63,13 @@ const _DATENSCHUTZ_ES = [
 
 const _DATENSCHUTZ_PT = [
     'SAR: Callsign WOLF armazena os seguintes dados localmente no seu dispositivo:',
-    '▸ Indicativo  ▸ Patente  ▸ Progresso  ▸ Idioma  ▸ Configuração de controlo',
+    '- Indicativo',
+    '- Patente e habilitações de tipo',
+    '- Progresso de campanha',
+    '- Cor do helicóptero',
+    '- Idioma',
+    '- Definições de áudio (música e efeitos sonoros)',
+    '- Estado da versão completa',
     'Os dados são utilizados exclusivamente para a funcionalidade do jogo e não são partilhados com terceiros. Base legal: Art. 6.º, n.º 1, al. b) RGPD.',
     'Os dados armazenados podem ser eliminados a qualquer momento em Menu Principal → Configurações → Apagar Save.',
     'Contacto de privacidade: yarrick@web.de',
@@ -114,6 +144,13 @@ const _DE = {
     TYPE_RATING_FAILED: 'MUSTERZULASSUNG NICHT ERTEILT',
     TYPE_RATING_UNLOCKED: (label: string) => `★ MUSTERZULASSUNG ${label.toUpperCase()} FREIGESCHALTET`,
     MISSION_FAILED: 'MISSION GESCHEITERT',
+    MODE_TIMED: 'AUF ZEIT',
+    MODE_ENDLESS: 'ENDLOS',
+    ENDLESS_BEST: (n: number) => `BESTMARKE: ${n}`,
+    ENDLESS_SCORE: (n: number, best: number | null) =>
+        best !== null && n > best
+            ? `GERETTET: ${n}  ★ NEUE BESTMARKE!`
+            : `GERETTET: ${n}${best !== null ? `  BESTMARKE: ${best}` : ''}`,
     CAMPAIGN_COMPLETE: 'KAMPAGNE GESCHAFFT',
     ALL_MISSIONS_CLEARED: 'ALLE MISSIONEN ABGESCHLOSSEN',
 
@@ -219,7 +256,7 @@ const _DE = {
 
     FULL_VERSION_BADGE: 'VOLLVERSION',
     PAYWALL_TITLE: 'VOLLVERSION',
-    PAYWALL_DESCRIPTION: 'Alle Kampagnen, alle Szenarien, alle Helikopter — und die volle Rang-Progression.',
+    PAYWALL_DESCRIPTION: 'Alle Kampagnen, alle Helikopter — und die volle Rang-Progression.',
     PAYWALL_BUY: 'FREISCHALTEN',
     PAYWALL_RESTORE: 'KÄUFE WIEDERHERSTELLEN',
     PAYWALL_PENDING: 'BITTE WARTEN…',
@@ -287,6 +324,13 @@ const _EN = {
     TYPE_RATING_FAILED: 'TYPE RATING NOT GRANTED',
     TYPE_RATING_UNLOCKED: (label: string) => `★ ${label.toUpperCase()} TYPE RATING UNLOCKED`,
     MISSION_FAILED: 'MISSION FAILED',
+    MODE_TIMED: 'TIMED',
+    MODE_ENDLESS: 'ENDLESS',
+    ENDLESS_BEST: (n: number) => `BEST: ${n}`,
+    ENDLESS_SCORE: (n: number, best: number | null) =>
+        best !== null && n > best
+            ? `RESCUED: ${n}  ★ NEW RECORD!`
+            : `RESCUED: ${n}${best !== null ? `  BEST: ${best}` : ''}`,
     CAMPAIGN_COMPLETE: 'CAMPAIGN COMPLETE',
     ALL_MISSIONS_CLEARED: 'ALL MISSIONS CLEARED',
 
@@ -394,7 +438,7 @@ const _EN = {
 
     FULL_VERSION_BADGE: 'FULL VERSION',
     PAYWALL_TITLE: 'FULL VERSION',
-    PAYWALL_DESCRIPTION: 'All campaigns, all scenarios, all helicopters — and complete rank progression.',
+    PAYWALL_DESCRIPTION: 'All campaigns, all helicopters — and complete rank progression.',
     PAYWALL_BUY: 'UNLOCK',
     PAYWALL_RESTORE: 'RESTORE PURCHASES',
     PAYWALL_PENDING: 'PLEASE WAIT…',
@@ -455,6 +499,13 @@ const _FR = {
     TYPE_RATING_FAILED: 'QUALIFICATION NON ACCORDÉE',
     TYPE_RATING_UNLOCKED: (label: string) => `★ QUALIFICATION ${label.toUpperCase()} DÉBLOQUÉE`,
     MISSION_FAILED: 'MISSION ÉCHOUÉE',
+    MODE_TIMED: 'CHRONO',
+    MODE_ENDLESS: 'SANS FIN',
+    ENDLESS_BEST: (n: number) => `RECORD: ${n}`,
+    ENDLESS_SCORE: (n: number, best: number | null) =>
+        best !== null && n > best
+            ? `SAUVÉS: ${n}  ★ NOUVEAU RECORD!`
+            : `SAUVÉS: ${n}${best !== null ? `  RECORD: ${best}` : ''}`,
     CAMPAIGN_COMPLETE: 'CAMPAGNE TERMINÉE',
     ALL_MISSIONS_CLEARED: 'TOUTES LES MISSIONS ACCOMPLIES',
     CLICK_TO_DEPLOY: 'APPUYER POUR DÉPLOYER',
@@ -539,7 +590,7 @@ const _FR = {
     FULL_VERSION_BADGE: 'VERSION COMPLÈTE',
     PAYWALL_TITLE: 'VERSION COMPLÈTE',
     PAYWALL_DESCRIPTION:
-        'Toutes les campagnes, tous les scénarios, tous les hélicoptères — et la progression de grade complète.',
+        'Toutes les campagnes, tous les hélicoptères — et la progression de grade complète.',
     PAYWALL_BUY: 'DÉBLOQUER',
     PAYWALL_RESTORE: 'RESTAURER LES ACHATS',
     PAYWALL_PENDING: 'VEUILLEZ PATIENTER…',
@@ -599,6 +650,13 @@ const _ES = {
     TYPE_RATING_FAILED: 'HABILITACIÓN NO CONCEDIDA',
     TYPE_RATING_UNLOCKED: (label: string) => `★ HABILITACIÓN ${label.toUpperCase()} DESBLOQUEADA`,
     MISSION_FAILED: 'MISIÓN FALLIDA',
+    MODE_TIMED: 'CONTRARRELOJ',
+    MODE_ENDLESS: 'INFINITO',
+    ENDLESS_BEST: (n: number) => `RÉCORD: ${n}`,
+    ENDLESS_SCORE: (n: number, best: number | null) =>
+        best !== null && n > best
+            ? `RESCATADOS: ${n}  ★ ¡NUEVO RÉCORD!`
+            : `RESCATADOS: ${n}${best !== null ? `  RÉCORD: ${best}` : ''}`,
     CAMPAIGN_COMPLETE: 'CAMPAÑA COMPLETADA',
     ALL_MISSIONS_CLEARED: 'TODAS LAS MISIONES COMPLETADAS',
     CLICK_TO_DEPLOY: 'TOCA PARA DESPLEGAR',
@@ -681,7 +739,7 @@ const _ES = {
     FULL_VERSION_BADGE: 'VERSIÓN COMPLETA',
     PAYWALL_TITLE: 'VERSIÓN COMPLETA',
     PAYWALL_DESCRIPTION:
-        'Todas las campañas, todos los escenarios, todos los helicópteros — y la progresión de rango completa.',
+        'Todas las campañas, todos los helicópteros — y la progresión de rango completa.',
     PAYWALL_BUY: 'DESBLOQUEAR',
     PAYWALL_RESTORE: 'RESTAURAR COMPRAS',
     PAYWALL_PENDING: 'POR FAVOR ESPERA…',
@@ -741,6 +799,13 @@ const _PT = {
     TYPE_RATING_FAILED: 'HABILITAÇÃO NÃO CONCEDIDA',
     TYPE_RATING_UNLOCKED: (label: string) => `★ HABILITAÇÃO ${label.toUpperCase()} DESBLOQUEADA`,
     MISSION_FAILED: 'MISSÃO FRACASSADA',
+    MODE_TIMED: 'CRONOMETRADO',
+    MODE_ENDLESS: 'SEM FIM',
+    ENDLESS_BEST: (n: number) => `RECORDE: ${n}`,
+    ENDLESS_SCORE: (n: number, best: number | null) =>
+        best !== null && n > best
+            ? `RESGATADOS: ${n}  ★ NOVO RECORDE!`
+            : `RESGATADOS: ${n}${best !== null ? `  RECORDE: ${best}` : ''}`,
     CAMPAIGN_COMPLETE: 'CAMPANHA CONCLUÍDA',
     ALL_MISSIONS_CLEARED: 'TODAS AS MISSÕES CONCLUÍDAS',
     CLICK_TO_DEPLOY: 'TOQUE PARA IMPLANTAR',
@@ -823,7 +888,7 @@ const _PT = {
     FULL_VERSION_BADGE: 'VERSÃO COMPLETA',
     PAYWALL_TITLE: 'VERSÃO COMPLETA',
     PAYWALL_DESCRIPTION:
-        'Todas as campanhas, todos os cenários, todos os helicópteros — e a progressão de posto completa.',
+        'Todas as campanhas, todos os helicópteros — e a progressão de posto completa.',
     PAYWALL_BUY: 'DESBLOQUEAR',
     PAYWALL_RESTORE: 'RESTAURAR COMPRAS',
     PAYWALL_PENDING: 'AGUARDE…',

@@ -1,0 +1,27 @@
+bpm 135
+
+# Zephyr M4 – Ikarus' Erbe – Gewitter, Zeitdruck (Am - F - G - Am)
+
+[kick]  vol=95
+0 4 8 12 16 20 24 28 32 36 40 44 48 52 56 60
+
+[snare]  vol=82
+8 24 40 56
+
+[hat]  vol=55
+0 2 4 6 8 10 12 14 16 18 20 22 24 26 28 30 32 34 36 38 40 42 44 46 48 50 52 54 56 58 60 62
+
+[clap]  vol=72
+8 24 40 56
+
+[synth1]  vol=90  wave=sawtooth  filter=600  attack=0.01  release=0.3  inst=bass_gritty
+0:A1 4:A1 8:E2 12:C2 16:F1 20:F1 24:C2 28:A1 32:G1 36:G1 40:D2 44:B1 48:A1 52:A1 56:E2 60:C2
+
+[synth2]  vol=85  wave=sawtooth  filter=3200  attack=0.01  release=0.18  inst=lead_saw
+0:A3 2:C4 4:E4 6:A4 8:G4 10:E4 12:C4 14:A3 16:F3 18:A3 20:C4 22:F4 24:A4 26:F4 28:C4 30:A3 32:G3 34:B3 36:D4 38:G4 40:D4 42:B3 44:G3 46:B3 48:A4 50:G4 52:E4 54:C4 56:A3 58:C4 60:E4 62:A4
+
+[synth3]  vol=62  wave=square  filter=3500  attack=0.005  release=0.1  inst=arp_bright
+0:A3 1:C4 2:E4 3:A4 4:E4 5:C4 6:A3 7:C4 8:E4 9:A4 10:G4 11:E4 12:C4 13:A3 14:C4 15:E4 16:F3 17:A3 18:C4 19:F4 20:C4 21:A3 22:F3 23:A3 24:C4 25:F4 26:A4 27:F4 28:C4 29:A3 30:F3 31:A3 32:G3 33:B3 34:D4 35:G4 36:D4 37:B3 38:G3 39:B3 40:D4 41:G4 42:B4 43:G4 44:D4 45:B3 46:G3 47:B3 48:A3 49:C4 50:E4 51:A4 52:G4 53:E4 54:C4 55:A3 56:C4 57:E4 58:A4 59:C4 60:E4 61:G4 62:A4 63:G4
+
+[synth4]  vol=70  wave=triangle  filter=1400  attack=0.08  release=1.2  detune=15
+0:A2 8:C3 16:F2 24:A3 32:G2 40:B3 48:A2 56:E3

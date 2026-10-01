@@ -33,7 +33,7 @@ export const show = (data: BriefingData, onDismiss: () => void): void => {
     _onDismiss = onDismiss;
     const el = document.getElementById('mission-briefing')!;
     const sublinesHtml = Array.isArray(data.sublines) && data.sublines.length
-        ? `<div id="briefing-sublines">${data.sublines.map(s => `▸ ${localize(s)}`).join('<br>')}</div>`
+        ? `<div id="briefing-sublines">${data.sublines.map(s => localize(s)).join('<br>')}</div>`
         : '';
     const bodyHtml = data.briefing
         ? `<div id="briefing-body">${localize(data.briefing)}</div>`
@@ -42,7 +42,6 @@ export const show = (data: BriefingData, onDismiss: () => void): void => {
         <div id="briefing-panel">
             <div id="briefing-text">
                 <div id="briefing-address">${data.address}</div>
-                <div id="briefing-headline">${localize(data.headline) || 'MISSION BRIEFING'}</div>
                 ${sublinesHtml}
                 ${bodyHtml}
                 <button id="briefing-ok-btn">OKAY</button>

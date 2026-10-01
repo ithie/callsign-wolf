@@ -3,7 +3,10 @@ import '@/ui/nav-screens.css';
 import { iso } from '../../render';
 import { HELI_TYPES, type HeliType } from '../../heli-types';
 import { RANKS } from '../rank-badge/rank-badge';
-import { tileW, tileH, stepH, CANVAS_SCALE } from '../../render-config';
+import { CANVAS_SCALE } from '../../render-config';
+
+// Fixed tile size for UI previews — decoupled from game zoom (tileW)
+const _PT = 20, _PTH = _PT / 2, _PTSH = _PTH * 0.78;
 import { zstate } from '../../state';
 import { I18N, localize } from '../../i18n';
 import { ensureEl } from '@/ui/dom-helpers';
@@ -42,7 +45,7 @@ export const animMainMenuBg = (ts: number = performance.now()) => {
     else cx.clearRect(0, 0, c.width, c.height);
     const t = Date.now() * 0.001;
     const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
-        iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
+        iso(wx, wy, wz, camX, camY, { canvas: c, tileW: _PT, tileH: _PTH, stepH: _PTSH });
     const _mc = _getPlayerColor();
     _drawHeli('dolphin', 0, 0, 0, t * 0.25, Math.sin(t * 0.4) * 0.07, Math.cos(t * 0.35) * 0.07, t * 8, 0, 0, {
         targetCtx: cx, targetIso: offIso, scaleOverride: 5,
@@ -63,7 +66,7 @@ export const drawMenuHeli = (ts: number = performance.now()) => {
     else cx.clearRect(0, 0, c.width, c.height);
     const t = Date.now() * 0.001;
     const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
-        iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
+        iso(wx, wy, wz, camX, camY, { canvas: c, tileW: _PT, tileH: _PTH, stepH: _PTSH });
     const _mc = _getPlayerColor();
     _drawHeli('dolphin', 1.5, 1.5, 0.8, t * 0.5, Math.sin(t) * 0.1, Math.cos(t) * 0.1, t * 12, 0, 0, {
         targetCtx: cx, targetIso: offIso, scaleOverride: 3,
@@ -77,11 +80,14 @@ let _previewAnimRunning = false;
 let _activeHeliId: string | null = null;
 let _rotorPos = 0;
 let _overlayAngle = 0;
+let _onStep: ((step: string) => void) | undefined;
 
 const OVERLAY_SCALE_RATIO = 1.7;
 
 const _heliPreviewLoop = () => {
-    if (document.getElementById('heli-select')!.style.display === 'none') {
+    _onStep?.('previewLoop:check');
+    const _heliSelectEl = document.getElementById('heli-select');
+    if (!_heliSelectEl || _heliSelectEl.style.display === 'none') {
         _previewAnimRunning = false;
         return;
     }
@@ -100,13 +106,15 @@ const _heliPreviewLoop = () => {
 
         const c = document.getElementById('icon-' + ht.id) as HTMLCanvasElement | null;
         if (c) {
-            const cx = c.getContext('2d')!;
+            _onStep?.(`drawHeli:${ht.id}`);
+            const cx = c.getContext('2d');
+            if (!cx) { _onStep?.(`getContext2dNull:${ht.id}`); return; }
             const tW = Math.round(280 * CANVAS_SCALE);
             const tH = Math.round(220 * CANVAS_SCALE);
             if (c.width !== tW || c.height !== tH) { c.width = tW; c.height = tH; }
             else cx.clearRect(0, 0, c.width, c.height);
             const offIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
-                iso(wx, wy, wz, camX, camY, { canvas: c, tileW, tileH, stepH });
+                iso(wx, wy, wz, camX, camY, { canvas: c, tileW: _PT, tileH: _PTH, stepH: _PTSH });
             _drawHeli(ht.id, 0, 0, 0, cardAngle, 0, 0, 0, 0, 0, {
                 targetCtx: cx, targetIso: offIso, scaleOverride: ht.previewScale,
                 colorVariant: ht.id === 'ornithopter' ? undefined : _getPlayerColor(),
@@ -122,7 +130,7 @@ const _heliPreviewLoop = () => {
                 if (oc.width !== oW || oc.height !== oH) { oc.width = oW; oc.height = oH; }
                 else ocx.clearRect(0, 0, oc.width, oc.height);
                 const overlayIso = (wx: number, wy: number, wz: number, camX: number, camY: number) =>
-                    iso(wx, wy, wz, camX, camY, { canvas: oc, tileW, tileH, stepH });
+                    iso(wx, wy, wz, camX, camY, { canvas: oc, tileW: _PT, tileH: _PTH, stepH: _PTSH });
                 _drawHeli(ht.id, 0, 0, 0, _overlayAngle, 0, 0, _rotorPos, 0, 0, {
                     targetCtx: ocx, targetIso: overlayIso, scaleOverride: ht.previewScale * OVERLAY_SCALE_RATIO,
                     colorVariant: ht.id === 'ornithopter' ? undefined : _getPlayerColor(),
@@ -150,6 +158,7 @@ type HeliSelectDeps = {
     typeRatings: Record<string, true>;
     onSelect: (heliId: string) => void;
     onBack: () => void;
+    onStep?: (step: string) => void;
 };
 
 const _statBar = (label: string, pct: number): HTMLElement => {
@@ -247,7 +256,9 @@ const _buildOverlayDetail = (ht: HeliType, onSelect: (heliId: string) => void): 
 };
 
 export const show = (deps: HeliSelectDeps) => {
-    const { rankIndex, typeRatings, onSelect, onBack } = deps;
+    const { rankIndex, typeRatings, onSelect, onBack, onStep } = deps;
+    _onStep = onStep;
+    const _s = (step: string) => onStep?.(step);
 
     const _isLocked = (ht: HeliType): boolean => {
         if (ht.minRankIndex > rankIndex) return true;
@@ -262,10 +273,13 @@ export const show = (deps: HeliSelectDeps) => {
         return `<div class="box-sub heli-cap-label heli-card-label-sub">${localize(ht.selectCap)}</div>`;
     };
 
+    _s('mountScreenShell');
     const body = mountScreenShell('heli-select', I18N.HELI_SELECT_TITLE, onBack);
 
+    _s('filterVisibleTypes');
     const visibleTypes = HELI_TYPES.filter(ht => !(ht.hideWhenLocked && ht.minRankIndex > rankIndex));
 
+    _s(`createCarousel:${visibleTypes.map(h => h.id).join(',')}`);
     const carousel = createSwipeCarousel<HeliType>({
         items: visibleTypes,
         isLocked: _isLocked,
@@ -274,6 +288,7 @@ export const show = (deps: HeliSelectDeps) => {
                 ? addStamp(I18N.HELI_TYPE_RATING_REQUIRED, '#5a3a00')
                 : null,
         renderCard: (ht, _locked) => {
+            _s(`renderCard:${ht.id}`);
             const card = document.createElement('div');
             card.innerHTML = `
                 <canvas id="icon-${ht.id}" class="heli-card-canvas"></canvas>
@@ -296,7 +311,11 @@ export const show = (deps: HeliSelectDeps) => {
         haptic: () => hapticImpact(ImpactStyle.Light),
     });
 
+    _s('appendCarousel');
     body.appendChild(carousel);
+    _s('showScreenCrtEnter');
     showScreenCrtEnter('heli-select');
+    _s('animateHeliPreviews');
     animateHeliPreviews();
+    _s('heliSelectDone');
 };

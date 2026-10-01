@@ -83,6 +83,8 @@ private final class ControlsHandler: NSObject, WKScriptMessageHandler {
                                          direction: body["direction"] as? String)
         case "tutorialDim":
             overlay.setTutorialDim(Set(body["controls"] as? [String] ?? []))
+        case "setTintColor":
+            if let hex = body["hex"] as? String { overlay.setTintHex(hex) }
         default: break
         }
     }
@@ -121,7 +123,9 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
-        try? AVAudioSession.sharedInstance().setActive(true)
+        DispatchQueue.global(qos: .userInitiated).async {
+            try? AVAudioSession.sharedInstance().setActive(true)
+        }
         NotificationCenter.default.addObserver(self, selector: #selector(_appDidBecomeActive),
                                                name: UIApplication.didBecomeActiveNotification, object: nil)
         // Dark background visible during the brief entitlement check
@@ -209,6 +213,8 @@ class ViewController: UIViewController {
         }
         if changed { session["campaignProgress"] = progress }
 
+        // endlessBest migration: new field, no backfill needed (nil = no run yet)
+
         // type-rating system migration: old saves get all ratings granted
         if session["typeRatingSystemSince"] == nil {
             let rankOverride = session["rankOverride"] as? Int ?? 0
@@ -275,6 +281,9 @@ class ViewController: UIViewController {
     func checkEntitlementsOnLaunch() async {
         // Already unlocked in storage — nothing to do
         if UserDefaults.standard.string(forKey: "z_unlocked") == "1" { return }
+
+        // Sync local transaction store so AppTransaction and currentEntitlements are fresh
+        try? await AppStore.sync()
 
         // 1. Grandfathering: original purchase was before the freemium conversion (v1.5)
         if let appTx = try? await AppTransaction.shared,

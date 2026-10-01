@@ -72,7 +72,8 @@
 
 #ithie-splash .ithie-text,
 #logo-splash .ithie-text {
-    font-size: 19px;
+    font-family: 'PressStart2P';
+    font-size: var(--ps-3);
     color: #5f5;
     letter-spacing: 3px;
     font-weight: bold;
@@ -80,8 +81,9 @@
 
 #ithie-splash .ithie-cursor,
 #logo-splash .ithie-cursor {
+    font-family: 'PressStart2P';
     color: #5f5;
-    font-size: 19px;
+    font-size: var(--ps-3);
     font-weight: bold;
     margin-left: 2px;
     animation: cursorBlink 650ms step-end infinite;
@@ -135,9 +137,9 @@
     margin-top: 16px;
 }
 #main-menu .menu-item {
-    font-size: 24px;
+    font-size: var(--ps-5);
     font-weight: bold;
-    letter-spacing: 8px;
+    letter-spacing: 4px;
     color: #4a8a4a;
     cursor: pointer;
     padding: 14px 52px;
@@ -172,7 +174,7 @@
     transform: scaleX(1.03) translateY(-1px);
 }
 #main-menu .menu-legal-link {
-    font-size: 10px;
+    font-size: var(--ps-1);
     letter-spacing: 3px;
     color: #666;
     cursor: pointer;
@@ -190,9 +192,9 @@
 
 @media (max-height: 520px) {
     #main-menu .menu-item {
-        font-size: 18px;
-        padding: 9px 28px;
-        letter-spacing: 5px;
+        font-size: var(--ps-3);
+        padding: 9px 22px;
+        letter-spacing: 3px;
     }
     #main-menu .menu-nav {
         margin-top: 8px;

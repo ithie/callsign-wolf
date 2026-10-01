@@ -2,22 +2,11 @@ import type { Plugin } from 'vite';
 import { readFileSync, readdirSync } from 'fs';
 import { resolve, basename } from 'path';
 
+// DEFs in models/objects/ that are not campaign object types but must always be bundled
+const _CORE_TYPES = new Set(['tower', 'hangar_tower', 'hangar']);
+
 export const zdefTreeShakePlugin = (campaignsDir: string): Plugin => {
     const usedTypes = new Set<string>();
-
-    const _scanSrcForZdefImports = (dir: string) => {
-        for (const entry of readdirSync(dir, { withFileTypes: true })) {
-            const full = resolve(dir, entry.name);
-            if (entry.isDirectory()) {
-                if (entry.name !== 'campaigns') _scanSrcForZdefImports(full);
-            } else if (entry.name.endsWith('.ts')) {
-                const src = readFileSync(full, 'utf-8');
-                for (const m of src.matchAll(/\/models\/objects\/([^'"]+)\.zdef/g)) {
-                    usedTypes.add(m[1]);
-                }
-            }
-        }
-    };
 
     return {
         name: 'zdef-tree-shake',
@@ -33,16 +22,13 @@ export const zdefTreeShakePlugin = (campaignsDir: string): Plugin => {
                     }
                 }
             }
-            _scanSrcForZdefImports(resolve(campaignsDir, '..'));
         },
         transform(code: string, id: string) {
             if (!id.includes('/models/objects/') || !id.endsWith('.zdef')) return null;
             if (code.startsWith('export default')) return null;
             const stem = basename(id, '.zdef');
-            if (!usedTypes.has(stem)) {
-                return { code: "export default {};", map: null };
-            }
-            return null;
+            if (_CORE_TYPES.has(stem) || usedTypes.has(stem)) return null;
+            return { code: "export default {};", map: null };
         },
     };
 };

@@ -55,11 +55,23 @@ export interface DEFFragment {
     torque?: number;
 }
 
+export interface DEFLight {
+    pos: [number, number, number];
+    color?: string;
+    glowColor?: string;
+    radius?: number;
+    glowRadius?: number;
+    blinkHz?: number;
+    phase?: number;
+    dutyCycle?: number;
+}
+
 export interface DEF {
     id: string;
     /** Rotation pivot in local coords (default [0,0,0]) */
     pivot?: number[];
     faces: DEFFace[];
+    lights?: DEFLight[];
     collisionBoxes?: DEFCollisionBox[];
     /** Legacy: runtime-animated sub-geometry — use parts instead */
     rotateNodes?: DEFRotateNode[];
@@ -98,6 +110,8 @@ export interface DEF2Light {
     colorOff?: string;
     blink?: boolean;
     radius?: number;
+    blinkHz?: number;
+    phase?: number;
 }
 
 export interface DEF2Rotate {
