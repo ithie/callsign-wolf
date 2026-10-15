@@ -233,7 +233,11 @@ const _physicsCtx = createPhysicsCtx({
     isTutorialMode: () => campaignHandler.getCurrentMissionData().campaignType === CAMPAIGN_TYPE.TUTORIAL,
     getMissionComplete: () => {
         const t = _getPreviewTriggerCrash();
-        return t ? () => {} : Flow.missionComplete;
+        // Endless mode respawns targets without ever raising goalCount (see
+        // spawnEndlessPerson, addToGoal:false), so totalRescued reaches the
+        // mission's original goalCount eventually — that must NOT end the run;
+        // only a crash does (triggerCrash already handles _saveEndlessScore).
+        return (t || Flow.endlessMode) ? () => {} : Flow.missionComplete;
     },
     getTriggerCrash: () => _getPreviewTriggerCrash() ?? Flow.triggerCrash,
     orniWreckDelivered: Flow.orniWreckDelivered,
