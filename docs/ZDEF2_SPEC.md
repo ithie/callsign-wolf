@@ -87,6 +87,18 @@ Exactly two verts. Rendered as a canvas stroke, depth-sorted with other faces.
 }
 ```
 
+### Vertex winding matters even though `normal` is hand-declared
+
+Culling reads `normal`, not the vertex winding — but `shade` (when omitted)
+is auto-computed from winding via a 3D cross product of the first two edges
+(same math D3F uses for its normal, see `D3F_SPEC.md § Author-facing rule`).
+A face whose winding contradicts its declared `normal` still culls correctly
+here, but shades as if it faced the *winding's* direction, not the declared
+one — a wrong, hard-to-notice lighting gradient rather than a missing face.
+Found live in `supply_vessel.zdef` (eight bridge/hull faces, winding
+backwards relative to their `normal`) — get winding right by the same rule
+D3F documents, even in files that never migrate off `version: 2`.
+
 ---
 
 ## Light

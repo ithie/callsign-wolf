@@ -13,7 +13,8 @@ type DrawTreeFn = (
     gz: number,
     type: string,
     wind: WindState,
-    heliPos?: { x: number; y: number; z: number }
+    heliPos?: { x: number; y: number; z: number },
+    snow?: boolean
 ) => void;
 
 type EntryOpts = { x: number; y: number; depth: number; drawFn: (camX: number, camY: number) => void };
@@ -72,11 +73,12 @@ export const createFoliage = (opts: {
     const { canvas, tileW, tileH, drawTree, sceneAdd, isNight } = opts;
 
     const rebuildEntryCache = () => {
+        const snow = !!campaignHandler.getCurrentMissionData().snow;
         G.TREES_MAP.forEach((t: any) => {
             const treeType = t.type || 'pine';
             t._entry = {
                 x: t.x, y: t.y, depth: t.x + t.y,
-                drawFn: (cx: number, cy: number) => drawTree(t.x, t.y, cx, cy, t.s, t.gz, treeType, G.wind, G.heli),
+                drawFn: (cx: number, cy: number) => drawTree(t.x, t.y, cx, cy, t.s, t.gz, treeType, G.wind, G.heli, snow),
             } as EntryOpts;
         });
     };

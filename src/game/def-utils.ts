@@ -113,7 +113,7 @@ const getTransformedPivots = (def: DEF, params: Record<string, number>): Map<str
 };
 
 import type { DEFInstanceOptions, IsoFn } from './scene-renderer';
-import type { DEF2, DEF2Node, DEF2Face, DEF2Light } from './defs';
+import type { DEF2, DEF3, DEF2Node, DEF2Face, DEF2Light } from './defs';
 type _Renderer = { add: (def: DEF | null, opts: DEFInstanceOptions) => void; flush: (cx: number, cy: number) => void };
 
 /**
@@ -164,6 +164,19 @@ const _autoShade = (verts: number[][]): number => {
     return _SHADE_AMB + _SHADE_DIFF * Math.max(0, dot);
 };
 
+// D3F: full 3D face normal from vertex winding (right-hand rule, first 3 verts).
+// Returns null for degenerate faces (< 3 verts, collinear points) — caller treats
+// that as "always visible", matching the existing no-normal fallback.
+const _computeFaceNormal = (verts: number[][]): [number, number, number] | null => {
+    if (verts.length < 3) return null;
+    const ax = verts[1][0]-verts[0][0], ay = verts[1][1]-verts[0][1], az = verts[1][2]-verts[0][2];
+    const bx = verts[2][0]-verts[0][0], by = verts[2][1]-verts[0][1], bz = verts[2][2]-verts[0][2];
+    const nx = ay*bz - az*by, ny = az*bx - ax*bz, nz = ax*by - ay*bx;
+    const len = Math.sqrt(nx*nx + ny*ny + nz*nz);
+    if (len < 1e-9) return null;
+    return [nx/len, ny/len, nz/len];
+};
+
 const _applyShade = (hex: string, shade: number): string => {
     if (Math.abs(shade - 1.0) < 0.002) return hex;
     const n = parseInt(hex.slice(1), 16);
@@ -201,6 +214,7 @@ const _collectNode = (
     parentFn: _RotFn2,
     outFaces: DEFFace[],
     outSpecial: _Special[],
+    autoNormal = false,
 ): void => {
     const rotFn = node.rotate ? _makeRotFn2(node, params, parentFn) : parentFn;
     for (const face of node.faces ?? []) {
@@ -212,7 +226,14 @@ const _collectNode = (
             const shade = face.shade ?? _autoShade(rotVerts);
             const color = _applyShade(face.color, shade);
             const normal = face.normal ? _rotNorm(face.normal, rotFn) : undefined;
-            outFaces.push({ ...face, verts: rotVerts, color, ...(normal !== undefined ? { normal } : {}) } as DEFFace);
+            // D3F: no hand-authored normal → derive one from winding instead of
+            // always-visible. `normal` (legacy 2D override) always wins when present.
+            const normal3d = autoNormal && normal === undefined ? _computeFaceNormal(rotVerts) ?? undefined : undefined;
+            outFaces.push({
+                ...face, verts: rotVerts, color,
+                ...(normal !== undefined ? { normal } : {}),
+                ...(normal3d !== undefined ? { normal3d } : {}),
+            } as DEFFace);
         }
     }
     for (const light of node.lights ?? []) {
@@ -220,12 +241,21 @@ const _collectNode = (
         outSpecial.push({ kind: 'light', lx: rl[0], ly: rl[1], lz: rl[2], light });
     }
     for (const child of node.children ?? []) {
-        _collectNode(child, params, rotFn, outFaces, outSpecial);
+        _collectNode(child, params, rotFn, outFaces, outSpecial, autoNormal);
     }
 };
 
+// True if this node or any descendant animates/rotates at runtime. Only such
+// nodes need a live per-face depth sort — a purely static node's relative face
+// depths never change, so its authored array order (verified once, by eye, at
+// whatever angle the object is actually placed) is the more reliable choice.
+// A centroid-based sort can misrank a small decal (e.g. a window covering half
+// a wall's height) against its own much larger parent wall.
+const _hasRotate = (node: DEF2Node): boolean =>
+    !!node.rotate || (node.children ?? []).some(_hasRotate);
+
 const renderNodes = (
-    def: DEF2,
+    def: DEF2 | DEF3,
     params: Record<string, number>,
     instanceProps: DEFInstanceOptions,
     renderer: _Renderer,
@@ -236,33 +266,47 @@ const renderNodes = (
 ): void => {
     const { x: ix, y: iy, z: iz = 0, angle: iAngle = 0 } = instanceProps;
     const cosA = Math.cos(iAngle), sinA = Math.sin(iAngle);
+    const autoNormal = def.version === 3;
+    // Read from the file, never taken as a call-site parameter — renderNodes()
+    // fully owns whether/when it flushes, so no caller can forget a required
+    // follow-up call (see docs/D3F_SPEC.md § crossNodeDepth).
+    const crossNodeDepth = def.crossNodeDepth === true;
 
     for (const topNode of def.nodes) {
         const faces: DEFFace[] = [];
         const special: _Special[] = [];
-        _collectNode(topNode, params, _id2, faces, special);
+        _collectNode(topNode, params, _id2, faces, special, autoNormal);
 
         let baseDepth: number;
         if (topNode.depthAnchor) {
-            const [dx, dy] = topNode.depthAnchor;
-            baseDepth = (ix + dx * cosA - dy * sinA) + (iy + dx * sinA + dy * cosA);
+            const [dx, dy, dz = 0] = topNode.depthAnchor;
+            // dz is NOT rotated (Z-axis instance rotation never touches Z) — it gives
+            // a rotation-invariant depth separation, unlike dx/dy which flip relative
+            // order depending on the sign of (cosA+sinA) at different instance angles.
+            baseDepth = (ix + dx * cosA - dy * sinA) + (iy + dx * sinA + dy * cosA) + (iz + dz);
             for (let fi = 0; fi < faces.length; fi++) {
                 renderer.add({ id: def.id, faces: [faces[fi]] } as DEF, { ...instanceProps, depth: baseDepth + fi * 1e-7 });
             }
         } else {
             baseDepth = ix + iy;
-            const cApS = cosA + sinA, cAmS = cosA - sinA;
-            const allFaces: { face: DEFFace; key: number }[] = [];
-            faces.forEach((face, fi) => {
-                const verts = face.verts;
-                let lcx = 0, lcy = 0, lcz = 0;
-                for (const v of verts) { lcx += v[0]; lcy += v[1]; lcz += v[2]; }
-                lcx /= verts.length; lcy /= verts.length; lcz /= verts.length;
-                allFaces.push({ face, key: lcx * cApS + lcy * cAmS + lcz + fi * 1e-9 });
-            });
-            allFaces.sort((a, b) => a.key - b.key);
-            for (let si = 0; si < allFaces.length; si++) {
-                renderer.add({ id: def.id, faces: [allFaces[si].face] } as DEF, { ...instanceProps, depth: baseDepth + si * 1e-7 });
+            if (_hasRotate(topNode)) {
+                const cApS = cosA + sinA, cAmS = cosA - sinA;
+                const allFaces: { face: DEFFace; key: number }[] = [];
+                faces.forEach((face, fi) => {
+                    const verts = face.verts;
+                    let lcx = 0, lcy = 0, lcz = 0;
+                    for (const v of verts) { lcx += v[0]; lcy += v[1]; lcz += v[2]; }
+                    lcx /= verts.length; lcy /= verts.length; lcz /= verts.length;
+                    allFaces.push({ face, key: lcx * cApS + lcy * cAmS + lcz + fi * 1e-9 });
+                });
+                allFaces.sort((a, b) => a.key - b.key);
+                for (let si = 0; si < allFaces.length; si++) {
+                    renderer.add({ id: def.id, faces: [allFaces[si].face] } as DEF, { ...instanceProps, depth: baseDepth + si * 1e-7 });
+                }
+            } else {
+                // No moving parts anywhere in this node: authored array order,
+                // one instance, same semantics as a plain v1 DEF.
+                renderer.add({ id: def.id, faces } as DEF, { ...instanceProps, depth: baseDepth });
             }
         }
 
@@ -309,22 +353,43 @@ const renderNodes = (
             }
         }
 
-        if (onBeforeFlush) onBeforeFlush(def.nodes.indexOf(topNode));
+        // Per-node flush is only for the onBeforeFlush contract (Carrier/Frigate/
+        // research platform inject the heli between two specific nodes) — it must
+        // NOT fire as a side effect for plain multi-node objects, because
+        // renderer.flush() flushes the entire SHARED batch, not just this def's own
+        // faces. Firing it unconditionally here was prematurely flushing whatever
+        // unrelated geometry (e.g. wind turbines) another caller had already queued
+        // but not yet flushed, splitting them from the heli into an earlier batch
+        // and breaking their depth-sort against it (see feedback thread, Oct 2026).
+        if (crossNodeDepth || !onBeforeFlush) continue; // single shared flush after the loop instead — see below
+        onBeforeFlush(def.nodes.indexOf(topNode));
         renderer.flush(camX, camY);
     }
+    // crossNodeDepth (or no onBeforeFlush at all): this def's top-level nodes are
+    // fully self-contained — nothing outside this file injects geometry into one of
+    // them via onBeforeFlush — so renderNodes() can safely sort and flush ALL of
+    // them together, itself, right here, without touching the caller's shared batch
+    // more than once. Each node already got its own correct depth above
+    // (depthAnchor's dz, or the per-face sort), so this single shared flush paints
+    // every face from every node in one correctly-ordered pass instead of the
+    // "later node always wins" layering a per-node flush would give.
+    if (crossNodeDepth || !onBeforeFlush) renderer.flush(camX, camY);
 };
 
 /**
  * Bakes all ZDEF2 nodes into a flat face list (all node-local rotations + shading applied).
  * Returns a DEF-compatible object for use with custom draw paths (e.g. ornithopter).
  */
-const applyNodes = (def: DEF2, params: Record<string, number>): DEF => {
+const applyNodes = (def: DEF2 | DEF3, params: Record<string, number>): DEF => {
     const faces: DEFFace[] = [];
     const discard: _Special[] = [];
+    const autoNormal = def.version === 3;
     for (const node of def.nodes) {
-        _collectNode(node, params, _id2, faces, discard);
+        _collectNode(node, params, _id2, faces, discard, autoNormal);
     }
-    return { id: def.id, faces } as DEF;
+    // Preserve top-level fields (collisionBoxes, palettes, ...) — only `nodes` is
+    // replaced by the baked flat `faces` list.
+    return { ...def, faces } as unknown as DEF;
 };
 
 export { applyParts, applyRotateNodes, getTransformedPivots, renderPasses, renderNodes, applyNodes };

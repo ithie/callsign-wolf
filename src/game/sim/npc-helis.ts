@@ -9,6 +9,11 @@ const PATROL_PTS = 7;
 const VARIANCE   = 3.5;
 const SPEED      = 0.055;
 const TURN_RATE  = 0.022;
+const CRUISE_TILT  = -0.22; // baseline nose-down lean while flying forward
+const BANK_TILT    = -0.12; // extra nose-down added while banking into a turn
+const MAX_ROLL     = 0.32;
+const TILT_RATE    = 0.006; // per-ms approach rate — eases in/out instead of snapping
+const ROLL_RATE    = 0.01;
 
 const CARRIER_SLOTS: { type: string; xRel: number; yRel: number; angle: number }[] = [
     { type: 'coasthawk', xRel: 7.0, yRel: -2.5, angle: Math.PI * 0.19 },
@@ -90,10 +95,13 @@ export const updateNpcHelis = (dt: number) => {
         }
 
         if (npc.state === NPC_HELI_STATE.TAKEOFF) {
-            npc.tilt = 0; npc.roll = 0;
             npc.rotorRPM = Math.min(1, npc.rotorRPM + 0.008 * dt);
             npc.rotationPos += npc.rotorRPM * 0.75 * dt;
             npc.z += 0.05 * dt;
+            // Lean into the climb as rotor spools up instead of rising like an elevator.
+            const climbTarget = CRUISE_TILT * npc.rotorRPM;
+            npc.tilt += Math.max(-TILT_RATE * dt, Math.min(TILT_RATE * dt, climbTarget - npc.tilt));
+            npc.roll *= Math.pow(0.9, dt);
             if (npc.z >= npc.cruiseZ) {
                 npc.z = npc.cruiseZ;
                 npc.state = NPC_HELI_STATE.PATROL;
@@ -123,17 +131,25 @@ export const updateNpcHelis = (dt: number) => {
 
         const desired = Math.atan2(dy, dx);
         const diff = ((desired - npc.angle + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
-        const prevAngle = npc.angle;
-        npc.angle += Math.max(-TURN_RATE * dt, Math.min(TURN_RATE * dt, diff));
+        const turnStep = Math.max(-TURN_RATE * dt, Math.min(TURN_RATE * dt, diff));
+        npc.angle += turnStep;
 
         const step = Math.min(SPEED * dt, dist);
         npc.x += Math.cos(npc.angle) * step;
         npc.y += Math.sin(npc.angle) * step;
         npc.z += (npc.cruiseZ - npc.z) * 0.02 * dt;
 
-        const speed = step / dt;
-        npc.tilt = -speed * 4.5;
-        npc.roll = Math.max(-0.3, Math.min(0.3, (npc.angle - prevAngle) / dt * 8));
+        // Bank fraction eases toward 0 near the end of a turn (turnStep shrinks as diff
+        // does), and roll itself is rate-limited toward that target instead of snapped —
+        // same ease-in/ease-out shape as the player heli's roll in simulation.ts.
+        const bankFrac = turnStep / (TURN_RATE * dt);
+        const targetRoll = bankFrac * MAX_ROLL;
+        npc.roll += Math.max(-ROLL_RATE * dt, Math.min(ROLL_RATE * dt, targetRoll - npc.roll));
+
+        const speedFrac = (step / dt) / SPEED;
+        const targetTilt = CRUISE_TILT * speedFrac + BANK_TILT * Math.abs(bankFrac);
+        npc.tilt += Math.max(-TILT_RATE * dt, Math.min(TILT_RATE * dt, targetTilt - npc.tilt));
+
         npc.rotorRPM = 0.9 + Math.sin(Date.now() * 0.0008) * 0.04;
         npc.rotationPos += npc.rotorRPM * 0.75 * dt;
     }

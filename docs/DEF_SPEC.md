@@ -120,6 +120,17 @@ A wall that can be seen from **both sides** — for example, the interior of a b
 
 At any camera angle exactly one of the pair passes the culling test. Closed objects (no openings) do not need interior faces because the interior is never visible.
 
+### Vertex winding — doesn't affect DEF v1 rendering, but get it right anyway
+
+Plain DEF (this doc) reads only the declared `normal`; vertex order has no
+runtime effect here. It matters the moment a file moves to ZDEF2 (shading) or
+D3F (culling itself), and the intuitive way to list a quad's corners —
+reading order, top-left to bottom-left — routinely produces backward winding
+for 3D geometry, independent of which version reads the file. See
+`D3F_SPEC.md § Author-facing rule` for the winding rule and the verification
+check; apply it when authoring new DEF faces so a later migration doesn't
+inherit a decade of backward walls.
+
 ---
 
 ## Collision Box Schema

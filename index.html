@@ -82,6 +82,22 @@
     </head>
     <body>
         <canvas id="gameCanvas"></canvas>
+        <!-- Diagnostic: forwards otherwise-invisible JS errors to Xcode's console via
+             the native jsError bridge (Safari Web Inspector isn't reliably available).
+             Must run before the module script so it also catches module-eval errors. -->
+        <script>
+            (() => {
+                const post = (msg) => {
+                    try { window.webkit?.messageHandlers?.jsError?.postMessage(String(msg)); } catch {}
+                };
+                window.addEventListener('error', (e) => {
+                    post(`${e.message} @ ${e.filename}:${e.lineno}:${e.colno}\n${e.error?.stack ?? ''}`);
+                });
+                window.addEventListener('unhandledrejection', (e) => {
+                    post(`unhandledrejection: ${e.reason?.stack ?? e.reason}`);
+                });
+            })();
+        </script>
         <script type="module" src="/src/game/game.ts"></script>
     </body>
 </html>

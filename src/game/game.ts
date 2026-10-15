@@ -17,6 +17,8 @@ import { mountVoiceLine } from './ui/voice-line/voice-line';
 import { createDrawObjects } from './draw-objects';
 import { createFoliage } from './foliage';
 import { updateNpcHelis } from './sim/npc-helis';
+// DIAGNOSTIC: disabled to isolate the black-screen-on-launch regression — see feedback thread.
+// import { updateTestTrain } from './sim/test-train';
 import { createDrawTerrain } from './draw-terrain';
 import { tileW as _tileW, tileH as _tileH, stepH as _stepH, gameRenderScale } from './render-config';
 const tileW = Math.round(_tileW * gameRenderScale);
@@ -113,6 +115,8 @@ const {
     renderSnow,
     drawDebugOverlay,
     handleCollisionBoxes,
+    // drawTestTrain,
+    // drawTestTrack,
 } = _drawWorldFns;
 
 const { drawTrees, rebuildEntryCache } = createFoliage({
@@ -233,7 +237,11 @@ const _physicsCtx = createPhysicsCtx({
     isTutorialMode: () => campaignHandler.getCurrentMissionData().campaignType === CAMPAIGN_TYPE.TUTORIAL,
     getMissionComplete: () => {
         const t = _getPreviewTriggerCrash();
-        return t ? () => {} : Flow.missionComplete;
+        // Endless mode respawns targets without ever raising goalCount (see
+        // spawnEndlessPerson, addToGoal:false), so totalRescued reaches the
+        // mission's original goalCount eventually — that must NOT end the run;
+        // only a crash does (triggerCrash already handles _saveEndlessScore).
+        return (t || Flow.endlessMode) ? () => {} : Flow.missionComplete;
     },
     getTriggerCrash: () => _getPreviewTriggerCrash() ?? Flow.triggerCrash,
     orniWreckDelivered: Flow.orniWreckDelivered,
@@ -420,8 +428,12 @@ const _drawSceneInner = () => {
     );
 
     updateNpcHelis(dt);
+    // DIAGNOSTIC: disabled to isolate the black-screen-on-launch regression — see feedback thread.
+    // updateTestTrain(dt);
 
     drawBirds(camX, camY);
+    // drawTestTrack(camX, camY);
+    // drawTestTrain(camX, camY);
 
     G.particles.forEach(p => {
         p.vz = (p.vz || 0) + (p.gravity || 0);

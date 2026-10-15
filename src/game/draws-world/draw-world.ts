@@ -1,7 +1,8 @@
 import { G, zstate } from '../state';
-import { PAYLOAD, VESSEL } from '../../shared/types';
+import { PAYLOAD, VESSEL, VEHICLE_STATE } from '../../shared/types';
 import { getGround } from '../sim/terrain';
 import { isLightningActive } from '../lightning-state';
+import { applyNodes, renderNodes } from '../def-utils';
 import ORNI_WRECK_CARRY_DEF from '../models/ornithopter_wreck_carry.zdef';
 import ORNI_WRECK_RESIDUE_DEF from '../models/ornithopter_wreck_residue.zdef';
 import WIND_TURBINE_DEF from '../models/objects/wind_turbine.zdef';
@@ -38,10 +39,11 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         _drawXmasObjects,
         _drawRings,
         _drawScenarioProps,
+        _drawDeliveryMarkers,
     } = createStructuresDraw(dwCtx);
     const { drawPayloadObjects, queueAttachedPayloads } = createPayloadsDraw(dwCtx);
     const { handleCollisionBoxes, drawDebugOverlay } = createCollisionDraw(dwCtx);
-    const { drawBirds, drawDebris, renderRain, renderSnow } = createMiscDraw(dwCtx);
+    const { drawBirds, drawDebris, renderRain, renderSnow, drawTestTrain, drawTestTrack } = createMiscDraw(dwCtx);
     const { _drawVolleyballCourts } = createVolleyballDraw(dwCtx);
 
     const drawWorldObjects = (
@@ -163,46 +165,81 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
                 );
             });
         }
+        if (heliAt && !zstate.crashed) {
+            const _nacelleZ = (WIND_TURBINE_DEF as any).rescueZones?.[0]?.z ?? 12.15;
+            G.WIND_TURBINES.forEach((wt: any) => {
+                if (!isVisible(wt.x, wt.y, visMargin)) return;
+                if (Math.abs(G.heli.x - wt.x) > 3 || Math.abs(G.heli.y - wt.y) > 3) return;
+                dwCtx.drawFns.drawHeli(
+                    G.heli.type,
+                    G.heli.x,
+                    G.heli.y,
+                    G.heli.z,
+                    G.heli.angle,
+                    G.heli.tilt,
+                    G.heli.roll,
+                    G.heli.rotationPos,
+                    camX,
+                    camY,
+                    { isShadow: true, shadowGetGround: () => wt.gz + _nacelleZ }
+                );
+            });
+        }
         G.ORNI_RESIDUES.forEach((r: any) => {
             if (!isVisible(r.x, r.y, visMargin)) return;
-            SceneRenderer.add(ORNI_WRECK_RESIDUE_DEF as any, { x: r.x, y: r.y, z: getGround(r.x, r.y), angle: r.angle });
-            SceneRenderer.flush(camX, camY);
+            renderNodes(ORNI_WRECK_RESIDUE_DEF as any, {}, { x: r.x, y: r.y, z: getGround(r.x, r.y), angle: r.angle }, SceneRenderer, camX, camY);
         });
         G.payloads.forEach((p: any) => {
             if (p.type !== PAYLOAD.ORNI_WRECK || p.hanging || p.rescued) return;
             if (!isVisible(p.x, p.y, visMargin)) return;
-            SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, { x: p.x, y: p.y, z: getGround(p.x, p.y), angle: p.angle ?? 0 });
-            SceneRenderer.flush(camX, camY);
+            renderNodes(ORNI_WRECK_CARRY_DEF as any, {}, { x: p.x, y: p.y, z: getGround(p.x, p.y), angle: p.angle ?? 0 }, SceneRenderer, camX, camY);
         });
 
         // all remaining objects go into the shared final batch (depth-sorted with heli)
-        let _heliQueuedInFrigate = false;
+        // Shared by every "split-node" object below: whichever one first finds the heli
+        // inside its interleave footprint claims it, so the generic heli-queue at the
+        // bottom of this function doesn't draw it a second time.
+        let _heliInterleaved = false;
+        // True when (ox,oy)-centered object, rotated by `angle`, has the heli within
+        // `halfX`/`halfY` of its own local axes — the footprint in which its tall part
+        // may legitimately render in front of OR behind the heli (painter's-algorithm
+        // ambiguity that a node split + onBeforeFlush resolves, see research_platform.zdef).
+        const _heliInFootprint = (ox: number, oy: number, angle: number, halfX: number, halfY: number): boolean => {
+            if (!heliAt || zstate.crashed) return false;
+            const cosA = Math.cos(angle), sinA = Math.sin(angle);
+            const dx = G.heli.x - ox, dy = G.heli.y - oy;
+            const lx = dx * cosA + dy * sinA, ly = -dx * sinA + dy * cosA;
+            return Math.abs(lx) <= halfX && Math.abs(ly) <= halfY;
+        };
+        // Flushes whatever was queued so far, injects the heli alone, then flushes again —
+        // so the node drawn right after this callback renders on top of the heli. Pass as
+        // `onBeforeFlush` to renderNodes() at the node boundary where the heli should slot in.
+        const _injectHeliAt = (nodeIndex: number, boundaryIndex: number) => {
+            if (nodeIndex !== boundaryIndex) return;
+            SceneRenderer.flush(camX, camY);
+            SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt!.x + heliAt!.y, drawFn: (cx, cy) => heliAt!.fn(cx, cy) });
+            SceneRenderer.flush(camX, camY);
+        };
         G.BOATS.forEach((b: any) => {
             if (!isVisible(b.x, b.y, visMargin) || !_inNightConeRect(b.x, b.y, b.w, b.l, b.angle)) return;
-            if (heliAt && !zstate.crashed && b.objectType === VESSEL.FRIGATE) {
-                const cosA = Math.cos(b.angle), sinA = Math.sin(b.angle);
-                const dx = G.heli.x - b.x, dy = G.heli.y - b.y;
-                const lx = dx * cosA + dy * sinA, ly = -dx * sinA + dy * cosA;
-                if (Math.abs(lx) <= 14 && Math.abs(ly) <= 5) {
-                    _heliQueuedInFrigate = true;
-                    _drawBoatModel(b, camX, camY, (ni) => {
-                        if (ni === 0) {
-                            // Flush hull immediately, then heli alone — superstructure (node 1) renders last
-                            SceneRenderer.flush(camX, camY);
-                            SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt.x + heliAt.y, drawFn: (cx, cy) => heliAt.fn(cx, cy) });
-                            SceneRenderer.flush(camX, camY);
-                        }
-                    });
-                    return;
-                }
+            if (b.objectType === VESSEL.FRIGATE && _heliInFootprint(b.x, b.y, b.angle, 14, 5)) {
+                _heliInterleaved = true;
+                _drawBoatModel(b, camX, camY, (ni) => _injectHeliAt(ni, 0));
+                return;
             }
             _drawBoatModel(b, camX, camY);
         });
         G.SUBMARINES.forEach((s: any) => {
-            if (isVisible(s.x, s.y, visMargin) && _inNightConeRect(s.x, s.y, s.w, s.l, s.angle)) _drawSubmarine(s);
+            if (isVisible(s.x, s.y, visMargin) && _inNightConeRect(s.x, s.y, s.w, s.l, s.angle)) _drawSubmarine(s, camX, camY);
         });
         G.RESEARCH_PLATFORMS.forEach((rp: any) => {
-            if (isVisible(rp.x, rp.y, visMargin) && _inNightCone(rp.x, rp.y)) _drawResearchPlatform(rp.x, rp.y);
+            if (!isVisible(rp.x, rp.y, visMargin) || !_inNightCone(rp.x, rp.y)) return;
+            if (_heliInFootprint(rp.x, rp.y, 0, 5, 4)) {
+                _heliInterleaved = true;
+                _drawResearchPlatform(rp.x, rp.y, camX, camY, (ni) => _injectHeliAt(ni, 0));
+                return;
+            }
+            _drawResearchPlatform(rp.x, rp.y, camX, camY);
         });
         G.WIND_TURBINES.forEach((wt: any) => {
             if (isVisible(wt.x, wt.y, visMargin) && _inNightCone(wt.x, wt.y)) _drawWindTurbine(wt);
@@ -216,31 +253,57 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
             if (isVisible(w.x, w.y, visMargin) && _inNightCone(w.x, w.y)) _drawBoatWreck(w, camX, camY);
         });
         G.PLANE_WRECKS.forEach((pw: any) => {
-            if (isVisible(pw.x, pw.y, visMargin) && _inNightCone(pw.x, pw.y)) _drawPlaneWreck(pw.x, pw.y, pw.angle);
+            if (isVisible(pw.x, pw.y, visMargin) && _inNightCone(pw.x, pw.y)) _drawPlaneWreck(pw.x, pw.y, pw.angle, camX, camY);
         });
         G.BROKEN_SAILBOATS.forEach((bs: any) => {
-            if (isVisible(bs.x, bs.y, visMargin) && _inNightCone(bs.x, bs.y)) _drawBrokenSailboat(bs.x, bs.y, bs.angle);
+            if (isVisible(bs.x, bs.y, visMargin) && _inNightCone(bs.x, bs.y)) _drawBrokenSailboat(bs.x, bs.y, bs.angle, camX, camY);
         });
-        _drawBaywatchObjects(_inNightCone);
-        _drawBuoys(_inNightCone);
+        _drawBaywatchObjects(_inNightCone, camX, camY);
+        _drawBuoys(_inNightCone, camX, camY);
         _drawVolleyballCourts(_inNightCone);
-        _drawFestivalObjects(_inNightCone);
-        _drawXmasObjects(_inNightCone);
-        _drawScenarioProps(_inNightCone);
+        _drawFestivalObjects(_inNightCone, camX, camY);
+        _drawXmasObjects(_inNightCone, camX, camY);
+        _drawScenarioProps(_inNightCone, camX, camY);
         _drawRings(_inNightCone);
+        _drawDeliveryMarkers(_inNightCone);
         const lh = dwCtx.getLighthouse();
         if (lh && isVisible(lh.x, lh.y, visMargin) && _inNightCone(lh.x, lh.y)) _drawLighthouse(camX, camY);
 
-        if (showPad && _inNightCone(G.PAD.xMin + 3, G.PAD.yMin + 3)) _drawHangar();
-        if (showPad && G.fuelTruck && _inNightCone(G.fuelTruck.x, G.fuelTruck.y))
-            dwCtx.drawFns.drawFuelTruck(G.fuelTruck.x, G.fuelTruck.y, G.fuelTruck.angle, {
-                z: G.PAD.z,
-                armExtend: G.fuelTruck.arm,
-                armTarget: { x: G.heli.x, y: G.heli.y },
-                getFuelingState: () => G.fuelTruck.state === 'FUELING',
-                steerAngle: G.fuelTruck.steerAngle ?? 0,
-            });
+        const _drawHangarBuilding = () => {
+            if (showPad && _inNightCone(G.PAD.xMin + 3, G.PAD.yMin + 3)) _drawHangar(camX, camY);
+        };
+        const _drawParkedFuelTruck = () => {
+            if (showPad && G.fuelTruck && _inNightCone(G.fuelTruck.x, G.fuelTruck.y))
+                dwCtx.drawFns.drawFuelTruck(G.fuelTruck.x, G.fuelTruck.y, G.fuelTruck.angle, camX, camY, {
+                    z: G.PAD.z,
+                    armExtend: G.fuelTruck.arm,
+                    armTarget: { x: G.heli.x, y: G.heli.y },
+                    getFuelingState: () => G.fuelTruck.state === 'FUELING',
+                    steerAngle: G.fuelTruck.steerAngle ?? 0,
+                });
+        };
+        // Pad lights must be queued BEFORE the hangar/fuel-truck block: the fuel
+        // truck's model has crossNodeDepth:true and self-flushes once it's fully
+        // queued (same for the hangar, a single-node D3F — it also always ends in
+        // its own flush). Anything added to the shared batch after that flush
+        // starts a new, later batch and always paints on top regardless of true
+        // depth. Queuing the lights first means that self-flush picks them up too,
+        // so they get properly depth-sorted against the truck/hangar instead of
+        // always winning.
         if (showPad && _inNightCone(G.PAD.xMin + 3, G.PAD.yMin + 3)) _drawPadLights(G.PAD.z, false);
+        // Each object is its own isolated paint pass (painter's algorithm, no
+        // shared z-buffer) — between two separate objects, whichever draws later
+        // wins regardless of true depth. Parked, the truck sits behind/beside the
+        // hangar (same painter's-algorithm limitation as Carrier/FRIGATE deck
+        // objects — see docs/D3F_SPEC.md), so draw it first then; while driving
+        // it can legitimately pass in front, so keep the original order.
+        if (G.fuelTruck?.state === VEHICLE_STATE.PARKED) {
+            _drawParkedFuelTruck();
+            _drawHangarBuilding();
+        } else {
+            _drawHangarBuilding();
+            _drawParkedFuelTruck();
+        }
         if (queueFoliage) queueFoliage(camX, camY);
         // Particle emitters — depth-sorted with world objects and heli
         G.PARTICLE_EMITTERS.forEach((e: any) => {
@@ -329,9 +392,11 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         // Hanging ORNI_WRECK queued before heliAt so it renders behind the heli (same depth → stable-sort order wins).
         G.payloads.forEach((p: any) => {
             if (p.type !== PAYLOAD.ORNI_WRECK || !p.hanging || p.rescued) return;
-            SceneRenderer.add(ORNI_WRECK_CARRY_DEF as any, { x: p.x, y: p.y, z: p.z, angle: p.angle ?? 0 });
+            // Queued into the shared final batch (flushed later, alongside the heli) —
+            // applyNodes() bakes D3F to a flat DEF so this add() doesn't trigger its own flush.
+            SceneRenderer.add(applyNodes(ORNI_WRECK_CARRY_DEF as any, {}), { x: p.x, y: p.y, z: p.z, angle: p.angle ?? 0 });
         });
-        if (heliAt && !_heliQueuedInFrigate)
+        if (heliAt && !_heliInterleaved)
             SceneRenderer.add(null, { x: 0, y: 0, depth: heliAt.x + heliAt.y, drawFn: (cx, cy) => heliAt.fn(cx, cy) });
         // Carrier windsock: queued before flush so it depth-sorts with the ship.
         if (showCarrier && _inNightConeRect(G.CARRIER.x, G.CARRIER.y, G.CARRIER.w, G.CARRIER.l, G.CARRIER.angle)) {
@@ -366,5 +431,7 @@ export const createDrawWorld = (dwCtx: DrawWorldCtx) => {
         renderSnow,
         drawDebugOverlay,
         handleCollisionBoxes,
+        drawTestTrain,
+        drawTestTrack,
     };
 };

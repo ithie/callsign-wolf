@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import {
     encodeSession,
     decodeSession,
@@ -7,9 +7,16 @@ import {
     getCampaignsDone,
     isCampaignUnlocked,
     isMissionUnlocked,
+    UNLOCK_KEY,
     type PlayerSession,
 } from './session';
 import { getRank } from './ui/rank-badge/rank-badge';
+import { storageSet } from './storage';
+
+// Paywall is orthogonal to the unlock-progression logic under test here — assume
+// full version for every test so isCampaignUnlocked's other gates (tutorial done,
+// type rating, prior-campaign completion) are what's actually being exercised.
+beforeEach(() => storageSet(UNLOCK_KEY, '1'));
 
 const mkSession = (overrides: Partial<PlayerSession> = {}): PlayerSession => ({
     playerName: '',
@@ -134,6 +141,7 @@ describe('isCampaignUnlocked', () => {
     it('free-flight unlocked once tutorial is done', () => {
         const s = mkSession({
             campaignProgress: { '0': { completed: true, missions: [] } },
+            typeRatings: { coasthawk: true },
         });
         expect(isCampaignUnlocked(s, campaigns, 1)).toBe(true);
     });
@@ -144,14 +152,18 @@ describe('isCampaignUnlocked', () => {
 
     it('first regular unlocked after tutorial', () => {
         const s = mkSession({
-            campaignProgress: { '0': { completed: true, missions: [] } },
+            // isCampaignUnlocked's tutorialDone check reads missions[0].completed
+            // (mission-level granularity), not the campaign-level `completed` flag.
+            campaignProgress: { '0': { completed: true, missions: [{ completed: true, bestTimeMs: null, count: 1 }] } },
+            typeRatings: { coasthawk: true },
         });
         expect(isCampaignUnlocked(s, campaigns, 2)).toBe(true);
     });
 
     it('second regular locked until first regular is done', () => {
         const s = mkSession({
-            campaignProgress: { '0': { completed: true, missions: [] } },
+            campaignProgress: { '0': { completed: true, missions: [{ completed: true, bestTimeMs: null, count: 1 }] } },
+            typeRatings: { coasthawk: true },
         });
         expect(isCampaignUnlocked(s, campaigns, 3)).toBe(false);
     });
@@ -159,9 +171,10 @@ describe('isCampaignUnlocked', () => {
     it('second regular unlocked after first regular is done', () => {
         const s = mkSession({
             campaignProgress: {
-                '0': { completed: true, missions: [] },
+                '0': { completed: true, missions: [{ completed: true, bestTimeMs: null, count: 1 }] },
                 '2': { completed: true, missions: [] },
             },
+            typeRatings: { coasthawk: true },
         });
         expect(isCampaignUnlocked(s, campaigns, 3)).toBe(true);
     });
@@ -199,6 +212,7 @@ describe('encodeSession / decodeSession', () => {
 
     it('reconstructs campaign progress from nextMission count', () => {
         const s = mkSession({
+            highestUnlockedCampaignIndex: 1, // encodeSession only carries the *active* campaign's progress
             campaignProgress: {
                 '1': {
                     completed: false,

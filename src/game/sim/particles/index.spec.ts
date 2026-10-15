@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect } from 'vitest';
 import { initParticles, updateParticles, spawnExplosion } from './index';
 import type { ParticlesCtx } from './ctx';

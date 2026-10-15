@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { update } from './world-emitters';
+// @vitest-environment jsdom
+import { describe, it, expect, vi } from 'vitest';
+import { update, MAX_PARTICLES } from './world-emitters';
 import type { ParticlesCtx, ParticleEmitter, EmitterParticle } from './ctx';
 
 const makeCtx = (): ParticlesCtx => ({
@@ -42,12 +43,19 @@ describe('WorldEmitters.update – spawning', () => {
     });
 
     it('fire emitter spawns both fire and smoke particles per cycle', () => {
-        const ctx = makeCtx();
-        const emitter = makeEmitter('fire');
-        ctx.emitters = [emitter];
-        update({ ctx, dt: 4 });
-        expect(emitter.particles.some(p => p.isFire)).toBe(true);
-        expect(emitter.particles.some(p => p.isSmoke)).toBe(true);
+        // Smoke spawn is a 35%-per-iteration roll (see world-emitters.ts) — force it
+        // so this asserts the capability deterministically instead of ~42% of runs.
+        const randSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+        try {
+            const ctx = makeCtx();
+            const emitter = makeEmitter('fire');
+            ctx.emitters = [emitter];
+            update({ ctx, dt: 4 });
+            expect(emitter.particles.some(p => p.isFire)).toBe(true);
+            expect(emitter.particles.some(p => p.isSmoke)).toBe(true);
+        } finally {
+            randSpy.mockRestore();
+        }
     });
 
     it('smoke emitter spawns only smoke particles', () => {
@@ -59,19 +67,19 @@ describe('WorldEmitters.update – spawning', () => {
         expect(emitter.particles.some(p => p.isFire)).toBe(false);
     });
 
-    it('caps particle count at 60 regardless of dt', () => {
+    it('caps particle count at MAX_PARTICLES regardless of dt', () => {
         const ctx = makeCtx();
         const emitter = makeEmitter('fire');
         ctx.emitters = [emitter];
         for (let i = 0; i < 200; i++) update({ ctx, dt: 4 });
-        expect(emitter.particles.length).toBeLessThanOrEqual(60);
+        expect(emitter.particles.length).toBeLessThanOrEqual(MAX_PARTICLES);
     });
 
     it('resets spawnTimer to 0 when cap is hit', () => {
         const ctx = makeCtx();
         const emitter = makeEmitter('fire');
         // Fill to cap
-        for (let i = 0; i < 60; i++) emitter.particles.push(makeParticle());
+        for (let i = 0; i < MAX_PARTICLES; i++) emitter.particles.push(makeParticle());
         emitter.spawnTimer = 3;
         ctx.emitters = [emitter];
         update({ ctx, dt: 1 }); // still can't spawn (timer < interval), but cap check runs

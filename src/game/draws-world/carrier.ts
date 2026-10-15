@@ -1,7 +1,7 @@
 import type { DrawWorldCtx } from './types';
 import { G } from '../state';
 import { VEHICLE_STATE } from '../../shared/types';
-import { applyParts, renderNodes } from '../def-utils';
+import { applyParts, applyNodes, renderNodes } from '../def-utils';
 import { getGround } from '../sim/terrain';
 import CARRIER_DEF from '../models/carrier.zdef';
 import CARRIER_CAR_DEF from '../models/carrier_car.zdef';
@@ -67,13 +67,17 @@ export const createCarrierDraw = (dwCtx: DrawWorldCtx) => {
             const wx = objX + (tx - 0.36) * cosA - (ty + 0.5) * sinA;
             const wy = objY + (tx - 0.36) * sinA + (ty + 0.5) * cosA;
             if (!inCone(wx, wy)) return;
-            SceneRenderer.add(CARRIER_DECK_TRACTOR_DEF as any, { x: wx, y: wy, z: deckZ + 0.01, angle: tractorAngle });
+            // Injected into the carrier hull's own flush batch via onBeforeFlush (see
+            // _drawVectorCarrier), so this must add faces without flushing — applyNodes()
+            // bakes the D3F node tree into a flat DEF, same pattern as applyParts() below
+            // for the fuel car. renderNodes() would flush on its own and break the batch.
+            SceneRenderer.add(applyNodes(CARRIER_DECK_TRACTOR_DEF as any, {}), { x: wx, y: wy, z: deckZ + 0.01, angle: tractorAngle });
         });
         ([{ lx: 6.5, ly: 0.4 }, { lx: 6.0, ly: -0.2 }, { lx: 7.0, ly: -0.1 }] as const).forEach(({ lx, ly }) => {
             const wx = objX + lx * cosA - ly * sinA;
             const wy = objY + lx * sinA + ly * cosA;
             if (!inCone(wx, wy)) return;
-            SceneRenderer.add(CARRIER_DECK_CRATE_DEF as any, { x: wx, y: wy, z: deckZ + 0.01, angle });
+            SceneRenderer.add(applyNodes(CARRIER_DECK_CRATE_DEF as any, {}), { x: wx, y: wy, z: deckZ + 0.01, angle });
         });
         const car = G.carrierFuelCar;
         if (inCone(car.x, car.y))

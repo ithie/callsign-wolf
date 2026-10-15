@@ -505,6 +505,9 @@
               if (face.normal) {
                 const [nx, ny] = face.normal;
                 if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;
+              } else if (face.normal3d) {
+                const [nx, ny, nz] = face.normal3d;
+                if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) + nz <= 0) continue;
               }
               const verts = face.verts;
               for (let i = 0; i < verts.length; i++) {
@@ -655,6 +658,15 @@
     const dot = (nx * _LIGHT[0] + ny * _LIGHT[1] + nz * _LIGHT[2]) / len;
     return _SHADE_AMB + _SHADE_DIFF * Math.max(0, dot);
   };
+  var _computeFaceNormal = (verts) => {
+    if (verts.length < 3) return null;
+    const ax = verts[1][0] - verts[0][0], ay = verts[1][1] - verts[0][1], az = verts[1][2] - verts[0][2];
+    const bx = verts[2][0] - verts[0][0], by = verts[2][1] - verts[0][1], bz = verts[2][2] - verts[0][2];
+    const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+    const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    if (len < 1e-9) return null;
+    return [nx / len, ny / len, nz / len];
+  };
   var _applyShade = (hex, shade) => {
     if (Math.abs(shade - 1) < 2e-3) return hex;
     const n = parseInt(hex.slice(1), 16);
@@ -681,7 +693,7 @@
     const tPivot = parentFn([r.pivot])[0];
     return (verts) => _rotateVerts(parentFn(verts), tPivot, r.axis, angle);
   };
-  var _collectNode = (node, params, parentFn, outFaces, outSpecial) => {
+  var _collectNode = (node, params, parentFn, outFaces, outSpecial, autoNormal = false) => {
     const rotFn = node.rotate ? _makeRotFn2(node, params, parentFn) : parentFn;
     for (const face of node.faces ?? []) {
       if (face.type === "line") {
@@ -692,7 +704,14 @@
         const shade = face.shade ?? _autoShade(rotVerts);
         const color = _applyShade(face.color, shade);
         const normal = face.normal ? _rotNorm(face.normal, rotFn) : void 0;
-        outFaces.push({ ...face, verts: rotVerts, color, ...normal !== void 0 ? { normal } : {} });
+        const normal3d = autoNormal && normal === void 0 ? _computeFaceNormal(rotVerts) ?? void 0 : void 0;
+        outFaces.push({
+          ...face,
+          verts: rotVerts,
+          color,
+          ...normal !== void 0 ? { normal } : {},
+          ...normal3d !== void 0 ? { normal3d } : {}
+        });
       }
     }
     for (const light of node.lights ?? []) {
@@ -700,43 +719,50 @@
       outSpecial.push({ kind: "light", lx: rl[0], ly: rl[1], lz: rl[2], light });
     }
     for (const child of node.children ?? []) {
-      _collectNode(child, params, rotFn, outFaces, outSpecial);
+      _collectNode(child, params, rotFn, outFaces, outSpecial, autoNormal);
     }
   };
+  var _hasRotate = (node) => !!node.rotate || (node.children ?? []).some(_hasRotate);
   var renderNodes = (def, params, instanceProps, renderer, camX, camY, drawCtx, onBeforeFlush) => {
     const { x: ix, y: iy, z: iz = 0, angle: iAngle = 0 } = instanceProps;
     const cosA = Math.cos(iAngle), sinA = Math.sin(iAngle);
+    const autoNormal = def.version === 3;
+    const crossNodeDepth = def.crossNodeDepth === true;
     for (const topNode of def.nodes) {
       const faces = [];
       const special = [];
-      _collectNode(topNode, params, _id2, faces, special);
+      _collectNode(topNode, params, _id2, faces, special, autoNormal);
       let baseDepth;
       if (topNode.depthAnchor) {
-        const [dx, dy] = topNode.depthAnchor;
-        baseDepth = ix + dx * cosA - dy * sinA + (iy + dx * sinA + dy * cosA);
+        const [dx, dy, dz = 0] = topNode.depthAnchor;
+        baseDepth = ix + dx * cosA - dy * sinA + (iy + dx * sinA + dy * cosA) + (iz + dz);
         for (let fi = 0; fi < faces.length; fi++) {
           renderer.add({ id: def.id, faces: [faces[fi]] }, { ...instanceProps, depth: baseDepth + fi * 1e-7 });
         }
       } else {
         baseDepth = ix + iy;
-        const cApS = cosA + sinA, cAmS = cosA - sinA;
-        const allFaces = [];
-        faces.forEach((face, fi) => {
-          const verts = face.verts;
-          let lcx = 0, lcy = 0, lcz = 0;
-          for (const v of verts) {
-            lcx += v[0];
-            lcy += v[1];
-            lcz += v[2];
+        if (_hasRotate(topNode)) {
+          const cApS = cosA + sinA, cAmS = cosA - sinA;
+          const allFaces = [];
+          faces.forEach((face, fi) => {
+            const verts = face.verts;
+            let lcx = 0, lcy = 0, lcz = 0;
+            for (const v of verts) {
+              lcx += v[0];
+              lcy += v[1];
+              lcz += v[2];
+            }
+            lcx /= verts.length;
+            lcy /= verts.length;
+            lcz /= verts.length;
+            allFaces.push({ face, key: lcx * cApS + lcy * cAmS + lcz + fi * 1e-9 });
+          });
+          allFaces.sort((a, b) => a.key - b.key);
+          for (let si = 0; si < allFaces.length; si++) {
+            renderer.add({ id: def.id, faces: [allFaces[si].face] }, { ...instanceProps, depth: baseDepth + si * 1e-7 });
           }
-          lcx /= verts.length;
-          lcy /= verts.length;
-          lcz /= verts.length;
-          allFaces.push({ face, key: lcx * cApS + lcy * cAmS + lcz + fi * 1e-9 });
-        });
-        allFaces.sort((a, b) => a.key - b.key);
-        for (let si = 0; si < allFaces.length; si++) {
-          renderer.add({ id: def.id, faces: [allFaces[si].face] }, { ...instanceProps, depth: baseDepth + si * 1e-7 });
+        } else {
+          renderer.add({ id: def.id, faces }, { ...instanceProps, depth: baseDepth });
         }
       }
       if (drawCtx) {
@@ -785,21 +811,25 @@
           }
         }
       }
-      if (onBeforeFlush) onBeforeFlush(def.nodes.indexOf(topNode));
+      if (crossNodeDepth || !onBeforeFlush) continue;
+      onBeforeFlush(def.nodes.indexOf(topNode));
       renderer.flush(camX, camY);
     }
+    if (crossNodeDepth || !onBeforeFlush) renderer.flush(camX, camY);
   };
   var applyNodes = (def, params) => {
     const faces = [];
     const discard = [];
+    const autoNormal = def.version === 3;
     for (const node of def.nodes) {
-      _collectNode(node, params, _id2, faces, discard);
+      _collectNode(node, params, _id2, faces, discard, autoNormal);
     }
-    return { id: def.id, faces };
+    return { ...def, faces };
   };
 
   // ../src/game/models/coasthawk.zdef
   var coasthawk_default = {
+    version: 3,
     id: "coasthawk",
     pivot: [
       0,
@@ -817,194 +847,199 @@
         zMax: 1.3
       }
     ],
-    faces: [
+    nodes: [
       {
-        id: "tail_rotor_bar",
-        verts: [
-          [
-            -2.4,
-            0.6,
-            0.25
-          ],
-          [
-            -2.4,
-            -0.6,
-            0.25
-          ],
-          [
-            -2.4,
-            -0.6,
-            0.35
-          ],
-          [
-            -2.4,
-            0.6,
-            0.35
-          ]
-        ],
-        color: "#222222"
-      },
-      {
-        id: "tail_fin",
-        verts: [
-          [
-            -2.4,
-            0,
-            0.6
-          ],
-          [
-            -2.9,
-            0,
-            1.3
-          ],
-          [
-            -3,
-            0,
-            0.6
-          ]
-        ],
-        color: "#ff6600"
-      },
-      {
-        id: "tail_boom",
-        verts: [
-          [
-            -1.1,
-            0.08,
-            0.6
-          ],
-          [
-            -2.4,
-            0.08,
-            0.6
-          ],
-          [
-            -2.4,
-            -0.08,
-            0.6
-          ],
-          [
-            -1.1,
-            -0.08,
-            0.6
-          ]
-        ],
-        color: "#ff6600"
-      },
-      {
-        id: "fuselage",
-        verts: [
-          [
-            1.3,
-            0,
-            0.3
-          ],
-          [
-            0.4,
-            -0.45,
-            0.4
-          ],
-          [
-            -1,
-            -0.45,
-            0.4
-          ],
-          [
-            -1.1,
-            0,
-            0.6
-          ],
-          [
-            -1,
-            0.45,
-            0.4
-          ],
-          [
-            0.4,
-            0.45,
-            0.4
-          ]
-        ],
-        color: "#ff6600"
-      },
-      {
-        id: "window_right",
-        verts: [
-          [
-            0.3,
-            -0.47,
-            0.35
-          ],
-          [
-            -0.6,
-            -0.47,
-            0.35
-          ],
-          [
-            -0.6,
-            -0.3,
-            0.6
-          ],
-          [
-            0.3,
-            -0.3,
-            0.6
-          ]
-        ],
-        color: "#111111"
-      },
-      {
-        id: "window_left",
-        verts: [
-          [
-            0.3,
-            0.47,
-            0.35
-          ],
-          [
-            -0.6,
-            0.47,
-            0.35
-          ],
-          [
-            -0.6,
-            0.3,
-            0.6
-          ],
-          [
-            0.3,
-            0.3,
-            0.6
-          ]
-        ],
-        color: "#111111"
-      },
-      {
-        id: "cockpit_nose",
-        verts: [
-          [
-            1.3,
-            0,
-            0.3
-          ],
-          [
-            0.6,
-            0.4,
-            0.6
-          ],
-          [
-            0.6,
-            -0.4,
-            0.6
-          ]
-        ],
-        color: "#111111"
+        faces: [
+          {
+            id: "tail_rotor_bar",
+            verts: [
+              [
+                -2.4,
+                0.6,
+                0.25
+              ],
+              [
+                -2.4,
+                -0.6,
+                0.25
+              ],
+              [
+                -2.4,
+                -0.6,
+                0.35
+              ],
+              [
+                -2.4,
+                0.6,
+                0.35
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "tail_fin",
+            verts: [
+              [
+                -2.4,
+                0,
+                0.6
+              ],
+              [
+                -2.9,
+                0,
+                1.3
+              ],
+              [
+                -3,
+                0,
+                0.6
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "tail_boom",
+            verts: [
+              [
+                -1.1,
+                0.08,
+                0.6
+              ],
+              [
+                -2.4,
+                0.08,
+                0.6
+              ],
+              [
+                -2.4,
+                -0.08,
+                0.6
+              ],
+              [
+                -1.1,
+                -0.08,
+                0.6
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "fuselage",
+            verts: [
+              [
+                1.3,
+                0,
+                0.3
+              ],
+              [
+                0.4,
+                -0.45,
+                0.4
+              ],
+              [
+                -1,
+                -0.45,
+                0.4
+              ],
+              [
+                -1.1,
+                0,
+                0.6
+              ],
+              [
+                -1,
+                0.45,
+                0.4
+              ],
+              [
+                0.4,
+                0.45,
+                0.4
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "window_right",
+            verts: [
+              [
+                0.3,
+                -0.47,
+                0.35
+              ],
+              [
+                -0.6,
+                -0.47,
+                0.35
+              ],
+              [
+                -0.6,
+                -0.3,
+                0.6
+              ],
+              [
+                0.3,
+                -0.3,
+                0.6
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "window_left",
+            verts: [
+              [
+                0.3,
+                0.47,
+                0.35
+              ],
+              [
+                -0.6,
+                0.47,
+                0.35
+              ],
+              [
+                -0.6,
+                0.3,
+                0.6
+              ],
+              [
+                0.3,
+                0.3,
+                0.6
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "cockpit_nose",
+            verts: [
+              [
+                1.3,
+                0,
+                0.3
+              ],
+              [
+                0.6,
+                0.4,
+                0.6
+              ],
+              [
+                0.6,
+                -0.4,
+                0.6
+              ]
+            ],
+            color: "#111111"
+          }
+        ]
       }
     ]
   };
 
   // ../src/game/models/dolphin.zdef
   var dolphin_default = {
+    version: 3,
     id: "dolphin",
     pivot: [
       0,
@@ -1022,116 +1057,862 @@
         zMax: 0.84
       }
     ],
-    faces: [
+    nodes: [
       {
-        id: "fuselage",
-        verts: [
-          [
-            0.98,
-            0,
-            0.14
-          ],
-          [
-            0,
-            -0.28,
-            0.28
-          ],
-          [
-            -0.56,
-            0,
-            0.35
-          ],
-          [
-            0,
-            0.28,
-            0.28
-          ]
-        ],
-        color: "#ff6600"
-      },
-      {
-        id: "cockpit",
-        verts: [
-          [
-            0.84,
-            0,
-            0.175
-          ],
-          [
-            0.21,
-            -0.21,
-            0.42
-          ],
-          [
-            0.21,
-            0.21,
-            0.42
-          ]
-        ],
-        color: "#112233"
-      },
-      {
-        id: "tail_fin",
-        verts: [
-          [
-            -0.56,
-            0,
-            0.35
-          ],
-          [
-            -1.26,
-            0,
-            0.84
-          ],
-          [
-            -1.4,
-            0,
-            0.28
-          ]
-        ],
-        color: "#ff6600"
+        faces: [
+          {
+            id: "fuselage",
+            verts: [
+              [
+                0.98,
+                0,
+                0.14
+              ],
+              [
+                0,
+                -0.28,
+                0.28
+              ],
+              [
+                -0.56,
+                0,
+                0.35
+              ],
+              [
+                0,
+                0.28,
+                0.28
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "cockpit",
+            verts: [
+              [
+                0.84,
+                0,
+                0.175
+              ],
+              [
+                0.21,
+                -0.21,
+                0.42
+              ],
+              [
+                0.21,
+                0.21,
+                0.42
+              ]
+            ],
+            color: "#112233"
+          },
+          {
+            id: "tail_fin",
+            verts: [
+              [
+                -0.56,
+                0,
+                0.35
+              ],
+              [
+                -1.26,
+                0,
+                0.84
+              ],
+              [
+                -1.4,
+                0,
+                0.28
+              ]
+            ],
+            color: "#ff6600"
+          }
+        ]
       }
     ]
   };
 
   // ../src/game/models/atlas.zdef
   var atlas_default = {
+    version: 3,
     id: "atlas",
-    pivot: [0, 0, 0],
-    collisionBoxes: [
-      { id: "body", xMin: -2.6, xMax: 2.8, yMin: -0.6, yMax: 0.6, zMin: 0, zMax: 1.8 }
+    pivot: [
+      0,
+      0,
+      0
     ],
-    faces: [
-      { id: "bottom", verts: [[1.8, 0.3, 0.15], [1.8, -0.3, 0.15], [-2, -0.3, 0.15], [-2, 0.3, 0.15]], color: "#ff6600" },
-      { id: "side_left_lower", verts: [[1.8, 0.3, 0.15], [1.8, 0.6, 0.5], [-2, 0.6, 0.5], [-2, 0.3, 0.15]], color: "#ff6600" },
-      { id: "side_right_lower", verts: [[1.8, -0.3, 0.15], [1.8, -0.6, 0.5], [-2, -0.6, 0.5], [-2, -0.3, 0.15]], color: "#ff6600" },
-      { id: "side_left_upper_front", verts: [[1.8, 0.6, 0.5], [1.8, 0.3, 0.85], [1.4, 0.3, 0.85], [1.4, 0.6, 0.5]], color: "#ff6600" },
-      { id: "side_left_upper_back", verts: [[0.9, 0.6, 0.5], [0.9, 0.3, 0.85], [-2, 0.3, 0.85], [-2, 0.6, 0.5]], color: "#ff6600" },
-      { id: "side_right_upper_front", verts: [[1.8, -0.6, 0.5], [1.8, -0.3, 0.85], [1.4, -0.3, 0.85], [1.4, -0.6, 0.5]], color: "#ff6600" },
-      { id: "side_right_upper_back", verts: [[0.9, -0.6, 0.5], [0.9, -0.3, 0.85], [-2, -0.3, 0.85], [-2, -0.6, 0.5]], color: "#ff6600" },
-      { id: "tail_left", verts: [[-2, 0.6, 0.5], [-2, 0.3, 0.85], [-2.6, 0, 1.1], [-2.6, 0, 0.4]], color: "#ff6600" },
-      { id: "tail_right", verts: [[-2, -0.6, 0.5], [-2, -0.3, 0.85], [-2.6, 0, 1.1], [-2.6, 0, 0.4]], color: "#ff6600" },
-      { id: "chinook_nose_bottom", verts: [[1.8, -0.3, 0.15], [1.8, 0.3, 0.15], [2.4, 0.3, 0.15], [2.7, 0, 0.25], [2.4, -0.3, 0.15]], color: "#ff6600" },
-      { id: "chinook_nose_lower_left", verts: [[1.8, 0.3, 0.15], [2.4, 0.3, 0.15], [2.4, 0.5, 0.5], [1.8, 0.6, 0.5]], color: "#ff6600" },
-      { id: "chinook_nose_lower_right", verts: [[1.8, -0.3, 0.15], [1.8, -0.6, 0.5], [2.4, -0.5, 0.5], [2.4, -0.3, 0.15]], color: "#ff6600" },
-      { id: "chinook_nose_front_under", verts: [[2.4, 0.3, 0.15], [2.7, 0, 0.25], [2.4, -0.3, 0.15], [2.4, -0.5, 0.5], [2.4, 0.5, 0.5]], color: "#ff6600" },
-      { id: "chinook_nose_bump", verts: [[2.7, 0, 0.25], [2.4, 0.5, 0.5], [2.3, 0.3, 0.6], [2.3, -0.3, 0.6], [2.4, -0.5, 0.5]], color: "#ff6600" },
-      { id: "cockpit_front", verts: [[2.3, 0.27, 0.6], [2.3, -0.27, 0.6], [1.8, -0.27, 0.85], [1.8, 0.27, 0.85]], color: "#111111" },
-      { id: "cockpit_left", verts: [[2.4, 0.5, 0.5], [2.3, 0.33, 0.6], [1.8, 0.33, 0.85], [1.8, 0.6, 0.5]], color: "#111111" },
-      { id: "cockpit_right", verts: [[2.4, -0.5, 0.5], [1.8, -0.6, 0.5], [1.8, -0.33, 0.85], [2.3, -0.33, 0.6]], color: "#111111" },
-      { id: "cockpit_frame_left", verts: [[2.3, 0.33, 0.6], [2.3, 0.27, 0.6], [1.8, 0.27, 0.85], [1.8, 0.33, 0.85]], color: "#ff6600" },
-      { id: "cockpit_frame_right", verts: [[2.3, -0.27, 0.6], [2.3, -0.33, 0.6], [1.8, -0.33, 0.85], [1.8, -0.27, 0.85]], color: "#ff6600" },
-      { id: "window_left", verts: [[1.4, 0.6, 0.5], [0.9, 0.6, 0.5], [0.9, 0.3, 0.85], [1.4, 0.3, 0.85]], color: "#111111" },
-      { id: "window_right", verts: [[1.4, -0.6, 0.5], [0.9, -0.6, 0.5], [0.9, -0.3, 0.85], [1.4, -0.3, 0.85]], color: "#111111" },
-      { id: "fpylon_front", verts: [[1.8, 0.3, 0.85], [1.8, -0.3, 0.85], [1.5, 0, 1.15]], color: "#ff6600" },
-      { id: "fpylon_right", verts: [[1.8, -0.3, 0.85], [1.2, -0.3, 0.85], [1.5, 0, 1.15]], color: "#ff6600" },
-      { id: "fpylon_back", verts: [[1.2, -0.3, 0.85], [1.2, 0.3, 0.85], [1.5, 0, 1.15]], color: "#ff6600" },
-      { id: "fpylon_left", verts: [[1.2, 0.3, 0.85], [1.8, 0.3, 0.85], [1.5, 0, 1.15]], color: "#ff6600" },
-      { id: "tail_roof", verts: [[-2, 0.3, 0.85], [-2, -0.3, 0.85], [-2.6, 0, 1.1]], color: "#ff6600" },
-      { id: "top", verts: [[1.8, 0.3, 0.85], [1.8, -0.3, 0.85], [-2, -0.3, 0.85], [-2, 0.3, 0.85]], color: "#ff6600" },
-      { id: "rpylon_front", verts: [[-2, 0.3, 0.85], [-2, -0.3, 0.85], [-2.3, 0, 1.8]], color: "#ff6600" },
-      { id: "rpylon_right", verts: [[-2, -0.3, 0.85], [-2.6, 0, 1.1], [-2.3, 0, 1.8]], color: "#ff6600" },
-      { id: "rpylon_left", verts: [[-2.6, 0, 1.1], [-2, 0.3, 0.85], [-2.3, 0, 1.8]], color: "#ff6600" }
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: -2.6,
+        xMax: 2.8,
+        yMin: -0.6,
+        yMax: 0.6,
+        zMin: 0,
+        zMax: 1.8
+      }
+    ],
+    nodes: [
+      {
+        faces: [
+          {
+            id: "bottom",
+            verts: [
+              [
+                1.8,
+                0.3,
+                0.15
+              ],
+              [
+                1.8,
+                -0.3,
+                0.15
+              ],
+              [
+                -2,
+                -0.3,
+                0.15
+              ],
+              [
+                -2,
+                0.3,
+                0.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "side_left_lower",
+            verts: [
+              [
+                1.8,
+                0.3,
+                0.15
+              ],
+              [
+                1.8,
+                0.6,
+                0.5
+              ],
+              [
+                -2,
+                0.6,
+                0.5
+              ],
+              [
+                -2,
+                0.3,
+                0.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "side_right_lower",
+            verts: [
+              [
+                1.8,
+                -0.3,
+                0.15
+              ],
+              [
+                1.8,
+                -0.6,
+                0.5
+              ],
+              [
+                -2,
+                -0.6,
+                0.5
+              ],
+              [
+                -2,
+                -0.3,
+                0.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "side_left_upper_front",
+            verts: [
+              [
+                1.8,
+                0.6,
+                0.5
+              ],
+              [
+                1.8,
+                0.3,
+                0.85
+              ],
+              [
+                1.4,
+                0.3,
+                0.85
+              ],
+              [
+                1.4,
+                0.6,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "side_left_upper_back",
+            verts: [
+              [
+                0.9,
+                0.6,
+                0.5
+              ],
+              [
+                0.9,
+                0.3,
+                0.85
+              ],
+              [
+                -2,
+                0.3,
+                0.85
+              ],
+              [
+                -2,
+                0.6,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "side_right_upper_front",
+            verts: [
+              [
+                1.8,
+                -0.6,
+                0.5
+              ],
+              [
+                1.8,
+                -0.3,
+                0.85
+              ],
+              [
+                1.4,
+                -0.3,
+                0.85
+              ],
+              [
+                1.4,
+                -0.6,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "side_right_upper_back",
+            verts: [
+              [
+                0.9,
+                -0.6,
+                0.5
+              ],
+              [
+                0.9,
+                -0.3,
+                0.85
+              ],
+              [
+                -2,
+                -0.3,
+                0.85
+              ],
+              [
+                -2,
+                -0.6,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "tail_left",
+            verts: [
+              [
+                -2,
+                0.6,
+                0.5
+              ],
+              [
+                -2,
+                0.3,
+                0.85
+              ],
+              [
+                -2.6,
+                0,
+                1.1
+              ],
+              [
+                -2.6,
+                0,
+                0.4
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "tail_right",
+            verts: [
+              [
+                -2,
+                -0.6,
+                0.5
+              ],
+              [
+                -2,
+                -0.3,
+                0.85
+              ],
+              [
+                -2.6,
+                0,
+                1.1
+              ],
+              [
+                -2.6,
+                0,
+                0.4
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "chinook_nose_bottom",
+            verts: [
+              [
+                1.8,
+                -0.3,
+                0.15
+              ],
+              [
+                1.8,
+                0.3,
+                0.15
+              ],
+              [
+                2.4,
+                0.3,
+                0.15
+              ],
+              [
+                2.7,
+                0,
+                0.25
+              ],
+              [
+                2.4,
+                -0.3,
+                0.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "chinook_nose_lower_left",
+            verts: [
+              [
+                1.8,
+                0.3,
+                0.15
+              ],
+              [
+                2.4,
+                0.3,
+                0.15
+              ],
+              [
+                2.4,
+                0.5,
+                0.5
+              ],
+              [
+                1.8,
+                0.6,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "chinook_nose_lower_right",
+            verts: [
+              [
+                1.8,
+                -0.3,
+                0.15
+              ],
+              [
+                1.8,
+                -0.6,
+                0.5
+              ],
+              [
+                2.4,
+                -0.5,
+                0.5
+              ],
+              [
+                2.4,
+                -0.3,
+                0.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "chinook_nose_front_under",
+            verts: [
+              [
+                2.4,
+                0.3,
+                0.15
+              ],
+              [
+                2.7,
+                0,
+                0.25
+              ],
+              [
+                2.4,
+                -0.3,
+                0.15
+              ],
+              [
+                2.4,
+                -0.5,
+                0.5
+              ],
+              [
+                2.4,
+                0.5,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "chinook_nose_bump",
+            verts: [
+              [
+                2.7,
+                0,
+                0.25
+              ],
+              [
+                2.4,
+                0.5,
+                0.5
+              ],
+              [
+                2.3,
+                0.3,
+                0.6
+              ],
+              [
+                2.3,
+                -0.3,
+                0.6
+              ],
+              [
+                2.4,
+                -0.5,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "cockpit_front",
+            verts: [
+              [
+                2.3,
+                0.27,
+                0.6
+              ],
+              [
+                2.3,
+                -0.27,
+                0.6
+              ],
+              [
+                1.8,
+                -0.27,
+                0.85
+              ],
+              [
+                1.8,
+                0.27,
+                0.85
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "cockpit_left",
+            verts: [
+              [
+                2.4,
+                0.5,
+                0.5
+              ],
+              [
+                2.3,
+                0.33,
+                0.6
+              ],
+              [
+                1.8,
+                0.33,
+                0.85
+              ],
+              [
+                1.8,
+                0.6,
+                0.5
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "cockpit_right",
+            verts: [
+              [
+                2.4,
+                -0.5,
+                0.5
+              ],
+              [
+                1.8,
+                -0.6,
+                0.5
+              ],
+              [
+                1.8,
+                -0.33,
+                0.85
+              ],
+              [
+                2.3,
+                -0.33,
+                0.6
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "cockpit_frame_left",
+            verts: [
+              [
+                2.3,
+                0.33,
+                0.6
+              ],
+              [
+                2.3,
+                0.27,
+                0.6
+              ],
+              [
+                1.8,
+                0.27,
+                0.85
+              ],
+              [
+                1.8,
+                0.33,
+                0.85
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "cockpit_frame_right",
+            verts: [
+              [
+                2.3,
+                -0.27,
+                0.6
+              ],
+              [
+                2.3,
+                -0.33,
+                0.6
+              ],
+              [
+                1.8,
+                -0.33,
+                0.85
+              ],
+              [
+                1.8,
+                -0.27,
+                0.85
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "window_left",
+            verts: [
+              [
+                1.4,
+                0.6,
+                0.5
+              ],
+              [
+                0.9,
+                0.6,
+                0.5
+              ],
+              [
+                0.9,
+                0.3,
+                0.85
+              ],
+              [
+                1.4,
+                0.3,
+                0.85
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "window_right",
+            verts: [
+              [
+                1.4,
+                -0.6,
+                0.5
+              ],
+              [
+                0.9,
+                -0.6,
+                0.5
+              ],
+              [
+                0.9,
+                -0.3,
+                0.85
+              ],
+              [
+                1.4,
+                -0.3,
+                0.85
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "fpylon_front",
+            verts: [
+              [
+                1.8,
+                0.3,
+                0.85
+              ],
+              [
+                1.8,
+                -0.3,
+                0.85
+              ],
+              [
+                1.5,
+                0,
+                1.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "fpylon_right",
+            verts: [
+              [
+                1.8,
+                -0.3,
+                0.85
+              ],
+              [
+                1.2,
+                -0.3,
+                0.85
+              ],
+              [
+                1.5,
+                0,
+                1.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "fpylon_back",
+            verts: [
+              [
+                1.2,
+                -0.3,
+                0.85
+              ],
+              [
+                1.2,
+                0.3,
+                0.85
+              ],
+              [
+                1.5,
+                0,
+                1.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "fpylon_left",
+            verts: [
+              [
+                1.2,
+                0.3,
+                0.85
+              ],
+              [
+                1.8,
+                0.3,
+                0.85
+              ],
+              [
+                1.5,
+                0,
+                1.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "tail_roof",
+            verts: [
+              [
+                -2,
+                0.3,
+                0.85
+              ],
+              [
+                -2,
+                -0.3,
+                0.85
+              ],
+              [
+                -2.6,
+                0,
+                1.1
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "top",
+            verts: [
+              [
+                1.8,
+                0.3,
+                0.85
+              ],
+              [
+                1.8,
+                -0.3,
+                0.85
+              ],
+              [
+                -2,
+                -0.3,
+                0.85
+              ],
+              [
+                -2,
+                0.3,
+                0.85
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "rpylon_front",
+            verts: [
+              [
+                -2,
+                0.3,
+                0.85
+              ],
+              [
+                -2,
+                -0.3,
+                0.85
+              ],
+              [
+                -2.3,
+                0,
+                1.8
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "rpylon_right",
+            verts: [
+              [
+                -2,
+                -0.3,
+                0.85
+              ],
+              [
+                -2.6,
+                0,
+                1.1
+              ],
+              [
+                -2.3,
+                0,
+                1.8
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "rpylon_left",
+            verts: [
+              [
+                -2.6,
+                0,
+                1.1
+              ],
+              [
+                -2,
+                0.3,
+                0.85
+              ],
+              [
+                -2.3,
+                0,
+                1.8
+              ]
+            ],
+            color: "#ff6600"
+          }
+        ]
+      }
     ]
   };
 
@@ -1512,14 +2293,14 @@
     return ht;
   };
 
-  // ../src/game/models/fuel_truck_chassis.zdef
-  var fuel_truck_chassis_default = {
-    id: "fuel_truck_chassis",
-    pivot: [
-      0,
-      0,
-      0
-    ],
+  // ../src/game/models/fuel_truck.zdef
+  var fuel_truck_default = {
+    version: 3,
+    id: "fuel_truck",
+    label: "Fuel Truck",
+    static: false,
+    movementType: "auto",
+    crossNodeDepth: true,
     collisionBoxes: [
       {
         id: "body",
@@ -1531,601 +2312,1158 @@
         zMax: 0.85
       }
     ],
-    faces: [
+    nodes: [
       {
-        id: "ch_top",
-        verts: [
-          [
-            0,
-            -0.45,
-            0.3
-          ],
-          [
-            2.2,
-            -0.45,
-            0.3
-          ],
-          [
-            2.2,
-            0.45,
-            0.3
-          ],
-          [
-            0,
-            0.45,
-            0.3
-          ]
-        ],
-        color: "#4a6a4a"
-      },
-      {
-        id: "ch_front",
-        normal: [
-          1,
-          0
-        ],
-        verts: [
-          [
-            2.2,
-            -0.45,
-            0
-          ],
-          [
-            2.2,
-            0.45,
-            0
-          ],
-          [
-            2.2,
-            0.45,
-            0.3
-          ],
-          [
-            2.2,
-            -0.45,
-            0.3
-          ]
-        ],
-        color: "#4a6a4a"
-      },
-      {
-        id: "ch_rear",
-        normal: [
-          -1,
-          0
-        ],
-        verts: [
-          [
-            0,
-            0.45,
-            0
-          ],
-          [
-            0,
-            -0.45,
-            0
-          ],
-          [
-            0,
-            -0.45,
-            0.3
-          ],
-          [
-            0,
-            0.45,
-            0.3
-          ]
-        ],
-        color: "#3a5a3a"
-      },
-      {
-        id: "ch_right",
-        normal: [
+        depthAnchor: [
           0,
-          1
-        ],
-        verts: [
-          [
-            2.2,
-            0.45,
-            0
-          ],
-          [
-            0,
-            0.45,
-            0
-          ],
-          [
-            0,
-            0.45,
-            0.3
-          ],
-          [
-            2.2,
-            0.45,
-            0.3
-          ]
-        ],
-        color: "#2a4a2a"
-      },
-      {
-        id: "ch_left",
-        normal: [
           0,
-          -1
+          -3
         ],
-        verts: [
-          [
-            0,
-            -0.45,
-            0
-          ],
-          [
-            2.2,
-            -0.45,
-            0
-          ],
-          [
-            2.2,
-            -0.45,
-            0.3
-          ],
-          [
-            0,
-            -0.45,
-            0.3
-          ]
-        ],
-        color: "#2a4a2a"
-      },
-      {
-        id: "wrl",
-        normal: [
-          0,
-          -1
-        ],
-        verts: [
-          [
-            0.25,
-            -0.45,
-            0
-          ],
-          [
-            0.55,
-            -0.45,
-            0
-          ],
-          [
-            0.55,
-            -0.45,
-            0.22
-          ],
-          [
-            0.25,
-            -0.45,
-            0.22
-          ]
-        ],
-        color: "#1a2e1a"
-      },
-      {
-        id: "wrr",
-        normal: [
-          0,
-          1
-        ],
-        verts: [
-          [
-            0.25,
-            0.45,
-            0
-          ],
-          [
-            0.55,
-            0.45,
-            0
-          ],
-          [
-            0.55,
-            0.45,
-            0.22
-          ],
-          [
-            0.25,
-            0.45,
-            0.22
-          ]
-        ],
-        color: "#1a2e1a"
-      }
-    ],
-    parts: [
-      {
-        id: "wheel_front_L",
-        rotate: { pivot: [1.8, -0.45, 0.11], axis: [0, 0, 1], param: "steerAngle" },
         faces: [
-          { id: "wfl", normal: [0, -1], verts: [[1.65, -0.45, 0], [1.95, -0.45, 0], [1.95, -0.45, 0.22], [1.65, -0.45, 0.22]], color: "#1a2e1a" }
+          {
+            id: "ch_top",
+            verts: [
+              [
+                0,
+                -0.45,
+                0.3
+              ],
+              [
+                2.2,
+                -0.45,
+                0.3
+              ],
+              [
+                2.2,
+                0.45,
+                0.3
+              ],
+              [
+                0,
+                0.45,
+                0.3
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "ch_front",
+            verts: [
+              [
+                2.2,
+                -0.45,
+                0
+              ],
+              [
+                2.2,
+                0.45,
+                0
+              ],
+              [
+                2.2,
+                0.45,
+                0.3
+              ],
+              [
+                2.2,
+                -0.45,
+                0.3
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "ch_rear",
+            verts: [
+              [
+                0,
+                0.45,
+                0
+              ],
+              [
+                0,
+                -0.45,
+                0
+              ],
+              [
+                0,
+                -0.45,
+                0.3
+              ],
+              [
+                0,
+                0.45,
+                0.3
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "ch_right",
+            verts: [
+              [
+                2.2,
+                0.45,
+                0
+              ],
+              [
+                0,
+                0.45,
+                0
+              ],
+              [
+                0,
+                0.45,
+                0.3
+              ],
+              [
+                2.2,
+                0.45,
+                0.3
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "ch_left",
+            verts: [
+              [
+                0,
+                -0.45,
+                0
+              ],
+              [
+                2.2,
+                -0.45,
+                0
+              ],
+              [
+                2.2,
+                -0.45,
+                0.3
+              ],
+              [
+                0,
+                -0.45,
+                0.3
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "wrl",
+            verts: [
+              [
+                0.25,
+                -0.45,
+                0
+              ],
+              [
+                0.55,
+                -0.45,
+                0
+              ],
+              [
+                0.55,
+                -0.45,
+                0.22
+              ],
+              [
+                0.25,
+                -0.45,
+                0.22
+              ]
+            ],
+            color: "#1a2e1a"
+          },
+          {
+            id: "wrr",
+            verts: [
+              [
+                0.55,
+                0.45,
+                0
+              ],
+              [
+                0.25,
+                0.45,
+                0
+              ],
+              [
+                0.25,
+                0.45,
+                0.22
+              ],
+              [
+                0.55,
+                0.45,
+                0.22
+              ]
+            ],
+            color: "#1a2e1a"
+          }
+        ],
+        children: [
+          {
+            rotate: {
+              pivot: [
+                1.8,
+                -0.45,
+                0.11
+              ],
+              axis: [
+                0,
+                0,
+                1
+              ],
+              param: "steerAngle"
+            },
+            faces: [
+              {
+                id: "wfl",
+                verts: [
+                  [
+                    1.65,
+                    -0.45,
+                    0
+                  ],
+                  [
+                    1.95,
+                    -0.45,
+                    0
+                  ],
+                  [
+                    1.95,
+                    -0.45,
+                    0.22
+                  ],
+                  [
+                    1.65,
+                    -0.45,
+                    0.22
+                  ]
+                ],
+                color: "#1a2e1a"
+              }
+            ]
+          },
+          {
+            rotate: {
+              pivot: [
+                1.8,
+                0.45,
+                0.11
+              ],
+              axis: [
+                0,
+                0,
+                1
+              ],
+              param: "steerAngle"
+            },
+            faces: [
+              {
+                id: "wfr",
+                verts: [
+                  [
+                    1.95,
+                    0.45,
+                    0
+                  ],
+                  [
+                    1.65,
+                    0.45,
+                    0
+                  ],
+                  [
+                    1.65,
+                    0.45,
+                    0.22
+                  ],
+                  [
+                    1.95,
+                    0.45,
+                    0.22
+                  ]
+                ],
+                color: "#1a2e1a"
+              }
+            ]
+          }
         ]
       },
       {
-        id: "wheel_front_R",
-        rotate: { pivot: [1.8, 0.45, 0.11], axis: [0, 0, 1], param: "steerAngle" },
+        depthAnchor: [
+          0.675,
+          0,
+          0.62
+        ],
         faces: [
-          { id: "wfr", normal: [0, 1], verts: [[1.65, 0.45, 0], [1.95, 0.45, 0], [1.95, 0.45, 0.22], [1.65, 0.45, 0.22]], color: "#1a2e1a" }
+          {
+            id: "tk_side0",
+            verts: [
+              [
+                0.25,
+                0,
+                0.94
+              ],
+              [
+                1.1,
+                0,
+                0.94
+              ],
+              [
+                1.1,
+                0.16,
+                0.8971
+              ],
+              [
+                0.25,
+                0.16,
+                0.8971
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "tk_side1",
+            verts: [
+              [
+                0.25,
+                0.16,
+                0.8971
+              ],
+              [
+                1.1,
+                0.16,
+                0.8971
+              ],
+              [
+                1.1,
+                0.2771,
+                0.78
+              ],
+              [
+                0.25,
+                0.2771,
+                0.78
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "tk_side2",
+            verts: [
+              [
+                0.25,
+                0.2771,
+                0.78
+              ],
+              [
+                1.1,
+                0.2771,
+                0.78
+              ],
+              [
+                1.1,
+                0.32,
+                0.62
+              ],
+              [
+                0.25,
+                0.32,
+                0.62
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "tk_side3",
+            verts: [
+              [
+                0.25,
+                0.32,
+                0.62
+              ],
+              [
+                1.1,
+                0.32,
+                0.62
+              ],
+              [
+                1.1,
+                0.2771,
+                0.46
+              ],
+              [
+                0.25,
+                0.2771,
+                0.46
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side4",
+            verts: [
+              [
+                0.25,
+                0.2771,
+                0.46
+              ],
+              [
+                1.1,
+                0.2771,
+                0.46
+              ],
+              [
+                1.1,
+                0.16,
+                0.3429
+              ],
+              [
+                0.25,
+                0.16,
+                0.3429
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side5",
+            verts: [
+              [
+                0.25,
+                0.16,
+                0.3429
+              ],
+              [
+                1.1,
+                0.16,
+                0.3429
+              ],
+              [
+                1.1,
+                0,
+                0.3
+              ],
+              [
+                0.25,
+                0,
+                0.3
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side6",
+            verts: [
+              [
+                0.25,
+                0,
+                0.3
+              ],
+              [
+                1.1,
+                0,
+                0.3
+              ],
+              [
+                1.1,
+                -0.16,
+                0.3429
+              ],
+              [
+                0.25,
+                -0.16,
+                0.3429
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side7",
+            verts: [
+              [
+                0.25,
+                -0.16,
+                0.3429
+              ],
+              [
+                1.1,
+                -0.16,
+                0.3429
+              ],
+              [
+                1.1,
+                -0.2771,
+                0.46
+              ],
+              [
+                0.25,
+                -0.2771,
+                0.46
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side8",
+            verts: [
+              [
+                0.25,
+                -0.2771,
+                0.46
+              ],
+              [
+                1.1,
+                -0.2771,
+                0.46
+              ],
+              [
+                1.1,
+                -0.32,
+                0.62
+              ],
+              [
+                0.25,
+                -0.32,
+                0.62
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side9",
+            verts: [
+              [
+                0.25,
+                -0.32,
+                0.62
+              ],
+              [
+                1.1,
+                -0.32,
+                0.62
+              ],
+              [
+                1.1,
+                -0.2771,
+                0.78
+              ],
+              [
+                0.25,
+                -0.2771,
+                0.78
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side10",
+            verts: [
+              [
+                0.25,
+                -0.2771,
+                0.78
+              ],
+              [
+                1.1,
+                -0.2771,
+                0.78
+              ],
+              [
+                1.1,
+                -0.16,
+                0.8971
+              ],
+              [
+                0.25,
+                -0.16,
+                0.8971
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "tk_side11",
+            verts: [
+              [
+                0.25,
+                -0.16,
+                0.8971
+              ],
+              [
+                1.1,
+                -0.16,
+                0.8971
+              ],
+              [
+                1.1,
+                0,
+                0.94
+              ],
+              [
+                0.25,
+                0,
+                0.94
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "tk_cap_front",
+            verts: [
+              [
+                1.1,
+                -0.16,
+                0.8971
+              ],
+              [
+                1.1,
+                -0.2771,
+                0.78
+              ],
+              [
+                1.1,
+                -0.32,
+                0.62
+              ],
+              [
+                1.1,
+                -0.2771,
+                0.46
+              ],
+              [
+                1.1,
+                -0.16,
+                0.3429
+              ],
+              [
+                1.1,
+                0,
+                0.3
+              ],
+              [
+                1.1,
+                0.16,
+                0.3429
+              ],
+              [
+                1.1,
+                0.2771,
+                0.46
+              ],
+              [
+                1.1,
+                0.32,
+                0.62
+              ],
+              [
+                1.1,
+                0.2771,
+                0.78
+              ],
+              [
+                1.1,
+                0.16,
+                0.8971
+              ],
+              [
+                1.1,
+                0,
+                0.94
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_cap_rear",
+            verts: [
+              [
+                0.25,
+                0,
+                0.94
+              ],
+              [
+                0.25,
+                0.16,
+                0.8971
+              ],
+              [
+                0.25,
+                0.2771,
+                0.78
+              ],
+              [
+                0.25,
+                0.32,
+                0.62
+              ],
+              [
+                0.25,
+                0.2771,
+                0.46
+              ],
+              [
+                0.25,
+                0.16,
+                0.3429
+              ],
+              [
+                0.25,
+                0,
+                0.3
+              ],
+              [
+                0.25,
+                -0.16,
+                0.3429
+              ],
+              [
+                0.25,
+                -0.2771,
+                0.46
+              ],
+              [
+                0.25,
+                -0.32,
+                0.62
+              ],
+              [
+                0.25,
+                -0.2771,
+                0.78
+              ],
+              [
+                0.25,
+                -0.16,
+                0.8971
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_stripe",
+            verts: [
+              [
+                0.29,
+                -0.09,
+                0.945
+              ],
+              [
+                1.06,
+                -0.09,
+                0.945
+              ],
+              [
+                1.06,
+                0.09,
+                0.945
+              ],
+              [
+                0.29,
+                0.09,
+                0.945
+              ]
+            ],
+            color: "#ff4400"
+          }
         ]
-      }
-    ]
-  };
-
-  // ../src/game/models/fuel_truck_tank.zdef
-  var fuel_truck_tank_default = {
-    id: "fuel_truck_tank",
-    pivot: [
-      0,
-      0,
-      0
-    ],
-    faces: [
-      {
-        id: "tk_top",
-        verts: [
-          [
-            0.25,
-            -0.38,
-            1.06
-          ],
-          [
-            1.4,
-            -0.38,
-            1.06
-          ],
-          [
-            1.4,
-            0.38,
-            1.06
-          ],
-          [
-            0.25,
-            0.38,
-            1.06
-          ]
-        ],
-        color: "#cccccc"
       },
       {
-        id: "tk_front",
-        normal: [
-          1,
-          0
-        ],
-        verts: [
-          [
-            1.4,
-            -0.38,
-            0.3
-          ],
-          [
-            1.4,
-            0.38,
-            0.3
-          ],
-          [
-            1.4,
-            0.38,
-            1.06
-          ],
-          [
-            1.4,
-            -0.38,
-            1.06
-          ]
-        ],
-        color: "#aaaaaa"
-      },
-      {
-        id: "tk_right",
-        normal: [
+        depthAnchor: [
+          1.3,
           0,
-          1
+          0.51
         ],
-        verts: [
-          [
-            1.4,
-            0.38,
-            0.3
-          ],
-          [
-            0.25,
-            0.38,
-            0.3
-          ],
-          [
-            0.25,
-            0.38,
-            1.06
-          ],
-          [
-            1.4,
-            0.38,
-            1.06
-          ]
-        ],
-        color: "#999999"
+        faces: [
+          {
+            id: "box_front",
+            verts: [
+              [
+                1.5,
+                -0.42,
+                0.3
+              ],
+              [
+                1.5,
+                0.42,
+                0.3
+              ],
+              [
+                1.5,
+                0.42,
+                0.72
+              ],
+              [
+                1.5,
+                -0.42,
+                0.72
+              ]
+            ],
+            color: "#e8e8e8"
+          },
+          {
+            id: "box_rear",
+            verts: [
+              [
+                1.1,
+                0.42,
+                0.3
+              ],
+              [
+                1.1,
+                -0.42,
+                0.3
+              ],
+              [
+                1.1,
+                -0.42,
+                0.72
+              ],
+              [
+                1.1,
+                0.42,
+                0.72
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "box_right",
+            verts: [
+              [
+                1.5,
+                0.42,
+                0.3
+              ],
+              [
+                1.1,
+                0.42,
+                0.3
+              ],
+              [
+                1.1,
+                0.42,
+                0.72
+              ],
+              [
+                1.5,
+                0.42,
+                0.72
+              ]
+            ],
+            color: "#e8e8e8"
+          },
+          {
+            id: "box_left",
+            verts: [
+              [
+                1.1,
+                -0.42,
+                0.3
+              ],
+              [
+                1.5,
+                -0.42,
+                0.3
+              ],
+              [
+                1.5,
+                -0.42,
+                0.72
+              ],
+              [
+                1.1,
+                -0.42,
+                0.72
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "box_top",
+            verts: [
+              [
+                1.1,
+                -0.42,
+                0.72
+              ],
+              [
+                1.5,
+                -0.42,
+                0.72
+              ],
+              [
+                1.5,
+                0.42,
+                0.72
+              ],
+              [
+                1.1,
+                0.42,
+                0.72
+              ]
+            ],
+            color: "#e8e8e8"
+          },
+          {
+            id: "box_door_l1",
+            type: "line",
+            verts: [
+              [
+                1.1800000000000002,
+                0.421,
+                0.35
+              ],
+              [
+                1.42,
+                0.421,
+                0.35
+              ]
+            ],
+            color: "#8a8a8a",
+            lineWidth: 1.2
+          },
+          {
+            id: "box_door_l2",
+            type: "line",
+            verts: [
+              [
+                1.42,
+                0.421,
+                0.35
+              ],
+              [
+                1.42,
+                0.421,
+                0.6599999999999999
+              ]
+            ],
+            color: "#8a8a8a",
+            lineWidth: 1.2
+          },
+          {
+            id: "box_door_l3",
+            type: "line",
+            verts: [
+              [
+                1.42,
+                0.421,
+                0.6599999999999999
+              ],
+              [
+                1.1800000000000002,
+                0.421,
+                0.6599999999999999
+              ]
+            ],
+            color: "#8a8a8a",
+            lineWidth: 1.2
+          },
+          {
+            id: "box_door_l4",
+            type: "line",
+            verts: [
+              [
+                1.1800000000000002,
+                0.421,
+                0.6599999999999999
+              ],
+              [
+                1.1800000000000002,
+                0.421,
+                0.35
+              ]
+            ],
+            color: "#8a8a8a",
+            lineWidth: 1.2
+          },
+          {
+            id: "box_door_handle",
+            type: "line",
+            verts: [
+              [
+                1.25,
+                0.421,
+                0.5049999999999999
+              ],
+              [
+                1.35,
+                0.421,
+                0.5049999999999999
+              ]
+            ],
+            color: "#8a8a8a",
+            lineWidth: 1.6
+          }
+        ]
       },
       {
-        id: "tk_left",
-        normal: [
+        depthAnchor: [
+          1.85,
           0,
-          -1
+          0.55
         ],
-        verts: [
-          [
-            0.25,
-            -0.38,
-            0.3
-          ],
-          [
-            1.4,
-            -0.38,
-            0.3
-          ],
-          [
-            1.4,
-            -0.38,
-            1.06
-          ],
-          [
-            0.25,
-            -0.38,
-            1.06
-          ]
-        ],
-        color: "#bbbbbb"
-      },
-      {
-        id: "tk_rear",
-        normal: [
-          -1,
-          0
-        ],
-        verts: [
-          [
-            0.25,
-            0.38,
-            0.3
-          ],
-          [
-            0.25,
-            -0.38,
-            0.3
-          ],
-          [
-            0.25,
-            -0.38,
-            1.06
-          ],
-          [
-            0.25,
-            0.38,
-            1.06
-          ]
-        ],
-        color: "#aaaaaa"
-      },
-      {
-        id: "tk_stripe",
-        verts: [
-          [
-            0.3,
-            -0.04,
-            1.065
-          ],
-          [
-            1.35,
-            -0.04,
-            1.065
-          ],
-          [
-            1.35,
-            0.04,
-            1.065
-          ],
-          [
-            0.3,
-            0.04,
-            1.065
-          ]
-        ],
-        color: "#ff4400"
-      }
-    ]
-  };
-
-  // ../src/game/models/fuel_truck_cab.zdef
-  var fuel_truck_cab_default = {
-    id: "fuel_truck_cab",
-    pivot: [
-      0,
-      0,
-      0
-    ],
-    faces: [
-      {
-        id: "cab_top",
-        verts: [
-          [
-            1.5,
-            -0.45,
-            0.85
-          ],
-          [
-            2.2,
-            -0.45,
-            0.85
-          ],
-          [
-            2.2,
-            0.45,
-            0.85
-          ],
-          [
-            1.5,
-            0.45,
-            0.85
-          ]
-        ],
-        color: "#6a9a6a",
-        stroke: "#8aba8a"
-      },
-      {
-        id: "cab_front",
-        normal: [
-          1,
-          0
-        ],
-        verts: [
-          [
-            2.2,
-            -0.45,
-            0.3
-          ],
-          [
-            2.2,
-            0.45,
-            0.3
-          ],
-          [
-            2.2,
-            0.45,
-            0.85
-          ],
-          [
-            2.2,
-            -0.45,
-            0.85
-          ]
-        ],
-        color: "#3a6a3a"
-      },
-      {
-        id: "cab_win",
-        normal: [
-          1,
-          0
-        ],
-        verts: [
-          [
-            2.201,
-            -0.25,
-            0.45
-          ],
-          [
-            2.201,
-            0.25,
-            0.45
-          ],
-          [
-            2.201,
-            0.25,
-            0.75
-          ],
-          [
-            2.201,
-            -0.25,
-            0.75
-          ]
-        ],
-        color: "#112233"
-      },
-      {
-        id: "cab_right",
-        normal: [
-          0,
-          1
-        ],
-        verts: [
-          [
-            2.2,
-            0.45,
-            0.3
-          ],
-          [
-            1.5,
-            0.45,
-            0.3
-          ],
-          [
-            1.5,
-            0.45,
-            0.85
-          ],
-          [
-            2.2,
-            0.45,
-            0.85
-          ]
-        ],
-        color: "#4a7a4a"
-      },
-      {
-        id: "cab_left",
-        normal: [
-          0,
-          -1
-        ],
-        verts: [
-          [
-            1.5,
-            -0.45,
-            0.3
-          ],
-          [
-            2.2,
-            -0.45,
-            0.3
-          ],
-          [
-            2.2,
-            -0.45,
-            0.85
-          ],
-          [
-            1.5,
-            -0.45,
-            0.85
-          ]
-        ],
-        color: "#5a8a5a"
-      },
-      {
-        id: "cab_rear",
-        normal: [
-          -1,
-          0
-        ],
-        verts: [
-          [
-            1.5,
-            0.45,
-            0.3
-          ],
-          [
-            1.5,
-            -0.45,
-            0.3
-          ],
-          [
-            1.5,
-            -0.45,
-            0.85
-          ],
-          [
-            1.5,
-            0.45,
-            0.85
-          ]
-        ],
-        color: "#3a5a3a"
+        faces: [
+          {
+            id: "cab_left",
+            verts: [
+              [
+                1.5,
+                -0.45,
+                0.3
+              ],
+              [
+                2.2,
+                -0.45,
+                0.3
+              ],
+              [
+                2.2,
+                -0.45,
+                0.8
+              ],
+              [
+                1.5,
+                -0.45,
+                0.8
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "cab_right",
+            verts: [
+              [
+                2.2,
+                0.45,
+                0.3
+              ],
+              [
+                1.5,
+                0.45,
+                0.3
+              ],
+              [
+                1.5,
+                0.45,
+                0.8
+              ],
+              [
+                2.2,
+                0.45,
+                0.8
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "cab_front",
+            verts: [
+              [
+                2.2,
+                -0.45,
+                0.3
+              ],
+              [
+                2.2,
+                0.45,
+                0.3
+              ],
+              [
+                2.2,
+                0.45,
+                0.8
+              ],
+              [
+                2.2,
+                -0.45,
+                0.8
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "cab_rear",
+            verts: [
+              [
+                1.5,
+                0.45,
+                0.3
+              ],
+              [
+                1.5,
+                -0.45,
+                0.3
+              ],
+              [
+                1.5,
+                -0.45,
+                0.8
+              ],
+              [
+                1.5,
+                0.45,
+                0.8
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "cab_roof",
+            verts: [
+              [
+                2.2,
+                -0.45,
+                0.8
+              ],
+              [
+                2.2,
+                0.45,
+                0.8
+              ],
+              [
+                1.5,
+                0.45,
+                0.8
+              ],
+              [
+                1.5,
+                -0.45,
+                0.8
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "cab_win",
+            verts: [
+              [
+                2.1990000000000003,
+                -0.4,
+                0.4
+              ],
+              [
+                2.1990000000000003,
+                0.4,
+                0.4
+              ],
+              [
+                2.1990000000000003,
+                0.4,
+                0.75
+              ],
+              [
+                2.1990000000000003,
+                -0.4,
+                0.75
+              ]
+            ],
+            color: "#112233"
+          }
+        ]
       }
     ]
   };
@@ -2152,7 +3490,7 @@
     const drawFace = (points, color, strokeColor, zOffset, cX, cY) => {
       _drawFace(ctx, iso2, points, color, strokeColor, zOffset, cX, cY);
     };
-    const drawTree = (tX, tY, cx, cy, scale = 1, gz = 0, type = "pine", wind = { x: 0, y: 0, phase: 0 }, heliPos) => {
+    const drawTree = (tX, tY, cx, cy, scale = 1, gz = 0, type = "pine", wind = { x: 0, y: 0, phase: 0 }, heliPos, snow = false) => {
       if (gz < 0.05) gz = 0.05;
       const z0 = gz;
       const trunkH = 0.5 * scale;
@@ -2175,7 +3513,7 @@
         const layers = [
           { zBase: z0 + trunkH * 0.3, zTop: z0 + trunkH * 0.3 + 1.4 * scale, rBase: 0.9 * scale, color: "#1a4a1a", sway: 0.3 },
           { zBase: z0 + trunkH * 0.3 + 0.7 * scale, zTop: z0 + trunkH * 0.3 + 1.9 * scale, rBase: 0.65 * scale, color: "#1e5a1e", sway: 0.65 },
-          { zBase: z0 + trunkH * 0.3 + 1.3 * scale, zTop: z0 + trunkH * 0.3 + 2.3 * scale, rBase: 0.4 * scale, color: "#246024", sway: 1 }
+          { zBase: z0 + trunkH * 0.3 + 1.3 * scale, zTop: z0 + trunkH * 0.3 + 2.3 * scale, rBase: 0.4 * scale, color: snow ? "#a8bcc2" : "#246024", sway: 1 }
         ];
         layers.forEach((l) => {
           for (let i = 6; i >= 0; i--) {
@@ -2581,26 +3919,22 @@
         }
       });
     };
-    const drawFuelTruck = (tX, tY, angle, opts = {}) => {
+    const drawFuelTruck = (tX, tY, angle, camX, camY, opts = {}) => {
       const { z = 0, armExtend = 0, armTarget = null, getFuelingState, steerAngle = 0 } = opts;
       const cosA = Math.cos(angle), sinA = Math.sin(angle);
-      const tkDepth = tX + tY + 0.825 * (cosA + sinA);
       const cabDepth = tX + tY + 1.85 * (cosA + sinA);
-      const chDepth = Math.min(tkDepth, cabDepth) - 0.01;
       const pivotWX = tX + 0.3 * cosA;
       const pivotWY = tY + 0.3 * sinA;
-      SceneRenderer.add(applyParts(fuel_truck_chassis_default, { steerAngle }), { x: tX, y: tY, z, angle, depth: chDepth });
-      SceneRenderer.add(fuel_truck_tank_default, { x: tX, y: tY, z, angle, depth: tkDepth });
-      SceneRenderer.add(fuel_truck_cab_default, {
-        x: tX,
-        y: tY,
+      renderNodes(fuel_truck_default, { steerAngle }, { x: tX, y: tY, z, angle }, SceneRenderer, camX, camY);
+      SceneRenderer.add(null, {
+        x: pivotWX,
+        y: pivotWY,
         z,
-        angle,
         depth: cabDepth,
-        drawFn: (camX, camY) => {
+        drawFn: (camX2, camY2) => {
           if (armExtend <= 0) return;
           const pivotZ = z + 0.98;
-          const pivotIso = iso2(pivotWX, pivotWY, pivotZ, camX, camY);
+          const pivotIso = iso2(pivotWX, pivotWY, pivotZ, camX2, camY2);
           let elbowWX, elbowWY;
           if (armTarget) {
             const dx = armTarget.x - pivotWX, dy = armTarget.y - pivotWY;
@@ -2612,7 +3946,7 @@
             elbowWY = pivotWY - sinA * 0.65 * armExtend;
           }
           const elbowZ = pivotZ + 0.25 * Math.sin(armExtend * Math.PI * 0.7);
-          const elbowIso = iso2(elbowWX, elbowWY, elbowZ, camX, camY);
+          const elbowIso = iso2(elbowWX, elbowWY, elbowZ, camX2, camY2);
           let nozzleWX, nozzleWY;
           if (armTarget) {
             const dx = armTarget.x - pivotWX, dy = armTarget.y - pivotWY;
@@ -2624,7 +3958,7 @@
             nozzleWY = elbowWY - sinA * 0.5 * armExtend;
           }
           const nozzleZ = elbowZ - 0.7 * armExtend;
-          const nozzleIso = iso2(nozzleWX, nozzleWY, nozzleZ, camX, camY);
+          const nozzleIso = iso2(nozzleWX, nozzleWY, nozzleZ, camX2, camY2);
           ctx.lineCap = "round";
           ctx.lineJoin = "round";
           ctx.strokeStyle = "#777";
@@ -3111,7 +4445,744 @@
     return { drawFace, drawTree, drawPerson, drawTractor, drawFuelTruck, drawHeli };
   };
 
+  // ../src/game/sim/test-train-path.ts
+  var X0 = 6;
+  var Y0 = 60;
+  var STRAIGHT_LEN = 34;
+  var TURN_RADIUS = 6;
+  var PERIMETER = 2 * STRAIGHT_LEN + 2 * Math.PI * TURN_RADIUS;
+  var GAUGE = 0.19;
+  var SLEEPER_SPACING = 0.16;
+  var WATER_FLOAT_Z = 0.3;
+  var pointAt = (s) => {
+    let s1 = (s % PERIMETER + PERIMETER) % PERIMETER;
+    if (s1 < STRAIGHT_LEN) {
+      return { x: X0 + s1, y: Y0 - TURN_RADIUS, angle: 0 };
+    }
+    s1 -= STRAIGHT_LEN;
+    if (s1 < Math.PI * TURN_RADIUS) {
+      const a2 = -Math.PI / 2 + s1 / TURN_RADIUS;
+      return { x: X0 + STRAIGHT_LEN + TURN_RADIUS * Math.cos(a2), y: Y0 + TURN_RADIUS * Math.sin(a2), angle: a2 + Math.PI / 2 };
+    }
+    s1 -= Math.PI * TURN_RADIUS;
+    if (s1 < STRAIGHT_LEN) {
+      return { x: X0 + STRAIGHT_LEN - s1, y: Y0 + TURN_RADIUS, angle: Math.PI };
+    }
+    s1 -= STRAIGHT_LEN;
+    const a = Math.PI / 2 + s1 / TURN_RADIUS;
+    return { x: X0 + TURN_RADIUS * Math.cos(a), y: Y0 + TURN_RADIUS * Math.sin(a), angle: a + Math.PI / 2 };
+  };
+  var poseAt = (s, bogieSeparation) => {
+    const half = bogieSeparation / 2;
+    const pFront = pointAt(s + half);
+    const pRear = pointAt(s - half);
+    const bodyX = (pFront.x + pRear.x) / 2;
+    const bodyY = (pFront.y + pRear.y) / 2;
+    const bodyAngle = Math.atan2(pFront.y - pRear.y, pFront.x - pRear.x);
+    return {
+      bodyX,
+      bodyY,
+      bodyAngle,
+      frontBogie: { x: pFront.x, y: pFront.y, angle: pFront.angle },
+      rearBogie: { x: pRear.x, y: pRear.y, angle: pRear.angle }
+    };
+  };
+  var LOCO_BOGIE_SEP = 2.6;
+  var WAGON_BOGIE_SEP = 2.2;
+  var LOCO_HALF_LEN = 2.5;
+  var WAGON_HALF_LEN = 2;
+  var COUPLER_GAP = 0.3;
+  var WAGON_COUNT = 3;
+  var CONTAINER_COLORS = ["#2d6b35", "#2a4f8f", "#8f2d2d"];
+  var WAGON_DECK_Z = 0.3;
+  var getConsist = (s0) => {
+    const cars = [{ kind: "locomotive", pose: poseAt(s0, LOCO_BOGIE_SEP) }];
+    let s = s0 - LOCO_HALF_LEN - COUPLER_GAP - WAGON_HALF_LEN;
+    for (let i = 0; i < WAGON_COUNT; i++) {
+      cars.push({ kind: "wagon", pose: poseAt(s, WAGON_BOGIE_SEP), containerColor: CONTAINER_COLORS[i % CONTAINER_COLORS.length] });
+      s -= WAGON_HALF_LEN * 2 + COUPLER_GAP;
+    }
+    return cars;
+  };
+  var getRailSamples = () => {
+    const steps = Math.round(PERIMETER / SLEEPER_SPACING);
+    const left = [];
+    const right = [];
+    for (let i = 0; i <= steps; i++) {
+      const p = pointAt(i / steps * PERIMETER);
+      const perpX = -Math.sin(p.angle), perpY = Math.cos(p.angle);
+      left.push({ x: p.x + perpX * GAUGE, y: p.y + perpY * GAUGE });
+      right.push({ x: p.x - perpX * GAUGE, y: p.y - perpY * GAUGE });
+    }
+    return { left, right };
+  };
+
+  // ../src/game/models/objects/freight_locomotive.zdef
+  var freight_locomotive_default = {
+    version: 3,
+    id: "freight_locomotive",
+    label: "Freight Locomotive",
+    static: false,
+    movementType: "rail",
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: -2.5,
+        xMax: 2.5,
+        yMin: -0.5,
+        yMax: 0.5,
+        zMin: 0,
+        zMax: 1.1
+      }
+    ],
+    nodes: [
+      {
+        faces: [
+          {
+            id: "body_back",
+            verts: [
+              [
+                -2.5,
+                0.5,
+                0
+              ],
+              [
+                -2.5,
+                -0.5,
+                0
+              ],
+              [
+                -2.5,
+                -0.5,
+                1.1
+              ],
+              [
+                -2.5,
+                0.5,
+                1.1
+              ]
+            ],
+            color: "#a81e22"
+          },
+          {
+            id: "body_left",
+            verts: [
+              [
+                2.5,
+                -0.5,
+                1.1
+              ],
+              [
+                -2.5,
+                -0.5,
+                1.1
+              ],
+              [
+                -2.5,
+                -0.5,
+                0
+              ],
+              [
+                2.5,
+                -0.5,
+                0
+              ]
+            ],
+            color: "#a81e22"
+          },
+          {
+            id: "body_right",
+            verts: [
+              [
+                -2.5,
+                0.5,
+                1.1
+              ],
+              [
+                2.5,
+                0.5,
+                1.1
+              ],
+              [
+                2.5,
+                0.5,
+                0
+              ],
+              [
+                -2.5,
+                0.5,
+                0
+              ]
+            ],
+            color: "#a81e22"
+          },
+          {
+            id: "body_front",
+            verts: [
+              [
+                2.5,
+                -0.5,
+                0
+              ],
+              [
+                2.5,
+                0.5,
+                0
+              ],
+              [
+                2.5,
+                0.5,
+                1.1
+              ],
+              [
+                2.5,
+                -0.5,
+                1.1
+              ]
+            ],
+            color: "#a81e22"
+          },
+          {
+            id: "stripe_left",
+            verts: [
+              [
+                2.45,
+                -0.501,
+                0.3
+              ],
+              [
+                -2.45,
+                -0.501,
+                0.3
+              ],
+              [
+                -2.45,
+                -0.501,
+                0.15
+              ],
+              [
+                2.45,
+                -0.501,
+                0.15
+              ]
+            ],
+            color: "#dcdcdc"
+          },
+          {
+            id: "stripe_right",
+            verts: [
+              [
+                -2.45,
+                0.501,
+                0.3
+              ],
+              [
+                2.45,
+                0.501,
+                0.3
+              ],
+              [
+                2.45,
+                0.501,
+                0.15
+              ],
+              [
+                -2.45,
+                0.501,
+                0.15
+              ]
+            ],
+            color: "#dcdcdc"
+          },
+          {
+            id: "win_back",
+            verts: [
+              [
+                -2.499,
+                0.35,
+                0.55
+              ],
+              [
+                -2.499,
+                -0.35,
+                0.55
+              ],
+              [
+                -2.499,
+                -0.35,
+                0.9
+              ],
+              [
+                -2.499,
+                0.35,
+                0.9
+              ]
+            ],
+            color: "#1a1a1a"
+          },
+          {
+            id: "win_front",
+            verts: [
+              [
+                2.499,
+                -0.35,
+                0.55
+              ],
+              [
+                2.499,
+                0.35,
+                0.55
+              ],
+              [
+                2.499,
+                0.35,
+                0.9
+              ],
+              [
+                2.499,
+                -0.35,
+                0.9
+              ]
+            ],
+            color: "#1a1a1a"
+          },
+          {
+            id: "body_top",
+            verts: [
+              [
+                -2.5,
+                -0.5,
+                1.1
+              ],
+              [
+                2.5,
+                -0.5,
+                1.1
+              ],
+              [
+                2.5,
+                0.5,
+                1.1
+              ],
+              [
+                -2.5,
+                0.5,
+                1.1
+              ]
+            ],
+            color: "#a81e22"
+          }
+        ]
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/freight_wagon.zdef
+  var freight_wagon_default = {
+    version: 3,
+    id: "freight_wagon",
+    label: "Freight Wagon",
+    static: false,
+    movementType: "rail",
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: -2,
+        xMax: 2,
+        yMin: -0.375,
+        yMax: 0.375,
+        zMin: 0,
+        zMax: 0.3
+      }
+    ],
+    nodes: [
+      {
+        faces: [
+          {
+            id: "body_back",
+            verts: [
+              [
+                -2,
+                0.375,
+                0
+              ],
+              [
+                -2,
+                -0.375,
+                0
+              ],
+              [
+                -2,
+                -0.375,
+                0.3
+              ],
+              [
+                -2,
+                0.375,
+                0.3
+              ]
+            ],
+            color: "#4a3222"
+          },
+          {
+            id: "body_left",
+            verts: [
+              [
+                2,
+                -0.375,
+                0.3
+              ],
+              [
+                -2,
+                -0.375,
+                0.3
+              ],
+              [
+                -2,
+                -0.375,
+                0
+              ],
+              [
+                2,
+                -0.375,
+                0
+              ]
+            ],
+            color: "#4a3222"
+          },
+          {
+            id: "body_right",
+            verts: [
+              [
+                -2,
+                0.375,
+                0.3
+              ],
+              [
+                2,
+                0.375,
+                0.3
+              ],
+              [
+                2,
+                0.375,
+                0
+              ],
+              [
+                -2,
+                0.375,
+                0
+              ]
+            ],
+            color: "#4a3222"
+          },
+          {
+            id: "body_front",
+            verts: [
+              [
+                2,
+                -0.375,
+                0
+              ],
+              [
+                2,
+                0.375,
+                0
+              ],
+              [
+                2,
+                0.375,
+                0.3
+              ],
+              [
+                2,
+                -0.375,
+                0.3
+              ]
+            ],
+            color: "#4a3222"
+          },
+          {
+            id: "body_top",
+            verts: [
+              [
+                -2,
+                -0.375,
+                0.3
+              ],
+              [
+                2,
+                -0.375,
+                0.3
+              ],
+              [
+                2,
+                0.375,
+                0.3
+              ],
+              [
+                -2,
+                0.375,
+                0.3
+              ]
+            ],
+            color: "#4a3222"
+          }
+        ]
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/freight_container.zdef
+  var freight_container_default = {
+    version: 3,
+    id: "freight_container",
+    label: "Freight Container",
+    static: true,
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: -1.6,
+        xMax: 1.6,
+        yMin: -0.32,
+        yMax: 0.32,
+        zMin: 0,
+        zMax: 0.68
+      }
+    ],
+    nodes: [
+      {
+        faces: [
+          {
+            id: "cback",
+            verts: [
+              [
+                -1.6,
+                0.32,
+                0
+              ],
+              [
+                -1.6,
+                -0.32,
+                0
+              ],
+              [
+                -1.6,
+                -0.32,
+                0.68
+              ],
+              [
+                -1.6,
+                0.32,
+                0.68
+              ]
+            ],
+            color: "#888888"
+          },
+          {
+            id: "cleft",
+            verts: [
+              [
+                1.6,
+                -0.32,
+                0.68
+              ],
+              [
+                -1.6,
+                -0.32,
+                0.68
+              ],
+              [
+                -1.6,
+                -0.32,
+                0
+              ],
+              [
+                1.6,
+                -0.32,
+                0
+              ]
+            ],
+            color: "#888888"
+          },
+          {
+            id: "cright",
+            verts: [
+              [
+                -1.6,
+                0.32,
+                0.68
+              ],
+              [
+                1.6,
+                0.32,
+                0.68
+              ],
+              [
+                1.6,
+                0.32,
+                0
+              ],
+              [
+                -1.6,
+                0.32,
+                0
+              ]
+            ],
+            color: "#888888"
+          },
+          {
+            id: "cfront",
+            verts: [
+              [
+                1.6,
+                -0.32,
+                0
+              ],
+              [
+                1.6,
+                0.32,
+                0
+              ],
+              [
+                1.6,
+                0.32,
+                0.68
+              ],
+              [
+                1.6,
+                -0.32,
+                0.68
+              ]
+            ],
+            color: "#888888"
+          },
+          {
+            id: "ctop",
+            verts: [
+              [
+                -1.6,
+                -0.32,
+                0.68
+              ],
+              [
+                1.6,
+                -0.32,
+                0.68
+              ],
+              [
+                1.6,
+                0.32,
+                0.68
+              ],
+              [
+                -1.6,
+                0.32,
+                0.68
+              ]
+            ],
+            color: "#888888"
+          }
+        ]
+      }
+    ]
+  };
+
+  // ../src/game/models/objects/freight_bogie.zdef
+  var freight_bogie_default = {
+    version: 3,
+    id: "freight_bogie",
+    label: "Freight Bogie",
+    static: false,
+    movementType: "rail",
+    nodes: [
+      {
+        faces: [
+          {
+            id: "w_left",
+            verts: [
+              [
+                -0.3,
+                -0.19,
+                0
+              ],
+              [
+                0.3,
+                -0.19,
+                0
+              ],
+              [
+                0.3,
+                -0.19,
+                0.3
+              ],
+              [
+                -0.3,
+                -0.19,
+                0.3
+              ]
+            ],
+            color: "#1a1a1a"
+          },
+          {
+            id: "w_right",
+            verts: [
+              [
+                0.3,
+                0.19,
+                0
+              ],
+              [
+                -0.3,
+                0.19,
+                0
+              ],
+              [
+                -0.3,
+                0.19,
+                0.3
+              ],
+              [
+                0.3,
+                0.19,
+                0.3
+              ]
+            ],
+            color: "#1a1a1a"
+          },
+          {
+            id: "frame_top",
+            verts: [
+              [
+                -0.3,
+                -0.19,
+                0.18
+              ],
+              [
+                0.3,
+                -0.19,
+                0.18
+              ],
+              [
+                0.3,
+                0.19,
+                0.18
+              ],
+              [
+                -0.3,
+                0.19,
+                0.18
+              ]
+            ],
+            color: "#2a2a2a"
+          }
+        ]
+      }
+    ]
+  };
+
   // editor-view/render.ts
+  var _railSamples = getRailSamples();
   var _DEF_REGISTRY = {
     hangar: { path: "src/game/models/objects/hangar.zdef", v2: false },
     tower: { path: "src/game/models/objects/tower.zdef", v2: false },
@@ -3285,10 +5356,12 @@
     }, flush: () => {
     } };
     const { drawTree, drawPerson } = createDrawObjects(ctx, defIso, defTW, hh * 2, _noSR);
-    const _renderDEF = (def, v2, wx, wy, wz, angle, colors) => {
+    const _renderDEF = (def, _v2, wx, wy, wz, angle, colors, params = {}) => {
       const sr = createSceneRenderer(ctx, defIso);
-      if (v2) {
-        renderNodes(def, {}, { x: wx, y: wy, z: wz, angle }, sr, defCamX, defCamY, defDrawCtx);
+      const version = def?.version;
+      const nodeBased = typeof version === "number" && version >= 2;
+      if (nodeBased) {
+        renderNodes(def, params, { x: wx, y: wy, z: wz, angle }, sr, defCamX, defCamY, defDrawCtx);
       } else {
         sr.add(def, { x: wx, y: wy, z: wz, angle, colors });
       }
@@ -3640,6 +5713,52 @@
         ctx.textAlign = "left";
       }
     });
+    if (m.testTrain) {
+      const _drawRail = (points) => {
+        ctx.beginPath();
+        points.forEach((p, i) => {
+          const s = defIso(p.x, p.y, WATER_FLOAT_Z, defCamX, defCamY);
+          if (i === 0) ctx.moveTo(s.x, s.y);
+          else ctx.lineTo(s.x, s.y);
+        });
+        ctx.stroke();
+      };
+      ctx.lineWidth = Math.max(1, hw / 16);
+      ctx.strokeStyle = "#4a3a2a";
+      _drawRail(_railSamples.left);
+      _drawRail(_railSamples.right);
+      ctx.strokeStyle = "#6b5a3a";
+      ctx.lineWidth = Math.max(1, hw / 20);
+      for (let i = 0; i < _railSamples.left.length; i += 4) {
+        const a = defIso(_railSamples.left[i].x, _railSamples.left[i].y, WATER_FLOAT_Z, defCamX, defCamY);
+        const b = defIso(_railSamples.right[i].x, _railSamples.right[i].y, WATER_FLOAT_Z, defCamX, defCamY);
+        ctx.beginPath();
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+        ctx.stroke();
+      }
+      const zAt = (x, y) => Math.max(m.terrain[Math.round(x)]?.[Math.round(y)] ?? 0, WATER_FLOAT_Z);
+      for (const car of getConsist(0)) {
+        _renderDEF(freight_bogie_default, true, car.pose.rearBogie.x, car.pose.rearBogie.y, zAt(car.pose.rearBogie.x, car.pose.rearBogie.y), car.pose.rearBogie.angle);
+        _renderDEF(freight_bogie_default, true, car.pose.frontBogie.x, car.pose.frontBogie.y, zAt(car.pose.frontBogie.x, car.pose.frontBogie.y), car.pose.frontBogie.angle);
+        const z = zAt(car.pose.bodyX, car.pose.bodyY);
+        if (car.kind === "locomotive") {
+          _renderDEF(freight_locomotive_default, true, car.pose.bodyX, car.pose.bodyY, z, car.pose.bodyAngle);
+        } else {
+          _renderDEF(freight_wagon_default, true, car.pose.bodyX, car.pose.bodyY, z, car.pose.bodyAngle);
+          const color = car.containerColor;
+          _renderDEF(
+            freight_container_default,
+            true,
+            car.pose.bodyX,
+            car.pose.bodyY,
+            z + WAGON_DECK_Z,
+            car.pose.bodyAngle,
+            { ctop: color, cfront: color, cback: color, cleft: color, cright: color }
+          );
+        }
+      }
+    }
     const payloads = m.payloads || [];
     payloads.forEach((p, idx) => {
       const pAny = p;

@@ -92,6 +92,9 @@
               if (face.normal) {
                 const [nx, ny] = face.normal;
                 if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;
+              } else if (face.normal3d) {
+                const [nx, ny, nz] = face.normal3d;
+                if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) + nz <= 0) continue;
               }
               const verts = face.verts;
               for (let i = 0; i < verts.length; i++) {
@@ -240,6 +243,15 @@
     const dot = (nx * _LIGHT[0] + ny * _LIGHT[1] + nz * _LIGHT[2]) / len;
     return _SHADE_AMB + _SHADE_DIFF * Math.max(0, dot);
   };
+  var _computeFaceNormal = (verts) => {
+    if (verts.length < 3) return null;
+    const ax = verts[1][0] - verts[0][0], ay = verts[1][1] - verts[0][1], az = verts[1][2] - verts[0][2];
+    const bx = verts[2][0] - verts[0][0], by = verts[2][1] - verts[0][1], bz = verts[2][2] - verts[0][2];
+    const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+    const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+    if (len < 1e-9) return null;
+    return [nx / len, ny / len, nz / len];
+  };
   var _applyShade = (hex, shade) => {
     if (Math.abs(shade - 1) < 2e-3) return hex;
     const n = parseInt(hex.slice(1), 16);
@@ -266,7 +278,7 @@
     const tPivot = parentFn([r.pivot])[0];
     return (verts) => _rotateVerts(parentFn(verts), tPivot, r.axis, angle);
   };
-  var _collectNode = (node, params, parentFn, outFaces, outSpecial) => {
+  var _collectNode = (node, params, parentFn, outFaces, outSpecial, autoNormal = false) => {
     const rotFn = node.rotate ? _makeRotFn2(node, params, parentFn) : parentFn;
     for (const face of node.faces ?? []) {
       if (face.type === "line") {
@@ -277,7 +289,14 @@
         const shade = face.shade ?? _autoShade(rotVerts);
         const color = _applyShade(face.color, shade);
         const normal = face.normal ? _rotNorm(face.normal, rotFn) : void 0;
-        outFaces.push({ ...face, verts: rotVerts, color, ...normal !== void 0 ? { normal } : {} });
+        const normal3d = autoNormal && normal === void 0 ? _computeFaceNormal(rotVerts) ?? void 0 : void 0;
+        outFaces.push({
+          ...face,
+          verts: rotVerts,
+          color,
+          ...normal !== void 0 ? { normal } : {},
+          ...normal3d !== void 0 ? { normal3d } : {}
+        });
       }
     }
     for (const light of node.lights ?? []) {
@@ -285,43 +304,50 @@
       outSpecial.push({ kind: "light", lx: rl[0], ly: rl[1], lz: rl[2], light });
     }
     for (const child of node.children ?? []) {
-      _collectNode(child, params, rotFn, outFaces, outSpecial);
+      _collectNode(child, params, rotFn, outFaces, outSpecial, autoNormal);
     }
   };
+  var _hasRotate = (node) => !!node.rotate || (node.children ?? []).some(_hasRotate);
   var renderNodes = (def, params, instanceProps, renderer, camX, camY, drawCtx, onBeforeFlush) => {
     const { x: ix, y: iy, z: iz = 0, angle: iAngle = 0 } = instanceProps;
     const cosA = Math.cos(iAngle), sinA = Math.sin(iAngle);
+    const autoNormal = def.version === 3;
+    const crossNodeDepth = def.crossNodeDepth === true;
     for (const topNode of def.nodes) {
       const faces = [];
       const special = [];
-      _collectNode(topNode, params, _id2, faces, special);
+      _collectNode(topNode, params, _id2, faces, special, autoNormal);
       let baseDepth;
       if (topNode.depthAnchor) {
-        const [dx, dy] = topNode.depthAnchor;
-        baseDepth = ix + dx * cosA - dy * sinA + (iy + dx * sinA + dy * cosA);
+        const [dx, dy, dz = 0] = topNode.depthAnchor;
+        baseDepth = ix + dx * cosA - dy * sinA + (iy + dx * sinA + dy * cosA) + (iz + dz);
         for (let fi = 0; fi < faces.length; fi++) {
           renderer.add({ id: def.id, faces: [faces[fi]] }, { ...instanceProps, depth: baseDepth + fi * 1e-7 });
         }
       } else {
         baseDepth = ix + iy;
-        const cApS = cosA + sinA, cAmS = cosA - sinA;
-        const allFaces = [];
-        faces.forEach((face, fi) => {
-          const verts = face.verts;
-          let lcx = 0, lcy = 0, lcz = 0;
-          for (const v of verts) {
-            lcx += v[0];
-            lcy += v[1];
-            lcz += v[2];
+        if (_hasRotate(topNode)) {
+          const cApS = cosA + sinA, cAmS = cosA - sinA;
+          const allFaces = [];
+          faces.forEach((face, fi) => {
+            const verts = face.verts;
+            let lcx = 0, lcy = 0, lcz = 0;
+            for (const v of verts) {
+              lcx += v[0];
+              lcy += v[1];
+              lcz += v[2];
+            }
+            lcx /= verts.length;
+            lcy /= verts.length;
+            lcz /= verts.length;
+            allFaces.push({ face, key: lcx * cApS + lcy * cAmS + lcz + fi * 1e-9 });
+          });
+          allFaces.sort((a, b) => a.key - b.key);
+          for (let si = 0; si < allFaces.length; si++) {
+            renderer.add({ id: def.id, faces: [allFaces[si].face] }, { ...instanceProps, depth: baseDepth + si * 1e-7 });
           }
-          lcx /= verts.length;
-          lcy /= verts.length;
-          lcz /= verts.length;
-          allFaces.push({ face, key: lcx * cApS + lcy * cAmS + lcz + fi * 1e-9 });
-        });
-        allFaces.sort((a, b) => a.key - b.key);
-        for (let si = 0; si < allFaces.length; si++) {
-          renderer.add({ id: def.id, faces: [allFaces[si].face] }, { ...instanceProps, depth: baseDepth + si * 1e-7 });
+        } else {
+          renderer.add({ id: def.id, faces }, { ...instanceProps, depth: baseDepth });
         }
       }
       if (drawCtx) {
@@ -370,47 +396,662 @@
           }
         }
       }
-      if (onBeforeFlush) onBeforeFlush(def.nodes.indexOf(topNode));
+      if (crossNodeDepth || !onBeforeFlush) continue;
+      onBeforeFlush(def.nodes.indexOf(topNode));
       renderer.flush(camX, camY);
     }
+    if (crossNodeDepth || !onBeforeFlush) renderer.flush(camX, camY);
   };
 
   // ../src/game/models/objects/hangar.zdef
   var hangar_default = {
+    version: 3,
     id: "hangar",
-    pivot: [0, 0, 0],
-    collisionBoxes: [
-      { id: "body", xMin: -2, xMax: 2, yMin: -1, yMax: 1, zMin: 0, zMax: 2 }
+    pivot: [
+      0,
+      0,
+      0
     ],
-    faces: [
-      { id: "back_int", verts: [[2, -1, 0], [-2, -1, 0], [-2, -1, 2], [2, -1, 2]], color: "#888888" },
-      { id: "right_int", verts: [[2, -1, 0], [2, 1, 0], [2, 1, 2], [2, -1, 2]], color: "#999999" },
-      { id: "left_int", verts: [[-2, 1, 0], [-2, -1, 0], [-2, -1, 2], [-2, 1, 2]], color: "#aaaaaa" },
-      { id: "back_ext", normal: [0, -1], verts: [[-2, -1, 0], [2, -1, 0], [2, -1, 2], [-2, -1, 2]], color: "#999999" },
-      { id: "right_ext", normal: [1, 0], verts: [[2, 1, 0], [2, -1, 0], [2, -1, 2], [2, 1, 2]], color: "#aaaaaa" },
-      { id: "left_ext", normal: [-1, 0], verts: [[-2, -1, 0], [-2, 1, 0], [-2, 1, 2], [-2, -1, 2]], color: "#cccccc" },
-      { id: "cross_h", verts: [[0.1, -0.65, 0.01], [-0.1, -0.65, 0.01], [-0.1, 0.65, 0.01], [0.1, 0.65, 0.01]], color: "#ffcc00" },
-      { id: "cross_v", verts: [[0.65, -0.1, 0.01], [-0.65, -0.1, 0.01], [-0.65, 0.1, 0.01], [0.65, 0.1, 0.01]], color: "#ffcc00" },
-      { id: "gb1_side", verts: [[-1.9, -0.25, 0], [-1.6, -0.25, 0], [-1.6, -0.25, 0.45], [-1.9, -0.25, 0.45]], color: "#4a6230" },
-      { id: "gb1_front", verts: [[-1.6, -0.55, 0], [-1.6, -0.25, 0], [-1.6, -0.25, 0.45], [-1.6, -0.55, 0.45]], color: "#3d5228" },
-      { id: "gb1_top", verts: [[-1.9, -0.55, 0.45], [-1.6, -0.55, 0.45], [-1.6, -0.25, 0.45], [-1.9, -0.25, 0.45]], color: "#5a7238" },
-      { id: "gb2_side", verts: [[-1.9, 0.3, 0], [-1.6, 0.3, 0], [-1.6, 0.3, 0.45], [-1.9, 0.3, 0.45]], color: "#4a6230" },
-      { id: "gb2_front", verts: [[-1.6, 0, 0], [-1.6, 0.3, 0], [-1.6, 0.3, 0.45], [-1.6, 0, 0.45]], color: "#3d5228" },
-      { id: "gb2_top", verts: [[-1.9, 0, 0.45], [-1.9, 0.3, 0.45], [-1.6, 0.3, 0.45], [-1.6, 0, 0.45]], color: "#5a7238" },
-      { id: "yba_s0", verts: [[-1.62, -0.75, 0], [-1.685, -0.637, 0], [-1.685, -0.637, 0.45], [-1.62, -0.75, 0.45]], color: "#e8c020" },
-      { id: "yba_s1", verts: [[-1.685, -0.637, 0], [-1.815, -0.637, 0], [-1.815, -0.637, 0.45], [-1.685, -0.637, 0.45]], color: "#e8c020" },
-      { id: "yba_s5", verts: [[-1.685, -0.863, 0], [-1.62, -0.75, 0], [-1.62, -0.75, 0.45], [-1.685, -0.863, 0.45]], color: "#e8c020" },
-      { id: "yba_top", verts: [[-1.62, -0.75, 0.45], [-1.685, -0.637, 0.45], [-1.815, -0.637, 0.45], [-1.88, -0.75, 0.45], [-1.815, -0.863, 0.45], [-1.685, -0.863, 0.45]], color: "#e8c020" },
-      { id: "ybb_s0", verts: [[-1.62, 0.55, 0], [-1.685, 0.663, 0], [-1.685, 0.663, 0.45], [-1.62, 0.55, 0.45]], color: "#e8c020" },
-      { id: "ybb_s1", verts: [[-1.685, 0.663, 0], [-1.815, 0.663, 0], [-1.815, 0.663, 0.45], [-1.685, 0.663, 0.45]], color: "#e8c020" },
-      { id: "ybb_s5", verts: [[-1.685, 0.437, 0], [-1.62, 0.55, 0], [-1.62, 0.55, 0.45], [-1.685, 0.437, 0.45]], color: "#e8c020" },
-      { id: "ybb_top", verts: [[-1.62, 0.55, 0.45], [-1.685, 0.663, 0.45], [-1.815, 0.663, 0.45], [-1.88, 0.55, 0.45], [-1.815, 0.437, 0.45], [-1.685, 0.437, 0.45]], color: "#e8c020" },
-      { id: "roof", verts: [[2, -1, 2], [2, 1, 2], [-2, 1, 2], [-2, -1, 2]], color: "#dddddd" }
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: -2,
+        xMax: 2,
+        yMin: -1,
+        yMax: 1,
+        zMin: 0,
+        zMax: 2
+      }
+    ],
+    nodes: [
+      {
+        faces: [
+          {
+            id: "back_int",
+            verts: [
+              [
+                2,
+                -1,
+                0
+              ],
+              [
+                -2,
+                -1,
+                0
+              ],
+              [
+                -2,
+                -1,
+                2
+              ],
+              [
+                2,
+                -1,
+                2
+              ]
+            ],
+            color: "#888888"
+          },
+          {
+            id: "right_int",
+            verts: [
+              [
+                2,
+                -1,
+                2
+              ],
+              [
+                2,
+                1,
+                2
+              ],
+              [
+                2,
+                1,
+                0
+              ],
+              [
+                2,
+                -1,
+                0
+              ]
+            ],
+            color: "#999999"
+          },
+          {
+            id: "left_int",
+            verts: [
+              [
+                -2,
+                1,
+                2
+              ],
+              [
+                -2,
+                -1,
+                2
+              ],
+              [
+                -2,
+                -1,
+                0
+              ],
+              [
+                -2,
+                1,
+                0
+              ]
+            ],
+            color: "#aaaaaa"
+          },
+          {
+            id: "back_ext",
+            verts: [
+              [
+                -2,
+                -1,
+                0
+              ],
+              [
+                2,
+                -1,
+                0
+              ],
+              [
+                2,
+                -1,
+                2
+              ],
+              [
+                -2,
+                -1,
+                2
+              ]
+            ],
+            color: "#999999"
+          },
+          {
+            id: "right_ext",
+            verts: [
+              [
+                2,
+                1,
+                2
+              ],
+              [
+                2,
+                -1,
+                2
+              ],
+              [
+                2,
+                -1,
+                0
+              ],
+              [
+                2,
+                1,
+                0
+              ]
+            ],
+            color: "#aaaaaa"
+          },
+          {
+            id: "left_ext",
+            verts: [
+              [
+                -2,
+                -1,
+                2
+              ],
+              [
+                -2,
+                1,
+                2
+              ],
+              [
+                -2,
+                1,
+                0
+              ],
+              [
+                -2,
+                -1,
+                0
+              ]
+            ],
+            color: "#cccccc"
+          },
+          {
+            id: "cross_h",
+            verts: [
+              [
+                0.1,
+                -0.65,
+                0.01
+              ],
+              [
+                -0.1,
+                -0.65,
+                0.01
+              ],
+              [
+                -0.1,
+                0.65,
+                0.01
+              ],
+              [
+                0.1,
+                0.65,
+                0.01
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "cross_v",
+            verts: [
+              [
+                0.65,
+                -0.1,
+                0.01
+              ],
+              [
+                -0.65,
+                -0.1,
+                0.01
+              ],
+              [
+                -0.65,
+                0.1,
+                0.01
+              ],
+              [
+                0.65,
+                0.1,
+                0.01
+              ]
+            ],
+            color: "#ffcc00"
+          },
+          {
+            id: "gb1_side",
+            verts: [
+              [
+                -1.9,
+                -0.25,
+                0
+              ],
+              [
+                -1.6,
+                -0.25,
+                0
+              ],
+              [
+                -1.6,
+                -0.25,
+                0.45
+              ],
+              [
+                -1.9,
+                -0.25,
+                0.45
+              ]
+            ],
+            color: "#4a6230"
+          },
+          {
+            id: "gb1_front",
+            verts: [
+              [
+                -1.6,
+                -0.55,
+                0
+              ],
+              [
+                -1.6,
+                -0.25,
+                0
+              ],
+              [
+                -1.6,
+                -0.25,
+                0.45
+              ],
+              [
+                -1.6,
+                -0.55,
+                0.45
+              ]
+            ],
+            color: "#3d5228"
+          },
+          {
+            id: "gb1_top",
+            verts: [
+              [
+                -1.9,
+                -0.55,
+                0.45
+              ],
+              [
+                -1.6,
+                -0.55,
+                0.45
+              ],
+              [
+                -1.6,
+                -0.25,
+                0.45
+              ],
+              [
+                -1.9,
+                -0.25,
+                0.45
+              ]
+            ],
+            color: "#5a7238"
+          },
+          {
+            id: "gb2_side",
+            verts: [
+              [
+                -1.9,
+                0.3,
+                0
+              ],
+              [
+                -1.6,
+                0.3,
+                0
+              ],
+              [
+                -1.6,
+                0.3,
+                0.45
+              ],
+              [
+                -1.9,
+                0.3,
+                0.45
+              ]
+            ],
+            color: "#4a6230"
+          },
+          {
+            id: "gb2_front",
+            verts: [
+              [
+                -1.6,
+                0,
+                0
+              ],
+              [
+                -1.6,
+                0.3,
+                0
+              ],
+              [
+                -1.6,
+                0.3,
+                0.45
+              ],
+              [
+                -1.6,
+                0,
+                0.45
+              ]
+            ],
+            color: "#3d5228"
+          },
+          {
+            id: "gb2_top",
+            verts: [
+              [
+                -1.9,
+                0,
+                0.45
+              ],
+              [
+                -1.9,
+                0.3,
+                0.45
+              ],
+              [
+                -1.6,
+                0.3,
+                0.45
+              ],
+              [
+                -1.6,
+                0,
+                0.45
+              ]
+            ],
+            color: "#5a7238"
+          },
+          {
+            id: "yba_s0",
+            verts: [
+              [
+                -1.62,
+                -0.75,
+                0
+              ],
+              [
+                -1.685,
+                -0.637,
+                0
+              ],
+              [
+                -1.685,
+                -0.637,
+                0.45
+              ],
+              [
+                -1.62,
+                -0.75,
+                0.45
+              ]
+            ],
+            color: "#e8c020"
+          },
+          {
+            id: "yba_s1",
+            verts: [
+              [
+                -1.685,
+                -0.637,
+                0
+              ],
+              [
+                -1.815,
+                -0.637,
+                0
+              ],
+              [
+                -1.815,
+                -0.637,
+                0.45
+              ],
+              [
+                -1.685,
+                -0.637,
+                0.45
+              ]
+            ],
+            color: "#e8c020"
+          },
+          {
+            id: "yba_s5",
+            verts: [
+              [
+                -1.685,
+                -0.863,
+                0
+              ],
+              [
+                -1.62,
+                -0.75,
+                0
+              ],
+              [
+                -1.62,
+                -0.75,
+                0.45
+              ],
+              [
+                -1.685,
+                -0.863,
+                0.45
+              ]
+            ],
+            color: "#e8c020"
+          },
+          {
+            id: "yba_top",
+            verts: [
+              [
+                -1.62,
+                -0.75,
+                0.45
+              ],
+              [
+                -1.685,
+                -0.637,
+                0.45
+              ],
+              [
+                -1.815,
+                -0.637,
+                0.45
+              ],
+              [
+                -1.88,
+                -0.75,
+                0.45
+              ],
+              [
+                -1.815,
+                -0.863,
+                0.45
+              ],
+              [
+                -1.685,
+                -0.863,
+                0.45
+              ]
+            ],
+            color: "#e8c020"
+          },
+          {
+            id: "ybb_s0",
+            verts: [
+              [
+                -1.62,
+                0.55,
+                0
+              ],
+              [
+                -1.685,
+                0.663,
+                0
+              ],
+              [
+                -1.685,
+                0.663,
+                0.45
+              ],
+              [
+                -1.62,
+                0.55,
+                0.45
+              ]
+            ],
+            color: "#e8c020"
+          },
+          {
+            id: "ybb_s1",
+            verts: [
+              [
+                -1.685,
+                0.663,
+                0
+              ],
+              [
+                -1.815,
+                0.663,
+                0
+              ],
+              [
+                -1.815,
+                0.663,
+                0.45
+              ],
+              [
+                -1.685,
+                0.663,
+                0.45
+              ]
+            ],
+            color: "#e8c020"
+          },
+          {
+            id: "ybb_s5",
+            verts: [
+              [
+                -1.685,
+                0.437,
+                0
+              ],
+              [
+                -1.62,
+                0.55,
+                0
+              ],
+              [
+                -1.62,
+                0.55,
+                0.45
+              ],
+              [
+                -1.685,
+                0.437,
+                0.45
+              ]
+            ],
+            color: "#e8c020"
+          },
+          {
+            id: "ybb_top",
+            verts: [
+              [
+                -1.62,
+                0.55,
+                0.45
+              ],
+              [
+                -1.685,
+                0.663,
+                0.45
+              ],
+              [
+                -1.815,
+                0.663,
+                0.45
+              ],
+              [
+                -1.88,
+                0.55,
+                0.45
+              ],
+              [
+                -1.815,
+                0.437,
+                0.45
+              ],
+              [
+                -1.685,
+                0.437,
+                0.45
+              ]
+            ],
+            color: "#e8c020"
+          },
+          {
+            id: "roof",
+            verts: [
+              [
+                2,
+                -1,
+                2
+              ],
+              [
+                2,
+                1,
+                2
+              ],
+              [
+                -2,
+                1,
+                2
+              ],
+              [
+                -2,
+                -1,
+                2
+              ]
+            ],
+            color: "#dddddd"
+          }
+        ]
+      }
     ]
   };
 
   // ../src/game/models/objects/lighthouse.zdef
   var lighthouse_default = {
+    version: 3,
     id: "lighthouse",
     pivot: [
       0,
@@ -437,2296 +1078,2301 @@
         zMax: 8.5
       }
     ],
-    faces: [
-      {
-        id: "rock_e",
-        verts: [
-          [
-            1,
-            -0.2,
-            0.14
-          ],
-          [
-            2.2,
-            -0.5,
-            0.14
-          ],
-          [
-            2.5,
-            0.05,
-            0.14
-          ],
-          [
-            2.1,
-            0.65,
-            0.14
-          ],
-          [
-            1.55,
-            1,
-            0.14
-          ],
-          [
-            0.95,
-            0.5,
-            0.14
-          ]
-        ],
-        color: "#585858",
-        stroke: null
-      },
-      {
-        id: "rock_ne",
-        verts: [
-          [
-            0.5,
-            0.9,
-            0.11
-          ],
-          [
-            1,
-            1.4,
-            0.11
-          ],
-          [
-            0.5,
-            2.3,
-            0.11
-          ],
-          [
-            -0.1,
-            1.9,
-            0.11
-          ],
-          [
-            -0.2,
-            1.1,
-            0.11
-          ]
-        ],
-        color: "#5a5a5a",
-        stroke: null
-      },
-      {
-        id: "rock_ne2",
-        verts: [
-          [
-            0.85,
-            1,
-            0.17
-          ],
-          [
-            1.5,
-            1.05,
-            0.17
-          ],
-          [
-            1.7,
-            1.7,
-            0.17
-          ],
-          [
-            1,
-            2,
-            0.17
-          ],
-          [
-            0.55,
-            1.6,
-            0.17
-          ]
-        ],
-        color: "#626262",
-        stroke: null
-      },
-      {
-        id: "rock_n",
-        verts: [
-          [
-            -0.2,
-            0.95,
-            0.12
-          ],
-          [
-            -0.05,
-            1.85,
-            0.12
-          ],
-          [
-            -0.7,
-            2.4,
-            0.12
-          ],
-          [
-            -1.5,
-            2,
-            0.12
-          ],
-          [
-            -1.6,
-            1.35,
-            0.12
-          ],
-          [
-            -0.9,
-            0.85,
-            0.12
-          ]
-        ],
-        color: "#505050",
-        stroke: null
-      },
-      {
-        id: "rock_nw1",
-        verts: [
-          [
-            -0.85,
-            0.6,
-            0.07
-          ],
-          [
-            -1.8,
-            0.7,
-            0.07
-          ],
-          [
-            -2.2,
-            0.2,
-            0.07
-          ],
-          [
-            -1.95,
-            -0.2,
-            0.07
-          ],
-          [
-            -1.1,
-            0.1,
-            0.07
-          ]
-        ],
-        color: "#484848",
-        stroke: null
-      },
-      {
-        id: "rock_nw2",
-        verts: [
-          [
-            -1,
-            0.3,
-            0.15
-          ],
-          [
-            -1.7,
-            0.5,
-            0.15
-          ],
-          [
-            -2.3,
-            -0.05,
-            0.15
-          ],
-          [
-            -2,
-            -0.7,
-            0.15
-          ],
-          [
-            -1.35,
-            -0.6,
-            0.15
-          ],
-          [
-            -0.9,
-            -0.3,
-            0.15
-          ]
-        ],
-        color: "#565656",
-        stroke: null
-      },
-      {
-        id: "rock_w",
-        verts: [
-          [
-            -0.95,
-            -0.35,
-            0.09
-          ],
-          [
-            -2,
-            -0.3,
-            0.09
-          ],
-          [
-            -2.4,
-            -0.6,
-            0.09
-          ],
-          [
-            -2.1,
-            -1.1,
-            0.09
-          ],
-          [
-            -1.3,
-            -0.8,
-            0.09
-          ],
-          [
-            -0.9,
-            -0.55,
-            0.09
-          ]
-        ],
-        color: "#4e4e4e",
-        stroke: null
-      },
-      {
-        id: "rock_sw1",
-        verts: [
-          [
-            -0.7,
-            -0.6,
-            0.16
-          ],
-          [
-            -1.35,
-            -0.9,
-            0.16
-          ],
-          [
-            -1.85,
-            -1.5,
-            0.16
-          ],
-          [
-            -1.3,
-            -2,
-            0.16
-          ],
-          [
-            -0.6,
-            -1.7,
-            0.16
-          ],
-          [
-            -0.1,
-            -1,
-            0.16
-          ]
-        ],
-        color: "#5c5c5c",
-        stroke: null
-      },
-      {
-        id: "rock_sw2",
-        verts: [
-          [
-            -1,
-            -1.4,
-            0.2
-          ],
-          [
-            -1.5,
-            -1.35,
-            0.2
-          ],
-          [
-            -1.6,
-            -1.9,
-            0.2
-          ],
-          [
-            -1,
-            -2,
-            0.2
-          ],
-          [
-            -0.7,
-            -1.6,
-            0.2
-          ]
-        ],
-        color: "#646464",
-        stroke: null
-      },
-      {
-        id: "rock_s",
-        verts: [
-          [
-            0.1,
-            -1,
-            0.1
-          ],
-          [
-            0.6,
-            -1.6,
-            0.1
-          ],
-          [
-            1,
-            -2.2,
-            0.1
-          ],
-          [
-            1.5,
-            -1.7,
-            0.1
-          ],
-          [
-            1.2,
-            -1.05,
-            0.1
-          ],
-          [
-            0.7,
-            -0.85,
-            0.1
-          ]
-        ],
-        color: "#4c4c4c",
-        stroke: null
-      },
-      {
-        id: "rock_se",
-        verts: [
-          [
-            0.9,
-            -0.75,
-            0.13
-          ],
-          [
-            1.7,
-            -0.65,
-            0.13
-          ],
-          [
-            2.3,
-            -1.1,
-            0.13
-          ],
-          [
-            1.8,
-            -1.9,
-            0.13
-          ],
-          [
-            0.9,
-            -1.7,
-            0.13
-          ],
-          [
-            0.6,
-            -1.1,
-            0.13
-          ]
-        ],
-        color: "#545454",
-        stroke: null
-      },
-      {
-        id: "rock_ese",
-        verts: [
-          [
-            1.05,
-            -0.35,
-            0.08
-          ],
-          [
-            1.8,
-            -0.4,
-            0.08
-          ],
-          [
-            1.75,
-            -0.9,
-            0.08
-          ],
-          [
-            1.2,
-            -0.85,
-            0.08
-          ]
-        ],
-        color: "#5e5e5e",
-        stroke: null
-      },
-      {
-        id: "rock_na",
-        verts: [
-          [
-            -0.5,
-            0.95,
-            0.22
-          ],
-          [
-            -0.35,
-            1.55,
-            0.22
-          ],
-          [
-            -0.75,
-            1.65,
-            0.22
-          ],
-          [
-            -1.05,
-            1.2,
-            0.22
-          ]
-        ],
-        color: "#686868",
-        stroke: null
-      },
-      {
-        id: "rock_et",
-        verts: [
-          [
-            0.85,
-            0.55,
-            0.08
-          ],
-          [
-            1.6,
-            0.5,
-            0.08
-          ],
-          [
-            1.7,
-            1.15,
-            0.08
-          ],
-          [
-            1.05,
-            1.3,
-            0.08
-          ],
-          [
-            0.7,
-            0.85,
-            0.08
-          ]
-        ],
-        color: "#4a4a4a",
-        stroke: null
-      },
-      {
-        id: "cap_z0.4",
-        verts: [
-          [
-            1,
-            0,
-            0.4
-          ],
-          [
-            0.98079,
-            0.19509,
-            0.4
-          ],
-          [
-            0.92388,
-            0.38268,
-            0.4
-          ],
-          [
-            0.83147,
-            0.55557,
-            0.4
-          ],
-          [
-            0.70711,
-            0.70711,
-            0.4
-          ],
-          [
-            0.55557,
-            0.83147,
-            0.4
-          ],
-          [
-            0.38268,
-            0.92388,
-            0.4
-          ],
-          [
-            0.19509,
-            0.98079,
-            0.4
-          ],
-          [
-            0,
-            1,
-            0.4
-          ],
-          [
-            -0.19509,
-            0.98079,
-            0.4
-          ],
-          [
-            -0.38268,
-            0.92388,
-            0.4
-          ],
-          [
-            -0.55557,
-            0.83147,
-            0.4
-          ],
-          [
-            -0.70711,
-            0.70711,
-            0.4
-          ],
-          [
-            -0.83147,
-            0.55557,
-            0.4
-          ],
-          [
-            -0.92388,
-            0.38268,
-            0.4
-          ],
-          [
-            -0.98079,
-            0.19509,
-            0.4
-          ],
-          [
-            -1,
-            0,
-            0.4
-          ],
-          [
-            -0.98079,
-            -0.19509,
-            0.4
-          ],
-          [
-            -0.92388,
-            -0.38268,
-            0.4
-          ],
-          [
-            -0.83147,
-            -0.55557,
-            0.4
-          ],
-          [
-            -0.70711,
-            -0.70711,
-            0.4
-          ],
-          [
-            -0.55557,
-            -0.83147,
-            0.4
-          ],
-          [
-            -0.38268,
-            -0.92388,
-            0.4
-          ],
-          [
-            -0.19509,
-            -0.98079,
-            0.4
-          ],
-          [
-            0,
-            -1,
-            0.4
-          ],
-          [
-            0.19509,
-            -0.98079,
-            0.4
-          ],
-          [
-            0.38268,
-            -0.92388,
-            0.4
-          ],
-          [
-            0.55557,
-            -0.83147,
-            0.4
-          ],
-          [
-            0.70711,
-            -0.70711,
-            0.4
-          ],
-          [
-            0.83147,
-            -0.55557,
-            0.4
-          ],
-          [
-            0.92388,
-            -0.38268,
-            0.4
-          ],
-          [
-            0.98079,
-            -0.19509,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_0_z0",
-        verts: [
-          [
-            1,
-            0,
-            0
-          ],
-          [
-            0.98079,
-            0.19509,
-            0
-          ],
-          [
-            0.98079,
-            0.19509,
-            0.4
-          ],
-          [
-            1,
-            0,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_1_z0",
-        verts: [
-          [
-            0.98079,
-            0.19509,
-            0
-          ],
-          [
-            0.92388,
-            0.38268,
-            0
-          ],
-          [
-            0.92388,
-            0.38268,
-            0.4
-          ],
-          [
-            0.98079,
-            0.19509,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_2_z0",
-        verts: [
-          [
-            0.92388,
-            0.38268,
-            0
-          ],
-          [
-            0.83147,
-            0.55557,
-            0
-          ],
-          [
-            0.83147,
-            0.55557,
-            0.4
-          ],
-          [
-            0.92388,
-            0.38268,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_3_z0",
-        verts: [
-          [
-            0.83147,
-            0.55557,
-            0
-          ],
-          [
-            0.70711,
-            0.70711,
-            0
-          ],
-          [
-            0.70711,
-            0.70711,
-            0.4
-          ],
-          [
-            0.83147,
-            0.55557,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_4_z0",
-        verts: [
-          [
-            0.70711,
-            0.70711,
-            0
-          ],
-          [
-            0.55557,
-            0.83147,
-            0
-          ],
-          [
-            0.55557,
-            0.83147,
-            0.4
-          ],
-          [
-            0.70711,
-            0.70711,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_5_z0",
-        verts: [
-          [
-            0.55557,
-            0.83147,
-            0
-          ],
-          [
-            0.38268,
-            0.92388,
-            0
-          ],
-          [
-            0.38268,
-            0.92388,
-            0.4
-          ],
-          [
-            0.55557,
-            0.83147,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_6_z0",
-        verts: [
-          [
-            0.38268,
-            0.92388,
-            0
-          ],
-          [
-            0.19509,
-            0.98079,
-            0
-          ],
-          [
-            0.19509,
-            0.98079,
-            0.4
-          ],
-          [
-            0.38268,
-            0.92388,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_7_z0",
-        verts: [
-          [
-            0.19509,
-            0.98079,
-            0
-          ],
-          [
-            0,
-            1,
-            0
-          ],
-          [
-            0,
-            1,
-            0.4
-          ],
-          [
-            0.19509,
-            0.98079,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_8_z0",
-        verts: [
-          [
-            0,
-            1,
-            0
-          ],
-          [
-            -0.19509,
-            0.98079,
-            0
-          ],
-          [
-            -0.19509,
-            0.98079,
-            0.4
-          ],
-          [
-            0,
-            1,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_9_z0",
-        verts: [
-          [
-            -0.19509,
-            0.98079,
-            0
-          ],
-          [
-            -0.38268,
-            0.92388,
-            0
-          ],
-          [
-            -0.38268,
-            0.92388,
-            0.4
-          ],
-          [
-            -0.19509,
-            0.98079,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_10_z0",
-        verts: [
-          [
-            -0.38268,
-            0.92388,
-            0
-          ],
-          [
-            -0.55557,
-            0.83147,
-            0
-          ],
-          [
-            -0.55557,
-            0.83147,
-            0.4
-          ],
-          [
-            -0.38268,
-            0.92388,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_11_z0",
-        verts: [
-          [
-            -0.55557,
-            0.83147,
-            0
-          ],
-          [
-            -0.70711,
-            0.70711,
-            0
-          ],
-          [
-            -0.70711,
-            0.70711,
-            0.4
-          ],
-          [
-            -0.55557,
-            0.83147,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_28_z0",
-        verts: [
-          [
-            0.70711,
-            -0.70711,
-            0
-          ],
-          [
-            0.83147,
-            -0.55557,
-            0
-          ],
-          [
-            0.83147,
-            -0.55557,
-            0.4
-          ],
-          [
-            0.70711,
-            -0.70711,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_29_z0",
-        verts: [
-          [
-            0.83147,
-            -0.55557,
-            0
-          ],
-          [
-            0.92388,
-            -0.38268,
-            0
-          ],
-          [
-            0.92388,
-            -0.38268,
-            0.4
-          ],
-          [
-            0.83147,
-            -0.55557,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_30_z0",
-        verts: [
-          [
-            0.92388,
-            -0.38268,
-            0
-          ],
-          [
-            0.98079,
-            -0.19509,
-            0
-          ],
-          [
-            0.98079,
-            -0.19509,
-            0.4
-          ],
-          [
-            0.92388,
-            -0.38268,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "side_31_z0",
-        verts: [
-          [
-            0.98079,
-            -0.19509,
-            0
-          ],
-          [
-            1,
-            0,
-            0
-          ],
-          [
-            1,
-            0,
-            0.4
-          ],
-          [
-            0.98079,
-            -0.19509,
-            0.4
-          ]
-        ],
-        color: "#404040",
-        stroke: null
-      },
-      {
-        id: "cap_z3",
-        verts: [
-          [
-            0.45,
-            0,
-            3
-          ],
-          [
-            0.41575,
-            0.17221,
-            3
-          ],
-          [
-            0.3182,
-            0.3182,
-            3
-          ],
-          [
-            0.17221,
-            0.41575,
-            3
-          ],
-          [
-            0,
-            0.45,
-            3
-          ],
-          [
-            -0.17221,
-            0.41575,
-            3
-          ],
-          [
-            -0.3182,
-            0.3182,
-            3
-          ],
-          [
-            -0.41575,
-            0.17221,
-            3
-          ],
-          [
-            -0.45,
-            0,
-            3
-          ],
-          [
-            -0.41575,
-            -0.17221,
-            3
-          ],
-          [
-            -0.3182,
-            -0.3182,
-            3
-          ],
-          [
-            -0.17221,
-            -0.41575,
-            3
-          ],
-          [
-            0,
-            -0.45,
-            3
-          ],
-          [
-            0.17221,
-            -0.41575,
-            3
-          ],
-          [
-            0.3182,
-            -0.3182,
-            3
-          ],
-          [
-            0.41575,
-            -0.17221,
-            3
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_0_z0.4",
-        verts: [
-          [
-            0.45,
-            0,
-            0.4
-          ],
-          [
-            0.41575,
-            0.17221,
-            0.4
-          ],
-          [
-            0.41575,
-            0.17221,
-            3
-          ],
-          [
-            0.45,
-            0,
-            3
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_1_z0.4",
-        verts: [
-          [
-            0.41575,
-            0.17221,
-            0.4
-          ],
-          [
-            0.3182,
-            0.3182,
-            0.4
-          ],
-          [
-            0.3182,
-            0.3182,
-            3
-          ],
-          [
-            0.41575,
-            0.17221,
-            3
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_2_z0.4",
-        verts: [
-          [
-            0.3182,
-            0.3182,
-            0.4
-          ],
-          [
-            0.17221,
-            0.41575,
-            0.4
-          ],
-          [
-            0.17221,
-            0.41575,
-            3
-          ],
-          [
-            0.3182,
-            0.3182,
-            3
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_3_z0.4",
-        verts: [
-          [
-            0.17221,
-            0.41575,
-            0.4
-          ],
-          [
-            0,
-            0.45,
-            0.4
-          ],
-          [
-            0,
-            0.45,
-            3
-          ],
-          [
-            0.17221,
-            0.41575,
-            3
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_4_z0.4",
-        verts: [
-          [
-            0,
-            0.45,
-            0.4
-          ],
-          [
-            -0.17221,
-            0.41575,
-            0.4
-          ],
-          [
-            -0.17221,
-            0.41575,
-            3
-          ],
-          [
-            0,
-            0.45,
-            3
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_5_z0.4",
-        verts: [
-          [
-            -0.17221,
-            0.41575,
-            0.4
-          ],
-          [
-            -0.3182,
-            0.3182,
-            0.4
-          ],
-          [
-            -0.3182,
-            0.3182,
-            3
-          ],
-          [
-            -0.17221,
-            0.41575,
-            3
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_14_z0.4",
-        verts: [
-          [
-            0.3182,
-            -0.3182,
-            0.4
-          ],
-          [
-            0.41575,
-            -0.17221,
-            0.4
-          ],
-          [
-            0.41575,
-            -0.17221,
-            3
-          ],
-          [
-            0.3182,
-            -0.3182,
-            3
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_15_z0.4",
-        verts: [
-          [
-            0.41575,
-            -0.17221,
-            0.4
-          ],
-          [
-            0.45,
-            0,
-            0.4
-          ],
-          [
-            0.45,
-            0,
-            3
-          ],
-          [
-            0.41575,
-            -0.17221,
-            3
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "cap_z6",
-        verts: [
-          [
-            0.45,
-            0,
-            6
-          ],
-          [
-            0.41575,
-            0.17221,
-            6
-          ],
-          [
-            0.3182,
-            0.3182,
-            6
-          ],
-          [
-            0.17221,
-            0.41575,
-            6
-          ],
-          [
-            0,
-            0.45,
-            6
-          ],
-          [
-            -0.17221,
-            0.41575,
-            6
-          ],
-          [
-            -0.3182,
-            0.3182,
-            6
-          ],
-          [
-            -0.41575,
-            0.17221,
-            6
-          ],
-          [
-            -0.45,
-            0,
-            6
-          ],
-          [
-            -0.41575,
-            -0.17221,
-            6
-          ],
-          [
-            -0.3182,
-            -0.3182,
-            6
-          ],
-          [
-            -0.17221,
-            -0.41575,
-            6
-          ],
-          [
-            0,
-            -0.45,
-            6
-          ],
-          [
-            0.17221,
-            -0.41575,
-            6
-          ],
-          [
-            0.3182,
-            -0.3182,
-            6
-          ],
-          [
-            0.41575,
-            -0.17221,
-            6
-          ]
-        ],
-        color: "#eeeeee",
-        stroke: null
-      },
-      {
-        id: "side_0_z3",
-        verts: [
-          [
-            0.45,
-            0,
-            3
-          ],
-          [
-            0.41575,
-            0.17221,
-            3
-          ],
-          [
-            0.41575,
-            0.17221,
-            6
-          ],
-          [
-            0.45,
-            0,
-            6
-          ]
-        ],
-        color: "#eeeeee",
-        stroke: null
-      },
-      {
-        id: "side_1_z3",
-        verts: [
-          [
-            0.41575,
-            0.17221,
-            3
-          ],
-          [
-            0.3182,
-            0.3182,
-            3
-          ],
-          [
-            0.3182,
-            0.3182,
-            6
-          ],
-          [
-            0.41575,
-            0.17221,
-            6
-          ]
-        ],
-        color: "#eeeeee",
-        stroke: null
-      },
-      {
-        id: "side_2_z3",
-        verts: [
-          [
-            0.3182,
-            0.3182,
-            3
-          ],
-          [
-            0.17221,
-            0.41575,
-            3
-          ],
-          [
-            0.17221,
-            0.41575,
-            6
-          ],
-          [
-            0.3182,
-            0.3182,
-            6
-          ]
-        ],
-        color: "#eeeeee",
-        stroke: null
-      },
-      {
-        id: "side_3_z3",
-        verts: [
-          [
-            0.17221,
-            0.41575,
-            3
-          ],
-          [
-            0,
-            0.45,
-            3
-          ],
-          [
-            0,
-            0.45,
-            6
-          ],
-          [
-            0.17221,
-            0.41575,
-            6
-          ]
-        ],
-        color: "#eeeeee",
-        stroke: null
-      },
-      {
-        id: "side_4_z3",
-        verts: [
-          [
-            0,
-            0.45,
-            3
-          ],
-          [
-            -0.17221,
-            0.41575,
-            3
-          ],
-          [
-            -0.17221,
-            0.41575,
-            6
-          ],
-          [
-            0,
-            0.45,
-            6
-          ]
-        ],
-        color: "#eeeeee",
-        stroke: null
-      },
-      {
-        id: "side_5_z3",
-        verts: [
-          [
-            -0.17221,
-            0.41575,
-            3
-          ],
-          [
-            -0.3182,
-            0.3182,
-            3
-          ],
-          [
-            -0.3182,
-            0.3182,
-            6
-          ],
-          [
-            -0.17221,
-            0.41575,
-            6
-          ]
-        ],
-        color: "#eeeeee",
-        stroke: null
-      },
-      {
-        id: "side_14_z3",
-        verts: [
-          [
-            0.3182,
-            -0.3182,
-            3
-          ],
-          [
-            0.41575,
-            -0.17221,
-            3
-          ],
-          [
-            0.41575,
-            -0.17221,
-            6
-          ],
-          [
-            0.3182,
-            -0.3182,
-            6
-          ]
-        ],
-        color: "#eeeeee",
-        stroke: null
-      },
-      {
-        id: "side_15_z3",
-        verts: [
-          [
-            0.41575,
-            -0.17221,
-            3
-          ],
-          [
-            0.45,
-            0,
-            3
-          ],
-          [
-            0.45,
-            0,
-            6
-          ],
-          [
-            0.41575,
-            -0.17221,
-            6
-          ]
-        ],
-        color: "#eeeeee",
-        stroke: null
-      },
-      {
-        id: "cap_z7",
-        verts: [
-          [
-            0.45,
-            0,
-            7
-          ],
-          [
-            0.41575,
-            0.17221,
-            7
-          ],
-          [
-            0.3182,
-            0.3182,
-            7
-          ],
-          [
-            0.17221,
-            0.41575,
-            7
-          ],
-          [
-            0,
-            0.45,
-            7
-          ],
-          [
-            -0.17221,
-            0.41575,
-            7
-          ],
-          [
-            -0.3182,
-            0.3182,
-            7
-          ],
-          [
-            -0.41575,
-            0.17221,
-            7
-          ],
-          [
-            -0.45,
-            0,
-            7
-          ],
-          [
-            -0.41575,
-            -0.17221,
-            7
-          ],
-          [
-            -0.3182,
-            -0.3182,
-            7
-          ],
-          [
-            -0.17221,
-            -0.41575,
-            7
-          ],
-          [
-            0,
-            -0.45,
-            7
-          ],
-          [
-            0.17221,
-            -0.41575,
-            7
-          ],
-          [
-            0.3182,
-            -0.3182,
-            7
-          ],
-          [
-            0.41575,
-            -0.17221,
-            7
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_0_z6",
-        verts: [
-          [
-            0.45,
-            0,
-            6
-          ],
-          [
-            0.41575,
-            0.17221,
-            6
-          ],
-          [
-            0.41575,
-            0.17221,
-            7
-          ],
-          [
-            0.45,
-            0,
-            7
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_1_z6",
-        verts: [
-          [
-            0.41575,
-            0.17221,
-            6
-          ],
-          [
-            0.3182,
-            0.3182,
-            6
-          ],
-          [
-            0.3182,
-            0.3182,
-            7
-          ],
-          [
-            0.41575,
-            0.17221,
-            7
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_2_z6",
-        verts: [
-          [
-            0.3182,
-            0.3182,
-            6
-          ],
-          [
-            0.17221,
-            0.41575,
-            6
-          ],
-          [
-            0.17221,
-            0.41575,
-            7
-          ],
-          [
-            0.3182,
-            0.3182,
-            7
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_3_z6",
-        verts: [
-          [
-            0.17221,
-            0.41575,
-            6
-          ],
-          [
-            0,
-            0.45,
-            6
-          ],
-          [
-            0,
-            0.45,
-            7
-          ],
-          [
-            0.17221,
-            0.41575,
-            7
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_4_z6",
-        verts: [
-          [
-            0,
-            0.45,
-            6
-          ],
-          [
-            -0.17221,
-            0.41575,
-            6
-          ],
-          [
-            -0.17221,
-            0.41575,
-            7
-          ],
-          [
-            0,
-            0.45,
-            7
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_5_z6",
-        verts: [
-          [
-            -0.17221,
-            0.41575,
-            6
-          ],
-          [
-            -0.3182,
-            0.3182,
-            6
-          ],
-          [
-            -0.3182,
-            0.3182,
-            7
-          ],
-          [
-            -0.17221,
-            0.41575,
-            7
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_14_z6",
-        verts: [
-          [
-            0.3182,
-            -0.3182,
-            6
-          ],
-          [
-            0.41575,
-            -0.17221,
-            6
-          ],
-          [
-            0.41575,
-            -0.17221,
-            7
-          ],
-          [
-            0.3182,
-            -0.3182,
-            7
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "side_15_z6",
-        verts: [
-          [
-            0.41575,
-            -0.17221,
-            6
-          ],
-          [
-            0.45,
-            0,
-            6
-          ],
-          [
-            0.45,
-            0,
-            7
-          ],
-          [
-            0.41575,
-            -0.17221,
-            7
-          ]
-        ],
-        color: "#cc2222",
-        stroke: null
-      },
-      {
-        id: "cap_z8",
-        verts: [
-          [
-            0.45,
-            0,
-            8
-          ],
-          [
-            0.41575,
-            0.17221,
-            8
-          ],
-          [
-            0.3182,
-            0.3182,
-            8
-          ],
-          [
-            0.17221,
-            0.41575,
-            8
-          ],
-          [
-            0,
-            0.45,
-            8
-          ],
-          [
-            -0.17221,
-            0.41575,
-            8
-          ],
-          [
-            -0.3182,
-            0.3182,
-            8
-          ],
-          [
-            -0.41575,
-            0.17221,
-            8
-          ],
-          [
-            -0.45,
-            0,
-            8
-          ],
-          [
-            -0.41575,
-            -0.17221,
-            8
-          ],
-          [
-            -0.3182,
-            -0.3182,
-            8
-          ],
-          [
-            -0.17221,
-            -0.41575,
-            8
-          ],
-          [
-            0,
-            -0.45,
-            8
-          ],
-          [
-            0.17221,
-            -0.41575,
-            8
-          ],
-          [
-            0.3182,
-            -0.3182,
-            8
-          ],
-          [
-            0.41575,
-            -0.17221,
-            8
-          ]
-        ],
-        color: "#ffff88",
-        stroke: null
-      },
-      {
-        id: "side_0_z7",
-        verts: [
-          [
-            0.45,
-            0,
-            7
-          ],
-          [
-            0.41575,
-            0.17221,
-            7
-          ],
-          [
-            0.41575,
-            0.17221,
-            8
-          ],
-          [
-            0.45,
-            0,
-            8
-          ]
-        ],
-        color: "#ffff88",
-        stroke: null
-      },
-      {
-        id: "side_1_z7",
-        verts: [
-          [
-            0.41575,
-            0.17221,
-            7
-          ],
-          [
-            0.3182,
-            0.3182,
-            7
-          ],
-          [
-            0.3182,
-            0.3182,
-            8
-          ],
-          [
-            0.41575,
-            0.17221,
-            8
-          ]
-        ],
-        color: "#ffff88",
-        stroke: null
-      },
-      {
-        id: "side_2_z7",
-        verts: [
-          [
-            0.3182,
-            0.3182,
-            7
-          ],
-          [
-            0.17221,
-            0.41575,
-            7
-          ],
-          [
-            0.17221,
-            0.41575,
-            8
-          ],
-          [
-            0.3182,
-            0.3182,
-            8
-          ]
-        ],
-        color: "#ffff88",
-        stroke: null
-      },
-      {
-        id: "side_3_z7",
-        verts: [
-          [
-            0.17221,
-            0.41575,
-            7
-          ],
-          [
-            0,
-            0.45,
-            7
-          ],
-          [
-            0,
-            0.45,
-            8
-          ],
-          [
-            0.17221,
-            0.41575,
-            8
-          ]
-        ],
-        color: "#ffff88",
-        stroke: null
-      },
-      {
-        id: "side_4_z7",
-        verts: [
-          [
-            0,
-            0.45,
-            7
-          ],
-          [
-            -0.17221,
-            0.41575,
-            7
-          ],
-          [
-            -0.17221,
-            0.41575,
-            8
-          ],
-          [
-            0,
-            0.45,
-            8
-          ]
-        ],
-        color: "#ffff88",
-        stroke: null
-      },
-      {
-        id: "side_5_z7",
-        verts: [
-          [
-            -0.17221,
-            0.41575,
-            7
-          ],
-          [
-            -0.3182,
-            0.3182,
-            7
-          ],
-          [
-            -0.3182,
-            0.3182,
-            8
-          ],
-          [
-            -0.17221,
-            0.41575,
-            8
-          ]
-        ],
-        color: "#ffff88",
-        stroke: null
-      },
-      {
-        id: "side_14_z7",
-        verts: [
-          [
-            0.3182,
-            -0.3182,
-            7
-          ],
-          [
-            0.41575,
-            -0.17221,
-            7
-          ],
-          [
-            0.41575,
-            -0.17221,
-            8
-          ],
-          [
-            0.3182,
-            -0.3182,
-            8
-          ]
-        ],
-        color: "#ffff88",
-        stroke: null
-      },
-      {
-        id: "side_15_z7",
-        verts: [
-          [
-            0.41575,
-            -0.17221,
-            7
-          ],
-          [
-            0.45,
-            0,
-            7
-          ],
-          [
-            0.45,
-            0,
-            8
-          ],
-          [
-            0.41575,
-            -0.17221,
-            8
-          ]
-        ],
-        color: "#ffff88",
-        stroke: null
+    nodes: [
+      {
+        faces: [
+          {
+            id: "rock_e",
+            verts: [
+              [
+                1,
+                -0.2,
+                0.14
+              ],
+              [
+                2.2,
+                -0.5,
+                0.14
+              ],
+              [
+                2.5,
+                0.05,
+                0.14
+              ],
+              [
+                2.1,
+                0.65,
+                0.14
+              ],
+              [
+                1.55,
+                1,
+                0.14
+              ],
+              [
+                0.95,
+                0.5,
+                0.14
+              ]
+            ],
+            color: "#585858",
+            stroke: null
+          },
+          {
+            id: "rock_ne",
+            verts: [
+              [
+                0.5,
+                0.9,
+                0.11
+              ],
+              [
+                1,
+                1.4,
+                0.11
+              ],
+              [
+                0.5,
+                2.3,
+                0.11
+              ],
+              [
+                -0.1,
+                1.9,
+                0.11
+              ],
+              [
+                -0.2,
+                1.1,
+                0.11
+              ]
+            ],
+            color: "#5a5a5a",
+            stroke: null
+          },
+          {
+            id: "rock_ne2",
+            verts: [
+              [
+                0.85,
+                1,
+                0.17
+              ],
+              [
+                1.5,
+                1.05,
+                0.17
+              ],
+              [
+                1.7,
+                1.7,
+                0.17
+              ],
+              [
+                1,
+                2,
+                0.17
+              ],
+              [
+                0.55,
+                1.6,
+                0.17
+              ]
+            ],
+            color: "#626262",
+            stroke: null
+          },
+          {
+            id: "rock_n",
+            verts: [
+              [
+                -0.2,
+                0.95,
+                0.12
+              ],
+              [
+                -0.05,
+                1.85,
+                0.12
+              ],
+              [
+                -0.7,
+                2.4,
+                0.12
+              ],
+              [
+                -1.5,
+                2,
+                0.12
+              ],
+              [
+                -1.6,
+                1.35,
+                0.12
+              ],
+              [
+                -0.9,
+                0.85,
+                0.12
+              ]
+            ],
+            color: "#505050",
+            stroke: null
+          },
+          {
+            id: "rock_nw1",
+            verts: [
+              [
+                -0.85,
+                0.6,
+                0.07
+              ],
+              [
+                -1.8,
+                0.7,
+                0.07
+              ],
+              [
+                -2.2,
+                0.2,
+                0.07
+              ],
+              [
+                -1.95,
+                -0.2,
+                0.07
+              ],
+              [
+                -1.1,
+                0.1,
+                0.07
+              ]
+            ],
+            color: "#484848",
+            stroke: null
+          },
+          {
+            id: "rock_nw2",
+            verts: [
+              [
+                -1,
+                0.3,
+                0.15
+              ],
+              [
+                -1.7,
+                0.5,
+                0.15
+              ],
+              [
+                -2.3,
+                -0.05,
+                0.15
+              ],
+              [
+                -2,
+                -0.7,
+                0.15
+              ],
+              [
+                -1.35,
+                -0.6,
+                0.15
+              ],
+              [
+                -0.9,
+                -0.3,
+                0.15
+              ]
+            ],
+            color: "#565656",
+            stroke: null
+          },
+          {
+            id: "rock_w",
+            verts: [
+              [
+                -0.95,
+                -0.35,
+                0.09
+              ],
+              [
+                -2,
+                -0.3,
+                0.09
+              ],
+              [
+                -2.4,
+                -0.6,
+                0.09
+              ],
+              [
+                -2.1,
+                -1.1,
+                0.09
+              ],
+              [
+                -1.3,
+                -0.8,
+                0.09
+              ],
+              [
+                -0.9,
+                -0.55,
+                0.09
+              ]
+            ],
+            color: "#4e4e4e",
+            stroke: null
+          },
+          {
+            id: "rock_sw1",
+            verts: [
+              [
+                -0.7,
+                -0.6,
+                0.16
+              ],
+              [
+                -1.35,
+                -0.9,
+                0.16
+              ],
+              [
+                -1.85,
+                -1.5,
+                0.16
+              ],
+              [
+                -1.3,
+                -2,
+                0.16
+              ],
+              [
+                -0.6,
+                -1.7,
+                0.16
+              ],
+              [
+                -0.1,
+                -1,
+                0.16
+              ]
+            ],
+            color: "#5c5c5c",
+            stroke: null
+          },
+          {
+            id: "rock_sw2",
+            verts: [
+              [
+                -1,
+                -1.4,
+                0.2
+              ],
+              [
+                -1.5,
+                -1.35,
+                0.2
+              ],
+              [
+                -1.6,
+                -1.9,
+                0.2
+              ],
+              [
+                -1,
+                -2,
+                0.2
+              ],
+              [
+                -0.7,
+                -1.6,
+                0.2
+              ]
+            ],
+            color: "#646464",
+            stroke: null
+          },
+          {
+            id: "rock_s",
+            verts: [
+              [
+                0.1,
+                -1,
+                0.1
+              ],
+              [
+                0.6,
+                -1.6,
+                0.1
+              ],
+              [
+                1,
+                -2.2,
+                0.1
+              ],
+              [
+                1.5,
+                -1.7,
+                0.1
+              ],
+              [
+                1.2,
+                -1.05,
+                0.1
+              ],
+              [
+                0.7,
+                -0.85,
+                0.1
+              ]
+            ],
+            color: "#4c4c4c",
+            stroke: null
+          },
+          {
+            id: "rock_se",
+            verts: [
+              [
+                0.9,
+                -0.75,
+                0.13
+              ],
+              [
+                1.7,
+                -0.65,
+                0.13
+              ],
+              [
+                2.3,
+                -1.1,
+                0.13
+              ],
+              [
+                1.8,
+                -1.9,
+                0.13
+              ],
+              [
+                0.9,
+                -1.7,
+                0.13
+              ],
+              [
+                0.6,
+                -1.1,
+                0.13
+              ]
+            ],
+            color: "#545454",
+            stroke: null
+          },
+          {
+            id: "rock_ese",
+            verts: [
+              [
+                1.05,
+                -0.35,
+                0.08
+              ],
+              [
+                1.8,
+                -0.4,
+                0.08
+              ],
+              [
+                1.75,
+                -0.9,
+                0.08
+              ],
+              [
+                1.2,
+                -0.85,
+                0.08
+              ]
+            ],
+            color: "#5e5e5e",
+            stroke: null
+          },
+          {
+            id: "rock_na",
+            verts: [
+              [
+                -0.5,
+                0.95,
+                0.22
+              ],
+              [
+                -0.35,
+                1.55,
+                0.22
+              ],
+              [
+                -0.75,
+                1.65,
+                0.22
+              ],
+              [
+                -1.05,
+                1.2,
+                0.22
+              ]
+            ],
+            color: "#686868",
+            stroke: null
+          },
+          {
+            id: "rock_et",
+            verts: [
+              [
+                0.85,
+                0.55,
+                0.08
+              ],
+              [
+                1.6,
+                0.5,
+                0.08
+              ],
+              [
+                1.7,
+                1.15,
+                0.08
+              ],
+              [
+                1.05,
+                1.3,
+                0.08
+              ],
+              [
+                0.7,
+                0.85,
+                0.08
+              ]
+            ],
+            color: "#4a4a4a",
+            stroke: null
+          },
+          {
+            id: "cap_z0.4",
+            verts: [
+              [
+                1,
+                0,
+                0.4
+              ],
+              [
+                0.98079,
+                0.19509,
+                0.4
+              ],
+              [
+                0.92388,
+                0.38268,
+                0.4
+              ],
+              [
+                0.83147,
+                0.55557,
+                0.4
+              ],
+              [
+                0.70711,
+                0.70711,
+                0.4
+              ],
+              [
+                0.55557,
+                0.83147,
+                0.4
+              ],
+              [
+                0.38268,
+                0.92388,
+                0.4
+              ],
+              [
+                0.19509,
+                0.98079,
+                0.4
+              ],
+              [
+                0,
+                1,
+                0.4
+              ],
+              [
+                -0.19509,
+                0.98079,
+                0.4
+              ],
+              [
+                -0.38268,
+                0.92388,
+                0.4
+              ],
+              [
+                -0.55557,
+                0.83147,
+                0.4
+              ],
+              [
+                -0.70711,
+                0.70711,
+                0.4
+              ],
+              [
+                -0.83147,
+                0.55557,
+                0.4
+              ],
+              [
+                -0.92388,
+                0.38268,
+                0.4
+              ],
+              [
+                -0.98079,
+                0.19509,
+                0.4
+              ],
+              [
+                -1,
+                0,
+                0.4
+              ],
+              [
+                -0.98079,
+                -0.19509,
+                0.4
+              ],
+              [
+                -0.92388,
+                -0.38268,
+                0.4
+              ],
+              [
+                -0.83147,
+                -0.55557,
+                0.4
+              ],
+              [
+                -0.70711,
+                -0.70711,
+                0.4
+              ],
+              [
+                -0.55557,
+                -0.83147,
+                0.4
+              ],
+              [
+                -0.38268,
+                -0.92388,
+                0.4
+              ],
+              [
+                -0.19509,
+                -0.98079,
+                0.4
+              ],
+              [
+                0,
+                -1,
+                0.4
+              ],
+              [
+                0.19509,
+                -0.98079,
+                0.4
+              ],
+              [
+                0.38268,
+                -0.92388,
+                0.4
+              ],
+              [
+                0.55557,
+                -0.83147,
+                0.4
+              ],
+              [
+                0.70711,
+                -0.70711,
+                0.4
+              ],
+              [
+                0.83147,
+                -0.55557,
+                0.4
+              ],
+              [
+                0.92388,
+                -0.38268,
+                0.4
+              ],
+              [
+                0.98079,
+                -0.19509,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_0_z0",
+            verts: [
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                0.98079,
+                0.19509,
+                0
+              ],
+              [
+                0.98079,
+                0.19509,
+                0.4
+              ],
+              [
+                1,
+                0,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_1_z0",
+            verts: [
+              [
+                0.98079,
+                0.19509,
+                0
+              ],
+              [
+                0.92388,
+                0.38268,
+                0
+              ],
+              [
+                0.92388,
+                0.38268,
+                0.4
+              ],
+              [
+                0.98079,
+                0.19509,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_2_z0",
+            verts: [
+              [
+                0.92388,
+                0.38268,
+                0
+              ],
+              [
+                0.83147,
+                0.55557,
+                0
+              ],
+              [
+                0.83147,
+                0.55557,
+                0.4
+              ],
+              [
+                0.92388,
+                0.38268,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_3_z0",
+            verts: [
+              [
+                0.83147,
+                0.55557,
+                0
+              ],
+              [
+                0.70711,
+                0.70711,
+                0
+              ],
+              [
+                0.70711,
+                0.70711,
+                0.4
+              ],
+              [
+                0.83147,
+                0.55557,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_4_z0",
+            verts: [
+              [
+                0.70711,
+                0.70711,
+                0
+              ],
+              [
+                0.55557,
+                0.83147,
+                0
+              ],
+              [
+                0.55557,
+                0.83147,
+                0.4
+              ],
+              [
+                0.70711,
+                0.70711,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_5_z0",
+            verts: [
+              [
+                0.55557,
+                0.83147,
+                0
+              ],
+              [
+                0.38268,
+                0.92388,
+                0
+              ],
+              [
+                0.38268,
+                0.92388,
+                0.4
+              ],
+              [
+                0.55557,
+                0.83147,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_6_z0",
+            verts: [
+              [
+                0.38268,
+                0.92388,
+                0
+              ],
+              [
+                0.19509,
+                0.98079,
+                0
+              ],
+              [
+                0.19509,
+                0.98079,
+                0.4
+              ],
+              [
+                0.38268,
+                0.92388,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_7_z0",
+            verts: [
+              [
+                0.19509,
+                0.98079,
+                0
+              ],
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                0,
+                1,
+                0.4
+              ],
+              [
+                0.19509,
+                0.98079,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_8_z0",
+            verts: [
+              [
+                0,
+                1,
+                0
+              ],
+              [
+                -0.19509,
+                0.98079,
+                0
+              ],
+              [
+                -0.19509,
+                0.98079,
+                0.4
+              ],
+              [
+                0,
+                1,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_9_z0",
+            verts: [
+              [
+                -0.19509,
+                0.98079,
+                0
+              ],
+              [
+                -0.38268,
+                0.92388,
+                0
+              ],
+              [
+                -0.38268,
+                0.92388,
+                0.4
+              ],
+              [
+                -0.19509,
+                0.98079,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_10_z0",
+            verts: [
+              [
+                -0.38268,
+                0.92388,
+                0
+              ],
+              [
+                -0.55557,
+                0.83147,
+                0
+              ],
+              [
+                -0.55557,
+                0.83147,
+                0.4
+              ],
+              [
+                -0.38268,
+                0.92388,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_11_z0",
+            verts: [
+              [
+                -0.55557,
+                0.83147,
+                0
+              ],
+              [
+                -0.70711,
+                0.70711,
+                0
+              ],
+              [
+                -0.70711,
+                0.70711,
+                0.4
+              ],
+              [
+                -0.55557,
+                0.83147,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_28_z0",
+            verts: [
+              [
+                0.70711,
+                -0.70711,
+                0
+              ],
+              [
+                0.83147,
+                -0.55557,
+                0
+              ],
+              [
+                0.83147,
+                -0.55557,
+                0.4
+              ],
+              [
+                0.70711,
+                -0.70711,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_29_z0",
+            verts: [
+              [
+                0.83147,
+                -0.55557,
+                0
+              ],
+              [
+                0.92388,
+                -0.38268,
+                0
+              ],
+              [
+                0.92388,
+                -0.38268,
+                0.4
+              ],
+              [
+                0.83147,
+                -0.55557,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_30_z0",
+            verts: [
+              [
+                0.92388,
+                -0.38268,
+                0
+              ],
+              [
+                0.98079,
+                -0.19509,
+                0
+              ],
+              [
+                0.98079,
+                -0.19509,
+                0.4
+              ],
+              [
+                0.92388,
+                -0.38268,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "side_31_z0",
+            verts: [
+              [
+                0.98079,
+                -0.19509,
+                0
+              ],
+              [
+                1,
+                0,
+                0
+              ],
+              [
+                1,
+                0,
+                0.4
+              ],
+              [
+                0.98079,
+                -0.19509,
+                0.4
+              ]
+            ],
+            color: "#404040",
+            stroke: null
+          },
+          {
+            id: "cap_z3",
+            verts: [
+              [
+                0.45,
+                0,
+                3
+              ],
+              [
+                0.41575,
+                0.17221,
+                3
+              ],
+              [
+                0.3182,
+                0.3182,
+                3
+              ],
+              [
+                0.17221,
+                0.41575,
+                3
+              ],
+              [
+                0,
+                0.45,
+                3
+              ],
+              [
+                -0.17221,
+                0.41575,
+                3
+              ],
+              [
+                -0.3182,
+                0.3182,
+                3
+              ],
+              [
+                -0.41575,
+                0.17221,
+                3
+              ],
+              [
+                -0.45,
+                0,
+                3
+              ],
+              [
+                -0.41575,
+                -0.17221,
+                3
+              ],
+              [
+                -0.3182,
+                -0.3182,
+                3
+              ],
+              [
+                -0.17221,
+                -0.41575,
+                3
+              ],
+              [
+                0,
+                -0.45,
+                3
+              ],
+              [
+                0.17221,
+                -0.41575,
+                3
+              ],
+              [
+                0.3182,
+                -0.3182,
+                3
+              ],
+              [
+                0.41575,
+                -0.17221,
+                3
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_0_z0.4",
+            verts: [
+              [
+                0.45,
+                0,
+                0.4
+              ],
+              [
+                0.41575,
+                0.17221,
+                0.4
+              ],
+              [
+                0.41575,
+                0.17221,
+                3
+              ],
+              [
+                0.45,
+                0,
+                3
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_1_z0.4",
+            verts: [
+              [
+                0.41575,
+                0.17221,
+                0.4
+              ],
+              [
+                0.3182,
+                0.3182,
+                0.4
+              ],
+              [
+                0.3182,
+                0.3182,
+                3
+              ],
+              [
+                0.41575,
+                0.17221,
+                3
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_2_z0.4",
+            verts: [
+              [
+                0.3182,
+                0.3182,
+                0.4
+              ],
+              [
+                0.17221,
+                0.41575,
+                0.4
+              ],
+              [
+                0.17221,
+                0.41575,
+                3
+              ],
+              [
+                0.3182,
+                0.3182,
+                3
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_3_z0.4",
+            verts: [
+              [
+                0.17221,
+                0.41575,
+                0.4
+              ],
+              [
+                0,
+                0.45,
+                0.4
+              ],
+              [
+                0,
+                0.45,
+                3
+              ],
+              [
+                0.17221,
+                0.41575,
+                3
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_4_z0.4",
+            verts: [
+              [
+                0,
+                0.45,
+                0.4
+              ],
+              [
+                -0.17221,
+                0.41575,
+                0.4
+              ],
+              [
+                -0.17221,
+                0.41575,
+                3
+              ],
+              [
+                0,
+                0.45,
+                3
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_5_z0.4",
+            verts: [
+              [
+                -0.17221,
+                0.41575,
+                0.4
+              ],
+              [
+                -0.3182,
+                0.3182,
+                0.4
+              ],
+              [
+                -0.3182,
+                0.3182,
+                3
+              ],
+              [
+                -0.17221,
+                0.41575,
+                3
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_14_z0.4",
+            verts: [
+              [
+                0.3182,
+                -0.3182,
+                0.4
+              ],
+              [
+                0.41575,
+                -0.17221,
+                0.4
+              ],
+              [
+                0.41575,
+                -0.17221,
+                3
+              ],
+              [
+                0.3182,
+                -0.3182,
+                3
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_15_z0.4",
+            verts: [
+              [
+                0.41575,
+                -0.17221,
+                0.4
+              ],
+              [
+                0.45,
+                0,
+                0.4
+              ],
+              [
+                0.45,
+                0,
+                3
+              ],
+              [
+                0.41575,
+                -0.17221,
+                3
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "cap_z6",
+            verts: [
+              [
+                0.45,
+                0,
+                6
+              ],
+              [
+                0.41575,
+                0.17221,
+                6
+              ],
+              [
+                0.3182,
+                0.3182,
+                6
+              ],
+              [
+                0.17221,
+                0.41575,
+                6
+              ],
+              [
+                0,
+                0.45,
+                6
+              ],
+              [
+                -0.17221,
+                0.41575,
+                6
+              ],
+              [
+                -0.3182,
+                0.3182,
+                6
+              ],
+              [
+                -0.41575,
+                0.17221,
+                6
+              ],
+              [
+                -0.45,
+                0,
+                6
+              ],
+              [
+                -0.41575,
+                -0.17221,
+                6
+              ],
+              [
+                -0.3182,
+                -0.3182,
+                6
+              ],
+              [
+                -0.17221,
+                -0.41575,
+                6
+              ],
+              [
+                0,
+                -0.45,
+                6
+              ],
+              [
+                0.17221,
+                -0.41575,
+                6
+              ],
+              [
+                0.3182,
+                -0.3182,
+                6
+              ],
+              [
+                0.41575,
+                -0.17221,
+                6
+              ]
+            ],
+            color: "#eeeeee",
+            stroke: null
+          },
+          {
+            id: "side_0_z3",
+            verts: [
+              [
+                0.45,
+                0,
+                3
+              ],
+              [
+                0.41575,
+                0.17221,
+                3
+              ],
+              [
+                0.41575,
+                0.17221,
+                6
+              ],
+              [
+                0.45,
+                0,
+                6
+              ]
+            ],
+            color: "#eeeeee",
+            stroke: null
+          },
+          {
+            id: "side_1_z3",
+            verts: [
+              [
+                0.41575,
+                0.17221,
+                3
+              ],
+              [
+                0.3182,
+                0.3182,
+                3
+              ],
+              [
+                0.3182,
+                0.3182,
+                6
+              ],
+              [
+                0.41575,
+                0.17221,
+                6
+              ]
+            ],
+            color: "#eeeeee",
+            stroke: null
+          },
+          {
+            id: "side_2_z3",
+            verts: [
+              [
+                0.3182,
+                0.3182,
+                3
+              ],
+              [
+                0.17221,
+                0.41575,
+                3
+              ],
+              [
+                0.17221,
+                0.41575,
+                6
+              ],
+              [
+                0.3182,
+                0.3182,
+                6
+              ]
+            ],
+            color: "#eeeeee",
+            stroke: null
+          },
+          {
+            id: "side_3_z3",
+            verts: [
+              [
+                0.17221,
+                0.41575,
+                3
+              ],
+              [
+                0,
+                0.45,
+                3
+              ],
+              [
+                0,
+                0.45,
+                6
+              ],
+              [
+                0.17221,
+                0.41575,
+                6
+              ]
+            ],
+            color: "#eeeeee",
+            stroke: null
+          },
+          {
+            id: "side_4_z3",
+            verts: [
+              [
+                0,
+                0.45,
+                3
+              ],
+              [
+                -0.17221,
+                0.41575,
+                3
+              ],
+              [
+                -0.17221,
+                0.41575,
+                6
+              ],
+              [
+                0,
+                0.45,
+                6
+              ]
+            ],
+            color: "#eeeeee",
+            stroke: null
+          },
+          {
+            id: "side_5_z3",
+            verts: [
+              [
+                -0.17221,
+                0.41575,
+                3
+              ],
+              [
+                -0.3182,
+                0.3182,
+                3
+              ],
+              [
+                -0.3182,
+                0.3182,
+                6
+              ],
+              [
+                -0.17221,
+                0.41575,
+                6
+              ]
+            ],
+            color: "#eeeeee",
+            stroke: null
+          },
+          {
+            id: "side_14_z3",
+            verts: [
+              [
+                0.3182,
+                -0.3182,
+                3
+              ],
+              [
+                0.41575,
+                -0.17221,
+                3
+              ],
+              [
+                0.41575,
+                -0.17221,
+                6
+              ],
+              [
+                0.3182,
+                -0.3182,
+                6
+              ]
+            ],
+            color: "#eeeeee",
+            stroke: null
+          },
+          {
+            id: "side_15_z3",
+            verts: [
+              [
+                0.41575,
+                -0.17221,
+                3
+              ],
+              [
+                0.45,
+                0,
+                3
+              ],
+              [
+                0.45,
+                0,
+                6
+              ],
+              [
+                0.41575,
+                -0.17221,
+                6
+              ]
+            ],
+            color: "#eeeeee",
+            stroke: null
+          },
+          {
+            id: "cap_z7",
+            verts: [
+              [
+                0.45,
+                0,
+                7
+              ],
+              [
+                0.41575,
+                0.17221,
+                7
+              ],
+              [
+                0.3182,
+                0.3182,
+                7
+              ],
+              [
+                0.17221,
+                0.41575,
+                7
+              ],
+              [
+                0,
+                0.45,
+                7
+              ],
+              [
+                -0.17221,
+                0.41575,
+                7
+              ],
+              [
+                -0.3182,
+                0.3182,
+                7
+              ],
+              [
+                -0.41575,
+                0.17221,
+                7
+              ],
+              [
+                -0.45,
+                0,
+                7
+              ],
+              [
+                -0.41575,
+                -0.17221,
+                7
+              ],
+              [
+                -0.3182,
+                -0.3182,
+                7
+              ],
+              [
+                -0.17221,
+                -0.41575,
+                7
+              ],
+              [
+                0,
+                -0.45,
+                7
+              ],
+              [
+                0.17221,
+                -0.41575,
+                7
+              ],
+              [
+                0.3182,
+                -0.3182,
+                7
+              ],
+              [
+                0.41575,
+                -0.17221,
+                7
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_0_z6",
+            verts: [
+              [
+                0.45,
+                0,
+                6
+              ],
+              [
+                0.41575,
+                0.17221,
+                6
+              ],
+              [
+                0.41575,
+                0.17221,
+                7
+              ],
+              [
+                0.45,
+                0,
+                7
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_1_z6",
+            verts: [
+              [
+                0.41575,
+                0.17221,
+                6
+              ],
+              [
+                0.3182,
+                0.3182,
+                6
+              ],
+              [
+                0.3182,
+                0.3182,
+                7
+              ],
+              [
+                0.41575,
+                0.17221,
+                7
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_2_z6",
+            verts: [
+              [
+                0.3182,
+                0.3182,
+                6
+              ],
+              [
+                0.17221,
+                0.41575,
+                6
+              ],
+              [
+                0.17221,
+                0.41575,
+                7
+              ],
+              [
+                0.3182,
+                0.3182,
+                7
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_3_z6",
+            verts: [
+              [
+                0.17221,
+                0.41575,
+                6
+              ],
+              [
+                0,
+                0.45,
+                6
+              ],
+              [
+                0,
+                0.45,
+                7
+              ],
+              [
+                0.17221,
+                0.41575,
+                7
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_4_z6",
+            verts: [
+              [
+                0,
+                0.45,
+                6
+              ],
+              [
+                -0.17221,
+                0.41575,
+                6
+              ],
+              [
+                -0.17221,
+                0.41575,
+                7
+              ],
+              [
+                0,
+                0.45,
+                7
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_5_z6",
+            verts: [
+              [
+                -0.17221,
+                0.41575,
+                6
+              ],
+              [
+                -0.3182,
+                0.3182,
+                6
+              ],
+              [
+                -0.3182,
+                0.3182,
+                7
+              ],
+              [
+                -0.17221,
+                0.41575,
+                7
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_14_z6",
+            verts: [
+              [
+                0.3182,
+                -0.3182,
+                6
+              ],
+              [
+                0.41575,
+                -0.17221,
+                6
+              ],
+              [
+                0.41575,
+                -0.17221,
+                7
+              ],
+              [
+                0.3182,
+                -0.3182,
+                7
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "side_15_z6",
+            verts: [
+              [
+                0.41575,
+                -0.17221,
+                6
+              ],
+              [
+                0.45,
+                0,
+                6
+              ],
+              [
+                0.45,
+                0,
+                7
+              ],
+              [
+                0.41575,
+                -0.17221,
+                7
+              ]
+            ],
+            color: "#cc2222",
+            stroke: null
+          },
+          {
+            id: "cap_z8",
+            verts: [
+              [
+                0.45,
+                0,
+                8
+              ],
+              [
+                0.41575,
+                0.17221,
+                8
+              ],
+              [
+                0.3182,
+                0.3182,
+                8
+              ],
+              [
+                0.17221,
+                0.41575,
+                8
+              ],
+              [
+                0,
+                0.45,
+                8
+              ],
+              [
+                -0.17221,
+                0.41575,
+                8
+              ],
+              [
+                -0.3182,
+                0.3182,
+                8
+              ],
+              [
+                -0.41575,
+                0.17221,
+                8
+              ],
+              [
+                -0.45,
+                0,
+                8
+              ],
+              [
+                -0.41575,
+                -0.17221,
+                8
+              ],
+              [
+                -0.3182,
+                -0.3182,
+                8
+              ],
+              [
+                -0.17221,
+                -0.41575,
+                8
+              ],
+              [
+                0,
+                -0.45,
+                8
+              ],
+              [
+                0.17221,
+                -0.41575,
+                8
+              ],
+              [
+                0.3182,
+                -0.3182,
+                8
+              ],
+              [
+                0.41575,
+                -0.17221,
+                8
+              ]
+            ],
+            color: "#ffff88",
+            stroke: null
+          },
+          {
+            id: "side_0_z7",
+            verts: [
+              [
+                0.45,
+                0,
+                7
+              ],
+              [
+                0.41575,
+                0.17221,
+                7
+              ],
+              [
+                0.41575,
+                0.17221,
+                8
+              ],
+              [
+                0.45,
+                0,
+                8
+              ]
+            ],
+            color: "#ffff88",
+            stroke: null
+          },
+          {
+            id: "side_1_z7",
+            verts: [
+              [
+                0.41575,
+                0.17221,
+                7
+              ],
+              [
+                0.3182,
+                0.3182,
+                7
+              ],
+              [
+                0.3182,
+                0.3182,
+                8
+              ],
+              [
+                0.41575,
+                0.17221,
+                8
+              ]
+            ],
+            color: "#ffff88",
+            stroke: null
+          },
+          {
+            id: "side_2_z7",
+            verts: [
+              [
+                0.3182,
+                0.3182,
+                7
+              ],
+              [
+                0.17221,
+                0.41575,
+                7
+              ],
+              [
+                0.17221,
+                0.41575,
+                8
+              ],
+              [
+                0.3182,
+                0.3182,
+                8
+              ]
+            ],
+            color: "#ffff88",
+            stroke: null
+          },
+          {
+            id: "side_3_z7",
+            verts: [
+              [
+                0.17221,
+                0.41575,
+                7
+              ],
+              [
+                0,
+                0.45,
+                7
+              ],
+              [
+                0,
+                0.45,
+                8
+              ],
+              [
+                0.17221,
+                0.41575,
+                8
+              ]
+            ],
+            color: "#ffff88",
+            stroke: null
+          },
+          {
+            id: "side_4_z7",
+            verts: [
+              [
+                0,
+                0.45,
+                7
+              ],
+              [
+                -0.17221,
+                0.41575,
+                7
+              ],
+              [
+                -0.17221,
+                0.41575,
+                8
+              ],
+              [
+                0,
+                0.45,
+                8
+              ]
+            ],
+            color: "#ffff88",
+            stroke: null
+          },
+          {
+            id: "side_5_z7",
+            verts: [
+              [
+                -0.17221,
+                0.41575,
+                7
+              ],
+              [
+                -0.3182,
+                0.3182,
+                7
+              ],
+              [
+                -0.3182,
+                0.3182,
+                8
+              ],
+              [
+                -0.17221,
+                0.41575,
+                8
+              ]
+            ],
+            color: "#ffff88",
+            stroke: null
+          },
+          {
+            id: "side_14_z7",
+            verts: [
+              [
+                0.3182,
+                -0.3182,
+                7
+              ],
+              [
+                0.41575,
+                -0.17221,
+                7
+              ],
+              [
+                0.41575,
+                -0.17221,
+                8
+              ],
+              [
+                0.3182,
+                -0.3182,
+                8
+              ]
+            ],
+            color: "#ffff88",
+            stroke: null
+          },
+          {
+            id: "side_15_z7",
+            verts: [
+              [
+                0.41575,
+                -0.17221,
+                7
+              ],
+              [
+                0.45,
+                0,
+                7
+              ],
+              [
+                0.45,
+                0,
+                8
+              ],
+              [
+                0.41575,
+                -0.17221,
+                8
+              ]
+            ],
+            color: "#ffff88",
+            stroke: null
+          }
+        ]
       }
     ]
   };
 
   // ../src/game/models/sailboat.zdef
   var sailboat_default = {
+    version: 3,
     id: "sailboat",
     pivot: [
       0,
@@ -2753,354 +3399,331 @@
         zMax: 3.2
       }
     ],
-    faces: [
+    nodes: [
       {
-        id: "keel",
-        verts: [
-          [
-            1.3,
-            0,
-            0
-          ],
-          [
-            0.2,
-            -0.45,
-            0
-          ],
-          [
-            -1.1,
-            -0.35,
-            0
-          ],
-          [
-            -1.1,
-            0.35,
-            0
-          ],
-          [
-            0.2,
-            0.45,
-            0
-          ]
-        ],
-        color: "#822"
-      },
-      {
-        id: "stern",
-        normal: [
-          -1,
-          0
-        ],
-        verts: [
-          [
-            -1.1,
-            -0.35,
-            0
-          ],
-          [
-            -1.1,
-            0.35,
-            0
-          ],
-          [
-            -1.1,
-            0.35,
-            0.35
-          ],
-          [
-            -1.1,
-            -0.35,
-            0.35
-          ]
-        ],
-        color: "#ddd"
-      },
-      {
-        id: "stbd_lower_bow",
-        normal: [
-          0,
-          -1
-        ],
-        verts: [
-          [
-            1.3,
-            0,
-            0
-          ],
-          [
-            0.2,
-            -0.45,
-            0
-          ],
-          [
-            0.2,
-            -0.45,
-            0.1
-          ],
-          [
-            1.3,
-            0,
-            0.1
-          ]
-        ],
-        color: "#a33"
-      },
-      {
-        id: "stbd_lower_mid",
-        normal: [
-          0,
-          -1
-        ],
-        verts: [
-          [
-            0.2,
-            -0.45,
-            0
-          ],
-          [
-            -1.1,
-            -0.35,
-            0
-          ],
-          [
-            -1.1,
-            -0.35,
-            0.1
-          ],
-          [
-            0.2,
-            -0.45,
-            0.1
-          ]
-        ],
-        color: "#922"
-      },
-      {
-        id: "stbd_upper_bow",
-        normal: [
-          0,
-          -1
-        ],
-        verts: [
-          [
-            1.3,
-            0,
-            0.1
-          ],
-          [
-            0.2,
-            -0.45,
-            0.1
-          ],
-          [
-            0.2,
-            -0.45,
-            0.35
-          ],
-          [
-            1.3,
-            0,
-            0.35
-          ]
-        ],
-        color: "#fff"
-      },
-      {
-        id: "stbd_upper_mid",
-        normal: [
-          0,
-          -1
-        ],
-        verts: [
-          [
-            0.2,
-            -0.45,
-            0.1
-          ],
-          [
-            -1.1,
-            -0.35,
-            0.1
-          ],
-          [
-            -1.1,
-            -0.35,
-            0.35
-          ],
-          [
-            0.2,
-            -0.45,
-            0.35
-          ]
-        ],
-        color: "#eee"
-      },
-      {
-        id: "port_bow",
-        normal: [
-          0,
-          1
-        ],
-        verts: [
-          [
-            1.3,
-            0,
-            0
-          ],
-          [
-            0.2,
-            0.45,
-            0
-          ],
-          [
-            0.2,
-            0.45,
-            0.35
-          ],
-          [
-            1.3,
-            0,
-            0.35
-          ]
-        ],
-        color: "#eee"
-      },
-      {
-        id: "port_mid",
-        normal: [
-          0,
-          1
-        ],
-        verts: [
-          [
-            0.2,
-            0.45,
-            0
-          ],
-          [
-            -1.1,
-            0.35,
-            0
-          ],
-          [
-            -1.1,
-            0.35,
-            0.35
-          ],
-          [
-            0.2,
-            0.45,
-            0.35
-          ]
-        ],
-        color: "#ddd"
-      },
-      {
-        id: "deck",
-        verts: [
-          [
-            1.3,
-            0,
-            0.35
-          ],
-          [
-            0.2,
-            -0.45,
-            0.35
-          ],
-          [
-            -1.1,
-            -0.35,
-            0.35
-          ],
-          [
-            -1.1,
-            0.35,
-            0.35
-          ],
-          [
-            0.2,
-            0.45,
-            0.35
-          ]
-        ],
-        color: "#b96",
-        stroke: "#753"
-      },
-      {
-        id: "mast",
-        verts: [
-          [
-            -0.34,
-            -0.04,
-            0.35
-          ],
-          [
-            -0.26,
-            -0.04,
-            0.35
-          ],
-          [
-            -0.26,
-            -0.04,
-            3.2
-          ],
-          [
-            -0.34,
-            -0.04,
-            3.2
-          ]
-        ],
-        color: "#ddd"
-      },
-      {
-        id: "mainsail",
-        verts: [
-          [
-            -0.3,
-            0,
-            0.65
-          ],
-          [
-            -0.3,
-            0,
-            3
-          ],
-          [
-            -1.83,
-            -0.47,
-            0.65
-          ]
-        ],
-        color: "rgba(255,255,250,0.95)",
-        stroke: "#eee"
-      },
-      {
-        id: "jib",
-        verts: [
-          [
-            1.3,
-            0,
-            0.45
-          ],
-          [
-            -0.3,
-            0,
-            2.7
-          ],
-          [
-            -0.68,
-            -0.12,
-            0.55
-          ]
-        ],
-        color: "rgba(245,245,245,0.90)"
+        faces: [
+          {
+            id: "keel",
+            verts: [
+              [
+                1.3,
+                0,
+                0
+              ],
+              [
+                0.2,
+                -0.45,
+                0
+              ],
+              [
+                -1.1,
+                -0.35,
+                0
+              ],
+              [
+                -1.1,
+                0.35,
+                0
+              ],
+              [
+                0.2,
+                0.45,
+                0
+              ]
+            ],
+            color: "#822"
+          },
+          {
+            id: "stern",
+            verts: [
+              [
+                -1.1,
+                -0.35,
+                0.35
+              ],
+              [
+                -1.1,
+                0.35,
+                0.35
+              ],
+              [
+                -1.1,
+                0.35,
+                0
+              ],
+              [
+                -1.1,
+                -0.35,
+                0
+              ]
+            ],
+            color: "#ddd"
+          },
+          {
+            id: "stbd_lower_bow",
+            verts: [
+              [
+                1.3,
+                0,
+                0.1
+              ],
+              [
+                0.2,
+                -0.45,
+                0.1
+              ],
+              [
+                0.2,
+                -0.45,
+                0
+              ],
+              [
+                1.3,
+                0,
+                0
+              ]
+            ],
+            color: "#a33"
+          },
+          {
+            id: "stbd_lower_mid",
+            verts: [
+              [
+                0.2,
+                -0.45,
+                0.1
+              ],
+              [
+                -1.1,
+                -0.35,
+                0.1
+              ],
+              [
+                -1.1,
+                -0.35,
+                0
+              ],
+              [
+                0.2,
+                -0.45,
+                0
+              ]
+            ],
+            color: "#922"
+          },
+          {
+            id: "stbd_upper_bow",
+            verts: [
+              [
+                1.3,
+                0,
+                0.35
+              ],
+              [
+                0.2,
+                -0.45,
+                0.35
+              ],
+              [
+                0.2,
+                -0.45,
+                0.1
+              ],
+              [
+                1.3,
+                0,
+                0.1
+              ]
+            ],
+            color: "#fff"
+          },
+          {
+            id: "stbd_upper_mid",
+            verts: [
+              [
+                0.2,
+                -0.45,
+                0.35
+              ],
+              [
+                -1.1,
+                -0.35,
+                0.35
+              ],
+              [
+                -1.1,
+                -0.35,
+                0.1
+              ],
+              [
+                0.2,
+                -0.45,
+                0.1
+              ]
+            ],
+            color: "#eee"
+          },
+          {
+            id: "port_bow",
+            verts: [
+              [
+                1.3,
+                0,
+                0.35
+              ],
+              [
+                0.2,
+                0.45,
+                0.35
+              ],
+              [
+                0.2,
+                0.45,
+                0
+              ],
+              [
+                1.3,
+                0,
+                0
+              ]
+            ],
+            color: "#eee"
+          },
+          {
+            id: "port_mid",
+            verts: [
+              [
+                0.2,
+                0.45,
+                0
+              ],
+              [
+                -1.1,
+                0.35,
+                0
+              ],
+              [
+                -1.1,
+                0.35,
+                0.35
+              ],
+              [
+                0.2,
+                0.45,
+                0.35
+              ]
+            ],
+            color: "#ddd"
+          },
+          {
+            id: "deck",
+            verts: [
+              [
+                1.3,
+                0,
+                0.35
+              ],
+              [
+                0.2,
+                -0.45,
+                0.35
+              ],
+              [
+                -1.1,
+                -0.35,
+                0.35
+              ],
+              [
+                -1.1,
+                0.35,
+                0.35
+              ],
+              [
+                0.2,
+                0.45,
+                0.35
+              ]
+            ],
+            color: "#b96",
+            stroke: "#753"
+          },
+          {
+            id: "mast",
+            verts: [
+              [
+                -0.34,
+                -0.04,
+                0.35
+              ],
+              [
+                -0.26,
+                -0.04,
+                0.35
+              ],
+              [
+                -0.26,
+                -0.04,
+                3.2
+              ],
+              [
+                -0.34,
+                -0.04,
+                3.2
+              ]
+            ],
+            color: "#ddd"
+          },
+          {
+            id: "mainsail",
+            verts: [
+              [
+                -0.3,
+                0,
+                0.65
+              ],
+              [
+                -0.3,
+                0,
+                3
+              ],
+              [
+                -1.83,
+                -0.47,
+                0.65
+              ]
+            ],
+            color: "rgba(255,255,250,0.95)",
+            stroke: "#eee"
+          },
+          {
+            id: "jib",
+            verts: [
+              [
+                1.3,
+                0,
+                0.45
+              ],
+              [
+                -0.3,
+                0,
+                2.7
+              ],
+              [
+                -0.68,
+                -0.12,
+                0.55
+              ]
+            ],
+            color: "rgba(245,245,245,0.90)"
+          }
+        ]
       }
     ]
   };
 
   // ../src/game/models/coasthawk.zdef
   var coasthawk_default = {
+    version: 3,
     id: "coasthawk",
     pivot: [
       0,
@@ -3118,194 +3741,199 @@
         zMax: 1.3
       }
     ],
-    faces: [
+    nodes: [
       {
-        id: "tail_rotor_bar",
-        verts: [
-          [
-            -2.4,
-            0.6,
-            0.25
-          ],
-          [
-            -2.4,
-            -0.6,
-            0.25
-          ],
-          [
-            -2.4,
-            -0.6,
-            0.35
-          ],
-          [
-            -2.4,
-            0.6,
-            0.35
-          ]
-        ],
-        color: "#222222"
-      },
-      {
-        id: "tail_fin",
-        verts: [
-          [
-            -2.4,
-            0,
-            0.6
-          ],
-          [
-            -2.9,
-            0,
-            1.3
-          ],
-          [
-            -3,
-            0,
-            0.6
-          ]
-        ],
-        color: "#ff6600"
-      },
-      {
-        id: "tail_boom",
-        verts: [
-          [
-            -1.1,
-            0.08,
-            0.6
-          ],
-          [
-            -2.4,
-            0.08,
-            0.6
-          ],
-          [
-            -2.4,
-            -0.08,
-            0.6
-          ],
-          [
-            -1.1,
-            -0.08,
-            0.6
-          ]
-        ],
-        color: "#ff6600"
-      },
-      {
-        id: "fuselage",
-        verts: [
-          [
-            1.3,
-            0,
-            0.3
-          ],
-          [
-            0.4,
-            -0.45,
-            0.4
-          ],
-          [
-            -1,
-            -0.45,
-            0.4
-          ],
-          [
-            -1.1,
-            0,
-            0.6
-          ],
-          [
-            -1,
-            0.45,
-            0.4
-          ],
-          [
-            0.4,
-            0.45,
-            0.4
-          ]
-        ],
-        color: "#ff6600"
-      },
-      {
-        id: "window_right",
-        verts: [
-          [
-            0.3,
-            -0.47,
-            0.35
-          ],
-          [
-            -0.6,
-            -0.47,
-            0.35
-          ],
-          [
-            -0.6,
-            -0.3,
-            0.6
-          ],
-          [
-            0.3,
-            -0.3,
-            0.6
-          ]
-        ],
-        color: "#111111"
-      },
-      {
-        id: "window_left",
-        verts: [
-          [
-            0.3,
-            0.47,
-            0.35
-          ],
-          [
-            -0.6,
-            0.47,
-            0.35
-          ],
-          [
-            -0.6,
-            0.3,
-            0.6
-          ],
-          [
-            0.3,
-            0.3,
-            0.6
-          ]
-        ],
-        color: "#111111"
-      },
-      {
-        id: "cockpit_nose",
-        verts: [
-          [
-            1.3,
-            0,
-            0.3
-          ],
-          [
-            0.6,
-            0.4,
-            0.6
-          ],
-          [
-            0.6,
-            -0.4,
-            0.6
-          ]
-        ],
-        color: "#111111"
+        faces: [
+          {
+            id: "tail_rotor_bar",
+            verts: [
+              [
+                -2.4,
+                0.6,
+                0.25
+              ],
+              [
+                -2.4,
+                -0.6,
+                0.25
+              ],
+              [
+                -2.4,
+                -0.6,
+                0.35
+              ],
+              [
+                -2.4,
+                0.6,
+                0.35
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "tail_fin",
+            verts: [
+              [
+                -2.4,
+                0,
+                0.6
+              ],
+              [
+                -2.9,
+                0,
+                1.3
+              ],
+              [
+                -3,
+                0,
+                0.6
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "tail_boom",
+            verts: [
+              [
+                -1.1,
+                0.08,
+                0.6
+              ],
+              [
+                -2.4,
+                0.08,
+                0.6
+              ],
+              [
+                -2.4,
+                -0.08,
+                0.6
+              ],
+              [
+                -1.1,
+                -0.08,
+                0.6
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "fuselage",
+            verts: [
+              [
+                1.3,
+                0,
+                0.3
+              ],
+              [
+                0.4,
+                -0.45,
+                0.4
+              ],
+              [
+                -1,
+                -0.45,
+                0.4
+              ],
+              [
+                -1.1,
+                0,
+                0.6
+              ],
+              [
+                -1,
+                0.45,
+                0.4
+              ],
+              [
+                0.4,
+                0.45,
+                0.4
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "window_right",
+            verts: [
+              [
+                0.3,
+                -0.47,
+                0.35
+              ],
+              [
+                -0.6,
+                -0.47,
+                0.35
+              ],
+              [
+                -0.6,
+                -0.3,
+                0.6
+              ],
+              [
+                0.3,
+                -0.3,
+                0.6
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "window_left",
+            verts: [
+              [
+                0.3,
+                0.47,
+                0.35
+              ],
+              [
+                -0.6,
+                0.47,
+                0.35
+              ],
+              [
+                -0.6,
+                0.3,
+                0.6
+              ],
+              [
+                0.3,
+                0.3,
+                0.6
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "cockpit_nose",
+            verts: [
+              [
+                1.3,
+                0,
+                0.3
+              ],
+              [
+                0.6,
+                0.4,
+                0.6
+              ],
+              [
+                0.6,
+                -0.4,
+                0.6
+              ]
+            ],
+            color: "#111111"
+          }
+        ]
       }
     ]
   };
 
   // ../src/game/models/dolphin.zdef
   var dolphin_default = {
+    version: 3,
     id: "dolphin",
     pivot: [
       0,
@@ -3323,121 +3951,868 @@
         zMax: 0.84
       }
     ],
-    faces: [
+    nodes: [
       {
-        id: "fuselage",
-        verts: [
-          [
-            0.98,
-            0,
-            0.14
-          ],
-          [
-            0,
-            -0.28,
-            0.28
-          ],
-          [
-            -0.56,
-            0,
-            0.35
-          ],
-          [
-            0,
-            0.28,
-            0.28
-          ]
-        ],
-        color: "#ff6600"
-      },
-      {
-        id: "cockpit",
-        verts: [
-          [
-            0.84,
-            0,
-            0.175
-          ],
-          [
-            0.21,
-            -0.21,
-            0.42
-          ],
-          [
-            0.21,
-            0.21,
-            0.42
-          ]
-        ],
-        color: "#112233"
-      },
-      {
-        id: "tail_fin",
-        verts: [
-          [
-            -0.56,
-            0,
-            0.35
-          ],
-          [
-            -1.26,
-            0,
-            0.84
-          ],
-          [
-            -1.4,
-            0,
-            0.28
-          ]
-        ],
-        color: "#ff6600"
+        faces: [
+          {
+            id: "fuselage",
+            verts: [
+              [
+                0.98,
+                0,
+                0.14
+              ],
+              [
+                0,
+                -0.28,
+                0.28
+              ],
+              [
+                -0.56,
+                0,
+                0.35
+              ],
+              [
+                0,
+                0.28,
+                0.28
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "cockpit",
+            verts: [
+              [
+                0.84,
+                0,
+                0.175
+              ],
+              [
+                0.21,
+                -0.21,
+                0.42
+              ],
+              [
+                0.21,
+                0.21,
+                0.42
+              ]
+            ],
+            color: "#112233"
+          },
+          {
+            id: "tail_fin",
+            verts: [
+              [
+                -0.56,
+                0,
+                0.35
+              ],
+              [
+                -1.26,
+                0,
+                0.84
+              ],
+              [
+                -1.4,
+                0,
+                0.28
+              ]
+            ],
+            color: "#ff6600"
+          }
+        ]
       }
     ]
   };
 
   // ../src/game/models/atlas.zdef
   var atlas_default = {
+    version: 3,
     id: "atlas",
-    pivot: [0, 0, 0],
-    collisionBoxes: [
-      { id: "body", xMin: -2.6, xMax: 2.8, yMin: -0.6, yMax: 0.6, zMin: 0, zMax: 1.8 }
+    pivot: [
+      0,
+      0,
+      0
     ],
-    faces: [
-      { id: "bottom", verts: [[1.8, 0.3, 0.15], [1.8, -0.3, 0.15], [-2, -0.3, 0.15], [-2, 0.3, 0.15]], color: "#ff6600" },
-      { id: "side_left_lower", verts: [[1.8, 0.3, 0.15], [1.8, 0.6, 0.5], [-2, 0.6, 0.5], [-2, 0.3, 0.15]], color: "#ff6600" },
-      { id: "side_right_lower", verts: [[1.8, -0.3, 0.15], [1.8, -0.6, 0.5], [-2, -0.6, 0.5], [-2, -0.3, 0.15]], color: "#ff6600" },
-      { id: "side_left_upper_front", verts: [[1.8, 0.6, 0.5], [1.8, 0.3, 0.85], [1.4, 0.3, 0.85], [1.4, 0.6, 0.5]], color: "#ff6600" },
-      { id: "side_left_upper_back", verts: [[0.9, 0.6, 0.5], [0.9, 0.3, 0.85], [-2, 0.3, 0.85], [-2, 0.6, 0.5]], color: "#ff6600" },
-      { id: "side_right_upper_front", verts: [[1.8, -0.6, 0.5], [1.8, -0.3, 0.85], [1.4, -0.3, 0.85], [1.4, -0.6, 0.5]], color: "#ff6600" },
-      { id: "side_right_upper_back", verts: [[0.9, -0.6, 0.5], [0.9, -0.3, 0.85], [-2, -0.3, 0.85], [-2, -0.6, 0.5]], color: "#ff6600" },
-      { id: "tail_left", verts: [[-2, 0.6, 0.5], [-2, 0.3, 0.85], [-2.6, 0, 1.1], [-2.6, 0, 0.4]], color: "#ff6600" },
-      { id: "tail_right", verts: [[-2, -0.6, 0.5], [-2, -0.3, 0.85], [-2.6, 0, 1.1], [-2.6, 0, 0.4]], color: "#ff6600" },
-      { id: "chinook_nose_bottom", verts: [[1.8, -0.3, 0.15], [1.8, 0.3, 0.15], [2.4, 0.3, 0.15], [2.7, 0, 0.25], [2.4, -0.3, 0.15]], color: "#ff6600" },
-      { id: "chinook_nose_lower_left", verts: [[1.8, 0.3, 0.15], [2.4, 0.3, 0.15], [2.4, 0.5, 0.5], [1.8, 0.6, 0.5]], color: "#ff6600" },
-      { id: "chinook_nose_lower_right", verts: [[1.8, -0.3, 0.15], [1.8, -0.6, 0.5], [2.4, -0.5, 0.5], [2.4, -0.3, 0.15]], color: "#ff6600" },
-      { id: "chinook_nose_front_under", verts: [[2.4, 0.3, 0.15], [2.7, 0, 0.25], [2.4, -0.3, 0.15], [2.4, -0.5, 0.5], [2.4, 0.5, 0.5]], color: "#ff6600" },
-      { id: "chinook_nose_bump", verts: [[2.7, 0, 0.25], [2.4, 0.5, 0.5], [2.3, 0.3, 0.6], [2.3, -0.3, 0.6], [2.4, -0.5, 0.5]], color: "#ff6600" },
-      { id: "cockpit_front", verts: [[2.3, 0.27, 0.6], [2.3, -0.27, 0.6], [1.8, -0.27, 0.85], [1.8, 0.27, 0.85]], color: "#111111" },
-      { id: "cockpit_left", verts: [[2.4, 0.5, 0.5], [2.3, 0.33, 0.6], [1.8, 0.33, 0.85], [1.8, 0.6, 0.5]], color: "#111111" },
-      { id: "cockpit_right", verts: [[2.4, -0.5, 0.5], [1.8, -0.6, 0.5], [1.8, -0.33, 0.85], [2.3, -0.33, 0.6]], color: "#111111" },
-      { id: "cockpit_frame_left", verts: [[2.3, 0.33, 0.6], [2.3, 0.27, 0.6], [1.8, 0.27, 0.85], [1.8, 0.33, 0.85]], color: "#ff6600" },
-      { id: "cockpit_frame_right", verts: [[2.3, -0.27, 0.6], [2.3, -0.33, 0.6], [1.8, -0.33, 0.85], [1.8, -0.27, 0.85]], color: "#ff6600" },
-      { id: "window_left", verts: [[1.4, 0.6, 0.5], [0.9, 0.6, 0.5], [0.9, 0.3, 0.85], [1.4, 0.3, 0.85]], color: "#111111" },
-      { id: "window_right", verts: [[1.4, -0.6, 0.5], [0.9, -0.6, 0.5], [0.9, -0.3, 0.85], [1.4, -0.3, 0.85]], color: "#111111" },
-      { id: "fpylon_front", verts: [[1.8, 0.3, 0.85], [1.8, -0.3, 0.85], [1.5, 0, 1.15]], color: "#ff6600" },
-      { id: "fpylon_right", verts: [[1.8, -0.3, 0.85], [1.2, -0.3, 0.85], [1.5, 0, 1.15]], color: "#ff6600" },
-      { id: "fpylon_back", verts: [[1.2, -0.3, 0.85], [1.2, 0.3, 0.85], [1.5, 0, 1.15]], color: "#ff6600" },
-      { id: "fpylon_left", verts: [[1.2, 0.3, 0.85], [1.8, 0.3, 0.85], [1.5, 0, 1.15]], color: "#ff6600" },
-      { id: "tail_roof", verts: [[-2, 0.3, 0.85], [-2, -0.3, 0.85], [-2.6, 0, 1.1]], color: "#ff6600" },
-      { id: "top", verts: [[1.8, 0.3, 0.85], [1.8, -0.3, 0.85], [-2, -0.3, 0.85], [-2, 0.3, 0.85]], color: "#ff6600" },
-      { id: "rpylon_front", verts: [[-2, 0.3, 0.85], [-2, -0.3, 0.85], [-2.3, 0, 1.8]], color: "#ff6600" },
-      { id: "rpylon_right", verts: [[-2, -0.3, 0.85], [-2.6, 0, 1.1], [-2.3, 0, 1.8]], color: "#ff6600" },
-      { id: "rpylon_left", verts: [[-2.6, 0, 1.1], [-2, 0.3, 0.85], [-2.3, 0, 1.8]], color: "#ff6600" }
+    collisionBoxes: [
+      {
+        id: "body",
+        xMin: -2.6,
+        xMax: 2.8,
+        yMin: -0.6,
+        yMax: 0.6,
+        zMin: 0,
+        zMax: 1.8
+      }
+    ],
+    nodes: [
+      {
+        faces: [
+          {
+            id: "bottom",
+            verts: [
+              [
+                1.8,
+                0.3,
+                0.15
+              ],
+              [
+                1.8,
+                -0.3,
+                0.15
+              ],
+              [
+                -2,
+                -0.3,
+                0.15
+              ],
+              [
+                -2,
+                0.3,
+                0.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "side_left_lower",
+            verts: [
+              [
+                1.8,
+                0.3,
+                0.15
+              ],
+              [
+                1.8,
+                0.6,
+                0.5
+              ],
+              [
+                -2,
+                0.6,
+                0.5
+              ],
+              [
+                -2,
+                0.3,
+                0.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "side_right_lower",
+            verts: [
+              [
+                1.8,
+                -0.3,
+                0.15
+              ],
+              [
+                1.8,
+                -0.6,
+                0.5
+              ],
+              [
+                -2,
+                -0.6,
+                0.5
+              ],
+              [
+                -2,
+                -0.3,
+                0.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "side_left_upper_front",
+            verts: [
+              [
+                1.8,
+                0.6,
+                0.5
+              ],
+              [
+                1.8,
+                0.3,
+                0.85
+              ],
+              [
+                1.4,
+                0.3,
+                0.85
+              ],
+              [
+                1.4,
+                0.6,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "side_left_upper_back",
+            verts: [
+              [
+                0.9,
+                0.6,
+                0.5
+              ],
+              [
+                0.9,
+                0.3,
+                0.85
+              ],
+              [
+                -2,
+                0.3,
+                0.85
+              ],
+              [
+                -2,
+                0.6,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "side_right_upper_front",
+            verts: [
+              [
+                1.8,
+                -0.6,
+                0.5
+              ],
+              [
+                1.8,
+                -0.3,
+                0.85
+              ],
+              [
+                1.4,
+                -0.3,
+                0.85
+              ],
+              [
+                1.4,
+                -0.6,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "side_right_upper_back",
+            verts: [
+              [
+                0.9,
+                -0.6,
+                0.5
+              ],
+              [
+                0.9,
+                -0.3,
+                0.85
+              ],
+              [
+                -2,
+                -0.3,
+                0.85
+              ],
+              [
+                -2,
+                -0.6,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "tail_left",
+            verts: [
+              [
+                -2,
+                0.6,
+                0.5
+              ],
+              [
+                -2,
+                0.3,
+                0.85
+              ],
+              [
+                -2.6,
+                0,
+                1.1
+              ],
+              [
+                -2.6,
+                0,
+                0.4
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "tail_right",
+            verts: [
+              [
+                -2,
+                -0.6,
+                0.5
+              ],
+              [
+                -2,
+                -0.3,
+                0.85
+              ],
+              [
+                -2.6,
+                0,
+                1.1
+              ],
+              [
+                -2.6,
+                0,
+                0.4
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "chinook_nose_bottom",
+            verts: [
+              [
+                1.8,
+                -0.3,
+                0.15
+              ],
+              [
+                1.8,
+                0.3,
+                0.15
+              ],
+              [
+                2.4,
+                0.3,
+                0.15
+              ],
+              [
+                2.7,
+                0,
+                0.25
+              ],
+              [
+                2.4,
+                -0.3,
+                0.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "chinook_nose_lower_left",
+            verts: [
+              [
+                1.8,
+                0.3,
+                0.15
+              ],
+              [
+                2.4,
+                0.3,
+                0.15
+              ],
+              [
+                2.4,
+                0.5,
+                0.5
+              ],
+              [
+                1.8,
+                0.6,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "chinook_nose_lower_right",
+            verts: [
+              [
+                1.8,
+                -0.3,
+                0.15
+              ],
+              [
+                1.8,
+                -0.6,
+                0.5
+              ],
+              [
+                2.4,
+                -0.5,
+                0.5
+              ],
+              [
+                2.4,
+                -0.3,
+                0.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "chinook_nose_front_under",
+            verts: [
+              [
+                2.4,
+                0.3,
+                0.15
+              ],
+              [
+                2.7,
+                0,
+                0.25
+              ],
+              [
+                2.4,
+                -0.3,
+                0.15
+              ],
+              [
+                2.4,
+                -0.5,
+                0.5
+              ],
+              [
+                2.4,
+                0.5,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "chinook_nose_bump",
+            verts: [
+              [
+                2.7,
+                0,
+                0.25
+              ],
+              [
+                2.4,
+                0.5,
+                0.5
+              ],
+              [
+                2.3,
+                0.3,
+                0.6
+              ],
+              [
+                2.3,
+                -0.3,
+                0.6
+              ],
+              [
+                2.4,
+                -0.5,
+                0.5
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "cockpit_front",
+            verts: [
+              [
+                2.3,
+                0.27,
+                0.6
+              ],
+              [
+                2.3,
+                -0.27,
+                0.6
+              ],
+              [
+                1.8,
+                -0.27,
+                0.85
+              ],
+              [
+                1.8,
+                0.27,
+                0.85
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "cockpit_left",
+            verts: [
+              [
+                2.4,
+                0.5,
+                0.5
+              ],
+              [
+                2.3,
+                0.33,
+                0.6
+              ],
+              [
+                1.8,
+                0.33,
+                0.85
+              ],
+              [
+                1.8,
+                0.6,
+                0.5
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "cockpit_right",
+            verts: [
+              [
+                2.4,
+                -0.5,
+                0.5
+              ],
+              [
+                1.8,
+                -0.6,
+                0.5
+              ],
+              [
+                1.8,
+                -0.33,
+                0.85
+              ],
+              [
+                2.3,
+                -0.33,
+                0.6
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "cockpit_frame_left",
+            verts: [
+              [
+                2.3,
+                0.33,
+                0.6
+              ],
+              [
+                2.3,
+                0.27,
+                0.6
+              ],
+              [
+                1.8,
+                0.27,
+                0.85
+              ],
+              [
+                1.8,
+                0.33,
+                0.85
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "cockpit_frame_right",
+            verts: [
+              [
+                2.3,
+                -0.27,
+                0.6
+              ],
+              [
+                2.3,
+                -0.33,
+                0.6
+              ],
+              [
+                1.8,
+                -0.33,
+                0.85
+              ],
+              [
+                1.8,
+                -0.27,
+                0.85
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "window_left",
+            verts: [
+              [
+                1.4,
+                0.6,
+                0.5
+              ],
+              [
+                0.9,
+                0.6,
+                0.5
+              ],
+              [
+                0.9,
+                0.3,
+                0.85
+              ],
+              [
+                1.4,
+                0.3,
+                0.85
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "window_right",
+            verts: [
+              [
+                1.4,
+                -0.6,
+                0.5
+              ],
+              [
+                0.9,
+                -0.6,
+                0.5
+              ],
+              [
+                0.9,
+                -0.3,
+                0.85
+              ],
+              [
+                1.4,
+                -0.3,
+                0.85
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "fpylon_front",
+            verts: [
+              [
+                1.8,
+                0.3,
+                0.85
+              ],
+              [
+                1.8,
+                -0.3,
+                0.85
+              ],
+              [
+                1.5,
+                0,
+                1.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "fpylon_right",
+            verts: [
+              [
+                1.8,
+                -0.3,
+                0.85
+              ],
+              [
+                1.2,
+                -0.3,
+                0.85
+              ],
+              [
+                1.5,
+                0,
+                1.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "fpylon_back",
+            verts: [
+              [
+                1.2,
+                -0.3,
+                0.85
+              ],
+              [
+                1.2,
+                0.3,
+                0.85
+              ],
+              [
+                1.5,
+                0,
+                1.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "fpylon_left",
+            verts: [
+              [
+                1.2,
+                0.3,
+                0.85
+              ],
+              [
+                1.8,
+                0.3,
+                0.85
+              ],
+              [
+                1.5,
+                0,
+                1.15
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "tail_roof",
+            verts: [
+              [
+                -2,
+                0.3,
+                0.85
+              ],
+              [
+                -2,
+                -0.3,
+                0.85
+              ],
+              [
+                -2.6,
+                0,
+                1.1
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "top",
+            verts: [
+              [
+                1.8,
+                0.3,
+                0.85
+              ],
+              [
+                1.8,
+                -0.3,
+                0.85
+              ],
+              [
+                -2,
+                -0.3,
+                0.85
+              ],
+              [
+                -2,
+                0.3,
+                0.85
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "rpylon_front",
+            verts: [
+              [
+                -2,
+                0.3,
+                0.85
+              ],
+              [
+                -2,
+                -0.3,
+                0.85
+              ],
+              [
+                -2.3,
+                0,
+                1.8
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "rpylon_right",
+            verts: [
+              [
+                -2,
+                -0.3,
+                0.85
+              ],
+              [
+                -2.6,
+                0,
+                1.1
+              ],
+              [
+                -2.3,
+                0,
+                1.8
+              ]
+            ],
+            color: "#ff6600"
+          },
+          {
+            id: "rpylon_left",
+            verts: [
+              [
+                -2.6,
+                0,
+                1.1
+              ],
+              [
+                -2,
+                0.3,
+                0.85
+              ],
+              [
+                -2.3,
+                0,
+                1.8
+              ]
+            ],
+            color: "#ff6600"
+          }
+        ]
+      }
     ]
   };
 
   // ../src/game/models/objects/glider.zdef
   var glider_default = {
+    version: 3,
     id: "glider",
     pivot: [
       0,
@@ -3455,178 +4830,183 @@
         zMax: 0.4
       }
     ],
-    faces: [
+    nodes: [
       {
-        id: "tail_fin",
-        verts: [
-          [
-            -1.4,
-            0.04,
-            0.2
-          ],
-          [
-            -1.65,
-            0.04,
-            0.2
-          ],
-          [
-            -1.65,
-            0.04,
-            0.5
-          ],
-          [
-            -1.4,
-            0.04,
-            0.32
-          ]
-        ],
-        color: "#cc3300"
-      },
-      {
-        id: "h_stab",
-        verts: [
-          [
-            -1.35,
-            -0.65,
-            0.24
-          ],
-          [
-            -1.35,
-            0.65,
-            0.24
-          ],
-          [
-            -1.55,
-            0.65,
-            0.24
-          ],
-          [
-            -1.55,
-            -0.65,
-            0.24
-          ]
-        ],
-        color: "#eeeeee"
-      },
-      {
-        id: "wing_right",
-        verts: [
-          [
-            0.36,
-            -0.1,
-            0.27
-          ],
-          [
-            0.03,
-            -0.1,
-            0.27
-          ],
-          [
-            0.03,
-            -3,
-            0.28
-          ],
-          [
-            0.36,
-            -3,
-            0.28
-          ]
-        ],
-        color: "#e8e8e8"
-      },
-      {
-        id: "fuselage",
-        verts: [
-          [
-            1,
-            0,
-            0.2
-          ],
-          [
-            0.55,
-            -0.1,
-            0.26
-          ],
-          [
-            -1.2,
-            -0.06,
-            0.26
-          ],
-          [
-            -1.65,
-            0,
-            0.22
-          ],
-          [
-            -1.2,
-            0.06,
-            0.26
-          ],
-          [
-            0.55,
-            0.1,
-            0.26
-          ]
-        ],
-        color: "#f2f2f2"
-      },
-      {
-        id: "wing_left",
-        verts: [
-          [
-            0.36,
-            0.1,
-            0.27
-          ],
-          [
-            0.36,
-            3,
-            0.28
-          ],
-          [
-            0.03,
-            3,
-            0.28
-          ],
-          [
-            0.03,
-            0.1,
-            0.27
-          ]
-        ],
-        color: "#e8e8e8"
-      },
-      {
-        id: "canopy",
-        verts: [
-          [
-            0.7,
-            0.07,
-            0.26
-          ],
-          [
-            0.7,
-            -0.07,
-            0.26
-          ],
-          [
-            -0.16,
-            -0.07,
-            0.36
-          ],
-          [
-            -0.16,
-            0.07,
-            0.36
-          ]
-        ],
-        color: "#112244"
+        faces: [
+          {
+            id: "tail_fin",
+            verts: [
+              [
+                -1.4,
+                0.04,
+                0.2
+              ],
+              [
+                -1.65,
+                0.04,
+                0.2
+              ],
+              [
+                -1.65,
+                0.04,
+                0.5
+              ],
+              [
+                -1.4,
+                0.04,
+                0.32
+              ]
+            ],
+            color: "#cc3300"
+          },
+          {
+            id: "h_stab",
+            verts: [
+              [
+                -1.35,
+                -0.65,
+                0.24
+              ],
+              [
+                -1.35,
+                0.65,
+                0.24
+              ],
+              [
+                -1.55,
+                0.65,
+                0.24
+              ],
+              [
+                -1.55,
+                -0.65,
+                0.24
+              ]
+            ],
+            color: "#eeeeee"
+          },
+          {
+            id: "wing_right",
+            verts: [
+              [
+                0.36,
+                -0.1,
+                0.27
+              ],
+              [
+                0.03,
+                -0.1,
+                0.27
+              ],
+              [
+                0.03,
+                -3,
+                0.28
+              ],
+              [
+                0.36,
+                -3,
+                0.28
+              ]
+            ],
+            color: "#e8e8e8"
+          },
+          {
+            id: "fuselage",
+            verts: [
+              [
+                1,
+                0,
+                0.2
+              ],
+              [
+                0.55,
+                -0.1,
+                0.26
+              ],
+              [
+                -1.2,
+                -0.06,
+                0.26
+              ],
+              [
+                -1.65,
+                0,
+                0.22
+              ],
+              [
+                -1.2,
+                0.06,
+                0.26
+              ],
+              [
+                0.55,
+                0.1,
+                0.26
+              ]
+            ],
+            color: "#f2f2f2"
+          },
+          {
+            id: "wing_left",
+            verts: [
+              [
+                0.36,
+                0.1,
+                0.27
+              ],
+              [
+                0.36,
+                3,
+                0.28
+              ],
+              [
+                0.03,
+                3,
+                0.28
+              ],
+              [
+                0.03,
+                0.1,
+                0.27
+              ]
+            ],
+            color: "#e8e8e8"
+          },
+          {
+            id: "canopy",
+            verts: [
+              [
+                0.7,
+                0.07,
+                0.26
+              ],
+              [
+                0.7,
+                -0.07,
+                0.26
+              ],
+              [
+                -0.16,
+                -0.07,
+                0.36
+              ],
+              [
+                -0.16,
+                0.07,
+                0.36
+              ]
+            ],
+            color: "#112244"
+          }
+        ]
       }
     ]
   };
 
   // ../src/game/models/submarine.zdef
   var submarine_default = {
+    version: 3,
     id: "submarine",
     label: "submarine",
     static: true,
@@ -3635,469 +5015,6 @@
       0,
       0,
       0
-    ],
-    faces: [
-      {
-        id: "keel",
-        verts: [
-          [
-            -4.5,
-            -0.6,
-            0
-          ],
-          [
-            4.5,
-            -0.6,
-            0
-          ],
-          [
-            4.5,
-            0.6,
-            0
-          ],
-          [
-            -4.5,
-            0.6,
-            0
-          ]
-        ],
-        color: "#020202"
-      },
-      {
-        id: "deck_main",
-        verts: [
-          [
-            -4.5,
-            -0.7,
-            0.25
-          ],
-          [
-            4.5,
-            -0.7,
-            0.25
-          ],
-          [
-            4.5,
-            0.7,
-            0.25
-          ],
-          [
-            -4.5,
-            0.7,
-            0.25
-          ]
-        ],
-        color: "#111111"
-      },
-      {
-        id: "deck_bow",
-        verts: [
-          [
-            4.5,
-            -0.7,
-            0.25
-          ],
-          [
-            5.3,
-            -0.28,
-            0.25
-          ],
-          [
-            5.6,
-            0,
-            0.25
-          ],
-          [
-            5.3,
-            0.28,
-            0.25
-          ],
-          [
-            4.5,
-            0.7,
-            0.25
-          ]
-        ],
-        color: "#0e0e0e"
-      },
-      {
-        id: "deck_stern",
-        verts: [
-          [
-            -4.5,
-            0.7,
-            0.25
-          ],
-          [
-            -4.5,
-            -0.7,
-            0.25
-          ],
-          [
-            -5.2,
-            -0.2,
-            0.25
-          ],
-          [
-            -5.2,
-            0.2,
-            0.25
-          ]
-        ],
-        color: "#0e0e0e"
-      },
-      {
-        id: "hull_starboard",
-        normal: [
-          0,
-          1
-        ],
-        verts: [
-          [
-            4.5,
-            0.7,
-            0
-          ],
-          [
-            -4.5,
-            0.7,
-            0
-          ],
-          [
-            -4.5,
-            0.7,
-            0.25
-          ],
-          [
-            4.5,
-            0.7,
-            0.25
-          ]
-        ],
-        color: "#090909"
-      },
-      {
-        id: "hull_port",
-        normal: [
-          0,
-          -1
-        ],
-        verts: [
-          [
-            -4.5,
-            -0.7,
-            0
-          ],
-          [
-            4.5,
-            -0.7,
-            0
-          ],
-          [
-            4.5,
-            -0.7,
-            0.25
-          ],
-          [
-            -4.5,
-            -0.7,
-            0.25
-          ]
-        ],
-        color: "#060606"
-      },
-      {
-        id: "bow_starboard",
-        normal: [
-          1,
-          0
-        ],
-        verts: [
-          [
-            4.5,
-            0.7,
-            0
-          ],
-          [
-            5.6,
-            0,
-            0
-          ],
-          [
-            5.6,
-            0,
-            0.25
-          ],
-          [
-            4.5,
-            0.7,
-            0.25
-          ]
-        ],
-        color: "#0b0b0b"
-      },
-      {
-        id: "bow_port",
-        normal: [
-          1,
-          0
-        ],
-        verts: [
-          [
-            5.6,
-            0,
-            0
-          ],
-          [
-            4.5,
-            -0.7,
-            0
-          ],
-          [
-            4.5,
-            -0.7,
-            0.25
-          ],
-          [
-            5.6,
-            0,
-            0.25
-          ]
-        ],
-        color: "#080808"
-      },
-      {
-        id: "stern_starboard",
-        normal: [
-          0,
-          1
-        ],
-        verts: [
-          [
-            -4.5,
-            0.7,
-            0
-          ],
-          [
-            -5.2,
-            0.2,
-            0
-          ],
-          [
-            -5.2,
-            0.2,
-            0.25
-          ],
-          [
-            -4.5,
-            0.7,
-            0.25
-          ]
-        ],
-        color: "#060606"
-      },
-      {
-        id: "stern_port",
-        normal: [
-          0,
-          -1
-        ],
-        verts: [
-          [
-            -5.2,
-            -0.2,
-            0
-          ],
-          [
-            -4.5,
-            -0.7,
-            0
-          ],
-          [
-            -4.5,
-            -0.7,
-            0.25
-          ],
-          [
-            -5.2,
-            -0.2,
-            0.25
-          ]
-        ],
-        color: "#050505"
-      },
-      {
-        id: "tower_top",
-        verts: [
-          [
-            0.8,
-            -0.32,
-            2.4
-          ],
-          [
-            2.3,
-            -0.32,
-            2.4
-          ],
-          [
-            2.3,
-            0.32,
-            2.4
-          ],
-          [
-            0.8,
-            0.32,
-            2.4
-          ]
-        ],
-        color: "#181818"
-      },
-      {
-        id: "tower_bow",
-        normal: [
-          1,
-          0
-        ],
-        verts: [
-          [
-            2.3,
-            -0.32,
-            0.25
-          ],
-          [
-            2.3,
-            0.32,
-            0.25
-          ],
-          [
-            2.3,
-            0.32,
-            2.4
-          ],
-          [
-            2.3,
-            -0.32,
-            2.4
-          ]
-        ],
-        color: "#0e0e0e"
-      },
-      {
-        id: "tower_starboard",
-        normal: [
-          0,
-          1
-        ],
-        verts: [
-          [
-            2.3,
-            0.32,
-            0.25
-          ],
-          [
-            0.8,
-            0.32,
-            0.25
-          ],
-          [
-            0.8,
-            0.32,
-            2.4
-          ],
-          [
-            2.3,
-            0.32,
-            2.4
-          ]
-        ],
-        color: "#0c0c0c"
-      },
-      {
-        id: "tower_stern",
-        normal: [
-          -1,
-          0
-        ],
-        verts: [
-          [
-            0.8,
-            0.32,
-            0.25
-          ],
-          [
-            0.8,
-            -0.32,
-            0.25
-          ],
-          [
-            0.8,
-            -0.32,
-            2.4
-          ],
-          [
-            0.8,
-            0.32,
-            2.4
-          ]
-        ],
-        color: "#090909"
-      },
-      {
-        id: "tower_port",
-        normal: [
-          0,
-          -1
-        ],
-        verts: [
-          [
-            0.8,
-            -0.32,
-            0.25
-          ],
-          [
-            2.3,
-            -0.32,
-            0.25
-          ],
-          [
-            2.3,
-            -0.32,
-            2.4
-          ],
-          [
-            0.8,
-            -0.32,
-            2.4
-          ]
-        ],
-        color: "#0b0b0b"
-      },
-      {
-        id: "periscope",
-        verts: [
-          [
-            1.49,
-            -0.03,
-            2.4
-          ],
-          [
-            1.51,
-            -0.03,
-            2.4
-          ],
-          [
-            1.51,
-            -0.03,
-            3.1
-          ],
-          [
-            1.49,
-            -0.03,
-            3.1
-          ]
-        ],
-        color: "#222222"
-      }
     ],
     collisionBoxes: [
       {
@@ -4127,6 +5044,437 @@
         h: 0.7,
         z: 0.15,
         role: "both"
+      }
+    ],
+    nodes: [
+      {
+        faces: [
+          {
+            id: "keel",
+            verts: [
+              [
+                -4.5,
+                0.6,
+                0
+              ],
+              [
+                4.5,
+                0.6,
+                0
+              ],
+              [
+                4.5,
+                -0.6,
+                0
+              ],
+              [
+                -4.5,
+                -0.6,
+                0
+              ]
+            ],
+            color: "#020202"
+          },
+          {
+            id: "deck_main",
+            verts: [
+              [
+                -4.5,
+                -0.7,
+                0.25
+              ],
+              [
+                4.5,
+                -0.7,
+                0.25
+              ],
+              [
+                4.5,
+                0.7,
+                0.25
+              ],
+              [
+                -4.5,
+                0.7,
+                0.25
+              ]
+            ],
+            color: "#111111"
+          },
+          {
+            id: "deck_bow",
+            verts: [
+              [
+                4.5,
+                -0.7,
+                0.25
+              ],
+              [
+                5.3,
+                -0.28,
+                0.25
+              ],
+              [
+                5.6,
+                0,
+                0.25
+              ],
+              [
+                5.3,
+                0.28,
+                0.25
+              ],
+              [
+                4.5,
+                0.7,
+                0.25
+              ]
+            ],
+            color: "#0e0e0e"
+          },
+          {
+            id: "deck_stern",
+            verts: [
+              [
+                -4.5,
+                0.7,
+                0.25
+              ],
+              [
+                -4.5,
+                -0.7,
+                0.25
+              ],
+              [
+                -5.2,
+                -0.2,
+                0.25
+              ],
+              [
+                -5.2,
+                0.2,
+                0.25
+              ]
+            ],
+            color: "#0e0e0e"
+          },
+          {
+            id: "hull_starboard",
+            verts: [
+              [
+                4.5,
+                0.7,
+                0
+              ],
+              [
+                -4.5,
+                0.7,
+                0
+              ],
+              [
+                -4.5,
+                0.7,
+                0.25
+              ],
+              [
+                4.5,
+                0.7,
+                0.25
+              ]
+            ],
+            color: "#090909"
+          },
+          {
+            id: "hull_port",
+            verts: [
+              [
+                -4.5,
+                -0.7,
+                0
+              ],
+              [
+                4.5,
+                -0.7,
+                0
+              ],
+              [
+                4.5,
+                -0.7,
+                0.25
+              ],
+              [
+                -4.5,
+                -0.7,
+                0.25
+              ]
+            ],
+            color: "#060606"
+          },
+          {
+            id: "bow_starboard",
+            verts: [
+              [
+                4.5,
+                0.7,
+                0.25
+              ],
+              [
+                5.6,
+                0,
+                0.25
+              ],
+              [
+                5.6,
+                0,
+                0
+              ],
+              [
+                4.5,
+                0.7,
+                0
+              ]
+            ],
+            color: "#0b0b0b"
+          },
+          {
+            id: "bow_port",
+            verts: [
+              [
+                5.6,
+                0,
+                0.25
+              ],
+              [
+                4.5,
+                -0.7,
+                0.25
+              ],
+              [
+                4.5,
+                -0.7,
+                0
+              ],
+              [
+                5.6,
+                0,
+                0
+              ]
+            ],
+            color: "#080808"
+          },
+          {
+            id: "stern_starboard",
+            verts: [
+              [
+                -4.5,
+                0.7,
+                0.25
+              ],
+              [
+                -5.2,
+                0.2,
+                0.25
+              ],
+              [
+                -5.2,
+                0.2,
+                0
+              ],
+              [
+                -4.5,
+                0.7,
+                0
+              ]
+            ],
+            color: "#060606"
+          },
+          {
+            id: "stern_port",
+            verts: [
+              [
+                -5.2,
+                -0.2,
+                0.25
+              ],
+              [
+                -4.5,
+                -0.7,
+                0.25
+              ],
+              [
+                -4.5,
+                -0.7,
+                0
+              ],
+              [
+                -5.2,
+                -0.2,
+                0
+              ]
+            ],
+            color: "#050505"
+          },
+          {
+            id: "tower_top",
+            verts: [
+              [
+                0.8,
+                -0.32,
+                2.4
+              ],
+              [
+                2.3,
+                -0.32,
+                2.4
+              ],
+              [
+                2.3,
+                0.32,
+                2.4
+              ],
+              [
+                0.8,
+                0.32,
+                2.4
+              ]
+            ],
+            color: "#181818"
+          },
+          {
+            id: "tower_bow",
+            verts: [
+              [
+                2.3,
+                -0.32,
+                0.25
+              ],
+              [
+                2.3,
+                0.32,
+                0.25
+              ],
+              [
+                2.3,
+                0.32,
+                2.4
+              ],
+              [
+                2.3,
+                -0.32,
+                2.4
+              ]
+            ],
+            color: "#0e0e0e"
+          },
+          {
+            id: "tower_starboard",
+            verts: [
+              [
+                2.3,
+                0.32,
+                0.25
+              ],
+              [
+                0.8,
+                0.32,
+                0.25
+              ],
+              [
+                0.8,
+                0.32,
+                2.4
+              ],
+              [
+                2.3,
+                0.32,
+                2.4
+              ]
+            ],
+            color: "#0c0c0c"
+          },
+          {
+            id: "tower_stern",
+            verts: [
+              [
+                0.8,
+                0.32,
+                0.25
+              ],
+              [
+                0.8,
+                -0.32,
+                0.25
+              ],
+              [
+                0.8,
+                -0.32,
+                2.4
+              ],
+              [
+                0.8,
+                0.32,
+                2.4
+              ]
+            ],
+            color: "#090909"
+          },
+          {
+            id: "tower_port",
+            verts: [
+              [
+                0.8,
+                -0.32,
+                0.25
+              ],
+              [
+                2.3,
+                -0.32,
+                0.25
+              ],
+              [
+                2.3,
+                -0.32,
+                2.4
+              ],
+              [
+                0.8,
+                -0.32,
+                2.4
+              ]
+            ],
+            color: "#0b0b0b"
+          },
+          {
+            id: "periscope",
+            verts: [
+              [
+                1.49,
+                -0.03,
+                2.4
+              ],
+              [
+                1.51,
+                -0.03,
+                2.4
+              ],
+              [
+                1.51,
+                -0.03,
+                3.1
+              ],
+              [
+                1.49,
+                -0.03,
+                3.1
+              ]
+            ],
+            color: "#222222"
+          }
+        ],
+        depthAnchor: [
+          -5.6,
+          0
+        ]
       }
     ]
   };
@@ -4305,6 +5653,7 @@
 
   // ../src/game/models/carrier_hull.zdef
   var carrier_hull_default = {
+    version: 3,
     id: "carrier_hull",
     pivot: [
       0,
@@ -4322,160 +5671,381 @@
         zMax: 4.2
       }
     ],
-    faces: [
+    nodes: [
       {
-        id: "keel",
-        verts: [
-          [8.7, -2.52, 0],
-          [8.7, 2.52, 0],
-          [-8.7, 2.52, 0],
-          [-8.7, -2.52, 0]
-        ],
-        color: "#0a0a14"
-      },
-      {
-        id: "hull_bow",
-        normal: [1, 0],
-        verts: [
-          [8.7, -2.52, 0],
-          [8.7, 2.52, 0],
-          [8.7, 4.2, 3.8],
-          [8.7, -4.2, 3.8]
-        ],
-        color: "#2a3a4a"
-      },
-      {
-        id: "hull_starboard",
-        normal: [0, 1],
-        verts: [
-          [8.7, 2.52, 0],
-          [-8.7, 2.52, 0],
-          [-8.7, 4.2, 3.8],
-          [8.7, 4.2, 3.8]
-        ],
-        color: "#3a4a5a"
-      },
-      {
-        id: "hull_stern",
-        normal: [-1, 0],
-        verts: [
-          [-8.7, 2.52, 0],
-          [-8.7, -2.52, 0],
-          [-8.7, -4.2, 3.8],
-          [-8.7, 4.2, 3.8]
-        ],
-        color: "#2a3a4a"
-      },
-      {
-        id: "hull_port",
-        normal: [0, -1],
-        verts: [
-          [-8.7, -2.52, 0],
-          [8.7, -2.52, 0],
-          [8.7, -4.2, 3.8],
-          [-8.7, -4.2, 3.8]
-        ],
-        color: "#223344"
-      },
-      {
-        id: "deck_base",
-        verts: [
-          [8.7, -4.2, 3.8],
-          [8.7, 4.2, 3.8],
-          [-8.7, 4.2, 3.8],
-          [-8.7, -4.2, 3.8]
-        ],
-        color: "#222222"
-      },
-      {
-        id: "deck_bow",
-        normal: [1, 0],
-        verts: [
-          [8.7, -4.2, 3.8],
-          [8.7, 4.2, 3.8],
-          [8.7, 4.2, 4.2],
-          [8.7, -4.2, 4.2]
-        ],
-        color: "#2a2a33"
-      },
-      {
-        id: "deck_starboard",
-        normal: [0, 1],
-        verts: [
-          [8.7, 4.2, 3.8],
-          [-8.7, 4.2, 3.8],
-          [-8.7, 4.2, 4.2],
-          [8.7, 4.2, 4.2]
-        ],
-        color: "#333333"
-      },
-      {
-        id: "deck_stern",
-        normal: [-1, 0],
-        verts: [
-          [-8.7, 4.2, 3.8],
-          [-8.7, -4.2, 3.8],
-          [-8.7, -4.2, 4.2],
-          [-8.7, 4.2, 4.2]
-        ],
-        color: "#2a2a33"
-      },
-      {
-        id: "deck_port",
-        normal: [0, -1],
-        verts: [
-          [-8.7, -4.2, 3.8],
-          [8.7, -4.2, 3.8],
-          [8.7, -4.2, 4.2],
-          [-8.7, -4.2, 4.2]
-        ],
-        color: "#222222"
-      },
-      {
-        id: "flight_deck",
-        verts: [
-          [8.7, -4.2, 4.2],
-          [8.7, 4.2, 4.2],
-          [-8.7, 4.2, 4.2],
-          [-8.7, -4.2, 4.2]
-        ],
-        color: "#3a3a44"
-      },
-      {
-        id: "pad_bow",
-        verts: [
-          [5.9, -3.7, 4.21],
-          [5.9, -0.9, 4.21],
-          [3.1, -0.9, 4.21],
-          [3.1, -3.7, 4.21]
-        ],
-        color: "#52526a"
-      },
-      {
-        id: "pad_mid",
-        verts: [
-          [1.4, -3.7, 4.21],
-          [1.4, -0.9, 4.21],
-          [-1.4, -0.9, 4.21],
-          [-1.4, -3.7, 4.21]
-        ],
-        color: "#52526a"
-      },
-      {
-        id: "pad_stern",
-        verts: [
-          [-3.1, -3.7, 4.21],
-          [-3.1, -0.9, 4.21],
-          [-5.9, -0.9, 4.21],
-          [-5.9, -3.7, 4.21]
-        ],
-        color: "#52526a"
+        faces: [
+          {
+            id: "keel",
+            verts: [
+              [
+                -8.7,
+                -2.52,
+                0
+              ],
+              [
+                -8.7,
+                2.52,
+                0
+              ],
+              [
+                8.7,
+                2.52,
+                0
+              ],
+              [
+                8.7,
+                -2.52,
+                0
+              ]
+            ],
+            color: "#0a0a14"
+          },
+          {
+            id: "hull_bow",
+            verts: [
+              [
+                8.7,
+                -2.52,
+                0
+              ],
+              [
+                8.7,
+                2.52,
+                0
+              ],
+              [
+                8.7,
+                4.2,
+                3.8
+              ],
+              [
+                8.7,
+                -4.2,
+                3.8
+              ]
+            ],
+            color: "#2a3a4a"
+          },
+          {
+            id: "hull_starboard",
+            verts: [
+              [
+                8.7,
+                2.52,
+                0
+              ],
+              [
+                -8.7,
+                2.52,
+                0
+              ],
+              [
+                -8.7,
+                4.2,
+                3.8
+              ],
+              [
+                8.7,
+                4.2,
+                3.8
+              ]
+            ],
+            color: "#3a4a5a"
+          },
+          {
+            id: "hull_stern",
+            verts: [
+              [
+                -8.7,
+                2.52,
+                0
+              ],
+              [
+                -8.7,
+                -2.52,
+                0
+              ],
+              [
+                -8.7,
+                -4.2,
+                3.8
+              ],
+              [
+                -8.7,
+                4.2,
+                3.8
+              ]
+            ],
+            color: "#2a3a4a"
+          },
+          {
+            id: "hull_port",
+            verts: [
+              [
+                -8.7,
+                -2.52,
+                0
+              ],
+              [
+                8.7,
+                -2.52,
+                0
+              ],
+              [
+                8.7,
+                -4.2,
+                3.8
+              ],
+              [
+                -8.7,
+                -4.2,
+                3.8
+              ]
+            ],
+            color: "#223344"
+          },
+          {
+            id: "deck_base",
+            verts: [
+              [
+                8.7,
+                -4.2,
+                3.8
+              ],
+              [
+                8.7,
+                4.2,
+                3.8
+              ],
+              [
+                -8.7,
+                4.2,
+                3.8
+              ],
+              [
+                -8.7,
+                -4.2,
+                3.8
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "deck_bow",
+            verts: [
+              [
+                8.7,
+                -4.2,
+                3.8
+              ],
+              [
+                8.7,
+                4.2,
+                3.8
+              ],
+              [
+                8.7,
+                4.2,
+                4.2
+              ],
+              [
+                8.7,
+                -4.2,
+                4.2
+              ]
+            ],
+            color: "#2a2a33"
+          },
+          {
+            id: "deck_starboard",
+            verts: [
+              [
+                8.7,
+                4.2,
+                3.8
+              ],
+              [
+                -8.7,
+                4.2,
+                3.8
+              ],
+              [
+                -8.7,
+                4.2,
+                4.2
+              ],
+              [
+                8.7,
+                4.2,
+                4.2
+              ]
+            ],
+            color: "#333333"
+          },
+          {
+            id: "deck_stern",
+            verts: [
+              [
+                -8.7,
+                4.2,
+                3.8
+              ],
+              [
+                -8.7,
+                -4.2,
+                3.8
+              ],
+              [
+                -8.7,
+                -4.2,
+                4.2
+              ],
+              [
+                -8.7,
+                4.2,
+                4.2
+              ]
+            ],
+            color: "#2a2a33"
+          },
+          {
+            id: "deck_port",
+            verts: [
+              [
+                -8.7,
+                -4.2,
+                3.8
+              ],
+              [
+                8.7,
+                -4.2,
+                3.8
+              ],
+              [
+                8.7,
+                -4.2,
+                4.2
+              ],
+              [
+                -8.7,
+                -4.2,
+                4.2
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "flight_deck",
+            verts: [
+              [
+                8.7,
+                -4.2,
+                4.2
+              ],
+              [
+                8.7,
+                4.2,
+                4.2
+              ],
+              [
+                -8.7,
+                4.2,
+                4.2
+              ],
+              [
+                -8.7,
+                -4.2,
+                4.2
+              ]
+            ],
+            color: "#3a3a44"
+          },
+          {
+            id: "pad_bow",
+            verts: [
+              [
+                5.9,
+                -3.7,
+                4.21
+              ],
+              [
+                5.9,
+                -0.9,
+                4.21
+              ],
+              [
+                3.1,
+                -0.9,
+                4.21
+              ],
+              [
+                3.1,
+                -3.7,
+                4.21
+              ]
+            ],
+            color: "#52526a"
+          },
+          {
+            id: "pad_mid",
+            verts: [
+              [
+                1.4,
+                -3.7,
+                4.21
+              ],
+              [
+                1.4,
+                -0.9,
+                4.21
+              ],
+              [
+                -1.4,
+                -0.9,
+                4.21
+              ],
+              [
+                -1.4,
+                -3.7,
+                4.21
+              ]
+            ],
+            color: "#52526a"
+          },
+          {
+            id: "pad_stern",
+            verts: [
+              [
+                -3.1,
+                -3.7,
+                4.21
+              ],
+              [
+                -3.1,
+                -0.9,
+                4.21
+              ],
+              [
+                -5.9,
+                -0.9,
+                4.21
+              ],
+              [
+                -5.9,
+                -3.7,
+                4.21
+              ]
+            ],
+            color: "#52526a"
+          }
+        ]
       }
     ]
   };
 
   // ../src/game/models/carrier_tower.zdef
   var carrier_tower_default = {
+    version: 3,
     id: "carrier_tower",
     pivot: [
       0,
@@ -4493,72 +6063,152 @@
         zMax: 6.7
       }
     ],
-    faces: [
+    nodes: [
       {
-        id: "tower_bow",
-        normal: [1, 0],
-        verts: [
-          [-1, 2.6, 4.2],
-          [-1, 4.1, 4.2],
-          [-1, 4.1, 6.7],
-          [-1, 2.6, 6.7]
-        ],
-        color: "#555555"
-      },
-      {
-        id: "tower_starboard",
-        normal: [0, 1],
-        verts: [
-          [-1, 4.1, 4.2],
-          [-5.5, 4.1, 4.2],
-          [-5.5, 4.1, 6.7],
-          [-1, 4.1, 6.7]
-        ],
-        color: "#444444"
-      },
-      {
-        id: "tower_stern",
-        normal: [-1, 0],
-        verts: [
-          [-5.5, 2.6, 4.2],
-          [-5.5, 4.1, 4.2],
-          [-5.5, 4.1, 6.7],
-          [-5.5, 2.6, 6.7]
-        ],
-        color: "#333333"
-      },
-      {
-        id: "tower_port",
-        normal: [0, -1],
-        verts: [
-          [-1, 2.6, 4.2],
-          [-5.5, 2.6, 4.2],
-          [-5.5, 2.6, 6.7],
-          [-1, 2.6, 6.7]
-        ],
-        color: "#444444"
-      },
-      {
-        id: "tower_roof",
-        verts: [
-          [-1, 2.6, 6.7],
-          [-1, 4.1, 6.7],
-          [-5.5, 4.1, 6.7],
-          [-5.5, 2.6, 6.7]
-        ],
-        color: "#222222"
+        faces: [
+          {
+            id: "tower_bow",
+            verts: [
+              [
+                -1,
+                2.6,
+                4.2
+              ],
+              [
+                -1,
+                4.1,
+                4.2
+              ],
+              [
+                -1,
+                4.1,
+                6.7
+              ],
+              [
+                -1,
+                2.6,
+                6.7
+              ]
+            ],
+            color: "#555555"
+          },
+          {
+            id: "tower_starboard",
+            verts: [
+              [
+                -1,
+                4.1,
+                4.2
+              ],
+              [
+                -5.5,
+                4.1,
+                4.2
+              ],
+              [
+                -5.5,
+                4.1,
+                6.7
+              ],
+              [
+                -1,
+                4.1,
+                6.7
+              ]
+            ],
+            color: "#444444"
+          },
+          {
+            id: "tower_stern",
+            verts: [
+              [
+                -5.5,
+                2.6,
+                6.7
+              ],
+              [
+                -5.5,
+                4.1,
+                6.7
+              ],
+              [
+                -5.5,
+                4.1,
+                4.2
+              ],
+              [
+                -5.5,
+                2.6,
+                4.2
+              ]
+            ],
+            color: "#333333"
+          },
+          {
+            id: "tower_port",
+            verts: [
+              [
+                -1,
+                2.6,
+                6.7
+              ],
+              [
+                -5.5,
+                2.6,
+                6.7
+              ],
+              [
+                -5.5,
+                2.6,
+                4.2
+              ],
+              [
+                -1,
+                2.6,
+                4.2
+              ]
+            ],
+            color: "#444444"
+          },
+          {
+            id: "tower_roof",
+            verts: [
+              [
+                -1,
+                2.6,
+                6.7
+              ],
+              [
+                -1,
+                4.1,
+                6.7
+              ],
+              [
+                -5.5,
+                4.1,
+                6.7
+              ],
+              [
+                -5.5,
+                2.6,
+                6.7
+              ]
+            ],
+            color: "#222222"
+          }
+        ]
       }
     ]
   };
 
-  // ../src/game/models/fuel_truck_chassis.zdef
-  var fuel_truck_chassis_default = {
-    id: "fuel_truck_chassis",
-    pivot: [
-      0,
-      0,
-      0
-    ],
+  // ../src/game/models/fuel_truck.zdef
+  var fuel_truck_default = {
+    version: 3,
+    id: "fuel_truck",
+    label: "Fuel Truck",
+    static: false,
+    movementType: "auto",
+    crossNodeDepth: true,
     collisionBoxes: [
       {
         id: "body",
@@ -4570,601 +6220,1158 @@
         zMax: 0.85
       }
     ],
-    faces: [
+    nodes: [
       {
-        id: "ch_top",
-        verts: [
-          [
-            0,
-            -0.45,
-            0.3
-          ],
-          [
-            2.2,
-            -0.45,
-            0.3
-          ],
-          [
-            2.2,
-            0.45,
-            0.3
-          ],
-          [
-            0,
-            0.45,
-            0.3
-          ]
-        ],
-        color: "#4a6a4a"
-      },
-      {
-        id: "ch_front",
-        normal: [
-          1,
-          0
-        ],
-        verts: [
-          [
-            2.2,
-            -0.45,
-            0
-          ],
-          [
-            2.2,
-            0.45,
-            0
-          ],
-          [
-            2.2,
-            0.45,
-            0.3
-          ],
-          [
-            2.2,
-            -0.45,
-            0.3
-          ]
-        ],
-        color: "#4a6a4a"
-      },
-      {
-        id: "ch_rear",
-        normal: [
-          -1,
-          0
-        ],
-        verts: [
-          [
-            0,
-            0.45,
-            0
-          ],
-          [
-            0,
-            -0.45,
-            0
-          ],
-          [
-            0,
-            -0.45,
-            0.3
-          ],
-          [
-            0,
-            0.45,
-            0.3
-          ]
-        ],
-        color: "#3a5a3a"
-      },
-      {
-        id: "ch_right",
-        normal: [
+        depthAnchor: [
           0,
-          1
-        ],
-        verts: [
-          [
-            2.2,
-            0.45,
-            0
-          ],
-          [
-            0,
-            0.45,
-            0
-          ],
-          [
-            0,
-            0.45,
-            0.3
-          ],
-          [
-            2.2,
-            0.45,
-            0.3
-          ]
-        ],
-        color: "#2a4a2a"
-      },
-      {
-        id: "ch_left",
-        normal: [
           0,
-          -1
+          -3
         ],
-        verts: [
-          [
-            0,
-            -0.45,
-            0
-          ],
-          [
-            2.2,
-            -0.45,
-            0
-          ],
-          [
-            2.2,
-            -0.45,
-            0.3
-          ],
-          [
-            0,
-            -0.45,
-            0.3
-          ]
-        ],
-        color: "#2a4a2a"
-      },
-      {
-        id: "wrl",
-        normal: [
-          0,
-          -1
-        ],
-        verts: [
-          [
-            0.25,
-            -0.45,
-            0
-          ],
-          [
-            0.55,
-            -0.45,
-            0
-          ],
-          [
-            0.55,
-            -0.45,
-            0.22
-          ],
-          [
-            0.25,
-            -0.45,
-            0.22
-          ]
-        ],
-        color: "#1a2e1a"
-      },
-      {
-        id: "wrr",
-        normal: [
-          0,
-          1
-        ],
-        verts: [
-          [
-            0.25,
-            0.45,
-            0
-          ],
-          [
-            0.55,
-            0.45,
-            0
-          ],
-          [
-            0.55,
-            0.45,
-            0.22
-          ],
-          [
-            0.25,
-            0.45,
-            0.22
-          ]
-        ],
-        color: "#1a2e1a"
-      }
-    ],
-    parts: [
-      {
-        id: "wheel_front_L",
-        rotate: { pivot: [1.8, -0.45, 0.11], axis: [0, 0, 1], param: "steerAngle" },
         faces: [
-          { id: "wfl", normal: [0, -1], verts: [[1.65, -0.45, 0], [1.95, -0.45, 0], [1.95, -0.45, 0.22], [1.65, -0.45, 0.22]], color: "#1a2e1a" }
+          {
+            id: "ch_top",
+            verts: [
+              [
+                0,
+                -0.45,
+                0.3
+              ],
+              [
+                2.2,
+                -0.45,
+                0.3
+              ],
+              [
+                2.2,
+                0.45,
+                0.3
+              ],
+              [
+                0,
+                0.45,
+                0.3
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "ch_front",
+            verts: [
+              [
+                2.2,
+                -0.45,
+                0
+              ],
+              [
+                2.2,
+                0.45,
+                0
+              ],
+              [
+                2.2,
+                0.45,
+                0.3
+              ],
+              [
+                2.2,
+                -0.45,
+                0.3
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "ch_rear",
+            verts: [
+              [
+                0,
+                0.45,
+                0
+              ],
+              [
+                0,
+                -0.45,
+                0
+              ],
+              [
+                0,
+                -0.45,
+                0.3
+              ],
+              [
+                0,
+                0.45,
+                0.3
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "ch_right",
+            verts: [
+              [
+                2.2,
+                0.45,
+                0
+              ],
+              [
+                0,
+                0.45,
+                0
+              ],
+              [
+                0,
+                0.45,
+                0.3
+              ],
+              [
+                2.2,
+                0.45,
+                0.3
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "ch_left",
+            verts: [
+              [
+                0,
+                -0.45,
+                0
+              ],
+              [
+                2.2,
+                -0.45,
+                0
+              ],
+              [
+                2.2,
+                -0.45,
+                0.3
+              ],
+              [
+                0,
+                -0.45,
+                0.3
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "wrl",
+            verts: [
+              [
+                0.25,
+                -0.45,
+                0
+              ],
+              [
+                0.55,
+                -0.45,
+                0
+              ],
+              [
+                0.55,
+                -0.45,
+                0.22
+              ],
+              [
+                0.25,
+                -0.45,
+                0.22
+              ]
+            ],
+            color: "#1a2e1a"
+          },
+          {
+            id: "wrr",
+            verts: [
+              [
+                0.55,
+                0.45,
+                0
+              ],
+              [
+                0.25,
+                0.45,
+                0
+              ],
+              [
+                0.25,
+                0.45,
+                0.22
+              ],
+              [
+                0.55,
+                0.45,
+                0.22
+              ]
+            ],
+            color: "#1a2e1a"
+          }
+        ],
+        children: [
+          {
+            rotate: {
+              pivot: [
+                1.8,
+                -0.45,
+                0.11
+              ],
+              axis: [
+                0,
+                0,
+                1
+              ],
+              param: "steerAngle"
+            },
+            faces: [
+              {
+                id: "wfl",
+                verts: [
+                  [
+                    1.65,
+                    -0.45,
+                    0
+                  ],
+                  [
+                    1.95,
+                    -0.45,
+                    0
+                  ],
+                  [
+                    1.95,
+                    -0.45,
+                    0.22
+                  ],
+                  [
+                    1.65,
+                    -0.45,
+                    0.22
+                  ]
+                ],
+                color: "#1a2e1a"
+              }
+            ]
+          },
+          {
+            rotate: {
+              pivot: [
+                1.8,
+                0.45,
+                0.11
+              ],
+              axis: [
+                0,
+                0,
+                1
+              ],
+              param: "steerAngle"
+            },
+            faces: [
+              {
+                id: "wfr",
+                verts: [
+                  [
+                    1.95,
+                    0.45,
+                    0
+                  ],
+                  [
+                    1.65,
+                    0.45,
+                    0
+                  ],
+                  [
+                    1.65,
+                    0.45,
+                    0.22
+                  ],
+                  [
+                    1.95,
+                    0.45,
+                    0.22
+                  ]
+                ],
+                color: "#1a2e1a"
+              }
+            ]
+          }
         ]
       },
       {
-        id: "wheel_front_R",
-        rotate: { pivot: [1.8, 0.45, 0.11], axis: [0, 0, 1], param: "steerAngle" },
+        depthAnchor: [
+          0.675,
+          0,
+          0.62
+        ],
         faces: [
-          { id: "wfr", normal: [0, 1], verts: [[1.65, 0.45, 0], [1.95, 0.45, 0], [1.95, 0.45, 0.22], [1.65, 0.45, 0.22]], color: "#1a2e1a" }
+          {
+            id: "tk_side0",
+            verts: [
+              [
+                0.25,
+                0,
+                0.94
+              ],
+              [
+                1.1,
+                0,
+                0.94
+              ],
+              [
+                1.1,
+                0.16,
+                0.8971
+              ],
+              [
+                0.25,
+                0.16,
+                0.8971
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "tk_side1",
+            verts: [
+              [
+                0.25,
+                0.16,
+                0.8971
+              ],
+              [
+                1.1,
+                0.16,
+                0.8971
+              ],
+              [
+                1.1,
+                0.2771,
+                0.78
+              ],
+              [
+                0.25,
+                0.2771,
+                0.78
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "tk_side2",
+            verts: [
+              [
+                0.25,
+                0.2771,
+                0.78
+              ],
+              [
+                1.1,
+                0.2771,
+                0.78
+              ],
+              [
+                1.1,
+                0.32,
+                0.62
+              ],
+              [
+                0.25,
+                0.32,
+                0.62
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "tk_side3",
+            verts: [
+              [
+                0.25,
+                0.32,
+                0.62
+              ],
+              [
+                1.1,
+                0.32,
+                0.62
+              ],
+              [
+                1.1,
+                0.2771,
+                0.46
+              ],
+              [
+                0.25,
+                0.2771,
+                0.46
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side4",
+            verts: [
+              [
+                0.25,
+                0.2771,
+                0.46
+              ],
+              [
+                1.1,
+                0.2771,
+                0.46
+              ],
+              [
+                1.1,
+                0.16,
+                0.3429
+              ],
+              [
+                0.25,
+                0.16,
+                0.3429
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side5",
+            verts: [
+              [
+                0.25,
+                0.16,
+                0.3429
+              ],
+              [
+                1.1,
+                0.16,
+                0.3429
+              ],
+              [
+                1.1,
+                0,
+                0.3
+              ],
+              [
+                0.25,
+                0,
+                0.3
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side6",
+            verts: [
+              [
+                0.25,
+                0,
+                0.3
+              ],
+              [
+                1.1,
+                0,
+                0.3
+              ],
+              [
+                1.1,
+                -0.16,
+                0.3429
+              ],
+              [
+                0.25,
+                -0.16,
+                0.3429
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side7",
+            verts: [
+              [
+                0.25,
+                -0.16,
+                0.3429
+              ],
+              [
+                1.1,
+                -0.16,
+                0.3429
+              ],
+              [
+                1.1,
+                -0.2771,
+                0.46
+              ],
+              [
+                0.25,
+                -0.2771,
+                0.46
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side8",
+            verts: [
+              [
+                0.25,
+                -0.2771,
+                0.46
+              ],
+              [
+                1.1,
+                -0.2771,
+                0.46
+              ],
+              [
+                1.1,
+                -0.32,
+                0.62
+              ],
+              [
+                0.25,
+                -0.32,
+                0.62
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side9",
+            verts: [
+              [
+                0.25,
+                -0.32,
+                0.62
+              ],
+              [
+                1.1,
+                -0.32,
+                0.62
+              ],
+              [
+                1.1,
+                -0.2771,
+                0.78
+              ],
+              [
+                0.25,
+                -0.2771,
+                0.78
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_side10",
+            verts: [
+              [
+                0.25,
+                -0.2771,
+                0.78
+              ],
+              [
+                1.1,
+                -0.2771,
+                0.78
+              ],
+              [
+                1.1,
+                -0.16,
+                0.8971
+              ],
+              [
+                0.25,
+                -0.16,
+                0.8971
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "tk_side11",
+            verts: [
+              [
+                0.25,
+                -0.16,
+                0.8971
+              ],
+              [
+                1.1,
+                -0.16,
+                0.8971
+              ],
+              [
+                1.1,
+                0,
+                0.94
+              ],
+              [
+                0.25,
+                0,
+                0.94
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "tk_cap_front",
+            verts: [
+              [
+                1.1,
+                -0.16,
+                0.8971
+              ],
+              [
+                1.1,
+                -0.2771,
+                0.78
+              ],
+              [
+                1.1,
+                -0.32,
+                0.62
+              ],
+              [
+                1.1,
+                -0.2771,
+                0.46
+              ],
+              [
+                1.1,
+                -0.16,
+                0.3429
+              ],
+              [
+                1.1,
+                0,
+                0.3
+              ],
+              [
+                1.1,
+                0.16,
+                0.3429
+              ],
+              [
+                1.1,
+                0.2771,
+                0.46
+              ],
+              [
+                1.1,
+                0.32,
+                0.62
+              ],
+              [
+                1.1,
+                0.2771,
+                0.78
+              ],
+              [
+                1.1,
+                0.16,
+                0.8971
+              ],
+              [
+                1.1,
+                0,
+                0.94
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_cap_rear",
+            verts: [
+              [
+                0.25,
+                0,
+                0.94
+              ],
+              [
+                0.25,
+                0.16,
+                0.8971
+              ],
+              [
+                0.25,
+                0.2771,
+                0.78
+              ],
+              [
+                0.25,
+                0.32,
+                0.62
+              ],
+              [
+                0.25,
+                0.2771,
+                0.46
+              ],
+              [
+                0.25,
+                0.16,
+                0.3429
+              ],
+              [
+                0.25,
+                0,
+                0.3
+              ],
+              [
+                0.25,
+                -0.16,
+                0.3429
+              ],
+              [
+                0.25,
+                -0.2771,
+                0.46
+              ],
+              [
+                0.25,
+                -0.32,
+                0.62
+              ],
+              [
+                0.25,
+                -0.2771,
+                0.78
+              ],
+              [
+                0.25,
+                -0.16,
+                0.8971
+              ]
+            ],
+            color: "#9a9a9a"
+          },
+          {
+            id: "tk_stripe",
+            verts: [
+              [
+                0.29,
+                -0.09,
+                0.945
+              ],
+              [
+                1.06,
+                -0.09,
+                0.945
+              ],
+              [
+                1.06,
+                0.09,
+                0.945
+              ],
+              [
+                0.29,
+                0.09,
+                0.945
+              ]
+            ],
+            color: "#ff4400"
+          }
         ]
-      }
-    ]
-  };
-
-  // ../src/game/models/fuel_truck_tank.zdef
-  var fuel_truck_tank_default = {
-    id: "fuel_truck_tank",
-    pivot: [
-      0,
-      0,
-      0
-    ],
-    faces: [
-      {
-        id: "tk_top",
-        verts: [
-          [
-            0.25,
-            -0.38,
-            1.06
-          ],
-          [
-            1.4,
-            -0.38,
-            1.06
-          ],
-          [
-            1.4,
-            0.38,
-            1.06
-          ],
-          [
-            0.25,
-            0.38,
-            1.06
-          ]
-        ],
-        color: "#cccccc"
       },
       {
-        id: "tk_front",
-        normal: [
-          1,
-          0
-        ],
-        verts: [
-          [
-            1.4,
-            -0.38,
-            0.3
-          ],
-          [
-            1.4,
-            0.38,
-            0.3
-          ],
-          [
-            1.4,
-            0.38,
-            1.06
-          ],
-          [
-            1.4,
-            -0.38,
-            1.06
-          ]
-        ],
-        color: "#aaaaaa"
-      },
-      {
-        id: "tk_right",
-        normal: [
+        depthAnchor: [
+          1.3,
           0,
-          1
+          0.51
         ],
-        verts: [
-          [
-            1.4,
-            0.38,
-            0.3
-          ],
-          [
-            0.25,
-            0.38,
-            0.3
-          ],
-          [
-            0.25,
-            0.38,
-            1.06
-          ],
-          [
-            1.4,
-            0.38,
-            1.06
-          ]
-        ],
-        color: "#999999"
+        faces: [
+          {
+            id: "box_front",
+            verts: [
+              [
+                1.5,
+                -0.42,
+                0.3
+              ],
+              [
+                1.5,
+                0.42,
+                0.3
+              ],
+              [
+                1.5,
+                0.42,
+                0.72
+              ],
+              [
+                1.5,
+                -0.42,
+                0.72
+              ]
+            ],
+            color: "#e8e8e8"
+          },
+          {
+            id: "box_rear",
+            verts: [
+              [
+                1.1,
+                0.42,
+                0.3
+              ],
+              [
+                1.1,
+                -0.42,
+                0.3
+              ],
+              [
+                1.1,
+                -0.42,
+                0.72
+              ],
+              [
+                1.1,
+                0.42,
+                0.72
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "box_right",
+            verts: [
+              [
+                1.5,
+                0.42,
+                0.3
+              ],
+              [
+                1.1,
+                0.42,
+                0.3
+              ],
+              [
+                1.1,
+                0.42,
+                0.72
+              ],
+              [
+                1.5,
+                0.42,
+                0.72
+              ]
+            ],
+            color: "#e8e8e8"
+          },
+          {
+            id: "box_left",
+            verts: [
+              [
+                1.1,
+                -0.42,
+                0.3
+              ],
+              [
+                1.5,
+                -0.42,
+                0.3
+              ],
+              [
+                1.5,
+                -0.42,
+                0.72
+              ],
+              [
+                1.1,
+                -0.42,
+                0.72
+              ]
+            ],
+            color: "#cfcfcf"
+          },
+          {
+            id: "box_top",
+            verts: [
+              [
+                1.1,
+                -0.42,
+                0.72
+              ],
+              [
+                1.5,
+                -0.42,
+                0.72
+              ],
+              [
+                1.5,
+                0.42,
+                0.72
+              ],
+              [
+                1.1,
+                0.42,
+                0.72
+              ]
+            ],
+            color: "#e8e8e8"
+          },
+          {
+            id: "box_door_l1",
+            type: "line",
+            verts: [
+              [
+                1.1800000000000002,
+                0.421,
+                0.35
+              ],
+              [
+                1.42,
+                0.421,
+                0.35
+              ]
+            ],
+            color: "#8a8a8a",
+            lineWidth: 1.2
+          },
+          {
+            id: "box_door_l2",
+            type: "line",
+            verts: [
+              [
+                1.42,
+                0.421,
+                0.35
+              ],
+              [
+                1.42,
+                0.421,
+                0.6599999999999999
+              ]
+            ],
+            color: "#8a8a8a",
+            lineWidth: 1.2
+          },
+          {
+            id: "box_door_l3",
+            type: "line",
+            verts: [
+              [
+                1.42,
+                0.421,
+                0.6599999999999999
+              ],
+              [
+                1.1800000000000002,
+                0.421,
+                0.6599999999999999
+              ]
+            ],
+            color: "#8a8a8a",
+            lineWidth: 1.2
+          },
+          {
+            id: "box_door_l4",
+            type: "line",
+            verts: [
+              [
+                1.1800000000000002,
+                0.421,
+                0.6599999999999999
+              ],
+              [
+                1.1800000000000002,
+                0.421,
+                0.35
+              ]
+            ],
+            color: "#8a8a8a",
+            lineWidth: 1.2
+          },
+          {
+            id: "box_door_handle",
+            type: "line",
+            verts: [
+              [
+                1.25,
+                0.421,
+                0.5049999999999999
+              ],
+              [
+                1.35,
+                0.421,
+                0.5049999999999999
+              ]
+            ],
+            color: "#8a8a8a",
+            lineWidth: 1.6
+          }
+        ]
       },
       {
-        id: "tk_left",
-        normal: [
+        depthAnchor: [
+          1.85,
           0,
-          -1
+          0.55
         ],
-        verts: [
-          [
-            0.25,
-            -0.38,
-            0.3
-          ],
-          [
-            1.4,
-            -0.38,
-            0.3
-          ],
-          [
-            1.4,
-            -0.38,
-            1.06
-          ],
-          [
-            0.25,
-            -0.38,
-            1.06
-          ]
-        ],
-        color: "#bbbbbb"
-      },
-      {
-        id: "tk_rear",
-        normal: [
-          -1,
-          0
-        ],
-        verts: [
-          [
-            0.25,
-            0.38,
-            0.3
-          ],
-          [
-            0.25,
-            -0.38,
-            0.3
-          ],
-          [
-            0.25,
-            -0.38,
-            1.06
-          ],
-          [
-            0.25,
-            0.38,
-            1.06
-          ]
-        ],
-        color: "#aaaaaa"
-      },
-      {
-        id: "tk_stripe",
-        verts: [
-          [
-            0.3,
-            -0.04,
-            1.065
-          ],
-          [
-            1.35,
-            -0.04,
-            1.065
-          ],
-          [
-            1.35,
-            0.04,
-            1.065
-          ],
-          [
-            0.3,
-            0.04,
-            1.065
-          ]
-        ],
-        color: "#ff4400"
-      }
-    ]
-  };
-
-  // ../src/game/models/fuel_truck_cab.zdef
-  var fuel_truck_cab_default = {
-    id: "fuel_truck_cab",
-    pivot: [
-      0,
-      0,
-      0
-    ],
-    faces: [
-      {
-        id: "cab_top",
-        verts: [
-          [
-            1.5,
-            -0.45,
-            0.85
-          ],
-          [
-            2.2,
-            -0.45,
-            0.85
-          ],
-          [
-            2.2,
-            0.45,
-            0.85
-          ],
-          [
-            1.5,
-            0.45,
-            0.85
-          ]
-        ],
-        color: "#6a9a6a",
-        stroke: "#8aba8a"
-      },
-      {
-        id: "cab_front",
-        normal: [
-          1,
-          0
-        ],
-        verts: [
-          [
-            2.2,
-            -0.45,
-            0.3
-          ],
-          [
-            2.2,
-            0.45,
-            0.3
-          ],
-          [
-            2.2,
-            0.45,
-            0.85
-          ],
-          [
-            2.2,
-            -0.45,
-            0.85
-          ]
-        ],
-        color: "#3a6a3a"
-      },
-      {
-        id: "cab_win",
-        normal: [
-          1,
-          0
-        ],
-        verts: [
-          [
-            2.201,
-            -0.25,
-            0.45
-          ],
-          [
-            2.201,
-            0.25,
-            0.45
-          ],
-          [
-            2.201,
-            0.25,
-            0.75
-          ],
-          [
-            2.201,
-            -0.25,
-            0.75
-          ]
-        ],
-        color: "#112233"
-      },
-      {
-        id: "cab_right",
-        normal: [
-          0,
-          1
-        ],
-        verts: [
-          [
-            2.2,
-            0.45,
-            0.3
-          ],
-          [
-            1.5,
-            0.45,
-            0.3
-          ],
-          [
-            1.5,
-            0.45,
-            0.85
-          ],
-          [
-            2.2,
-            0.45,
-            0.85
-          ]
-        ],
-        color: "#4a7a4a"
-      },
-      {
-        id: "cab_left",
-        normal: [
-          0,
-          -1
-        ],
-        verts: [
-          [
-            1.5,
-            -0.45,
-            0.3
-          ],
-          [
-            2.2,
-            -0.45,
-            0.3
-          ],
-          [
-            2.2,
-            -0.45,
-            0.85
-          ],
-          [
-            1.5,
-            -0.45,
-            0.85
-          ]
-        ],
-        color: "#5a8a5a"
-      },
-      {
-        id: "cab_rear",
-        normal: [
-          -1,
-          0
-        ],
-        verts: [
-          [
-            1.5,
-            0.45,
-            0.3
-          ],
-          [
-            1.5,
-            -0.45,
-            0.3
-          ],
-          [
-            1.5,
-            -0.45,
-            0.85
-          ],
-          [
-            1.5,
-            0.45,
-            0.85
-          ]
-        ],
-        color: "#3a5a3a"
+        faces: [
+          {
+            id: "cab_left",
+            verts: [
+              [
+                1.5,
+                -0.45,
+                0.3
+              ],
+              [
+                2.2,
+                -0.45,
+                0.3
+              ],
+              [
+                2.2,
+                -0.45,
+                0.8
+              ],
+              [
+                1.5,
+                -0.45,
+                0.8
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "cab_right",
+            verts: [
+              [
+                2.2,
+                0.45,
+                0.3
+              ],
+              [
+                1.5,
+                0.45,
+                0.3
+              ],
+              [
+                1.5,
+                0.45,
+                0.8
+              ],
+              [
+                2.2,
+                0.45,
+                0.8
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "cab_front",
+            verts: [
+              [
+                2.2,
+                -0.45,
+                0.3
+              ],
+              [
+                2.2,
+                0.45,
+                0.3
+              ],
+              [
+                2.2,
+                0.45,
+                0.8
+              ],
+              [
+                2.2,
+                -0.45,
+                0.8
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "cab_rear",
+            verts: [
+              [
+                1.5,
+                0.45,
+                0.3
+              ],
+              [
+                1.5,
+                -0.45,
+                0.3
+              ],
+              [
+                1.5,
+                -0.45,
+                0.8
+              ],
+              [
+                1.5,
+                0.45,
+                0.8
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "cab_roof",
+            verts: [
+              [
+                2.2,
+                -0.45,
+                0.8
+              ],
+              [
+                2.2,
+                0.45,
+                0.8
+              ],
+              [
+                1.5,
+                0.45,
+                0.8
+              ],
+              [
+                1.5,
+                -0.45,
+                0.8
+              ]
+            ],
+            color: "#3a6a3a"
+          },
+          {
+            id: "cab_win",
+            verts: [
+              [
+                2.1990000000000003,
+                -0.4,
+                0.4
+              ],
+              [
+                2.1990000000000003,
+                0.4,
+                0.4
+              ],
+              [
+                2.1990000000000003,
+                0.4,
+                0.75
+              ],
+              [
+                2.1990000000000003,
+                -0.4,
+                0.75
+              ]
+            ],
+            color: "#112233"
+          }
+        ]
       }
     ]
   };
@@ -5215,19 +7422,278 @@
 
   // ../src/game/models/carrier_deck_tractor.zdef
   var carrier_deck_tractor_default = {
+    version: 3,
     id: "carrier_deck_tractor",
-    pivot: [0, 0, 0],
-    faces: [
-      { id: "floor", verts: [[-0.5, -0.36, 0], [0.5, -0.36, 0], [0.5, 0.36, 0], [-0.5, 0.36, 0]], color: "#b09000" },
-      { id: "left", normal: [-1, 0], verts: [[-0.5, 0.36, 0], [-0.5, -0.36, 0], [-0.5, -0.36, 0.37], [-0.5, 0.36, 0.37]], color: "#8a6c00" },
-      { id: "back", normal: [0, -1], verts: [[-0.5, -0.36, 0], [0.5, -0.36, 0], [0.5, -0.36, 0.37], [-0.5, -0.36, 0.37]], color: "#e0b800" },
-      { id: "right", normal: [1, 0], verts: [[0.5, -0.36, 0], [0.5, 0.36, 0], [0.5, 0.36, 0.37], [0.5, -0.36, 0.37]], color: "#8a6c00" },
-      { id: "front", normal: [0, 1], verts: [[0.5, 0.36, 0], [-0.5, 0.36, 0], [-0.5, 0.36, 0.37], [0.5, 0.36, 0.37]], color: "#b09000" },
-      { id: "top", verts: [[-0.5, -0.36, 0.37], [0.5, -0.36, 0.37], [0.5, 0.36, 0.37], [-0.5, 0.36, 0.37]], color: "#caa800" },
-      { id: "wfl", normal: [0, -1], verts: [[-0.425, -0.36, 0], [-0.275, -0.36, 0], [-0.275, -0.36, 0.25], [-0.425, -0.36, 0.25]], color: "#222222" },
-      { id: "wfr", normal: [0, 1], verts: [[-0.275, 0.36, 0], [-0.425, 0.36, 0], [-0.425, 0.36, 0.25], [-0.275, 0.36, 0.25]], color: "#222222" },
-      { id: "wrl", normal: [0, -1], verts: [[0.275, -0.36, 0], [0.425, -0.36, 0], [0.425, -0.36, 0.25], [0.275, -0.36, 0.25]], color: "#222222" },
-      { id: "wrr", normal: [0, 1], verts: [[0.425, 0.36, 0], [0.275, 0.36, 0], [0.275, 0.36, 0.25], [0.425, 0.36, 0.25]], color: "#222222" }
+    pivot: [
+      0,
+      0,
+      0
+    ],
+    nodes: [
+      {
+        faces: [
+          {
+            id: "floor",
+            verts: [
+              [
+                -0.5,
+                0.36,
+                0
+              ],
+              [
+                0.5,
+                0.36,
+                0
+              ],
+              [
+                0.5,
+                -0.36,
+                0
+              ],
+              [
+                -0.5,
+                -0.36,
+                0
+              ]
+            ],
+            color: "#b09000"
+          },
+          {
+            id: "left",
+            verts: [
+              [
+                -0.5,
+                0.36,
+                0
+              ],
+              [
+                -0.5,
+                -0.36,
+                0
+              ],
+              [
+                -0.5,
+                -0.36,
+                0.37
+              ],
+              [
+                -0.5,
+                0.36,
+                0.37
+              ]
+            ],
+            color: "#8a6c00"
+          },
+          {
+            id: "back",
+            verts: [
+              [
+                -0.5,
+                -0.36,
+                0
+              ],
+              [
+                0.5,
+                -0.36,
+                0
+              ],
+              [
+                0.5,
+                -0.36,
+                0.37
+              ],
+              [
+                -0.5,
+                -0.36,
+                0.37
+              ]
+            ],
+            color: "#e0b800"
+          },
+          {
+            id: "right",
+            verts: [
+              [
+                0.5,
+                -0.36,
+                0
+              ],
+              [
+                0.5,
+                0.36,
+                0
+              ],
+              [
+                0.5,
+                0.36,
+                0.37
+              ],
+              [
+                0.5,
+                -0.36,
+                0.37
+              ]
+            ],
+            color: "#8a6c00"
+          },
+          {
+            id: "front",
+            verts: [
+              [
+                0.5,
+                0.36,
+                0
+              ],
+              [
+                -0.5,
+                0.36,
+                0
+              ],
+              [
+                -0.5,
+                0.36,
+                0.37
+              ],
+              [
+                0.5,
+                0.36,
+                0.37
+              ]
+            ],
+            color: "#b09000"
+          },
+          {
+            id: "top",
+            verts: [
+              [
+                -0.5,
+                -0.36,
+                0.37
+              ],
+              [
+                0.5,
+                -0.36,
+                0.37
+              ],
+              [
+                0.5,
+                0.36,
+                0.37
+              ],
+              [
+                -0.5,
+                0.36,
+                0.37
+              ]
+            ],
+            color: "#caa800"
+          },
+          {
+            id: "wfl",
+            verts: [
+              [
+                -0.425,
+                -0.36,
+                0
+              ],
+              [
+                -0.275,
+                -0.36,
+                0
+              ],
+              [
+                -0.275,
+                -0.36,
+                0.25
+              ],
+              [
+                -0.425,
+                -0.36,
+                0.25
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "wfr",
+            verts: [
+              [
+                -0.275,
+                0.36,
+                0
+              ],
+              [
+                -0.425,
+                0.36,
+                0
+              ],
+              [
+                -0.425,
+                0.36,
+                0.25
+              ],
+              [
+                -0.275,
+                0.36,
+                0.25
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "wrl",
+            verts: [
+              [
+                0.275,
+                -0.36,
+                0
+              ],
+              [
+                0.425,
+                -0.36,
+                0
+              ],
+              [
+                0.425,
+                -0.36,
+                0.25
+              ],
+              [
+                0.275,
+                -0.36,
+                0.25
+              ]
+            ],
+            color: "#222222"
+          },
+          {
+            id: "wrr",
+            verts: [
+              [
+                0.425,
+                0.36,
+                0
+              ],
+              [
+                0.275,
+                0.36,
+                0
+              ],
+              [
+                0.275,
+                0.36,
+                0.25
+              ],
+              [
+                0.425,
+                0.36,
+                0.25
+              ]
+            ],
+            color: "#222222"
+          }
+        ]
+      }
     ]
   };
 
@@ -5253,9 +7719,7 @@
     carrier: { def: toDefCast(carrier_default), label: "Carrier (komplett)", isStatic: false, movementType: "ship" },
     carrier_hull: { def: toDefCast(carrier_hull_default), label: "Carrier Hull", isStatic: false, movementType: "ship" },
     carrier_tower: { def: toDefCast(carrier_tower_default), label: "Carrier Tower", isStatic: false, movementType: "ship" },
-    fuel_truck_chassis: { def: toDefCast(fuel_truck_chassis_default), label: "Fuel Truck (Chassis)", isStatic: true, movementType: "none" },
-    fuel_truck_tank: { def: toDefCast(fuel_truck_tank_default), label: "Fuel Truck (Tank)", isStatic: true, movementType: "none" },
-    fuel_truck_cab: { def: toDefCast(fuel_truck_cab_default), label: "Fuel Truck (Cab)", isStatic: true, movementType: "none" },
+    fuel_truck: { def: toDefCast(fuel_truck_default), label: "Fuel Truck", isStatic: false, movementType: "auto" },
     carrier_car: { def: toDefCast(carrier_car_default), label: "Carrier Car", isStatic: false, movementType: "auto" },
     carrier_deck_tractor: { def: toDefCast(carrier_deck_tractor_default), label: "Carrier Deck Tractor", isStatic: false, movementType: "auto" }
   };
@@ -7246,7 +9710,8 @@
   };
   var fromJSON = (content) => {
     const d = JSON.parse(content.replace(/\/\/[^\n]*/g, ""));
-    if (d["version"] === 2) {
+    const version = d["version"];
+    if (version === 2 || version === 3) {
       state.def2 = d;
       state.def = {
         id: d["id"],

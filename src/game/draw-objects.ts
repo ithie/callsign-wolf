@@ -12,11 +12,9 @@
 
 import type { IsoFn, SceneRenderer } from './scene-renderer';
 import { getHeliType } from './heli-types';
-import { applyParts, applyNodes } from './def-utils';
+import { applyNodes, renderNodes } from './def-utils';
 
-import FUEL_TRUCK_CHASSIS_DEF from './models/fuel_truck_chassis.zdef';
-import FUEL_TRUCK_TANK_DEF from './models/fuel_truck_tank.zdef';
-import FUEL_TRUCK_CAB_DEF from './models/fuel_truck_cab.zdef';
+import FUEL_TRUCK_DEF from './models/fuel_truck.zdef';
 
 export interface WindState {
     x: number;
@@ -114,7 +112,8 @@ export const createDrawObjects = (
         gz = 0,
         type = 'pine',
         wind: WindState = { x: 0, y: 0, phase: 0 },
-        heliPos?: { x: number; y: number; z: number }
+        heliPos?: { x: number; y: number; z: number },
+        snow = false
     ) => {
         if (gz < 0.05) gz = 0.05;
         const z0 = gz;
@@ -140,7 +139,7 @@ export const createDrawObjects = (
             const layers = [
                 { zBase: z0 + trunkH * 0.3, zTop: z0 + trunkH * 0.3 + 1.4 * scale, rBase: 0.9 * scale, color: '#1a4a1a', sway: 0.3 },
                 { zBase: z0 + trunkH * 0.3 + 0.7 * scale, zTop: z0 + trunkH * 0.3 + 1.9 * scale, rBase: 0.65 * scale, color: '#1e5a1e', sway: 0.65 },
-                { zBase: z0 + trunkH * 0.3 + 1.3 * scale, zTop: z0 + trunkH * 0.3 + 2.3 * scale, rBase: 0.4 * scale, color: '#246024', sway: 1.0 },
+                { zBase: z0 + trunkH * 0.3 + 1.3 * scale, zTop: z0 + trunkH * 0.3 + 2.3 * scale, rBase: 0.4 * scale, color: snow ? '#a8bcc2' : '#246024', sway: 1.0 },
             ];
             layers.forEach(l => {
                 for (let i = 6; i >= 0; i--) {
@@ -618,24 +617,33 @@ export const createDrawObjects = (
     }
 
     // ── drawFuelTruck ──────────────────────────────────────────────────────────
-    // Does NOT call SceneRenderer.flush() — caller is responsible.
-    const drawFuelTruck = (tX: number, tY: number, angle: number, opts: DrawFuelTruckOpts = {}) => {
+    // EXCEPTION to the module's "no flush, caller is responsible" rule: the model
+    // has crossNodeDepth:true (chassis/tank/box/cab need to be depth-sorted against
+    // EACH OTHER, not against anything external — no other object is ever mounted
+    // on/inside a fuel truck), so renderNodes() sorts and flushes all four itself.
+    // Same accepted tradeoff as the Carrier's early, isolated flush: whatever was
+    // queued earlier in the same frame gets drawn now too, and anything queued
+    // after draws in a separate, later-wins batch. Fine here — nothing else in the
+    // scene needs to interleave with a fuel truck at the sub-face level.
+    const drawFuelTruck = (tX: number, tY: number, angle: number, camX: number, camY: number, opts: DrawFuelTruckOpts = {}) => {
         const { z = 0, armExtend = 0, armTarget = null, getFuelingState, steerAngle = 0 } = opts;
         const cosA = Math.cos(angle),
             sinA = Math.sin(angle);
-        const tkDepth = tX + tY + 0.825 * (cosA + sinA);
+        // Chassis/tank/cab depth ordering now lives in the model itself (per-node
+        // depthAnchor: [0.815,0]/[0.825,0]/[1.85,0]) instead of being computed here —
+        // renderNodes() reproduces exactly these three depths from one file.
         const cabDepth = tX + tY + 1.85 * (cosA + sinA);
-        const chDepth = Math.min(tkDepth, cabDepth) - 0.01;
         const pivotWX = tX + 0.3 * cosA;
         const pivotWY = tY + 0.3 * sinA;
 
-        SceneRenderer.add(applyParts(FUEL_TRUCK_CHASSIS_DEF as any, { steerAngle }), { x: tX, y: tY, z, angle, depth: chDepth });
-        SceneRenderer.add(FUEL_TRUCK_TANK_DEF, { x: tX, y: tY, z, angle, depth: tkDepth });
-        SceneRenderer.add(FUEL_TRUCK_CAB_DEF, {
-            x: tX,
-            y: tY,
+        renderNodes(FUEL_TRUCK_DEF as any, { steerAngle }, { x: tX, y: tY, z, angle }, SceneRenderer as any, camX, camY);
+
+        // The tanker arm is pure drawFn (Zeewolf homage) — not part of any .zdef,
+        // kept as its own depth-sorted item at the cab's depth.
+        SceneRenderer.add(null, {
+            x: pivotWX,
+            y: pivotWY,
             z,
-            angle,
             depth: cabDepth,
             drawFn: (camX, camY) => {
                 if (armExtend <= 0) return;

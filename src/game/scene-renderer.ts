@@ -150,6 +150,7 @@ export const createSceneRenderer = (ctx: CanvasRenderingContext2D, iso: IsoFn): 
             _drawCollisionBox(camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color);
         },
 
+
         add(def, { x, y, z = 0, angle = 0, colors, drawFn, depth: depthOverride } = {} as DEFInstanceOptions) {
             const inst = _poolNext < _POOL_SIZE ? _pool[_poolNext++] : _makeInst();
             inst.def = def;
@@ -178,6 +179,11 @@ export const createSceneRenderer = (ctx: CanvasRenderingContext2D, iso: IsoFn): 
                         if (face.normal) {
                             const [nx, ny] = face.normal;
                             if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;
+                        } else if (face.normal3d) {
+                            // D3F: full 3D cull. Camera view direction is (1,1,1) — dot product
+                            // sign only depends on the component sum, so no normalization needed.
+                            const [nx, ny, nz] = face.normal3d;
+                            if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) + nz <= 0) continue;
                         }
                         const verts = face.verts;
                         for (let i = 0; i < verts.length; i++) {

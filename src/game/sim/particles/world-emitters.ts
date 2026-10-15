@@ -36,7 +36,7 @@ const _circleOffset = (r: number): [number, number] => {
 // Smoke steady-state: ~27 smoke particles
 const FIRE_SPAWN_INTERVAL = 2;
 const SMOKE_SPAWN_INTERVAL = 5;
-const MAX_PARTICLES = 100;
+export const MAX_PARTICLES = 100;
 
 const WIND_PARTICLE_SCALE = 200;
 const WIND_CONV = 0.08;

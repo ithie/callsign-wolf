@@ -3,7 +3,11 @@ import { readFileSync, readdirSync } from 'fs';
 import { resolve, basename } from 'path';
 
 // DEFs in models/objects/ that are not campaign object types but must always be bundled
-const _CORE_TYPES = new Set(['tower', 'hangar_tower', 'hangar']);
+// (consumed via a direct import elsewhere, never placed as a campaign `objects[]` entry)
+const _CORE_TYPES = new Set([
+    'tower', 'hangar_tower', 'hangar',
+    'freight_locomotive', 'freight_wagon', 'freight_container', 'freight_bogie',
+]);
 
 export const zdefTreeShakePlugin = (campaignsDir: string): Plugin => {
     const usedTypes = new Set<string>();

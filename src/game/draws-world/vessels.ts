@@ -57,17 +57,25 @@ export const createVesselsDraw = (dwCtx: DrawWorldCtx) => {
         } else if (b.objectType === VESSEL.SALVAGE_TUG || b.objectType === VESSEL.SUPPLY_VESSEL) {
             renderNodes(SALVAGE_TUG_DEF as any, {}, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer, cx, cy);
         } else {
-            SceneRenderer.add(SAILBOAT_DEF, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle });
+            renderNodes(SAILBOAT_DEF as any, {}, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer, cx, cy);
         }
     };
 
-    const _drawSubmarine = (s: any) => {
-        const depth = s.x + s.y - 5.6 * (Math.cos(s.angle) + Math.sin(s.angle));
-        SceneRenderer.add(SUBMARINE_DEF, { x: s.x, y: s.y, z: G.waterLevel, angle: s.angle, depth });
+    const _drawSubmarine = (s: any, cx: number, cy: number) => {
+        // The -5.6 rearward offset used to be a manual `depth` override on the
+        // SceneRenderer.add() call; renderNodes() computes its own depth and ignores
+        // an external override, so it now lives as submarine.zdef's depthAnchor
+        // instead — same tuned value, same effect, just read from the model.
+        renderNodes(SUBMARINE_DEF as any, {}, { x: s.x, y: s.y, z: G.waterLevel, angle: s.angle }, SceneRenderer, cx, cy);
     };
 
-    const _drawResearchPlatform = (rX: number, rY: number) => {
-        SceneRenderer.add(RESEARCH_PLATFORM_DEF as any, { x: rX, y: rY, z: G.waterLevel, angle: 0, depth: rX + rY - 4 });
+    const _drawResearchPlatform = (
+        rX: number, rY: number, cx: number, cy: number, onBeforeFlush?: (nodeIndex: number) => void,
+    ) => {
+        // Same as submarine: the -4 offset now lives as research_platform.zdef's depthAnchor.
+        // Split into two nodes (base/deck, then mast) so the heli can be interleaved between
+        // them — same mechanism as the frigate's hull/superstructure split below.
+        renderNodes(RESEARCH_PLATFORM_DEF as any, {}, { x: rX, y: rY, z: G.waterLevel, angle: 0 }, SceneRenderer, cx, cy, undefined, onBeforeFlush);
     };
 
     const _drawBoatWreck = (w: { x: number; y: number; angle: number }, cx: number, cy: number) => {

@@ -22,6 +22,8 @@ import { fuelTruck } from './sim/vehicles/fuel-truck';
 import { initParticles, resetFoam, spawnExplosion, spawnPositionExplosion, type ParticlesCtx } from './sim/particles';
 import { initEventSystem, markEventSystemStarted } from './sim/event-system';
 import { initNpcHelisFromMission } from './sim/npc-helis';
+// DIAGNOSTIC: disabled to isolate the black-screen-on-launch regression — see feedback thread.
+// import { initTestTrain } from './sim/test-train';
 import { initFoliageFromMission } from './foliage';
 import { buildStartZone } from './start-zone';
 import { VESSEL, PAYLOAD, CAMPAIGN_TYPE } from '../shared/types';
@@ -756,6 +758,8 @@ export const launchMission = async (showLoader = true): Promise<void> => {
         (text) => showScriptMessage(text),
     );
     initNpcHelisFromMission();
+    // DIAGNOSTIC: disabled to isolate the black-screen-on-launch regression — see feedback thread.
+    // initTestTrain();
     _maybeSpawnOrniWreck();
     if (missionHasPad) fuelTruck.init();
     handle?.step('Umgebung…', 0.75);

@@ -10,7 +10,7 @@ import { PAYLOAD_DEFS } from '../payload-defs';
 import { hapticImpact, hapticNotification, ImpactStyle, NotificationType } from '../haptics';
 import { PhysicsCtx } from './ctx';
 import { getGround, getCarrierLocal, isFlatTerrain } from './terrain';
-import { updateBoats, updateSubmarines, updateCarrierPos, resolveAttachTo } from './world-init';
+import { updateBoats, updateSubmarines, updateCarrierPos, resolveAttachTo, applyVesselOffset } from './world-init';
 import { carrierCar } from './vehicles/carrier-car';
 import { fuelTruck } from './vehicles/fuel-truck';
 import { updateParticles } from './particles';
@@ -132,6 +132,31 @@ const _singleDropzoneType = (): string | undefined => {
             types.add(type);
     }
     return types.size === 1 ? [...types][0] : undefined;
+};
+
+export interface DeliveryMarker { x: number; y: number; z: number; w: number; h: number }
+
+// World-space dropoff zones currently relevant for guidance markers: wherever onboard cargo
+// still waiting for delivery (or the payload currently on the winch) could legally be dropped.
+// Reuses the exact same vessel/zone resolution as the real delivery check, so the marker can
+// never drift out of sync with where a delivery actually registers.
+export const getActiveDeliveryMarkers = (): DeliveryMarker[] => {
+    const wanted = new Set<string | undefined>();
+    const activeDeliverTo = G.activePayload && ((G.activePayload as any).deliverTo !== undefined || (G.activePayload as any).isDelivery);
+    if (activeDeliverTo) wanted.add((G.activePayload as any).deliverTo as string | undefined);
+    for (const dt of G.heli.onboardDeliverQueue) wanted.add(dt);
+    if (!wanted.size) return [];
+    const anyType = wanted.has(undefined);
+    const markers: DeliveryMarker[] = [];
+    for (const { vessel, type } of _dropzoneVessels()) {
+        if (!type || (!anyType && !wanted.has(type))) continue;
+        for (const z of _zonesFor(vessel, type)) {
+            if (z.role === RESCUE_ZONE_ROLE.PICKUP) continue;
+            const { x, y } = applyVesselOffset(vessel, z.x, z.y);
+            markers.push({ x, y, z: G.waterLevel + (z.z ?? 0), w: z.w, h: z.h });
+        }
+    }
+    return markers;
 };
 
 // ─── deposit/winch-in handlers ────────────────────────────────────────────────
@@ -728,6 +753,32 @@ export const updatePhysics = (dt: number, ctx: PhysicsCtx) => {
             G.totalRescued++;
             voiceEvents.emit('delivered');
             if (G.totalRescued >= G.goalCount) _objectiveDone(OBJECTIVE_TYPE.RESCUE_ALL, ctx);
+        }
+    }
+
+    // delivery-person touchdown: same continuous in-flight check as crates above, so a
+    // winched-down "isDelivery" person delivers the moment they pass through a valid
+    // zone — not only once, later, if/when the winch happens to retract past 0.5
+    // (the old-only check, _deliveryDeposit, required the HELI itself to already be
+    // hovering near the zone's own height at that exact retraction moment, since the
+    // person's z always converges back toward heli.z as the winch reels in; lowering
+    // them through a zone far below the heli never registered).
+    if ((G.activePayload as any)?.isDelivery) {
+        const p = G.activePayload as any;
+        const deliverTo = p.deliverTo as string | undefined;
+        const onCarrierOk = (!deliverTo || deliverTo === VESSEL.CARRIER) && onCarrierDeck && G.heli.z < 3.0;
+        const onPadOk     = (!deliverTo || deliverTo === VESSEL.PAD)     && onPadSurface  && G.heli.z < 3.0;
+        const onFrigateOk = (!deliverTo || deliverTo === VESSEL.FRIGATE) && onFrigateDeck && G.heli.z < 3.0;
+        const inZone = onCarrierOk || onPadOk || onFrigateOk
+            || _inDropzone(p.x, p.y, deliverTo ?? _singleDropzoneType(), p.z)
+            || (!deliverTo && _inDropzone(p.x, p.y, undefined, p.z));
+        if (inZone) {
+            G.payloads.splice(G.payloads.indexOf(p), 1);
+            p.hanging = false; p.rescued = true; G.activePayload = null;
+            G.totalRescued++;
+            voiceEvents.emit('delivered');
+            if (G.totalRescued >= G.goalCount) _objectiveDone(OBJECTIVE_TYPE.RESCUE_ALL, ctx);
+            if (G.heli.onboard === 0) G.deliverMode = false;
         }
     }
 

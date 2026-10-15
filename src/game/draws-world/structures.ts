@@ -1,6 +1,6 @@
 import type { DrawWorldCtx } from './types';
 import { G } from '../state';
-import { applyParts } from '../def-utils';
+import { applyParts, renderNodes } from '../def-utils';
 import { getGround } from '../sim/terrain';
 import { getObjectDef } from '../def-registry';
 import HANGAR_DEF from '../models/objects/hangar.zdef';
@@ -8,6 +8,8 @@ import TOWER_DEF from '../models/objects/tower.zdef';
 import HANGAR_TOWER_DEF from '../models/objects/hangar_tower.zdef';
 import { VESSEL } from '../../shared/types';
 import { resolvePalette } from '../defs';
+import type { DEFInstanceOptions } from '../scene-renderer';
+import { getActiveDeliveryMarkers } from '../sim/simulation';
 
 export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, tileW, tileH, getLighthouse, getWindStr } = dwCtx;
@@ -66,25 +68,25 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         });
     };
 
-    const _drawPlaneWreck = (wx: number, wy: number, angle: number) => {
+    const _drawPlaneWreck = (wx: number, wy: number, angle: number, camX: number, camY: number) => {
         const _def = getObjectDef(VESSEL.PLANE_WRECK);
         if (!_def) return;
         const gz = getGround(wx, wy);
-        SceneRenderer.add(_def as any, { x: wx, y: wy, z: gz, angle });
+        _addObjectDef(_def, { x: wx, y: wy, z: gz, angle }, camX, camY);
     };
 
-    const _drawBrokenSailboat = (bx: number, by: number, angle: number) => {
+    const _drawBrokenSailboat = (bx: number, by: number, angle: number, camX: number, camY: number) => {
         const _def = getObjectDef(VESSEL.SAILBOAT_BROKEN);
         if (!_def) return;
         const gz = getGround(bx, by);
-        SceneRenderer.add(_def as any, { x: bx, y: by, z: gz, angle: angle - Math.PI / 2 });
+        _addObjectDef(_def, { x: bx, y: by, z: gz, angle: angle - Math.PI / 2 }, camX, camY);
     };
 
-    const _drawHangar = () => {
-        SceneRenderer.add(HANGAR_DEF, { x: G.PAD.xMax - 3, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 });
+    const _drawHangar = (camX: number, camY: number) => {
+        _addObjectDef(HANGAR_DEF, { x: G.PAD.xMax - 3, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 }, camX, camY);
         const towerDef = G.PAD.towerVariant === 'new' ? HANGAR_TOWER_DEF : TOWER_DEF;
         const towerX = G.PAD.towerVariant === 'new' ? G.PAD.xMax : G.PAD.xMax - 0.5;
-        SceneRenderer.add(towerDef, { x: towerX, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 });
+        _addObjectDef(towerDef, { x: towerX, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 }, camX, camY);
     };
 
     const _renderWindsock = (
@@ -147,13 +149,13 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         _renderWindsock(cx, cy, wx, wy, getGround(wx, wy), G.wind.angle ?? Math.PI * 0.75, getWindStr());
     };
 
-    const _drawLighthouse = (_cx: number, _cy: number) => {
+    const _drawLighthouse = (camX: number, camY: number) => {
         const lh = getLighthouse();
         if (!lh) return;
         const _lhDef = getObjectDef(VESSEL.LIGHTHOUSE);
         if (!_lhDef) return;
         const lhZ = getGround(lh.x, lh.y);
-        SceneRenderer.add(_lhDef as any, { x: lh.x, y: lh.y, z: lhZ });
+        _addObjectDef(_lhDef, { x: lh.x, y: lh.y, z: lhZ, angle: 0 }, camX, camY);
         SceneRenderer.add(null, {
             x: 0,
             y: 0,
@@ -174,78 +176,90 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         });
     };
 
-    const _drawBaywatchObjects = (inCone: (x: number, y: number) => boolean) => {
+    // ZDEF2/D3F defs are node-based (no top-level .faces) and can't go through
+    // SceneRenderer.add() directly. renderNodes() is the exact same function the
+    // model editor's preview uses — it picks array-order vs. per-face depth-sort
+    // per node (based on moving parts) and cross-node-depth vs. per-node-flush
+    // (based on def.crossNodeDepth) by itself, so editor and game always agree.
+    const _addObjectDef = (def: unknown, instanceProps: DEFInstanceOptions, camX: number, camY: number) => {
+        if (!def) return;
+        const version = (def as { version?: number }).version;
+        if (version && version >= 2) renderNodes(def as any, {}, instanceProps, SceneRenderer as any, camX, camY);
+        else SceneRenderer.add(def as any, instanceProps);
+    };
+
+    const _drawBaywatchObjects = (inCone: (x: number, y: number) => boolean, camX: number, camY: number) => {
         const _carDef = getObjectDef(VESSEL.BAYWATCH_CAR);
         G.BAYWATCH_CARS.forEach((car: any) => {
             if (!inCone(car.x, car.y) || !_carDef) return;
             const gz = getGround(car.x, car.y);
-            SceneRenderer.add(_carDef as any, { x: car.x, y: car.y, z: gz, angle: car.angle });
+            _addObjectDef(_carDef, { x: car.x, y: car.y, z: gz, angle: car.angle }, camX, camY);
         });
         G.BAYWATCH_BUILDINGS.forEach((b: any) => {
             if (!inCone(b.x, b.y)) return;
             const _def = getObjectDef(b.type);
             if (!_def) return;
             const gz = getGround(b.x, b.y);
-            SceneRenderer.add(_def as any, { x: b.x, y: b.y, z: gz, angle: b.angle });
+            _addObjectDef(_def, { x: b.x, y: b.y, z: gz, angle: b.angle }, camX, camY);
         });
     };
 
-    const _drawBuoys = (inCone: (x: number, y: number) => boolean) => {
+    const _drawBuoys = (inCone: (x: number, y: number) => boolean, camX: number, camY: number) => {
         const _def = getObjectDef(VESSEL.BUOY);
         const t = Date.now() * 0.0018;
         G.BUOYS.forEach((b: any) => {
             if (!inCone(b.x, b.y) || !_def) return;
             const gz = getGround(b.x, b.y);
             const bob = Math.sin(t + b.x * 0.61 + b.y * 0.37) * 0.07;
-            SceneRenderer.add(_def as any, { x: b.x, y: b.y, z: gz + bob });
+            _addObjectDef(_def, { x: b.x, y: b.y, z: gz + bob, angle: 0 }, camX, camY);
         });
     };
 
-    const _drawFestivalObjects = (inCone: (x: number, y: number) => boolean) => {
+    const _drawFestivalObjects = (inCone: (x: number, y: number) => boolean, camX: number, camY: number) => {
         const _stageDef = getObjectDef(VESSEL.CONCERT_STAGE);
         G.CONCERT_STAGES.forEach((s: any) => {
             if (!inCone(s.x, s.y) || !_stageDef) return;
-            SceneRenderer.add(_stageDef as any, { x: s.x, y: s.y, z: s.gz, angle: s.angle });
+            _addObjectDef(_stageDef, { x: s.x, y: s.y, z: s.gz, angle: s.angle }, camX, camY);
         });
         G.FESTIVAL_TENTS.forEach((t: any) => {
             if (!inCone(t.x, t.y)) return;
             const _def = getObjectDef(t.type);
             if (!_def) return;
             const colors = resolvePalette(_def as any, t.colorVariant);
-            SceneRenderer.add(_def as any, { x: t.x, y: t.y, z: t.gz, angle: t.angle, ...(colors ? { colors } : {}) });
+            _addObjectDef(_def, { x: t.x, y: t.y, z: t.gz, angle: t.angle, ...(colors ? { colors } : {}) }, camX, camY);
         });
         const _carDef = getObjectDef(VESSEL.FESTIVAL_CAR);
         G.FESTIVAL_CARS.forEach((c: any) => {
             if (!inCone(c.x, c.y) || !_carDef) return;
             const colors = resolvePalette(_carDef as any, c.colorVariant);
-            SceneRenderer.add(_carDef as any, { x: c.x, y: c.y, z: c.gz, angle: c.angle, ...(colors ? { colors } : {}) });
+            _addObjectDef(_carDef, { x: c.x, y: c.y, z: c.gz, angle: c.angle, ...(colors ? { colors } : {}) }, camX, camY);
         });
     };
 
-    const _drawXmasObjects = (inCone: (x: number, y: number) => boolean) => {
+    const _drawXmasObjects = (inCone: (x: number, y: number) => boolean, camX: number, camY: number) => {
         G.XMAS_HOUSES.forEach((h: any) => {
             if (!inCone(h.x, h.y)) return;
             const _def = getObjectDef(h.type) ?? getObjectDef(VESSEL.XMAS_HOUSE_A);
             if (!_def) return;
             const colors = resolvePalette(_def as any, h.colorVariant);
-            SceneRenderer.add(_def as any, { x: h.x, y: h.y, z: h.gz, angle: h.angle ?? 0, ...(colors ? { colors } : {}) });
+            _addObjectDef(_def, { x: h.x, y: h.y, z: h.gz, angle: h.angle ?? 0, ...(colors ? { colors } : {}) }, camX, camY);
             _drawDefLights(h.x, h.y, _def as any);
         });
         const _lanternDef = getObjectDef(VESSEL.XMAS_LANTERN);
         G.XMAS_LANTERNS.forEach((l: any) => {
             if (!inCone(l.x, l.y) || !_lanternDef) return;
-            SceneRenderer.add(_lanternDef as any, { x: l.x, y: l.y, z: l.gz, angle: l.angle ?? 0 });
+            _addObjectDef(_lanternDef, { x: l.x, y: l.y, z: l.gz, angle: l.angle ?? 0 }, camX, camY);
             _drawDefLights(l.x, l.y, _lanternDef as any);
         });
         const _sleighDef = getObjectDef(VESSEL.SLEIGH);
         G.SLEIGHS.forEach((s: any) => {
             if (!inCone(s.x, s.y) || !_sleighDef) return;
-            SceneRenderer.add(_sleighDef as any, { x: s.x, y: s.y, z: s.gz, angle: s.angle ?? 0 });
+            _addObjectDef(_sleighDef, { x: s.x, y: s.y, z: s.gz, angle: s.angle ?? 0 }, camX, camY);
         });
         const _reindeerDef = getObjectDef(VESSEL.REINDEER);
         G.REINDEER_OBJECTS.forEach((r: any) => {
             if (!inCone(r.x, r.y) || !_reindeerDef) return;
-            SceneRenderer.add(_reindeerDef as any, { x: r.x, y: r.y, z: r.gz, angle: r.angle ?? 0 });
+            _addObjectDef(_reindeerDef, { x: r.x, y: r.y, z: r.gz, angle: r.angle ?? 0 }, camX, camY);
         });
     };
 
@@ -325,14 +339,50 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         });
     };
 
-    const _drawScenarioProps = (inCone: (x: number, y: number) => boolean) => {
+    const _drawScenarioProps = (inCone: (x: number, y: number) => boolean, camX: number, camY: number) => {
         G.SCENARIO_PROPS.forEach((p: any) => {
             if (!inCone(p.x, p.y)) return;
             const _def = getObjectDef(p.type);
             if (!_def) return;
-            SceneRenderer.add(_def as any, { x: p.x, y: p.y, z: p.gz, angle: p.angle ?? 0 });
+            _addObjectDef(_def, { x: p.x, y: p.y, z: p.gz, angle: p.angle ?? 0 }, camX, camY);
             _drawDefLights(p.x, p.y, _def as any);
         });
+    };
+
+    // Rotating guidance rings at every dropoff zone that currently accepts onboard/winched
+    // cargo — lets the player see exactly where on e.g. a wind turbine nacelle to deliver,
+    // instead of guessing at an invisible, often tiny rescueZone. Disappears once nothing is
+    // left to deliver (getActiveDeliveryMarkers mirrors the real delivery check 1:1).
+    const _drawDeliveryMarkers = (inCone: (x: number, y: number) => boolean) => {
+        const markers = getActiveDeliveryMarkers();
+        for (const m of markers) {
+            if (!inCone(m.x, m.y)) continue;
+            // Ellipse matching the zone's real half-extents (w along x, h along y) —
+            // NOT a uniform circle. Zones like the wind turbine nacelle (w:0.6, h:0.2)
+            // are far narrower in one axis; a circle there would show a much larger,
+            // more forgiving target than what _pointInZone() actually accepts.
+            const rx = Math.max(m.w, 0.15), ry = Math.max(m.h, 0.15);
+            SceneRenderer.add(null, {
+                x: 0, y: 0, depth: m.x + m.y,
+                drawFn: (cx: number, cy: number) => {
+                    const now = performance.now() / 1000;
+                    ctx.save();
+                    ctx.lineWidth = Math.max(2, 2.5 * tileW / 64);
+                    ctx.strokeStyle = '#33e0ff';
+                    ctx.globalAlpha = 0.6 + 0.25 * Math.sin(now * 3);
+                    ctx.setLineDash([tileW * 0.12, tileW * 0.1]);
+                    ctx.lineDashOffset = -now * tileW * 1.2;
+                    ctx.beginPath();
+                    for (let i = 0; i <= 24; i++) {
+                        const t = (i / 24) * Math.PI * 2;
+                        const p = isoFn(m.x + rx * Math.cos(t), m.y + ry * Math.sin(t), m.z, cx, cy);
+                        if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                    }
+                    ctx.stroke();
+                    ctx.restore();
+                },
+            });
+        }
     };
 
     return {
@@ -350,5 +400,6 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         _drawXmasObjects,
         _drawRings,
         _drawScenarioProps,
+        _drawDeliveryMarkers,
     };
 };

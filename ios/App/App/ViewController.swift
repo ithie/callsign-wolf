@@ -20,6 +20,14 @@ private final class StorageHandler: NSObject, WKScriptMessageHandler {
     }
 }
 
+// MARK: - JS error bridge (diagnostic)
+
+private final class JSErrorHandler: NSObject, WKScriptMessageHandler {
+    func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
+        print("🔴 JS ERROR: \(message.body)")
+    }
+}
+
 // MARK: - Haptics bridge
 
 private final class HapticsHandler: NSObject, WKScriptMessageHandler {
@@ -148,6 +156,7 @@ class ViewController: UIViewController {
         injectNativeStorage(into: config)
 
         let ucc = config.userContentController
+        ucc.add(JSErrorHandler(),   name: "jsError")
         ucc.add(StorageHandler(),   name: "storage")
         ucc.add(HapticsHandler(),   name: "haptics")
         ucc.add(AppReviewHandler(), name: "appReview")

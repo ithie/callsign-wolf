@@ -2,7 +2,7 @@ export {};
 declare const acquireVsCodeApi: () => { postMessage: (msg: unknown) => void };
 const vscode = acquireVsCodeApi();
 
-import type { DEF, DEFFace, DEFCollisionBox, DEFPart, DEF2, DEF2Face, DEF2Node, DEFFragment, DEFLight } from '../../src/game/defs';
+import type { DEF, DEFFace, DEFCollisionBox, DEFPart, DEF2, DEF3, DEF2Face, DEF2Node, DEFFragment, DEFLight } from '../../src/game/defs';
 import { createSceneRenderer } from '../../src/game/scene-renderer';
 import { applyParts, getTransformedPivots, renderNodes } from '../../src/game/def-utils';
 
@@ -18,9 +18,7 @@ import CARRIER_RAW from '../../src/game/models/carrier.zdef';
 import ORNITHOPTER_RAW from '../../src/game/models/ornithopter.zdef';
 import CARRIER_HULL_RAW from '../../src/game/models/carrier_hull.zdef';
 import CARRIER_TOWER_RAW from '../../src/game/models/carrier_tower.zdef';
-import FUEL_TRUCK_CHASSIS_RAW from '../../src/game/models/fuel_truck_chassis.zdef';
-import FUEL_TRUCK_TANK_RAW from '../../src/game/models/fuel_truck_tank.zdef';
-import FUEL_TRUCK_CAB_RAW from '../../src/game/models/fuel_truck_cab.zdef';
+import FUEL_TRUCK_RAW from '../../src/game/models/fuel_truck.zdef';
 import CARRIER_CAR_RAW from '../../src/game/models/carrier_car.zdef';
 import CARRIER_DECK_TRACTOR_RAW from '../../src/game/models/carrier_deck_tractor.zdef';
 
@@ -50,16 +48,14 @@ const PRESETS: Record<string, { def: DEFModel; label: string; isStatic: boolean;
     carrier:              { def: toDefCast(CARRIER_RAW),          label: 'Carrier (komplett)',   isStatic: false, movementType: 'ship' },
     carrier_hull:         { def: toDefCast(CARRIER_HULL_RAW),     label: 'Carrier Hull',         isStatic: false, movementType: 'ship' },
     carrier_tower:        { def: toDefCast(CARRIER_TOWER_RAW),    label: 'Carrier Tower',        isStatic: false, movementType: 'ship' },
-    fuel_truck_chassis:   { def: toDefCast(FUEL_TRUCK_CHASSIS_RAW), label: 'Fuel Truck (Chassis)', isStatic: true, movementType: 'none' },
-    fuel_truck_tank:      { def: toDefCast(FUEL_TRUCK_TANK_RAW),  label: 'Fuel Truck (Tank)',    isStatic: true,  movementType: 'none' },
-    fuel_truck_cab:       { def: toDefCast(FUEL_TRUCK_CAB_RAW),   label: 'Fuel Truck (Cab)',     isStatic: true,  movementType: 'none' },
+    fuel_truck:           { def: toDefCast(FUEL_TRUCK_RAW),       label: 'Fuel Truck',           isStatic: false, movementType: 'auto' },
     carrier_car:          { def: toDefCast(CARRIER_CAR_RAW),      label: 'Carrier Car',          isStatic: false, movementType: 'auto' },
     carrier_deck_tractor: { def: toDefCast(CARRIER_DECK_TRACTOR_RAW), label: 'Carrier Deck Tractor', isStatic: false, movementType: 'auto' },
 };
 
 const state: {
     def: DEFModel | null;
-    def2: DEF2 | null;
+    def2: DEF2 | DEF3 | null;
     meta: ZdefMeta;
     selectedFaceIdx: number;
     selectedVertIdx: number;
@@ -313,6 +309,9 @@ const draw = (): void => {
                     colors2[activeFaces[state.selectedFaceIdx].id] = '#ffdd44';
                 }
                 SceneRenderer.debugCollision = showCboxes;
+                // renderNodes() always flushes internally now — once per node by default,
+                // or once for the whole def when crossNodeDepth is set — so no follow-up
+                // flush() call is needed here regardless of which mode a given file uses.
                 renderNodes(state.def2, {}, { x: 0, y: 0, angle: renderViewAngle, colors: colors2 } as any, SceneRenderer as any, renderCam.x, renderCam.y, { ctx, isoFn: iso, tileW: TW * renderZoom } as any);
             } else {
                 const colors: Record<string, string> = {};
@@ -1807,8 +1806,11 @@ const toJSON = (): string => {
 
 const fromJSON = (content: string): void => {
     const d = JSON.parse(content.replace(/\/\/[^\n]*/g, '')) as Record<string, unknown>;
-    if ((d['version'] as number) === 2) {
-        state.def2 = d as unknown as DEF2;
+    const version = d['version'] as number;
+    if (version === 2 || version === 3) {
+        // D3F (v3) is the same node/face wire shape as ZDEF2 — only `normal`
+        // handling in the renderer differs, gated on `version` at render time.
+        state.def2 = d as unknown as DEF2 | DEF3;
         // Minimal v1 stub so cbox/zone/landing editors still work
         state.def = {
             id: d['id'] as string,

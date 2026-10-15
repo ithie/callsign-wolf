@@ -6,6 +6,13 @@ import { createIsoFn } from '../../src/game/render';
 import { renderNodes, applyParts } from '../../src/game/def-utils';
 import { createDrawObjects } from '../../src/game/draw-objects';
 import type { DEF, DEF2 } from '../../src/game/defs';
+import { getConsist, getRailSamples, WATER_FLOAT_Z, WAGON_DECK_Z } from '../../src/game/sim/test-train-path';
+import FREIGHT_LOCOMOTIVE_DEF from '../../src/game/models/objects/freight_locomotive.zdef';
+import FREIGHT_WAGON_DEF from '../../src/game/models/objects/freight_wagon.zdef';
+import FREIGHT_CONTAINER_DEF from '../../src/game/models/objects/freight_container.zdef';
+import FREIGHT_BOGIE_DEF from '../../src/game/models/objects/freight_bogie.zdef';
+
+const _railSamples = getRailSamples();
 
 const _DEF_REGISTRY: Record<string, { path: string; v2: boolean }> = {
     hangar:               { path: 'src/game/models/objects/hangar.zdef',               v2: false },
@@ -243,10 +250,22 @@ export const drawMap = (): void => {
     const _noSR = { add: () => {}, flush: () => {} } as any;
     const { drawTree, drawPerson } = createDrawObjects(ctx, defIso, defTW, hh * 2, _noSR);
 
-    const _renderDEF = (def: unknown, v2: boolean, wx: number, wy: number, wz: number, angle: number, colors?: Record<string, string>): void => {
+    const _renderDEF = (
+        def: unknown, _v2: boolean, wx: number, wy: number, wz: number, angle: number,
+        colors?: Record<string, string>, params: Record<string, number> = {},
+    ): void => {
         const sr = createSceneRenderer(ctx, defIso);
-        if (v2) {
-            renderNodes(def as DEF2, {}, { x: wx, y: wy, z: wz, angle }, sr, defCamX, defCamY, defDrawCtx);
+        // Derived from the loaded def's own `version` field rather than the caller's
+        // `_v2` flag (kept for signature compatibility, no longer consulted) — that
+        // flag lives in the hand-maintained _DEF_REGISTRY below and drifts out of
+        // sync every time a model is migrated to ZDEF2/D3F (as happened here: 28 of
+        // 34 entries were stale `false` after this session's D3F migration, crashing
+        // drawMap() — and with it the minimap and drag-pan setup that runs after it —
+        // for any placed object whose registry entry was never updated).
+        const version = (def as { version?: number } | null)?.version;
+        const nodeBased = typeof version === 'number' && version >= 2;
+        if (nodeBased) {
+            renderNodes(def as DEF2, params, { x: wx, y: wy, z: wz, angle }, sr, defCamX, defCamY, defDrawCtx);
         } else {
             sr.add(def as DEF, { x: wx, y: wy, z: wz, angle, colors });
         }
@@ -614,6 +633,56 @@ export const drawMap = (): void => {
             ctx.textAlign = 'left';
         }
     });
+
+    // ── Test track + train (gamescom prototype) ───────────────────────────────
+    // Static preview only — a fixed point on the loop, not animated and not an
+    // editor-manipulable object (no entry in m.objects, nothing selectable).
+    // Gated on the same `testTrain` level flag the game checks at runtime.
+    if ((m as any).testTrain) {
+        const _drawRail = (points: { x: number; y: number }[]) => {
+            ctx.beginPath();
+            points.forEach((p, i) => {
+                const s = defIso(p.x, p.y, WATER_FLOAT_Z, defCamX, defCamY);
+                if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+            });
+            ctx.stroke();
+        };
+        ctx.lineWidth = Math.max(1, hw / 16);
+        ctx.strokeStyle = '#4a3a2a';
+        _drawRail(_railSamples.left);
+        _drawRail(_railSamples.right);
+        ctx.strokeStyle = '#6b5a3a';
+        ctx.lineWidth = Math.max(1, hw / 20);
+        for (let i = 0; i < _railSamples.left.length; i += 4) {
+            const a = defIso(_railSamples.left[i].x, _railSamples.left[i].y, WATER_FLOAT_Z, defCamX, defCamY);
+            const b = defIso(_railSamples.right[i].x, _railSamples.right[i].y, WATER_FLOAT_Z, defCamX, defCamY);
+            ctx.beginPath();
+            ctx.moveTo(a.x, a.y);
+            ctx.lineTo(b.x, b.y);
+            ctx.stroke();
+        }
+
+        const zAt = (x: number, y: number) => Math.max(m.terrain[Math.round(x)]?.[Math.round(y)] ?? 0, WATER_FLOAT_Z);
+
+        for (const car of getConsist(0)) {
+            // Bogies first (fully independent objects, each at its own track pose)
+            // — body renders on top of them, not as their rotating parent.
+            _renderDEF(FREIGHT_BOGIE_DEF, true, car.pose.rearBogie.x, car.pose.rearBogie.y, zAt(car.pose.rearBogie.x, car.pose.rearBogie.y), car.pose.rearBogie.angle);
+            _renderDEF(FREIGHT_BOGIE_DEF, true, car.pose.frontBogie.x, car.pose.frontBogie.y, zAt(car.pose.frontBogie.x, car.pose.frontBogie.y), car.pose.frontBogie.angle);
+
+            const z = zAt(car.pose.bodyX, car.pose.bodyY);
+            if (car.kind === 'locomotive') {
+                _renderDEF(FREIGHT_LOCOMOTIVE_DEF, true, car.pose.bodyX, car.pose.bodyY, z, car.pose.bodyAngle);
+            } else {
+                _renderDEF(FREIGHT_WAGON_DEF, true, car.pose.bodyX, car.pose.bodyY, z, car.pose.bodyAngle);
+                const color = car.containerColor!;
+                _renderDEF(
+                    FREIGHT_CONTAINER_DEF, true, car.pose.bodyX, car.pose.bodyY, z + WAGON_DECK_Z, car.pose.bodyAngle,
+                    { ctop: color, cfront: color, cback: color, cleft: color, cright: color },
+                );
+            }
+        }
+    }
 
     // ── Payloads ──────────────────────────────────────────────────────────────
     const payloads = m.payloads || [];

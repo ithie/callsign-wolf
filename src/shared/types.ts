@@ -263,6 +263,8 @@ export interface Mission {
     terrainRef?: number;      // index into campaign.levels — share terrain with that mission
     events?: MissionEvent[];
     endless?: boolean;
+    /** Test-only: spawns the hardcoded freight train loop (see sim/test-train.ts). Not editor-exposed. */
+    testTrain?: boolean;
 }
 
 export type MissionData = Omit<Mission, 'terrain' | 'foliage'> & {

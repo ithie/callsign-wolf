@@ -89,7 +89,10 @@ describe('UI screen snapshots', () => {
     });
 
     it('credits-screen', () => {
+        // mount() only registers the empty screen shell — show() builds the
+        // actual canvas/credits-list content when the screen is navigated to.
         CreditsScreen.mount(vi.fn());
+        CreditsScreen.show();
         snap('credits-screen');
     });
 });

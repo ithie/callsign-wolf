@@ -197,7 +197,10 @@ describe('legal-screen', () => {
     });
 
     it('snapshot', () => {
+        // mount() only registers the empty screen shell — show() builds the
+        // actual impressum/privacy content when the screen is navigated to.
         LegalScreen.mount(vi.fn());
+        LegalScreen.show();
         snap('legal-screen');
     });
 

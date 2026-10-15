@@ -1,5 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { nGonRing, cylFaces, HANGAR_DEF, LIGHTHOUSE_DEF } from './defs';
+import { nGonRing, cylFaces } from './defs';
+import { applyNodes } from './def-utils';
+import type { DEF2, DEF3 } from './defs';
+import HANGAR_RAW from './models/objects/hangar.zdef';
+import LIGHTHOUSE_RAW from './models/objects/lighthouse.zdef';
+
+// Baked here rather than in defs.ts: production builds compress+lazy-load
+// .zdef content (see plugins/zdef.ts), so eagerly calling applyNodes() at
+// defs.ts's module scope reads an still-empty placeholder and throws before
+// decompressMissionAssets() ever runs. Tests run through vitest's synchronous
+// dev-mode expand, so baking here is safe and exercises the same applyNodes()
+// path without that hazard.
+const HANGAR_DEF = applyNodes(HANGAR_RAW as unknown as DEF2 | DEF3, {});
+const LIGHTHOUSE_DEF = applyNodes(LIGHTHOUSE_RAW as unknown as DEF2 | DEF3, {});
 
 const TWO_PI = Math.PI * 2;
 
@@ -118,13 +131,25 @@ describe('HANGAR_DEF', () => {
         expect(new Set(ids).size).toBe(ids.length);
     });
 
-    it('exterior faces have normals, interior faces do not', () => {
+    it('every face has a winding-derived normal3d (D3F, no hand-authored normal)', () => {
         HANGAR_DEF.faces.forEach(f => {
-            if (f.id.endsWith('_ext')) {
-                expect(f.normal).toBeDefined();
-            } else if (f.id.endsWith('_int')) {
-                expect(f.normal).toBeUndefined();
-            }
+            expect(f.normal3d).toBeDefined();
+        });
+    });
+
+    it('coincident _int/_ext wall pairs face opposite directions', () => {
+        const byVerts = new Map<string, typeof HANGAR_DEF.faces>();
+        HANGAR_DEF.faces.forEach(f => {
+            if (!f.id.endsWith('_int') && !f.id.endsWith('_ext')) return;
+            const key = [...f.verts].map(v => v.map(n => Math.round(n * 1000)).join(',')).sort().join('|');
+            (byVerts.get(key) ?? byVerts.set(key, []).get(key)!).push(f);
+        });
+        byVerts.forEach(pair => {
+            expect(pair.length).toBe(2);
+            const [a, b] = pair.map(f => f.normal3d!);
+            expect(a[0] + b[0]).toBeCloseTo(0, 5);
+            expect(a[1] + b[1]).toBeCloseTo(0, 5);
+            expect(a[2] + b[2]).toBeCloseTo(0, 5);
         });
     });
 });
