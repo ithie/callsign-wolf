@@ -88,10 +88,48 @@ export const setAltViolationStart = (v: number | null): void => { altViolationSt
 // ─── Endless mode ─────────────────────────────────────────────────────────────
 export let endlessMode = false;
 
+// Feste Reihenfolge der Personen-Templates aus der Mission (Platzierungsreihenfolge),
+// damit im Endlosmodus immer nur EINE Person gleichzeitig sichtbar ist und die nächste
+// erst nach dem Aufnehmen der vorigen an ihrer Position erscheint — statt zufällig
+// mehrere gestapelt an derselben Stelle. Läuft nach den initialen 10 wieder von vorne.
+let endlessQueue: { type: string; x: number; y: number }[] = [];
+let endlessQueueIdx = 0;
+
+// Muss NACH initPayloadsFromMission() aufgerufen werden: versteckt alle bis auf die
+// erste Person der Warteschlange wieder.
+export const initEndlessQueue = (): void => {
+    if (!endlessMode) return;
+    const missionData = campaignHandler.getCurrentMissionData() as any;
+    endlessQueue = ((missionData?.payloads || []) as any[]).filter(
+        (p) => p.type === PAYLOAD.PERSON && !p.spawnOnboard
+    );
+    endlessQueueIdx = 0;
+    G.payloads = G.payloads.filter((p: any) => p.type !== PAYLOAD.PERSON);
+    if (endlessQueue.length) {
+        spawnPayload({ ...endlessQueue[0] }, false);
+        endlessQueueIdx = 1;
+    }
+};
+
+// Fisher-Yates — nach jedem vollen Durchlauf neu gemischt, damit nicht immer
+// dasselbe Muster in derselben Reihenfolge kommt.
+const _shuffle = <T,>(arr: T[]): T[] => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+};
+
 export const spawnEndlessPerson = (): void => {
-    const payloads = (campaignHandler.getCurrentMissionData() as any)?.payloads as { type: string; x: number; y: number }[] | undefined;
-    if (!payloads?.length) return;
-    const tmpl = payloads[Math.floor(Math.random() * payloads.length)];
+    if (!endlessQueue.length) return;
+    if (endlessQueueIdx >= endlessQueue.length) {
+        endlessQueue = _shuffle(endlessQueue);
+        endlessQueueIdx = 0;
+    }
+    const tmpl = endlessQueue[endlessQueueIdx];
+    endlessQueueIdx++;
     spawnPayload({ ...tmpl }, false);
 };
 
@@ -743,6 +781,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     G.deliverMode = false;
     _bc('initPayloadsFromMission');
     initPayloadsFromMission();
+    initEndlessQueue();
     initEventSystem(
         () => {
             if (zstate.crashed) return;

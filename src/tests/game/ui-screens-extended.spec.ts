@@ -198,6 +198,7 @@ describe('legal-screen', () => {
 
     it('snapshot', () => {
         LegalScreen.mount(vi.fn());
+        LegalScreen.show();
         snap('legal-screen');
     });
 

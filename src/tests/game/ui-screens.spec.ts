@@ -90,6 +90,7 @@ describe('UI screen snapshots', () => {
 
     it('credits-screen', () => {
         CreditsScreen.mount(vi.fn());
+        CreditsScreen.show();
         snap('credits-screen');
     });
 });

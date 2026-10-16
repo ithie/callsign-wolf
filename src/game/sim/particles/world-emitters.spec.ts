@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+// @vitest-environment jsdom
+import { describe, it, expect, vi } from 'vitest';
 import { update } from './world-emitters';
 import type { ParticlesCtx, ParticleEmitter, EmitterParticle } from './ctx';
 
@@ -42,12 +43,19 @@ describe('WorldEmitters.update – spawning', () => {
     });
 
     it('fire emitter spawns both fire and smoke particles per cycle', () => {
-        const ctx = makeCtx();
-        const emitter = makeEmitter('fire');
-        ctx.emitters = [emitter];
-        update({ ctx, dt: 4 });
-        expect(emitter.particles.some(p => p.isFire)).toBe(true);
-        expect(emitter.particles.some(p => p.isSmoke)).toBe(true);
+        // Smoke on a fire emitter is a 35%-per-cycle roll (see world-emitters.ts) —
+        // force it so this assertion is deterministic instead of ~42% flaky.
+        const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
+        try {
+            const ctx = makeCtx();
+            const emitter = makeEmitter('fire');
+            ctx.emitters = [emitter];
+            update({ ctx, dt: 4 });
+            expect(emitter.particles.some(p => p.isFire)).toBe(true);
+            expect(emitter.particles.some(p => p.isSmoke)).toBe(true);
+        } finally {
+            randomSpy.mockRestore();
+        }
     });
 
     it('smoke emitter spawns only smoke particles', () => {

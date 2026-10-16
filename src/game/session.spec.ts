@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import {
     encodeSession,
     decodeSession,
@@ -7,9 +7,11 @@ import {
     getCampaignsDone,
     isCampaignUnlocked,
     isMissionUnlocked,
+    UNLOCK_KEY,
     type PlayerSession,
 } from './session';
 import { getRank } from './ui/rank-badge/rank-badge';
+import { storageSet, storageRemove } from './storage';
 
 const mkSession = (overrides: Partial<PlayerSession> = {}): PlayerSession => ({
     playerName: '',
@@ -127,13 +129,23 @@ describe('isMissionUnlocked', () => {
 describe('isCampaignUnlocked', () => {
     const campaigns = [{ type: 'tutorial' }, { type: 'free-flight' }, { type: 'regular' }, { type: 'regular' }];
 
+    // Non-tutorial content is gated behind the Coast Hawk type rating (granted on
+    // tutorial completion in real play) and, for 'regular' campaigns, the paid
+    // full version (isUnlocked(), backed by storage — reset after each test here).
+    afterEach(() => storageRemove(UNLOCK_KEY));
+
+    // isCampaignUnlocked checks the tutorial's FIRST MISSION completion (missions[0]),
+    // not the campaign-level `completed` flag, to decide whether the tutorial is done.
+    const TUTORIAL_MISSION_DONE = { completed: true, bestTimeMs: null, count: 1 };
+
     it('tutorial is always unlocked', () => {
         expect(isCampaignUnlocked(mkSession(), campaigns, 0)).toBe(true);
     });
 
     it('free-flight unlocked once tutorial is done', () => {
         const s = mkSession({
-            campaignProgress: { '0': { completed: true, missions: [] } },
+            campaignProgress: { '0': { completed: true, missions: [TUTORIAL_MISSION_DONE] } },
+            typeRatings: { coasthawk: true },
         });
         expect(isCampaignUnlocked(s, campaigns, 1)).toBe(true);
     });
@@ -143,25 +155,31 @@ describe('isCampaignUnlocked', () => {
     });
 
     it('first regular unlocked after tutorial', () => {
+        storageSet(UNLOCK_KEY, '1');
         const s = mkSession({
-            campaignProgress: { '0': { completed: true, missions: [] } },
+            campaignProgress: { '0': { completed: true, missions: [TUTORIAL_MISSION_DONE] } },
+            typeRatings: { coasthawk: true },
         });
         expect(isCampaignUnlocked(s, campaigns, 2)).toBe(true);
     });
 
     it('second regular locked until first regular is done', () => {
+        storageSet(UNLOCK_KEY, '1');
         const s = mkSession({
-            campaignProgress: { '0': { completed: true, missions: [] } },
+            campaignProgress: { '0': { completed: true, missions: [TUTORIAL_MISSION_DONE] } },
+            typeRatings: { coasthawk: true },
         });
         expect(isCampaignUnlocked(s, campaigns, 3)).toBe(false);
     });
 
     it('second regular unlocked after first regular is done', () => {
+        storageSet(UNLOCK_KEY, '1');
         const s = mkSession({
             campaignProgress: {
-                '0': { completed: true, missions: [] },
+                '0': { completed: true, missions: [TUTORIAL_MISSION_DONE] },
                 '2': { completed: true, missions: [] },
             },
+            typeRatings: { coasthawk: true },
         });
         expect(isCampaignUnlocked(s, campaigns, 3)).toBe(true);
     });
@@ -199,6 +217,7 @@ describe('encodeSession / decodeSession', () => {
 
     it('reconstructs campaign progress from nextMission count', () => {
         const s = mkSession({
+            highestUnlockedCampaignIndex: 1, // encodeSession only persists the ACTIVE campaign's progress
             campaignProgress: {
                 '1': {
                     completed: false,
