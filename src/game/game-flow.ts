@@ -19,9 +19,10 @@ import {
 } from './sim/world-init';
 import { carrierCar } from './sim/vehicles/carrier-car';
 import { fuelTruck } from './sim/vehicles/fuel-truck';
-import { initParticles, resetFoam, spawnExplosion, spawnPositionExplosion, type ParticlesCtx } from './sim/particles';
-import { initEventSystem, markEventSystemStarted } from './sim/event-system';
+import { initParticles, resetFoam, spawnExplosion, type ParticlesCtx } from './sim/particles';
 import { initNpcHelisFromMission } from './sim/npc-helis';
+import { resetCollapses } from './sim/collapse';
+import { startMissionScript, stopMissionScript } from './script/runtime';
 // DIAGNOSTIC: disabled to isolate the black-screen-on-launch regression — see feedback thread.
 // import { initTestTrain } from './sim/test-train';
 import { initFoliageFromMission } from './foliage';
@@ -90,10 +91,49 @@ export const setAltViolationStart = (v: number | null): void => { altViolationSt
 // ─── Endless mode ─────────────────────────────────────────────────────────────
 export let endlessMode = false;
 
+// Feste Reihenfolge der Personen-Templates aus der Mission (Platzierungsreihenfolge),
+// damit im Endlosmodus immer nur EINE Person gleichzeitig sichtbar ist und die nächste
+// erst nach dem Aufnehmen der vorigen an ihrer Position erscheint — statt zufällig
+// mehrere gestapelt an derselben Stelle. Nach einem vollen Durchlauf wird neu gemischt,
+// damit nicht immer dasselbe Muster in derselben Reihenfolge kommt.
+let endlessQueue: { type: string; x: number; y: number }[] = [];
+let endlessQueueIdx = 0;
+
+// Muss NACH initPayloadsFromMission() aufgerufen werden: versteckt alle bis auf die
+// erste Person der Warteschlange wieder.
+export const initEndlessQueue = (): void => {
+    if (!endlessMode) return;
+    const missionData = campaignHandler.getCurrentMissionData() as any;
+    endlessQueue = ((missionData?.payloads || []) as any[]).filter(
+        (p) => p.type === PAYLOAD.PERSON && !p.spawnOnboard
+    );
+    endlessQueueIdx = 0;
+    G.payloads = G.payloads.filter((p: any) => p.type !== PAYLOAD.PERSON);
+    if (endlessQueue.length) {
+        spawnPayload({ ...endlessQueue[0] }, false);
+        endlessQueueIdx = 1;
+    }
+};
+
+// Fisher-Yates — nach jedem vollen Durchlauf neu gemischt, damit nicht immer
+// dasselbe Muster in derselben Reihenfolge kommt.
+const _shuffle = <T,>(arr: T[]): T[] => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+};
+
 export const spawnEndlessPerson = (): void => {
-    const payloads = (campaignHandler.getCurrentMissionData() as any)?.payloads as { type: string; x: number; y: number }[] | undefined;
-    if (!payloads?.length) return;
-    const tmpl = payloads[Math.floor(Math.random() * payloads.length)];
+    if (!endlessQueue.length) return;
+    if (endlessQueueIdx >= endlessQueue.length) {
+        endlessQueue = _shuffle(endlessQueue);
+        endlessQueueIdx = 0;
+    }
+    const tmpl = endlessQueue[endlessQueueIdx];
+    endlessQueueIdx++;
     spawnPayload({ ...tmpl }, false);
 };
 
@@ -212,7 +252,41 @@ export const updateSnowDrift = (): void => {
 
 // ─── Core mission lifecycle ───────────────────────────────────────────────────
 
+// Set once the mission has been won or failed (objectives, crash or campaign script).
+let _missionResolved = false;
+// Bumped per launch so a delayed script-fail screen never lands in a later mission.
+let _launchSeq = 0;
+
+const _isPreview = (): boolean => import.meta.env.DEV && new URLSearchParams(location.search).has('preview');
+
+const _scriptWin = (): void => {
+    if (zstate.crashed || endlessMode) return;
+    if (_isPreview()) { showScriptMessage(`✔ ${I18N.MISSION_COMPLETE}`); return; }
+    missionComplete();
+};
+
+const _scriptFail = (reason?: string): void => {
+    if (zstate.crashed || _missionResolved) return;
+    _missionResolved = true;
+    if (endlessMode) _saveEndlessScore();
+    if (_isPreview()) { showScriptMessage(`✖ ${reason ?? I18N.MISSION_FAILED}`); return; }
+    const seq = _launchSeq;
+    // Leave time to watch what the script just did (e.g. a collapse) before the screen.
+    setTimeout(() => {
+        if (seq !== _launchSeq || !zstate.gameStarted) return;
+        stopMission();
+        MissionFailedScreen.mount(returnToBase, retryMission, reason);
+        MissionFailedScreen.show();
+    }, 3000);
+};
+
+const _scriptSetWind = (bft: number): void => {
+    missionWindBft = bft;
+    missionWindStr = bft * 0.6;
+};
+
 export const stopMission = (): void => {
+    stopMissionScript();
     cancelAnimationFrame(_deps.rafRef.id);
     _deps.rafRef.id = 0;
     zstate.gameStarted = false;
@@ -247,7 +321,7 @@ export const resetHeliState = (): void => {
 };
 
 export const triggerCrash = (): void => {
-    if (zstate.crashed) return;
+    if (zstate.crashed || _missionResolved) return;
     voiceEvents.emit('mayday');
     stopHeliSound();
     soundHandler.play('final');
@@ -294,7 +368,7 @@ export const retryMission = (): void => {
     campaignHandler.campaign.setActiveMission(selectedMissionIndex);
     const { gridSize, objects: selObjects } = campaignHandler.getCurrentMissionData();
     const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
-    G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant };
+    G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant, hangarVariant: (selPad as any).hangarVariant };
     G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
     initGrid(gridSize, G.points);
     startGame(heliType);
@@ -313,6 +387,10 @@ export const returnToCampaignSelect = (): void => {
 // ─── Mission completion ───────────────────────────────────────────────────────
 
 export const missionComplete = (): void => {
+    // Objectives and the campaign script can both end a mission — the first one wins.
+    if (_missionResolved) return;
+    _missionResolved = true;
+    stopMissionScript();
     destroyTutorial();
     const { campaignType } = campaignHandler.getCurrentMissionData();
     const isTutorial = campaignType === CAMPAIGN_TYPE.TUTORIAL;
@@ -433,7 +511,7 @@ export const missionComplete = (): void => {
         campaignHandler.campaign.setActiveMission(nextMissionIndex);
         const { gridSize, objects: selObjects } = campaignHandler.getCurrentMissionData();
         const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
-        G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant };
+        G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant, hangarVariant: (selPad as any).hangarVariant };
         G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
         initGrid(gridSize, G.points);
         startGame(heliType);
@@ -460,35 +538,6 @@ export const orniWreckDelivered = (): void => {
         returnToBase();
     } else {
         Rankup.show(RANKS[RANKS.length - 1], undefined, returnToBase);
-    }
-};
-
-export const onBoatTurbineCollision = (boatIdx: number, wtIdx: number): void => {
-    const b = G.BOATS[boatIdx];
-    const wt = G.WIND_TURBINES[wtIdx];
-    if (!b || !wt) return;
-    const _boatObjIdx = b._objIdx;
-    const _personsLost = G.payloads.some((p: any) =>
-        !p.rescued && !p.hanging &&
-        p.attachTo?.objectType === VESSEL.SUPPLY_VESSEL &&
-        p.attachTo?.objectIdx === _boatObjIdx,
-    );
-    const bx = b.x, by = b.y, bAngle = b.angle;
-    G.BOATS.splice(boatIdx, 1);
-    G.BOAT_WRECKS.push({ x: bx, y: by, angle: bAngle });
-    const pCtx = makePCtx();
-    spawnPositionExplosion({ ctx: pCtx, dt: 0 }, bx, by, G.waterLevel + 0.5);
-    G.PARTICLE_EMITTERS.push({ type: 'smoke', x: bx, y: by, gz: G.waterLevel, particles: [], spawnTimer: 0 });
-    G.PARTICLE_EMITTERS.push({ type: 'fire', x: wt.x, y: wt.y, gz: wt.gz + 12.3, particles: [], spawnTimer: 0 });
-    wt.collapsing = true;
-    wt.collapseT = 0;
-    if (_personsLost && !zstate.crashed) {
-        zstate.crashed = true;
-        setTimeout(() => {
-            stopMission();
-            MissionFailedScreen.mount(returnToBase, retryMission, undefined);
-            MissionFailedScreen.show();
-        }, 2500);
     }
 };
 
@@ -569,7 +618,7 @@ export const selectMission = (missionIndex: number): void => {
         const { gridSize, objects: selObjects, campaignType } = campaignHandler.getCurrentMissionData();
         _bc(`findPad:camp${selectedCampaignIndex}m${missionIndex}gridSize${gridSize}`);
         const selPad = (selObjects || []).find((o: any) => o.type === VESSEL.PAD) || { x: 10, y: 10 };
-        G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant };
+        G.PAD = { xMin: selPad.x, xMax: selPad.x + 7, yMin: selPad.y, yMax: selPad.y + 7, z: 0.5, towerVariant: (selPad as any).towerVariant, hangarVariant: (selPad as any).hangarVariant };
         G.START_POS = { x: selPad.x + 4, y: selPad.y + 4 };
         _bc(`initGrid:${gridSize}`);
         initGrid(gridSize, G.points);
@@ -663,6 +712,10 @@ const _maybeSpawnOrniWreck = (): void => {
 };
 
 export const launchMission = async (showLoader = true): Promise<void> => {
+    stopMissionScript();
+    resetCollapses();
+    _missionResolved = false;
+    _launchSeq++;
     try { localStorage.removeItem('_lastCrash'); } catch { /* storage unavailable */ }
     session._dbgStep = undefined;
     try { saveSession(session); } catch { /* storage unavailable */ }
@@ -677,7 +730,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     const _padObj = _lmdObjs.find((o: any) => o.type === VESSEL.PAD);
     missionHasPad = !!_padObj;
     if (_padObj) {
-        G.PAD = { xMin: _padObj.x, xMax: _padObj.x + 7, yMin: _padObj.y, yMax: _padObj.y + 7, z: 0.5, towerVariant: (_padObj as any).towerVariant };
+        G.PAD = { xMin: _padObj.x, xMax: _padObj.x + 7, yMin: _padObj.y, yMax: _padObj.y + 7, z: 0.5, towerVariant: (_padObj as any).towerVariant, hangarVariant: (_padObj as any).hangarVariant };
         G.START_POS = { x: _padObj.x + 4, y: _padObj.y + 4 };
     }
     missionHasCarrier = !!_lmdObjs.find((o: any) => o.type === VESSEL.CARRIER);
@@ -745,18 +798,7 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     G.deliverMode = false;
     _bc('initPayloadsFromMission');
     initPayloadsFromMission();
-    initEventSystem(
-        () => {
-            if (zstate.crashed) return;
-            zstate.crashed = true;
-            setTimeout(() => {
-                stopMission();
-                MissionFailedScreen.mount(returnToBase, retryMission, undefined);
-                MissionFailedScreen.show();
-            }, 2000);
-        },
-        (text) => showScriptMessage(text),
-    );
+    initEndlessQueue();
     initNpcHelisFromMission();
     // DIAGNOSTIC: disabled to isolate the black-screen-on-launch regression — see feedback thread.
     // initTestTrain();
@@ -807,8 +849,17 @@ export const launchMission = async (showLoader = true): Promise<void> => {
     Briefing.show({ headline: _lmd.headline, sublines: _lmd.sublines, briefing: _lmd.briefing, address }, () => {
         briefingActive = false;
         missionStartTime = Date.now();
-        markEventSystemStarted();
         _deps.setTouchVisible(true);
+        startMissionScript({
+            campaignKey: campaignHandler.getActiveCampaignKey(),
+            missionId: (_lmd as any).id,
+            endless: endlessMode,
+            objects: _lmdObjs as any[],
+            win: _scriptWin,
+            fail: _scriptFail,
+            setWind: _scriptSetWind,
+            onError: _deps.showDebugError,
+        });
 
         if (_lmd.campaignType === CAMPAIGN_TYPE.TUTORIAL && !(_lmd as any).heliOverride) {
             initTutorial(G, getGround(G.heli.x, G.heli.y, G.points, G.CARRIER), missionComplete, () => {

@@ -1,7 +1,7 @@
 "use strict";
 (() => {
   // ../src/game/scene-renderer.ts
-  var _POOL_SIZE = 512;
+  var _POOL_SIZE = 2048;
   var _makeInst = () => ({
     def: null,
     x: 0,
@@ -10,9 +10,89 @@
     angle: 0,
     colors: void 0,
     depth: 0,
-    drawFn: null
+    drawFn: null,
+    group: 0,
+    box: { x0: 0, x1: 0, y0: 0, y1: 0, z0: 0, z1: 0 },
+    sx0: 0,
+    sx1: 0,
+    sy0: 0,
+    sy1: 0
   });
+  var _EPS = 1e-4;
+  var _CELL = 96;
+  var _behind = (a, b) => a.x1 <= b.x0 + _EPS || a.y1 <= b.y0 + _EPS || a.z1 <= b.z0 + _EPS;
+  var sortByBoxes = (boxes, rects, keys, groups) => {
+    const n = boxes.length;
+    const base = Array.from({ length: n }, (_, i) => i).sort((a, b) => keys[a] - keys[b] || a - b);
+    const rank = new Array(n);
+    base.forEach((idx, r) => {
+      rank[idx] = r;
+    });
+    const preds = Array.from({ length: n }, () => []);
+    const cells = /* @__PURE__ */ new Map();
+    const cellKey = (cx, cy) => cx * 73856093 ^ cy * 19349663;
+    for (let i = 0; i < n; i++) {
+      const r = rects[i];
+      const cx0 = Math.floor(r.sx0 / _CELL), cx1 = Math.floor(r.sx1 / _CELL);
+      const cy0 = Math.floor(r.sy0 / _CELL), cy1 = Math.floor(r.sy1 / _CELL);
+      for (let cx = cx0; cx <= cx1; cx++) {
+        for (let cy = cy0; cy <= cy1; cy++) {
+          const k = cellKey(cx, cy);
+          const list = cells.get(k);
+          if (list) list.push(i);
+          else cells.set(k, [i]);
+        }
+      }
+    }
+    for (const [, list] of cells) {
+      for (let a = 0; a < list.length; a++) {
+        const i = list[a], ri = rects[i];
+        for (let b = a + 1; b < list.length; b++) {
+          const j = list[b], rj = rects[j];
+          if (ri.sx1 <= rj.sx0 || rj.sx1 <= ri.sx0 || ri.sy1 <= rj.sy0 || rj.sy1 <= ri.sy0) continue;
+          const ox = Math.max(ri.sx0, rj.sx0), oy = Math.max(ri.sy0, rj.sy0);
+          const home = cellKey(Math.floor(ox / _CELL), Math.floor(oy / _CELL));
+          if (cells.get(home) !== list) continue;
+          if (groups[i] !== 0 && groups[i] === groups[j]) continue;
+          const ib = _behind(boxes[i], boxes[j]);
+          const jb = _behind(boxes[j], boxes[i]);
+          if (ib && !jb) preds[j].push(i);
+          else if (jb && !ib) preds[i].push(j);
+        }
+      }
+    }
+    const order = [];
+    const mark = new Uint8Array(n);
+    const visit = (start) => {
+      const stack = [start];
+      const iter = [0];
+      mark[start] = 1;
+      while (stack.length) {
+        const top = stack[stack.length - 1];
+        const p = preds[top];
+        if (iter[iter.length - 1] === 0 && p.length > 1) p.sort((a, b) => rank[a] - rank[b]);
+        const k = iter[iter.length - 1];
+        if (k < p.length) {
+          iter[iter.length - 1] = k + 1;
+          const nxt = p[k];
+          if (mark[nxt] === 0) {
+            mark[nxt] = 1;
+            stack.push(nxt);
+            iter.push(0);
+          }
+          continue;
+        }
+        mark[top] = 2;
+        order.push(top);
+        stack.pop();
+        iter.pop();
+      }
+    };
+    for (const idx of base) if (mark[idx] === 0) visit(idx);
+    return order;
+  };
   var _scratchPts = Array.from({ length: 64 }, () => ({ x: 0, y: 0 }));
+  var _scratchIso = { x: 0, y: 0 };
   var createSceneRenderer = (ctx2, iso2) => {
     const _instances = [];
     const _pool = Array.from({ length: _POOL_SIZE }, _makeInst);
@@ -64,11 +144,112 @@
       ctx2.setLineDash([]);
       ctx2.restore();
     };
+    const _defBox = (inst, out) => {
+      const def = inst.def;
+      const pivot = def.pivot ?? [0, 0, 0];
+      const cosA = Math.cos(inst.angle), sinA = Math.sin(inst.angle);
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const face of def.faces) {
+        for (const v of face.verts) {
+          const dx = v[0] - pivot[0], dy = v[1] - pivot[1];
+          const wx = dx * cosA - dy * sinA + inst.x;
+          const wy = dx * sinA + dy * cosA + inst.y;
+          const wz = v[2] - pivot[2] + inst.z;
+          if (wx < x0) x0 = wx;
+          if (wx > x1) x1 = wx;
+          if (wy < y0) y0 = wy;
+          if (wy > y1) y1 = wy;
+          if (wz < z0) z0 = wz;
+          if (wz > z1) z1 = wz;
+        }
+      }
+      if (x0 === Infinity) {
+        x0 = x1 = inst.x;
+        y0 = y1 = inst.y;
+        z0 = z1 = inst.z;
+      }
+      out.x0 = x0;
+      out.x1 = x1;
+      out.y0 = y0;
+      out.y1 = y1;
+      out.z0 = z0;
+      out.z1 = z1;
+    };
+    const _screenRect = (inst, camX, camY) => {
+      const b = inst.box;
+      let sx0 = Infinity, sx1 = -Infinity, sy0 = Infinity, sy1 = -Infinity;
+      for (let c = 0; c < 8; c++) {
+        const p = iso2(c & 1 ? b.x1 : b.x0, c & 2 ? b.y1 : b.y0, c & 4 ? b.z1 : b.z0, camX, camY, _scratchIso);
+        if (p.x < sx0) sx0 = p.x;
+        if (p.x > sx1) sx1 = p.x;
+        if (p.y < sy0) sy0 = p.y;
+        if (p.y > sy1) sy1 = p.y;
+      }
+      inst.sx0 = sx0 - 2;
+      inst.sx1 = sx1 + 2;
+      inst.sy0 = sy0 - 2;
+      inst.sy1 = sy1 + 2;
+    };
+    const _drawInstance = (inst, camX, camY) => {
+      if (inst.def) {
+        const def = inst.def;
+        const pivot = def.pivot ?? [0, 0, 0];
+        const cosA = Math.cos(inst.angle), sinA = Math.sin(inst.angle);
+        const p0 = pivot[0], p1 = pivot[1], p2 = pivot[2];
+        for (const face of def.faces) {
+          if (face.normal) {
+            const [nx, ny] = face.normal;
+            if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;
+          } else if (face.normal3d) {
+            const [nx, ny, nz] = face.normal3d;
+            if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) + nz <= 0) continue;
+          }
+          const verts = face.verts;
+          for (let i = 0; i < verts.length; i++) {
+            const lx = verts[i][0], ly = verts[i][1], lz = verts[i][2];
+            const dx = lx - p0, dy = ly - p1;
+            iso2(
+              dx * cosA - dy * sinA + inst.x,
+              dx * sinA + dy * cosA + inst.y,
+              lz - p2 + inst.z,
+              camX,
+              camY,
+              _scratchPts[i]
+            );
+          }
+          let _fcx = 0, _fcy = 0;
+          const _fn = verts.length;
+          for (let i = 0; i < _fn; i++) {
+            _fcx += _scratchPts[i].x;
+            _fcy += _scratchPts[i].y;
+          }
+          _fcx /= _fn;
+          _fcy /= _fn;
+          ctx2.beginPath();
+          for (let i = 0; i < _fn; i++) {
+            const _dx = _scratchPts[i].x - _fcx, _dy = _scratchPts[i].y - _fcy;
+            const _d = Math.hypot(_dx, _dy) || 1;
+            const _ex = _fcx + _dx * (1 + 0.5 / _d);
+            const _ey = _fcy + _dy * (1 + 0.5 / _d);
+            i === 0 ? ctx2.moveTo(_ex, _ey) : ctx2.lineTo(_ex, _ey);
+          }
+          ctx2.closePath();
+          ctx2.fillStyle = (inst.colors && inst.colors[face.id]) ?? face.color;
+          ctx2.fill();
+          if (face.stroke) {
+            ctx2.strokeStyle = face.stroke;
+            ctx2.lineWidth = face.strokeWidth ?? 1;
+            ctx2.stroke();
+          }
+        }
+      }
+      if (inst.drawFn) inst.drawFn(camX, camY);
+    };
     const renderer = {
       drawCollisionBox(camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color) {
         _drawCollisionBox(camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color);
       },
-      add(def, { x, y, z = 0, angle = 0, colors, drawFn, depth: depthOverride } = {}) {
+      add(def, { x, y, z = 0, angle = 0, colors, drawFn, depth: depthOverride, bounds, group } = {}) {
         const inst = _poolNext < _POOL_SIZE ? _pool[_poolNext++] : _makeInst();
         inst.def = def;
         inst.x = x;
@@ -78,70 +259,32 @@
         inst.colors = colors;
         inst.depth = depthOverride ?? x + y;
         inst.drawFn = drawFn ?? null;
+        inst.group = group ?? 0;
+        if (bounds) Object.assign(inst.box, bounds);
+        else if (def) _defBox(inst, inst.box);
+        else Object.assign(inst.box, { x0: x, x1: x, y0: y, y1: y, z0: z, z1: z });
         _instances.push(inst);
       },
       flush(camX, camY) {
-        _instances.sort((a, b) => a.depth - b.depth);
-        for (const inst of _instances) {
-          if (inst.def) {
-            const def = inst.def;
-            const pivot = def.pivot ?? [0, 0, 0];
-            const cosA = Math.cos(inst.angle), sinA = Math.sin(inst.angle);
-            const p0 = pivot[0], p1 = pivot[1], p2 = pivot[2];
-            for (const face of def.faces) {
-              if (face.normal) {
-                const [nx, ny] = face.normal;
-                if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;
-              } else if (face.normal3d) {
-                const [nx, ny, nz] = face.normal3d;
-                if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) + nz <= 0) continue;
-              }
-              const verts = face.verts;
-              for (let i = 0; i < verts.length; i++) {
-                const lx = verts[i][0], ly = verts[i][1], lz = verts[i][2];
-                const dx = lx - p0, dy = ly - p1;
-                iso2(
-                  dx * cosA - dy * sinA + inst.x,
-                  dx * sinA + dy * cosA + inst.y,
-                  lz - p2 + inst.z,
-                  camX,
-                  camY,
-                  _scratchPts[i]
-                );
-              }
-              let _fcx = 0, _fcy = 0;
-              const _fn = verts.length;
-              for (let i = 0; i < _fn; i++) {
-                _fcx += _scratchPts[i].x;
-                _fcy += _scratchPts[i].y;
-              }
-              _fcx /= _fn;
-              _fcy /= _fn;
-              ctx2.beginPath();
-              for (let i = 0; i < _fn; i++) {
-                const _dx = _scratchPts[i].x - _fcx, _dy = _scratchPts[i].y - _fcy;
-                const _d = Math.hypot(_dx, _dy) || 1;
-                const _ex = _fcx + _dx * (1 + 0.5 / _d);
-                const _ey = _fcy + _dy * (1 + 0.5 / _d);
-                i === 0 ? ctx2.moveTo(_ex, _ey) : ctx2.lineTo(_ex, _ey);
-              }
-              ctx2.closePath();
-              ctx2.fillStyle = (inst.colors && inst.colors[face.id]) ?? face.color;
-              ctx2.fill();
-              if (face.stroke) {
-                ctx2.strokeStyle = face.stroke;
-                ctx2.lineWidth = face.strokeWidth ?? 1;
-                ctx2.stroke();
-              }
-            }
-          }
-          if (inst.drawFn) inst.drawFn(camX, camY);
-        }
+        const n = _instances.length;
+        for (const inst of _instances) _screenRect(inst, camX, camY);
+        const order = sortByBoxes(
+          _instances.map((i) => i.box),
+          _instances,
+          _instances.map((i) => i.depth),
+          _instances.map((i) => i.group)
+        );
+        for (let k = 0; k < n; k++) _drawInstance(_instances[order[k]], camX, camY);
         _instances.length = 0;
         _poolNext = 0;
       }
     };
     return renderer;
+  };
+  var _nextGroup = 1;
+  var newRenderGroup = () => {
+    _nextGroup = _nextGroup >= 1073741823 ? 1 : _nextGroup + 1;
+    return _nextGroup;
   };
 
   // ../src/game/def-utils.ts
@@ -278,14 +421,78 @@
     const tPivot = parentFn([r.pivot])[0];
     return (verts) => _rotateVerts(parentFn(verts), tPivot, r.axis, angle);
   };
-  var _collectNode = (node, params, parentFn, outFaces, outSpecial, autoNormal = false) => {
-    const rotFn = node.rotate ? _makeRotFn2(node, params, parentFn) : parentFn;
+  var COLLAPSE_PARAM = "__collapse";
+  var COLLAPSE_DIR_PARAM = "__collapseDir";
+  var COLLAPSE_WIND_PARAM = "__collapseWind";
+  var COLLAPSE_BURST_PARAM = "__collapseBurst";
+  var COLLAPSE_DROP = 0.92;
+  var collapseEase = (t) => t * t * (3 - 2 * t);
+  var _hash01 = (i) => {
+    const s = Math.sin(i * 12.9898 + 78.233) * 43758.5453;
+    return s - Math.floor(s);
+  };
+  var _makeCollapseFn = (verts, c, idx) => {
+    const { e, windDir, wind } = c;
+    let cx = 0, cy = 0, minZ = Infinity;
+    for (const v of verts) {
+      cx += v[0];
+      cy += v[1];
+      if (v[2] < minZ) minZ = v[2];
+    }
+    cx /= verts.length;
+    cy /= verts.length;
+    const dir = wind > 0 ? windDir + (_hash01(idx) - 0.5) * Math.PI * 2 * (1 - 0.8 * wind) : _hash01(idx) * Math.PI * 2;
+    const tilt = e * (0.2 + 0.35 * _hash01(idx + 17));
+    const axis = [-Math.sin(dir), Math.cos(dir), 0];
+    const pivot = [cx, cy, minZ];
+    const squash = 1 - COLLAPSE_DROP * e;
+    const spread = 1 + 0.15 * e;
+    return (vs) => _rotateVerts(vs, pivot, axis, tilt).map(([x, y, z]) => [x * spread, y * spread, z * squash]);
+  };
+  var _makeBurstFn = (verts, c, idx) => {
+    const { t, e } = c;
+    let cx = 0, cy = 0, cz = 0;
+    for (const v of verts) {
+      cx += v[0];
+      cy += v[1];
+      cz += v[2];
+    }
+    cx /= verts.length;
+    cy /= verts.length;
+    cz /= verts.length;
+    const out = 1 - Math.pow(1 - t, 3);
+    const len = Math.hypot(cx, cy);
+    const dirA = len > 0.05 ? Math.atan2(cy, cx) + (_hash01(idx) - 0.5) * 0.8 : _hash01(idx) * Math.PI * 2;
+    const dist = out * (1 + 2 * _hash01(idx + 3));
+    const dx = Math.cos(dirA) * dist, dy = Math.sin(dirA) * dist;
+    const hop = Math.sin(Math.PI * t) * (0.6 + 1.2 * _hash01(idx + 5));
+    const spinA = _hash01(idx + 7) * Math.PI * 2;
+    const axis = [Math.cos(spinA), Math.sin(spinA), 0];
+    const spin = out * (0.8 + 2 * _hash01(idx + 11));
+    const pivot = [cx, cy, cz];
+    const squash = 1 - COLLAPSE_DROP * e;
+    return (vs) => _rotateVerts(vs, pivot, axis, spin).map(([x, y, z]) => [x + dx, y + dy, z * squash + hop]);
+  };
+  var _collectNode = (node, params, parentFn, outFaces, outSpecial, autoNormal = false, collapse) => {
+    const nodeFn = node.rotate ? _makeRotFn2(node, params, parentFn) : parentFn;
+    let rotFn = nodeFn;
+    if (collapse && node.faces?.length) {
+      const own = node.faces.flatMap((f) => nodeFn(f.verts));
+      const cFn = _makeCollapseFn(own, collapse, collapse.idx++);
+      rotFn = (verts) => cFn(nodeFn(verts));
+    }
     for (const face of node.faces ?? []) {
       if (face.type === "line") {
         const [v0, v1] = rotFn([face.verts[0], face.verts[1]]);
         outSpecial.push({ kind: "line", v0, v1, face });
       } else {
-        const rotVerts = rotFn(face.verts);
+        let rotVerts;
+        if (collapse?.burst) {
+          const base = nodeFn(face.verts);
+          rotVerts = _makeBurstFn(base, collapse, collapse.idx++)(base);
+        } else {
+          rotVerts = rotFn(face.verts);
+        }
         const shade = face.shade ?? _autoShade(rotVerts);
         const color = _applyShade(face.color, shade);
         const normal = face.normal ? _rotNorm(face.normal, rotFn) : void 0;
@@ -304,51 +511,60 @@
       outSpecial.push({ kind: "light", lx: rl[0], ly: rl[1], lz: rl[2], light });
     }
     for (const child of node.children ?? []) {
-      _collectNode(child, params, rotFn, outFaces, outSpecial, autoNormal);
+      _collectNode(child, params, nodeFn, outFaces, outSpecial, autoNormal, collapse);
     }
   };
+  var _collapseState = (params) => {
+    const t = params[COLLAPSE_PARAM] ?? 0;
+    if (t <= 0) return void 0;
+    const wind = Math.max(0, Math.min(1, params[COLLAPSE_WIND_PARAM] ?? 0));
+    return {
+      t,
+      e: collapseEase(t),
+      idx: 0,
+      windDir: params[COLLAPSE_DIR_PARAM] ?? 0,
+      wind,
+      burst: (params[COLLAPSE_BURST_PARAM] ?? 0) > 0
+    };
+  };
   var _hasRotate = (node) => !!node.rotate || (node.children ?? []).some(_hasRotate);
-  var renderNodes = (def, params, instanceProps, renderer, camX, camY, drawCtx, onBeforeFlush) => {
+  var renderNodes = (def, params, instanceProps, renderer, drawCtx) => {
     const { x: ix, y: iy, z: iz = 0, angle: iAngle = 0 } = instanceProps;
     const cosA = Math.cos(iAngle), sinA = Math.sin(iAngle);
     const autoNormal = def.version === 3;
-    const crossNodeDepth = def.crossNodeDepth === true;
+    const collapse = _collapseState(params);
     for (const topNode of def.nodes) {
       const faces = [];
       const special = [];
-      _collectNode(topNode, params, _id2, faces, special, autoNormal);
-      let baseDepth;
+      _collectNode(topNode, params, _id2, faces, special, autoNormal, collapse);
+      let baseDepth = ix + iy;
       if (topNode.depthAnchor) {
         const [dx, dy, dz = 0] = topNode.depthAnchor;
         baseDepth = ix + dx * cosA - dy * sinA + (iy + dx * sinA + dy * cosA) + (iz + dz);
-        for (let fi = 0; fi < faces.length; fi++) {
-          renderer.add({ id: def.id, faces: [faces[fi]] }, { ...instanceProps, depth: baseDepth + fi * 1e-7 });
-        }
-      } else {
-        baseDepth = ix + iy;
-        if (_hasRotate(topNode)) {
-          const cApS = cosA + sinA, cAmS = cosA - sinA;
-          const allFaces = [];
-          faces.forEach((face, fi) => {
-            const verts = face.verts;
-            let lcx = 0, lcy = 0, lcz = 0;
-            for (const v of verts) {
-              lcx += v[0];
-              lcy += v[1];
-              lcz += v[2];
-            }
-            lcx /= verts.length;
-            lcy /= verts.length;
-            lcz /= verts.length;
-            allFaces.push({ face, key: lcx * cApS + lcy * cAmS + lcz + fi * 1e-9 });
-          });
-          allFaces.sort((a, b) => a.key - b.key);
-          for (let si = 0; si < allFaces.length; si++) {
-            renderer.add({ id: def.id, faces: [allFaces[si].face] }, { ...instanceProps, depth: baseDepth + si * 1e-7 });
+      }
+      if (collapse || _hasRotate(topNode)) {
+        const cApS = cosA + sinA, cAmS = cosA - sinA;
+        const allFaces = [];
+        faces.forEach((face, fi) => {
+          const verts = face.verts;
+          let lcx = 0, lcy = 0, lcz = 0;
+          for (const v of verts) {
+            lcx += v[0];
+            lcy += v[1];
+            lcz += v[2];
           }
-        } else {
-          renderer.add({ id: def.id, faces }, { ...instanceProps, depth: baseDepth });
+          lcx /= verts.length;
+          lcy /= verts.length;
+          lcz /= verts.length;
+          allFaces.push({ face, key: lcx * cApS + lcy * cAmS + lcz + fi * 1e-9 });
+        });
+        allFaces.sort((a, b) => a.key - b.key);
+        const group = newRenderGroup();
+        for (let si = 0; si < allFaces.length; si++) {
+          renderer.add({ id: def.id, faces: [allFaces[si].face] }, { ...instanceProps, depth: baseDepth + si * 1e-7, group });
         }
+      } else if (faces.length) {
+        renderer.add({ id: def.id, faces }, { ...instanceProps, depth: baseDepth });
       }
       if (drawCtx) {
         const { ctx: ctx2, isoFn, tileW } = drawCtx;
@@ -381,6 +597,14 @@
               x: (wx0 + wx1) / 2,
               y: (wy0 + wy1) / 2,
               z: (wz0 + wz1) / 2,
+              bounds: {
+                x0: Math.min(wx0, wx1),
+                x1: Math.max(wx0, wx1),
+                y0: Math.min(wy0, wy1),
+                y1: Math.max(wy0, wy1),
+                z0: Math.min(wz0, wz1),
+                z1: Math.max(wz0, wz1)
+              },
               drawFn: (cx, cy) => {
                 const p0 = isoFn(wx0, wy0, wz0, cx, cy);
                 const p1 = isoFn(wx1, wy1, wz1, cx, cy);
@@ -396,11 +620,7 @@
           }
         }
       }
-      if (crossNodeDepth || !onBeforeFlush) continue;
-      onBeforeFlush(def.nodes.indexOf(topNode));
-      renderer.flush(camX, camY);
     }
-    if (crossNodeDepth || !onBeforeFlush) renderer.flush(camX, camY);
   };
 
   // ../src/game/models/objects/hangar.zdef
@@ -1043,6 +1263,32 @@
               ]
             ],
             color: "#dddddd"
+          },
+          {
+            id: "roof_edge",
+            verts: [
+              [
+                2,
+                1,
+                1.85
+              ],
+              [
+                -2,
+                1,
+                1.85
+              ],
+              [
+                -2,
+                1,
+                2
+              ],
+              [
+                2,
+                1,
+                2
+              ]
+            ],
+            color: "#555"
           }
         ]
       }
@@ -6208,7 +6454,6 @@
     label: "Fuel Truck",
     static: false,
     movementType: "auto",
-    crossNodeDepth: true,
     collisionBoxes: [
       {
         id: "body",
@@ -7377,48 +7622,7 @@
   };
 
   // ../src/game/models/carrier_car.zdef
-  var carrier_car_default = {
-    id: "carrier_car",
-    pivot: [0, 0, 0],
-    faces: [
-      { id: "body_floor", verts: [[-0.5, -0.36, 0], [0.5, -0.36, 0], [0.5, 0.36, 0], [-0.5, 0.36, 0]], color: "#888888" },
-      { id: "body_L", normal: [-1, 0], verts: [[-0.5, 0.36, 0], [-0.5, -0.36, 0], [-0.5, -0.36, 0.15], [-0.5, 0.36, 0.15]], color: "#666666" },
-      { id: "body_back", normal: [0, -1], verts: [[-0.5, -0.36, 0], [0.5, -0.36, 0], [0.5, -0.36, 0.15], [-0.5, -0.36, 0.15]], color: "#dddddd" },
-      { id: "body_R", normal: [1, 0], verts: [[0.5, -0.36, 0], [0.5, 0.36, 0], [0.5, 0.36, 0.15], [0.5, -0.36, 0.15]], color: "#666666" },
-      { id: "body_front", normal: [0, 1], verts: [[0.5, 0.36, 0], [-0.5, 0.36, 0], [-0.5, 0.36, 0.15], [0.5, 0.36, 0.15]], color: "#dddddd" },
-      { id: "body_top", verts: [[-0.5, -0.36, 0.15], [0.5, -0.36, 0.15], [0.5, 0.36, 0.15], [-0.5, 0.36, 0.15]], color: "#dddddd" },
-      { id: "eq_floor", verts: [[0.28, -0.288, 0.15], [0.48, -0.288, 0.15], [0.48, -0.038, 0.15], [0.28, -0.038, 0.15]], color: "#aa0000" },
-      { id: "eq_back", normal: [0, -1], verts: [[0.28, -0.288, 0.15], [0.48, -0.288, 0.15], [0.48, -0.288, 0.33], [0.28, -0.288, 0.33]], color: "#ee0000" },
-      { id: "eq_R", normal: [1, 0], verts: [[0.48, -0.288, 0.15], [0.48, -0.038, 0.15], [0.48, -0.038, 0.33], [0.48, -0.288, 0.33]], color: "#880000" },
-      { id: "eq_front", normal: [0, 1], verts: [[0.48, -0.038, 0.15], [0.28, -0.038, 0.15], [0.28, -0.038, 0.33], [0.48, -0.038, 0.33]], color: "#aa0000" },
-      { id: "eq_L", normal: [-1, 0], verts: [[0.28, -0.038, 0.15], [0.28, -0.288, 0.15], [0.28, -0.288, 0.33], [0.28, -0.038, 0.33]], color: "#880000" },
-      { id: "eq_top", verts: [[0.28, -0.288, 0.33], [0.48, -0.288, 0.33], [0.48, -0.038, 0.33], [0.28, -0.038, 0.33]], color: "#cc0000" },
-      { id: "cab_floor", verts: [[-0.5, -0.36, 0.15], [0.25, -0.36, 0.15], [0.25, 0.36, 0.15], [-0.5, 0.36, 0.15]], color: "#aaaaaa" },
-      { id: "cab_L", normal: [-1, 0], verts: [[-0.5, 0.36, 0.15], [-0.5, -0.36, 0.15], [-0.5, -0.36, 0.37], [-0.5, 0.36, 0.37]], color: "#666666" },
-      { id: "cab_back", normal: [0, -1], verts: [[-0.5, -0.36, 0.15], [0.25, -0.36, 0.15], [0.25, -0.36, 0.37], [-0.5, -0.36, 0.37]], color: "#ffffff" },
-      { id: "cab_R", normal: [1, 0], verts: [[0.25, -0.36, 0.15], [0.25, 0.36, 0.15], [0.25, 0.36, 0.37], [0.25, -0.36, 0.37]], color: "#666666" },
-      { id: "cab_front", normal: [0, 1], verts: [[0.25, 0.36, 0.15], [-0.5, 0.36, 0.15], [-0.5, 0.36, 0.37], [0.25, 0.36, 0.37]], color: "#aaaaaa" },
-      { id: "cab_top", verts: [[-0.5, -0.36, 0.37], [0.25, -0.36, 0.37], [0.25, 0.36, 0.37], [-0.5, 0.36, 0.37]], color: "#eeeeee" },
-      { id: "w_front_L", normal: [0, -1], verts: [[-0.425, -0.36, 0], [-0.275, -0.36, 0], [-0.275, -0.36, 0.25], [-0.425, -0.36, 0.25]], color: "#222222" },
-      { id: "w_front_R", normal: [0, 1], verts: [[-0.275, 0.36, 0], [-0.425, 0.36, 0], [-0.425, 0.36, 0.25], [-0.275, 0.36, 0.25]], color: "#222222" }
-    ],
-    parts: [
-      {
-        id: "wheel_rear_L",
-        rotate: { pivot: [0.35, -0.36, 0.125], axis: [0, 0, 1], param: "steerAngle" },
-        faces: [
-          { id: "w_rear_L", normal: [0, -1], verts: [[0.275, -0.36, 0], [0.425, -0.36, 0], [0.425, -0.36, 0.25], [0.275, -0.36, 0.25]], color: "#222222" }
-        ]
-      },
-      {
-        id: "wheel_rear_R",
-        rotate: { pivot: [0.35, 0.36, 0.125], axis: [0, 0, 1], param: "steerAngle" },
-        faces: [
-          { id: "w_rear_R", normal: [0, 1], verts: [[0.425, 0.36, 0], [0.275, 0.36, 0], [0.275, 0.36, 0.25], [0.425, 0.36, 0.25]], color: "#222222" }
-        ]
-      }
-    ]
-  };
+  var carrier_car_default = { id: "carrier_car", pivot: [0, 0, 0], collisionBoxes: [{ id: "chassis", xMin: -0.5, xMax: 0.5, yMin: -0.36, yMax: 0.36, zMin: 0, zMax: 0.37 }], faces: [{ id: "body_floor", verts: [[-0.5, -0.36, 0], [0.5, -0.36, 0], [0.5, 0.36, 0], [-0.5, 0.36, 0]], color: "#888888" }, { id: "body_L", normal: [-1, 0], verts: [[-0.5, 0.36, 0], [-0.5, -0.36, 0], [-0.5, -0.36, 0.15], [-0.5, 0.36, 0.15]], color: "#666666" }, { id: "body_back", normal: [0, -1], verts: [[-0.5, -0.36, 0], [0.5, -0.36, 0], [0.5, -0.36, 0.15], [-0.5, -0.36, 0.15]], color: "#dddddd" }, { id: "body_R", normal: [1, 0], verts: [[0.5, -0.36, 0], [0.5, 0.36, 0], [0.5, 0.36, 0.15], [0.5, -0.36, 0.15]], color: "#666666" }, { id: "body_front", normal: [0, 1], verts: [[0.5, 0.36, 0], [-0.5, 0.36, 0], [-0.5, 0.36, 0.15], [0.5, 0.36, 0.15]], color: "#dddddd" }, { id: "body_top", verts: [[-0.5, -0.36, 0.15], [0.5, -0.36, 0.15], [0.5, 0.36, 0.15], [-0.5, 0.36, 0.15]], color: "#dddddd" }, { id: "eq_floor", verts: [[0.28, -0.288, 0.15], [0.48, -0.288, 0.15], [0.48, -0.038, 0.15], [0.28, -0.038, 0.15]], color: "#aa0000" }, { id: "eq_back", normal: [0, -1], verts: [[0.28, -0.288, 0.15], [0.48, -0.288, 0.15], [0.48, -0.288, 0.33], [0.28, -0.288, 0.33]], color: "#ee0000" }, { id: "eq_R", normal: [1, 0], verts: [[0.48, -0.288, 0.15], [0.48, -0.038, 0.15], [0.48, -0.038, 0.33], [0.48, -0.288, 0.33]], color: "#880000" }, { id: "eq_front", normal: [0, 1], verts: [[0.48, -0.038, 0.15], [0.28, -0.038, 0.15], [0.28, -0.038, 0.33], [0.48, -0.038, 0.33]], color: "#aa0000" }, { id: "eq_L", normal: [-1, 0], verts: [[0.28, -0.038, 0.15], [0.28, -0.288, 0.15], [0.28, -0.288, 0.33], [0.28, -0.038, 0.33]], color: "#880000" }, { id: "eq_top", verts: [[0.28, -0.288, 0.33], [0.48, -0.288, 0.33], [0.48, -0.038, 0.33], [0.28, -0.038, 0.33]], color: "#cc0000" }, { id: "cab_floor", verts: [[-0.5, -0.36, 0.15], [0.25, -0.36, 0.15], [0.25, 0.36, 0.15], [-0.5, 0.36, 0.15]], color: "#aaaaaa" }, { id: "cab_L", normal: [-1, 0], verts: [[-0.5, 0.36, 0.15], [-0.5, -0.36, 0.15], [-0.5, -0.36, 0.37], [-0.5, 0.36, 0.37]], color: "#666666" }, { id: "cab_back", normal: [0, -1], verts: [[-0.5, -0.36, 0.15], [0.25, -0.36, 0.15], [0.25, -0.36, 0.37], [-0.5, -0.36, 0.37]], color: "#ffffff" }, { id: "cab_R", normal: [1, 0], verts: [[0.25, -0.36, 0.15], [0.25, 0.36, 0.15], [0.25, 0.36, 0.37], [0.25, -0.36, 0.37]], color: "#666666" }, { id: "cab_front", normal: [0, 1], verts: [[0.25, 0.36, 0.15], [-0.5, 0.36, 0.15], [-0.5, 0.36, 0.37], [0.25, 0.36, 0.37]], color: "#aaaaaa" }, { id: "cab_top", verts: [[-0.5, -0.36, 0.37], [0.25, -0.36, 0.37], [0.25, 0.36, 0.37], [-0.5, 0.36, 0.37]], color: "#eeeeee" }, { id: "w_front_L", normal: [0, -1], verts: [[-0.425, -0.36, 0], [-0.275, -0.36, 0], [-0.275, -0.36, 0.25], [-0.425, -0.36, 0.25]], color: "#222222" }, { id: "w_front_R", normal: [0, 1], verts: [[-0.275, 0.36, 0], [-0.425, 0.36, 0], [-0.425, 0.36, 0.25], [-0.275, 0.36, 0.25]], color: "#222222" }], parts: [{ id: "wheel_rear_L", rotate: { pivot: [0.35, -0.36, 0.125], axis: [0, 0, 1], param: "steerAngle" }, faces: [{ id: "w_rear_L", normal: [0, -1], verts: [[0.275, -0.36, 0], [0.425, -0.36, 0], [0.425, -0.36, 0.25], [0.275, -0.36, 0.25]], color: "#222222" }] }, { id: "wheel_rear_R", rotate: { pivot: [0.35, 0.36, 0.125], axis: [0, 0, 1], param: "steerAngle" }, faces: [{ id: "w_rear_R", normal: [0, 1], verts: [[0.425, 0.36, 0], [0.275, 0.36, 0], [0.275, 0.36, 0.25], [0.425, 0.36, 0.25]], color: "#222222" }] }] };
 
   // ../src/game/models/carrier_deck_tractor.zdef
   var carrier_deck_tractor_default = {
@@ -7732,8 +7936,7 @@
     activePart: null,
     partTestAngles: {},
     dirty: false,
-    filename: null,
-    selectedFragmentIdx: -1
+    filename: null
   };
   var wireframe = [false, false, false, false];
   var buildTestParams = () => {
@@ -7997,20 +8200,14 @@
             colors2[activeFaces[state.selectedFaceIdx].id] = "#ffdd44";
           }
           SceneRenderer.debugCollision = showCboxes;
-          renderNodes(state.def2, {}, { x: 0, y: 0, angle: renderViewAngle, colors: colors2 }, SceneRenderer, renderCam.x, renderCam.y, { ctx, isoFn: iso, tileW: TW * renderZoom });
+          renderNodes(state.def2, {}, { x: 0, y: 0, angle: renderViewAngle, colors: colors2 }, SceneRenderer, { ctx, isoFn: iso, tileW: TW * renderZoom });
+          SceneRenderer.flush(renderCam.x, renderCam.y);
         } else {
           const colors = {};
           if (state.activePart) {
             const ap = state.def.parts?.find((p) => p.id === state.activePart);
             if (ap) ap.faces.forEach((f) => {
               colors[f.id] = "#2d5c88";
-            });
-          }
-          if (state.selectedFragmentIdx >= 0 && state.def.fragments?.[state.selectedFragmentIdx]) {
-            const selFr = state.def.fragments[state.selectedFragmentIdx];
-            const fragColor = _fragColors[state.selectedFragmentIdx % _fragColors.length];
-            selFr.faceIds.forEach((id) => {
-              colors[id] = fragColor;
             });
           }
           if (state.selectedFaceIdx >= 0 && activeFaces[state.selectedFaceIdx]) {
@@ -8643,248 +8840,6 @@
       });
     });
   };
-  var _getAllEditorFaces = () => {
-    const result = [...state.def?.faces ?? []];
-    for (const part of state.def?.parts ?? []) {
-      result.push(...part.faces);
-    }
-    return result;
-  };
-  var _previewFrags = null;
-  var _previewRafId = 0;
-  var PREVIEW_GRAVITY = 0.018;
-  var PREVIEW_MAX_AGE = 120;
-  var _fragColors = ["#4af", "#fa4", "#4f8", "#f4a", "#a4f", "#ff4"];
-  var renderFragmentList = () => {
-    const sec = document.getElementById("fragments-sec");
-    const list = document.getElementById("fragment-list");
-    const playBtn = document.getElementById("btn-play-fragments");
-    const resetBtn = document.getElementById("btn-reset-fragments");
-    if (state.def2) {
-      sec.style.display = "none";
-      return;
-    }
-    sec.style.display = "";
-    const frags = state.def?.fragments ?? [];
-    const hasFrags = frags.length > 0;
-    playBtn.style.display = hasFrags && !_previewFrags ? "" : "none";
-    resetBtn.style.display = _previewFrags ? "" : "none";
-    if (!frags.length) {
-      list.innerHTML = '<div class="empty">\u2013</div>';
-      return;
-    }
-    list.innerHTML = frags.map((fr, i) => {
-      const color = _fragColors[i % _fragColors.length];
-      const sel = i === state.selectedFragmentIdx;
-      const faceCount = fr.faceIds.length;
-      const allFaces = _getAllEditorFaces();
-      const faceRows = sel ? allFaces.map((f, fi) => {
-        const checked = fr.faceIds.includes(f.id) ? "checked" : "";
-        return `<label class="frag-face-label"><input type="checkbox" class="frag-face-cb" data-fi="${fi}" ${checked}/>${f.id}</label>`;
-      }).join("") : "";
-      const pivot = fr.pivot;
-      const imp = fr.impulse ?? [0, 0, 0];
-      const detail = sel ? `
-        <div class="cbox-grid" style="margin-top:4px">
-            <label>Pivot</label>
-            <input type="number" step="0.1" class="fri" data-f="px" value="${pivot[0].toFixed(2)}" style="width:44px">
-            <input type="number" step="0.1" class="fri" data-f="py" value="${pivot[1].toFixed(2)}" style="width:44px">
-            <label>Z</label>
-            <input type="number" step="0.1" class="fri" data-f="pz" value="${pivot[2].toFixed(2)}" style="width:44px;grid-column:2">
-            <label>Impuls</label>
-            <input type="number" step="0.05" class="fri" data-f="ix" value="${imp[0].toFixed(2)}" style="width:44px">
-            <input type="number" step="0.05" class="fri" data-f="iy" value="${imp[1].toFixed(2)}" style="width:44px">
-            <label>Z</label>
-            <input type="number" step="0.05" class="fri" data-f="iz" value="${imp[2].toFixed(2)}" style="width:44px;grid-column:2">
-            <label>Torque</label>
-            <input type="number" step="0.5" class="fri" data-f="torque" value="${(fr.torque ?? 0).toFixed(1)}" style="width:44px;grid-column:2">
-        </div>
-        <div style="margin-top:4px;font-size:10px;color:var(--dim)">Fl\xE4chen:</div>
-        <div class="frag-faces-wrap">${faceRows}</div>` : "";
-      return `<div class="frag-item ${sel ? "active" : ""}" data-fi="${i}">
-            <div class="frag-header">
-                <div class="part-dot" style="background:${color}"></div>
-                <div class="part-name">${fr.id}</div>
-                <div class="part-info">${faceCount}f</div>
-                <button class="btn btn-sm btn-danger frag-del" data-fi="${i}" style="padding:0 4px">\u2715</button>
-            </div>${detail}
-        </div>`;
-    }).join("");
-    list.querySelectorAll(".frag-header").forEach((el) => {
-      el.addEventListener("click", (e) => {
-        if (e.target.closest(".frag-del")) return;
-        const fi = parseInt(el.parentElement.dataset["fi"] ?? "-1");
-        state.selectedFragmentIdx = state.selectedFragmentIdx === fi ? -1 : fi;
-        renderFragmentList();
-        draw();
-      });
-    });
-    list.querySelectorAll(".frag-del").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const fi = parseInt(btn.dataset["fi"] ?? "-1");
-        state.def.fragments.splice(fi, 1);
-        if (state.selectedFragmentIdx >= state.def.fragments.length) state.selectedFragmentIdx = -1;
-        markDirty();
-        renderFragmentList();
-        draw();
-      });
-    });
-    list.querySelectorAll(".fri").forEach((inp) => {
-      inp.addEventListener("input", () => {
-        const fi = state.selectedFragmentIdx;
-        if (fi < 0 || !state.def?.fragments?.[fi]) return;
-        const fr = state.def.fragments[fi];
-        const f = inp.dataset["f"];
-        const v = parseFloat(inp.value) || 0;
-        if (f === "px") fr.pivot[0] = v;
-        else if (f === "py") fr.pivot[1] = v;
-        else if (f === "pz") fr.pivot[2] = v;
-        else if (f === "ix") {
-          if (!fr.impulse) fr.impulse = [0, 0, 0];
-          fr.impulse[0] = v;
-        } else if (f === "iy") {
-          if (!fr.impulse) fr.impulse = [0, 0, 0];
-          fr.impulse[1] = v;
-        } else if (f === "iz") {
-          if (!fr.impulse) fr.impulse = [0, 0, 0];
-          fr.impulse[2] = v;
-        } else if (f === "torque") fr.torque = v;
-        markDirty();
-        draw();
-      });
-      inp.addEventListener("click", (e) => e.stopPropagation());
-    });
-    list.querySelectorAll(".frag-face-cb").forEach((cb) => {
-      cb.addEventListener("change", () => {
-        const fi = state.selectedFragmentIdx;
-        if (fi < 0 || !state.def?.fragments?.[fi]) return;
-        const fr = state.def.fragments[fi];
-        const faceIdx = parseInt(cb.dataset["fi"] ?? "-1");
-        const face = _getAllEditorFaces()[faceIdx];
-        if (!face) return;
-        if (cb.checked) {
-          if (!fr.faceIds.includes(face.id)) fr.faceIds.push(face.id);
-        } else {
-          fr.faceIds = fr.faceIds.filter((id) => id !== face.id);
-        }
-        markDirty();
-        renderFragmentList();
-      });
-      cb.addEventListener("click", (e) => e.stopPropagation());
-    });
-  };
-  var _buildPreviewFrags = () => {
-    if (!state.def?.fragments?.length) return [];
-    const result = [];
-    for (const frag of state.def.fragments) {
-      const [px, py, pz] = frag.pivot;
-      const bakedFaces = [];
-      const allEditorFaces = _getAllEditorFaces();
-      for (const faceId of frag.faceIds) {
-        const src = allEditorFaces.find((f) => f.id === faceId);
-        if (!src) continue;
-        const verts = src.verts.map((v) => [v[0] - px, v[1] - py, v[2] - pz]);
-        bakedFaces.push({ ...src, verts });
-      }
-      if (!bakedFaces.length) continue;
-      const [ix, iy, iz] = frag.impulse ?? [0, 0, 0];
-      const torque = frag.torque ?? (Math.random() - 0.5) * 6;
-      result.push({
-        faces: bakedFaces,
-        x: px,
-        y: py,
-        z: pz,
-        vx: ix,
-        vy: iy,
-        vz: iz + 0.04 + Math.random() * 0.06,
-        selfAngle: 0,
-        rotSpeed: torque / (PREVIEW_MAX_AGE * 0.5),
-        age: 0,
-        maxAge: PREVIEW_MAX_AGE
-      });
-    }
-    return result;
-  };
-  var _drawPreview = () => {
-    if (!_previewFrags) return;
-    for (const f of _previewFrags) {
-      if (f.age >= f.maxAge) continue;
-      const fragDef = { id: "_prev", faces: f.faces };
-      SceneRenderer.add(fragDef, { x: f.x, y: f.y, z: f.z, angle: f.selfAngle });
-    }
-    SceneRenderer.flush(renderCam.x, renderCam.y);
-  };
-  var _stepPreview = () => {
-    if (!_previewFrags) return;
-    for (const f of _previewFrags) {
-      if (f.age >= f.maxAge) continue;
-      f.vz -= PREVIEW_GRAVITY;
-      f.x += f.vx;
-      f.y += f.vy;
-      f.z += f.vz;
-      f.selfAngle += f.rotSpeed;
-      f.age++;
-    }
-    if (_previewFrags.every((f) => f.age >= f.maxAge)) stopPreview();
-  };
-  var stopPreview = () => {
-    cancelAnimationFrame(_previewRafId);
-    _previewFrags = null;
-    const playBtn = document.getElementById("btn-play-fragments");
-    const resetBtn = document.getElementById("btn-reset-fragments");
-    if (playBtn) playBtn.style.display = "";
-    if (resetBtn) resetBtn.style.display = "none";
-    draw();
-  };
-  var _previewLoop = () => {
-    _stepPreview();
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    const qw = canvas.width / 2, qh = canvas.height / 2;
-    for (let q = 0; q < 4; q++) {
-      setRenderContext(q);
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(q % 2 * qw, Math.floor(q / 2) * qh, qw, qh);
-      ctx.clip();
-      _drawPreview();
-      ctx.restore();
-    }
-    ctx.strokeStyle = "rgba(255,255,255,0.12)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(qw, 0);
-    ctx.lineTo(qw, canvas.height);
-    ctx.moveTo(0, qh);
-    ctx.lineTo(canvas.width, qh);
-    ctx.stroke();
-    if (_previewFrags) _previewRafId = requestAnimationFrame(_previewLoop);
-  };
-  document.getElementById("btn-add-fragment").addEventListener("click", () => {
-    if (!state.def) return;
-    if (!state.def.fragments) state.def.fragments = [];
-    const id = "frag_" + state.def.fragments.length;
-    const selFace = state.selectedFaceIdx >= 0 ? state.def.faces[state.selectedFaceIdx] : null;
-    state.def.fragments.push({
-      id,
-      faceIds: selFace ? [selFace.id] : [],
-      pivot: [0, 0, 0]
-    });
-    state.selectedFragmentIdx = state.def.fragments.length - 1;
-    markDirty();
-    renderFragmentList();
-    draw();
-  });
-  document.getElementById("btn-play-fragments").addEventListener("click", () => {
-    if (!state.def?.fragments?.length) return;
-    _previewFrags = _buildPreviewFrags();
-    const playBtn = document.getElementById("btn-play-fragments");
-    const resetBtn = document.getElementById("btn-reset-fragments");
-    playBtn.style.display = "none";
-    resetBtn.style.display = "";
-    _previewRafId = requestAnimationFrame(_previewLoop);
-  });
-  document.getElementById("btn-reset-fragments").addEventListener("click", stopPreview);
   var renderAll = () => {
     renderPartsList();
     renderFaceList();
@@ -8893,7 +8848,6 @@
     renderZoneList();
     renderLandingZone();
     renderLights();
-    renderFragmentList();
     draw();
   };
   var selectFace = (i) => {
@@ -9702,7 +9656,6 @@
       collisionBoxes: d.collisionBoxes || []
     };
     if (d.parts?.length) out["parts"] = d.parts;
-    if (d.fragments?.length) out["fragments"] = d.fragments;
     if (d.rescueZones?.length) out["rescueZones"] = d.rescueZones;
     if (d.landingZone) out["landingZone"] = d.landingZone;
     if (d.lights?.length) out["lights"] = d.lights;
@@ -9728,7 +9681,6 @@
         faces: d["faces"] || [],
         collisionBoxes: d["collisionBoxes"] || [],
         parts: d["parts"],
-        fragments: d["fragments"],
         rotateNodes: d["rotateNodes"],
         rescueZones: d["rescueZones"],
         landingZone: d["landingZone"],
@@ -9743,7 +9695,6 @@
     state.selectedFaceIdx = -1;
     state.selectedVertIdx = -1;
     state.activePart = null;
-    state.selectedFragmentIdx = -1;
     state.partTestAngles = {};
     state.dirty = false;
     syncMetaToUI();

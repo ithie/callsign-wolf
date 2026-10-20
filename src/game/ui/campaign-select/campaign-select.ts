@@ -1,6 +1,6 @@
 import '@/ui/nav-screens.css';
 import { I18N, localize } from '../../i18n';
-import { isCampaignUnlocked, isCampaignLockedByTutorial, isCampaignPaywalled, type PlayerSession } from '../../session';
+import { isCampaignUnlocked, isCampaignLockedByTutorial, isCampaignPaywalled, TEST_UNLOCKED_CAMPAIGN_KEYS, type PlayerSession } from '../../session';
 import type { CampaignExport } from '../../../shared/types';
 import { ensureEl } from '@/ui/dom-helpers';
 import { showScreenCrtEnter } from '../nav';
@@ -36,7 +36,7 @@ export const show = (deps: CampaignSelectDeps) => {
 
     const carousel = createSwipeCarousel<CampaignItem>({
         items: displayOrder,
-        isLocked: c => !isCampaignUnlocked(session, campaigns, c.index),
+        isLocked: c => !TEST_UNLOCKED_CAMPAIGN_KEYS.has((c as any)._key) && !isCampaignUnlocked(session, campaigns, c.index),
         renderStamp: (c, locked) => {
             if (!locked) return null;
             if (isCampaignPaywalled(campaigns, c.index)) {
@@ -69,6 +69,11 @@ export const show = (deps: CampaignSelectDeps) => {
 
             card.innerHTML = content;
             if (isTutorial) card.style.borderColor = '#ff9900';
+            if ((c as any)._key === 'xmas') {
+                const snow = document.createElement('div');
+                snow.className = 'campaign-card-snow';
+                card.prepend(snow);
+            }
             return card;
         },
         onTap: c => onSelect(c.index),

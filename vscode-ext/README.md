@@ -18,7 +18,7 @@ Custom-Editors für die Projektdateien von SAR: Callsign WOLF (`.zcampaign`, `.z
 | Dateiendung | Editor | Beschreibung |
 |---|---|---|
 | `.zcampaign` | **Campaign Editor** | Visueller Kampagnen-Editor mit isometrischer Karten-Preview, Mission-Settings (Regen, Wind, Zeit), Payload-/Objekt-/Foliage-Listen und Sequenz-Editor |
-| `.zdef` | **ZDEF Editor** | 3D-Modell-Editor mit 4-Ansicht-Canvas (isometrisch), Face-/Vertex-Editing, Kontext-Menü, Kollisionsboxen, Rescue-Zones, Landing-Zones, Fragment-System, Gitter-Werkzeuge und Wireframe-Modus |
+| `.zdef` | **ZDEF Editor** | 3D-Modell-Editor mit 4-Ansicht-Canvas (isometrisch), Face-/Vertex-Editing, Kontext-Menü, Kollisionsboxen, Rescue-Zones, Landing-Zones, Gitter-Werkzeuge und Wireframe-Modus |
 | `.zsong` | **ZSong Editor** | Musik-Sequenzer für das interne ZSong-Format |
 | `.zsound` | **Sound Lab** | Sound-Design-Werkzeug für `.zsound`-Synthesizer-Presets |
 

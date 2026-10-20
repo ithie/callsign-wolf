@@ -30,10 +30,7 @@ depth overrides for off-center sub-objects.
   "landingZone": { "x": -8.0, "y": 0, "w": 4.5, "h": 4.5, "z": 2.0 },
 
   // ── Visual definition ─────────────────────────────────────────────────────
-  "nodes": [ <Node>, <Node>, ... ],
-
-  // ── Destruction (optional) ────────────────────────────────────────────────
-  "fragments": [ <Fragment>, ... ]   // see DEF_SPEC § Destruction Fragments
+  "nodes": [ <Node>, <Node>, ... ]
 }
 ```
 
@@ -41,20 +38,21 @@ depth overrides for off-center sub-objects.
 
 ## Node
 
-A node is a renderable group. Top-level nodes define **render passes** —
-the renderer calls `flush()` after each one. Children share their parent's pass.
+A node is a renderable group. Each top-level node becomes its own **sort item**
+in the frame's single batch, with its own bounding box (see DEF_SPEC § Sorting).
+Children belong to their parent's item.
 
 ```json
 {
   "faces":    [ <Face>, ... ],       // geometry in this node
   "lights":   [ <Light>, ... ],      // point lights attached to this node
   "rotate":   <Rotate>,              // optional: animates this node
-  "depthAnchor": [dx, dy],           // optional: model-local point used for angle-correct depth
+  "depthAnchor": [dx, dy],           // optional: fallback depth key origin (see below)
   "children": [ <Node>, ... ]        // optional: child nodes (inherit parent rotation)
 }
 ```
 
-- Children are rendered **within** their parent's pass (no intermediate flush).
+- Children are rendered **within** their parent's item.
 - Rotation is applied **after** the parent's rotation (Rodrigues chain).
 - A node with neither faces, lights, nor children is valid (pure rotation pivot).
 
@@ -159,51 +157,29 @@ Applies a rotation to the node and all its children.
 
 ## Rendering Behaviour
 
+`renderNodes()` only queues — it never flushes. The frame is flushed once at its end.
+
 ```
 for each top-level node in "nodes":
-    applyNode(node, instanceTransform, parentRotation=identity)
-    SceneRenderer.flush(cx, cy)          // each node is its own render pass
-
-applyNode(node, transform, parentRot):
-    rotFn  = compose(parentRot, node.rotate)   // identity if no rotate
-    faces  = node.faces  → rotFn applied to verts → one SceneRenderer.add() per face
-    lights = node.lights → rotFn applied to position → queued via SceneRenderer.add(null, {drawFn})
-    for each child: applyNode(child, transform, rotFn)
+    faces = node + children, rotations applied
+    no moving parts  → ONE SceneRenderer.add() with all faces (authored array order)
+    moving parts     → one add() per face, ordered by face centroid, all in one render group
+    lights / lines   → SceneRenderer.add(null, { drawFn, bounds })
 ```
 
-**Depth of each face:**
+**Order between items** is decided by their bounding boxes (DEF_SPEC § Sorting): of two
+items overlapping on screen, the one completely behind the other along x, y or z is painted
+first. So splitting a model into top-level nodes (e.g. hull / superstructure / mast) is what
+lets other objects and the heli slot in between its parts — no call-site code needed.
 
-Every face is queued individually. Its sort depth is:
-
-```
-depth = baseDepth + faceIndex * 1e-7
-```
-
-Where `baseDepth` is the node's world-space sort origin:
+**Fallback depth key** — only used where two boxes intersect:
 - Without `depthAnchor`: `instanceX + instanceY`
-- With `depthAnchor: [dx, dy]`:
-  `(instanceX + dx·cosA − dy·sinA) + (instanceY + dx·sinA + dy·cosA)`
+- With `depthAnchor: [dx, dy, dz?]`:
+  `(instanceX + dx·cosA − dy·sinA) + (instanceY + dx·sinA + dy·cosA) + (instanceZ + dz)`
+  (`dz` is not rotated).
 
-The `faceIndex * 1e-7` tiebreaker preserves face array order within a node when depths are
-otherwise equal — so face ordering in the `.zdef` is meaningful and intentional.
-
-**When to use `depthAnchor`:**
-
-Set it when a node's geometric centre differs significantly from the instance origin AND that
-node needs to sort correctly against external objects (e.g. other vessels, deck vehicles) in the
-same flush. Without it, all faces in the node use `instanceX + instanceY` as their depth origin —
-which is wrong if the node is geometrically offset.
-
-Example: a ship's tower sits at stern-starboard. Without `depthAnchor`, the tower faces claim the
-ship's centre as their depth origin and sort incorrectly against nearby objects at certain angles.
-With `depthAnchor` set to the tower's local centre, depth is computed from the tower's actual
-world position — angle-correct at all orientations.
-
-**Node order matters:**
-
-Nodes are rendered in declaration order, each in its own flush. A node declared later always
-renders on top of nodes declared earlier, regardless of depth values. Use this to establish
-coarse layering (e.g. hull → deck objects → superstructure).
+Faces within a static node keep their array order, so face ordering in the `.zdef` is
+meaningful and intentional.
 
 ---
 
@@ -288,7 +264,7 @@ P {#hex0} {#hex1} ...
 |--------|--------|-------|
 | `ZD2 {id}` | id | Header; must be first line |
 | `P {hex} ...` | space-separated `#rrggbb` | Color palette, 0-indexed; `rgba(…)` values allowed |
-| `M {json}` | single JSON object | Optional; carries all non-renderer fields: `label`, `static`, `movementType`, `collisionBoxes`, `landingZone`, `rescueZones`, `fragments`, `palettes` |
+| `M {json}` | single JSON object | Optional; carries all non-renderer fields: `label`, `static`, `movementType`, `collisionBoxes`, `landingZone`, `rescueZones`, `palettes` |
 | `{` | (optional inline `R` and/or `D` fields) | Opens a node; fields on the same line as `{` belong to that node |
 | `}` | — | Closes the innermost open node |
 | `R {px} {py} {pz} {ax} {ay} {az} {spec}` | pivot (3), axis (3), spec | Rotate — see below |

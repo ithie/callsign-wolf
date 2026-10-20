@@ -1,5 +1,5 @@
 import { campaignHandler } from '../main';
-import { G } from '../state';
+import { G, type OnboardEntry } from '../state';
 import { getGround } from './terrain';
 import { VESSEL, PAYLOAD, VESSEL_PATH } from '../../shared/types';
 import { registerObjectDef } from '../def-registry';
@@ -24,6 +24,7 @@ import XMAS_HOUSE_B_DEF from '../models/objects/xmas_house_b.zdef';
 import XMAS_HOUSE_C_DEF from '../models/objects/xmas_house_c.zdef';
 import XMAS_LANTERN_DEF from '../models/objects/xmas_lantern.zdef';
 import XMAS_CANDY_CANE_DEF from '../models/objects/xmas_candy_cane.zdef';
+import PHONE_BOOTH_DEF from '../models/objects/phone_booth.zdef';
 import XMAS_TREE_DEF from '../models/objects/xmas_tree.zdef';
 import SLEIGH_DEF from '../models/objects/sleigh.zdef';
 import REINDEER_DEF from '../models/objects/reindeer.zdef';
@@ -47,6 +48,7 @@ registerObjectDef(VESSEL.XMAS_HOUSE_B,        XMAS_HOUSE_B_DEF);
 registerObjectDef(VESSEL.XMAS_HOUSE_C,        XMAS_HOUSE_C_DEF);
 registerObjectDef(VESSEL.XMAS_LANTERN,        XMAS_LANTERN_DEF);
 registerObjectDef(VESSEL.XMAS_CANDY_CANE,     XMAS_CANDY_CANE_DEF);
+registerObjectDef(VESSEL.PHONE_BOOTH,         PHONE_BOOTH_DEF);
 registerObjectDef(VESSEL.XMAS_TREE,           XMAS_TREE_DEF);
 registerObjectDef(VESSEL.SLEIGH,              SLEIGH_DEF);
 registerObjectDef(VESSEL.REINDEER,            REINDEER_DEF);
@@ -61,6 +63,21 @@ export const applyVesselOffset = (vessel: any, localX: number, localY: number) =
     const c = Math.cos(vessel.angle),
         s = Math.sin(vessel.angle);
     return { x: vessel.x + localX * c - localY * s, y: vessel.y + localX * s + localY * c };
+};
+
+// The runtime object a payload is attached to (null if it no longer exists).
+export const getAttachEntity = (attachTo: any): any => {
+    switch (attachTo?.objectType) {
+        case VESSEL.CARRIER:           return G.CARRIER?.x !== undefined ? G.CARRIER : null;
+        case VESSEL.SUBMARINE:         return G.SUBMARINES.find((s: any) => s._objIdx === attachTo.objectIdx) ?? null;
+        case VESSEL.SAILBOAT_BROKEN:   return G.BROKEN_SAILBOATS.find((s: any) => s._objIdx === attachTo.objectIdx) ?? null;
+        case VESSEL.WIND_TURBINE:      return G.WIND_TURBINES.find((w: any) => w._objIdx === attachTo.objectIdx) ?? null;
+        case VESSEL.SUPPLY_VESSEL:
+        case VESSEL.BOAT:              return G.BOATS.find((b: any) => b._objIdx === attachTo.objectIdx) ?? null;
+        case VESSEL.RESEARCH_PLATFORM: return G.RESEARCH_PLATFORMS.find((r: any) => r._objIdx === attachTo.objectIdx) ?? null;
+        case VESSEL.DOM:               return G.SCENARIO_PROPS.find((p: any) => p.type === VESSEL.DOM) ?? null;
+    }
+    return null;
 };
 
 export const resolveAttachTo = (attachTo: any): { x: number; y: number; z: number } | null => {
@@ -81,8 +98,10 @@ export const resolveAttachTo = (attachTo: any): { x: number; y: number; z: numbe
         case VESSEL.WIND_TURBINE: {
             const wt = G.WIND_TURBINES.find((w: any) => w._objIdx === attachTo.objectIdx);
             if (!wt) return null;
-            const rzZ = (WIND_TURBINE_DEF as any).rescueZones?.[0]?.z ?? 12.15;
-            return { x: wt.x + lx, y: wt.y + ly, z: wt.gz + rzZ };
+            // Stands ON the nacelle roof: top of the model's nacelle collision box.
+            const roofZ = ((WIND_TURBINE_DEF as any).collisionBoxes as any[] | undefined)
+                ?.find(b => b.id === 'nacelle')?.zMax ?? 12.35;
+            return { x: wt.x + lx, y: wt.y + ly, z: wt.gz + roofZ };
         }
         case VESSEL.SUPPLY_VESSEL:
         case VESSEL.BOAT: {
@@ -246,6 +265,7 @@ export const initCarrierFromMission = () => {
         },
     };
     initVessel(carrierObj, G.CARRIER, seaTimeRef);
+    G.CARRIER._objIdx = getObjects().indexOf(carrierObj);
     G.CARRIER.radioSilent = (carrierObj as any).radioSilent ?? false;
     updateCarrierPos(G.CARRIER, seaTimeRef, true);
 };
@@ -294,14 +314,20 @@ export const initSubmarinesFromMission = () => {
 
 export const updateSubmarines = (SUBMARINES: any[], dt: number) => SUBMARINES.forEach(s => updateVesselPath(s, dt));
 
-const _frigateLZ = (FRIGATE_DEF as any).landingZone;
-const BOAT_CFG: Record<string, { w: number; l: number; zDeck: number; lzX: number; lzY: number; lzHW: number; lzHH: number }> = {
+type _BoatCfg = { w: number; l: number; zDeck: number; lzX: number; lzY: number; lzHW: number; lzHH: number };
+const BOAT_CFG: Record<string, _BoatCfg> = {
     boat:        { w: 1.5, l:  3.0, zDeck: 0.35, lzX: 0, lzY: 0, lzHW:  3.0, lzHH: 1.5 },
     pilot_boat:  { w: 0.8, l:  2.0, zDeck: 0.3,  lzX: 0, lzY: 0, lzHW:  2.0, lzHH: 0.8 },
     sar_boat:    { w: 0.8, l:  2.0, zDeck: 0.3,  lzX: 0, lzY: 0, lzHW:  2.0, lzHH: 0.8 },
     salvage_tug:    { w: 1.2, l:  3.5, zDeck: 1.2,  lzX: 0, lzY: 0, lzHW:  3.5, lzHH: 1.2 },
     supply_vessel:  { w: 1.2, l:  5.7, zDeck: 1.2,  lzX: -0.7, lzY: 0, lzHW: 1.8, lzHH: 1.0 },
-    frigate:     { w: 3.0, l: 11.0, zDeck: _frigateLZ?.z ?? 2.0, lzX: _frigateLZ?.x ?? -8.0, lzY: _frigateLZ?.y ?? 0, lzHW: _frigateLZ ? _frigateLZ.w / 2 : 2.25, lzHH: _frigateLZ ? _frigateLZ.h / 2 : 2.75 },
+};
+
+// Read at mission init, not at module load: in production builds FRIGATE_DEF is still
+// an empty object until decompressMissionAssets() has run (see plugins/zdef.ts).
+const _frigateCfg = (): _BoatCfg => {
+    const lz = (FRIGATE_DEF as any).landingZone;
+    return { w: 3.0, l: 11.0, zDeck: lz?.z ?? 2.0, lzX: lz?.x ?? -8.0, lzY: lz?.y ?? 0, lzHW: lz ? lz.w / 2 : 2.25, lzHH: lz ? lz.h / 2 : 2.75 };
 };
 
 export const initBoatsFromMission = () => {
@@ -310,7 +336,7 @@ export const initBoatsFromMission = () => {
     G.BOATS = boatTypes
         .flatMap(type => getObjectsByType(type))
         .map((obj: any) => {
-            const cfg = BOAT_CFG[obj.type] ?? BOAT_CFG.boat;
+            const cfg = obj.type === VESSEL.FRIGATE ? _frigateCfg() : (BOAT_CFG[obj.type] ?? BOAT_CFG.boat);
             const b = {
                 x: obj.x,
                 y: obj.y,
@@ -362,16 +388,30 @@ export const initBoatsFromMission = () => {
 
 export const updateBoats = (BOATS: any[], dt: number) => BOATS.forEach(b => updateVesselPath(b, dt));
 
+// Fire/smoke at the nacelle, owned by the turbine: they follow its collapse onto the
+// rubble (sim/collapse.ts). Fire always brings smoke along. Used at mission init and by scripts.
+export const setTurbineEmitters = (wt: any, fire: boolean, smoke: boolean): void => {
+    wt.onFire = fire;
+    wt.onSmoke = smoke;
+    G.PARTICLE_EMITTERS = G.PARTICLE_EMITTERS.filter(e => e.owner !== wt);
+    const ownerZ = (WIND_TURBINE_DEF as any).rescueZones?.[0]?.z ?? 12.15;
+    const _add = (type: 'fire' | 'smoke') => G.PARTICLE_EMITTERS.push({
+        type, x: wt.x + 0.1, y: wt.y, gz: wt.gz + ownerZ, particles: [], spawnTimer: 0,
+        owner: wt, ownerBaseZ: wt.gz, ownerZ,
+    });
+    if (fire) _add('fire');
+    if (fire || smoke) _add('smoke');
+};
+
 export const initStaticObjectsFromMission = () => {
     const allObjects = getObjects();
-    G.RESEARCH_PLATFORMS = getObjectsByType(VESSEL.RESEARCH_PLATFORM).map((obj: any) => ({
+    G.RESEARCH_PLATFORMS = getObjectsByType(VESSEL.RESEARCH_PLATFORM).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
         x: obj.x,
         y: obj.y,
         angle: 0,
         zDeck: G.waterLevel + 6.51,
-        _objIdx: allObjects.indexOf(obj),
     }));
-    G.WIND_TURBINES = getObjectsByType(VESSEL.WIND_TURBINE).map((obj: any) => ({
+    G.WIND_TURBINES = getObjectsByType(VESSEL.WIND_TURBINE).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
         x: obj.x,
         y: obj.y,
         angle: 0,
@@ -379,18 +419,17 @@ export const initStaticObjectsFromMission = () => {
         onFire: obj.onFire ?? false,
         onSmoke: obj.onSmoke ?? false,
         rescueZones: (obj.rescueZones || []) as any[],
-        gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
-        _objIdx: allObjects.indexOf(obj),
+        // Offshore turbines stand on a submerged foundation — never sink the visible
+        // structure below the water surface even where the seabed itself is deeper.
+        gz: Math.max(getGround(obj.x, obj.y, G.points, G.CARRIER), G.waterLevel),
         _def: WIND_TURBINE_DEF,
     }));
-    G.BUOYS = getObjectsByType(VESSEL.BUOY).map((obj: any) => ({ x: obj.x, y: obj.y }));
-    G.PLANE_WRECKS = getObjectsByType(VESSEL.PLANE_WRECK).map((obj: any) => ({
+    G.BUOYS = getObjectsByType(VESSEL.BUOY).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj), x: obj.x, y: obj.y, gz: getGround(obj.x, obj.y, G.points, G.CARRIER) }));
+    G.PLANE_WRECKS = getObjectsByType(VESSEL.PLANE_WRECK).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
         x: obj.x,
         y: obj.y,
         angle: obj.angle ?? 0,
     }));
-    G.BOAT_WRECKS = [];
-    G.FRAGMENTS = [];
     G.ORNI_RESIDUES = [];
     getObjectsByType(VESSEL.ORNITHOPTER_WRECK).forEach((obj: any) => {
         const gz = getGround(obj.x, obj.y, G.points, G.CARRIER);
@@ -406,63 +445,62 @@ export const initStaticObjectsFromMission = () => {
             deliverTo: VESSEL.PAD,
         });
     });
-    G.BROKEN_SAILBOATS = getObjectsByType(VESSEL.SAILBOAT_BROKEN).map((obj: any) => ({
+    G.BROKEN_SAILBOATS = getObjectsByType(VESSEL.SAILBOAT_BROKEN).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
         x: obj.x,
         y: obj.y,
         angle: obj.angle ?? 0,
-        _objIdx: allObjects.indexOf(obj),
     }));
-    G.BAYWATCH_CARS = getObjectsByType(VESSEL.BAYWATCH_CAR).map((obj: any) => ({
+    G.BAYWATCH_CARS = getObjectsByType(VESSEL.BAYWATCH_CAR).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
         x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
         gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
     }));
     G.BAYWATCH_BUILDINGS = [
-        ...getObjectsByType(VESSEL.BAYWATCH_HQ).map((obj: any) => ({
+        ...getObjectsByType(VESSEL.BAYWATCH_HQ).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
             type: VESSEL.BAYWATCH_HQ, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
         })),
-        ...getObjectsByType(VESSEL.BAYWATCH_TOWER).map((obj: any) => ({
+        ...getObjectsByType(VESSEL.BAYWATCH_TOWER).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
             type: VESSEL.BAYWATCH_TOWER, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
         })),
     ];
-    G.CONCERT_STAGES = getObjectsByType(VESSEL.CONCERT_STAGE).map((obj: any) => ({
+    G.CONCERT_STAGES = getObjectsByType(VESSEL.CONCERT_STAGE).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
         x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
         gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
     }));
     G.FESTIVAL_TENTS = [
-        ...getObjectsByType(VESSEL.FESTIVAL_TENT).map((obj: any) => ({
+        ...getObjectsByType(VESSEL.FESTIVAL_TENT).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
             type: VESSEL.FESTIVAL_TENT, colorVariant: obj.colorVariant as string | undefined,
             x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
         })),
-        ...getObjectsByType(VESSEL.FESTIVAL_TENT_BROKEN).map((obj: any) => ({
+        ...getObjectsByType(VESSEL.FESTIVAL_TENT_BROKEN).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
             type: VESSEL.FESTIVAL_TENT_BROKEN, colorVariant: obj.colorVariant as string | undefined,
             x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
         })),
     ];
-    G.FESTIVAL_CARS = getObjectsByType(VESSEL.FESTIVAL_CAR).map((obj: any) => ({
+    G.FESTIVAL_CARS = getObjectsByType(VESSEL.FESTIVAL_CAR).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
         type: VESSEL.FESTIVAL_CAR, colorVariant: obj.colorVariant as string | undefined,
         x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
         gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
     }));
     G.XMAS_HOUSES = [
-        ...getObjectsByType(VESSEL.XMAS_HOUSE_A).map((obj: any) => ({
+        ...getObjectsByType(VESSEL.XMAS_HOUSE_A).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
             type: VESSEL.XMAS_HOUSE_A, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
             colorVariant: obj.colorVariant as string | undefined,
             chimneyPos: (XMAS_HOUSE_A_DEF as any).chimneyPos,
             rescueZones: (XMAS_HOUSE_A_DEF as any).rescueZones,
         })),
-        ...getObjectsByType(VESSEL.XMAS_HOUSE_B).map((obj: any) => ({
+        ...getObjectsByType(VESSEL.XMAS_HOUSE_B).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
             type: VESSEL.XMAS_HOUSE_B, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
             colorVariant: obj.colorVariant as string | undefined,
             chimneyPos: (XMAS_HOUSE_B_DEF as any).chimneyPos,
             rescueZones: (XMAS_HOUSE_B_DEF as any).rescueZones,
         })),
-        ...getObjectsByType(VESSEL.XMAS_HOUSE_C).map((obj: any) => ({
+        ...getObjectsByType(VESSEL.XMAS_HOUSE_C).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
             type: VESSEL.XMAS_HOUSE_C, x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
             colorVariant: obj.colorVariant as string | undefined,
@@ -470,39 +508,44 @@ export const initStaticObjectsFromMission = () => {
             rescueZones: (XMAS_HOUSE_C_DEF as any).rescueZones,
         })),
     ];
-    G.XMAS_LANTERNS = getObjectsByType(VESSEL.XMAS_LANTERN).map((obj: any) => ({
+    G.XMAS_LANTERNS = getObjectsByType(VESSEL.XMAS_LANTERN).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
         x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
         gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
     }));
-    G.SLEIGHS = getObjectsByType(VESSEL.SLEIGH).map((obj: any) => ({
+    G.SLEIGHS = getObjectsByType(VESSEL.SLEIGH).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
         x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
         gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
     }));
-    G.REINDEER_OBJECTS = getObjectsByType(VESSEL.REINDEER).map((obj: any) => ({
+    G.REINDEER_OBJECTS = getObjectsByType(VESSEL.REINDEER).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
         x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
         gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
     }));
-    G.VOLLEYBALL_COURTS = getObjectsByType(VESSEL.VOLLEYBALL_COURT).map((obj: any) => ({
+    G.VOLLEYBALL_COURTS = getObjectsByType(VESSEL.VOLLEYBALL_COURT).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
         x: obj.x, y: obj.y, angle: (obj.angle ?? 0) * Math.PI / 180,
         gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
     }));
     G.SCENARIO_PROPS = [
-        ...getObjectsByType(VESSEL.DOM).map((obj: any) => ({
+        ...getObjectsByType(VESSEL.DOM).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
             type: VESSEL.DOM, x: obj.x, y: obj.y,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
         })),
-        ...getObjectsByType(VESSEL.MESSE_HALLE).map((obj: any) => ({
+        ...getObjectsByType(VESSEL.MESSE_HALLE).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
             type: VESSEL.MESSE_HALLE, x: obj.x, y: obj.y,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
             angle: 0,
             rescueZones: (MESSE_HALLE_DEF as any).rescueZones ?? [],
         })),
-        ...getObjectsByType(VESSEL.XMAS_CANDY_CANE).map((obj: any) => ({
+        ...getObjectsByType(VESSEL.XMAS_CANDY_CANE).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
             type: VESSEL.XMAS_CANDY_CANE, x: obj.x, y: obj.y,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
             angle: (obj.angle ?? 0) * Math.PI / 180,
         })),
-        ...getObjectsByType(VESSEL.XMAS_TREE).map((obj: any) => ({
+        ...getObjectsByType(VESSEL.PHONE_BOOTH).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
+            type: VESSEL.PHONE_BOOTH, x: obj.x, y: obj.y,
+            gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
+            angle: (obj.angle ?? 0) * Math.PI / 180,
+        })),
+        ...getObjectsByType(VESSEL.XMAS_TREE).map((obj: any) => ({ _objIdx: allObjects.indexOf(obj),
             type: VESSEL.XMAS_TREE, x: obj.x, y: obj.y,
             gz: getGround(obj.x, obj.y, G.points, G.CARRIER),
             angle: 0,
@@ -514,10 +557,10 @@ export const initStaticObjectsFromMission = () => {
         (p: any) => p.type === PAYLOAD.PERSON && p.spawnOnboard
     ) as any[];
     G.heli.onboard = _startOnboard + _spawnOnboardPersons.length;
-    const _padded: (string | undefined)[] = Array(_startOnboard).fill(undefined);
     G.heli.onboardDeliverQueue = [
-        ..._padded,
-        ..._spawnOnboardPersons.map((p: any) => p.deliverTo as string | undefined),
+        ...Array.from({ length: _startOnboard }, (): OnboardEntry => ({})),
+        // The payload record itself rides along so scripts can follow that person.
+        ..._spawnOnboardPersons.map((p: any): OnboardEntry => ({ deliverTo: p.deliverTo, payload: { ...p } })),
     ];
     G.PARTICLE_EMITTERS = (missionData?.particleEmitters || []).map((e: any) => ({
         type: e.type,
@@ -528,11 +571,7 @@ export const initStaticObjectsFromMission = () => {
         particles: [] as any[],
         spawnTimer: 0,
     }));
-    const _gondolaLzZ = (WIND_TURBINE_DEF as any).rescueZones?.[0]?.z ?? 12.15;
-    G.WIND_TURBINES.forEach((wt: any) => {
-        if (wt.onFire) G.PARTICLE_EMITTERS.push({ type: 'fire',  x: wt.x + 0.1, y: wt.y, gz: wt.gz + _gondolaLzZ, particles: [], spawnTimer: 0 });
-        if (wt.onFire || wt.onSmoke) G.PARTICLE_EMITTERS.push({ type: 'smoke', x: wt.x + 0.1, y: wt.y, gz: wt.gz + _gondolaLzZ, particles: [], spawnTimer: 0 });
-    });
+    G.WIND_TURBINES.forEach((wt: any) => setTurbineEmitters(wt, wt.onFire, wt.onSmoke));
     G.XMAS_HOUSES.forEach((h: any) => {
         if (!h.chimneyPos) return;
         const c = Math.cos(h.angle ?? 0), s = Math.sin(h.angle ?? 0);

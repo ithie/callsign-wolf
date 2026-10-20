@@ -50,17 +50,6 @@ export interface DEFPart {
     parent?: string;
 }
 
-export interface DEFFragment {
-    id: string;
-    /** Face IDs from this DEF's faces array that belong to this fragment chunk */
-    faceIds: string[];
-    /** Local-space center of mass / rotation pivot for this chunk */
-    pivot: [number, number, number];
-    /** Local-space initial velocity (world-rotated at spawn). Default: [0,0,0] */
-    impulse?: [number, number, number];
-    /** Self-rotation speed in radians/s. Default: random ±3 */
-    torque?: number;
-}
 
 export interface DEFLight {
     pos: [number, number, number];
@@ -84,16 +73,8 @@ export interface DEF {
     rotateNodes?: DEFRotateNode[];
     /** Named sub-geometry groups; call applyParts() before passing to SceneRenderer */
     parts?: DEFPart[];
-    /** Declares render passes for multi-pass depth sorting; processed by renderPasses() */
-    passes?: DEFPass[];
     /** Named color sets: variantName → { faceId → color }. Pass result of resolvePalette() as colors to SceneRenderer.add(). */
     palettes?: Record<string, Record<string, string>>;
-    /** Destruction fragments: face groups that fly apart when the object is destroyed */
-    fragments?: DEFFragment[];
-}
-
-export interface DEFPass {
-    parts: string[];
 }
 
 // ─── ZDEF2 ────────────────────────────────────────────────────────────────────
@@ -132,11 +113,9 @@ export interface DEF2Node {
     faces?: DEF2Face[];
     lights?: DEF2Light[];
     rotate?: DEF2Rotate;
-    /** Model-local point used for angle-correct depth. Optional 3rd element (dz)
-     *  is NOT rotated by instance angle — use it for a rotation-invariant depth
-     *  separation (e.g. a chassis node that must always sort behind a taller
-     *  superstructure, at every viewing angle, not just the ones where [dx,dy]
-     *  alone happens to keep the ordering right). */
+    /** Model-local point for this node's fallback depth key — only used where its
+     *  bounding box intersects another item's (normally the box sort decides).
+     *  Optional 3rd element (dz) is NOT rotated by instance angle. */
     depthAnchor?: [number, number] | [number, number, number];
     children?: DEF2Node[];
 }
@@ -152,21 +131,6 @@ export interface DEF2 {
     nodes: DEF2Node[];
     /** Named color sets: variantName → { faceId → color }. Pass result of resolvePalette() as colors to SceneRenderer.add(). */
     palettes?: Record<string, Record<string, string>>;
-    /**
-     * Default (unset/false): top-level nodes are hard-layered by declaration order —
-     * each flushes separately, a later node always paints over an earlier one
-     * regardless of computed depth. Needed by objects that rely on that ordering
-     * (e.g. Carrier hull → superstructure, FRIGATE deck-object interleaving via
-     * onBeforeFlush).
-     * true: all top-level nodes share ONE depth-sorted batch instead (no per-node
-     * flush) — every face competes on depth alone, correct for objects made of
-     * several independent chunks along one axis (e.g. a vehicle's chassis/tank/cab)
-     * where "which end faces the camera" must determine paint order, not
-     * declaration order. Read directly by renderNodes() — NOT a call-site flag,
-     * specifically so the model editor's preview and the game can never disagree
-     * about which mode a given file uses (see feedback_no_duplicate_render_paths).
-     */
-    crossNodeDepth?: boolean;
 }
 
 // ─── D3F ────────────────────────────────────────────────────────────────────
@@ -184,8 +148,6 @@ export interface DEF3 {
     landingZone?: { x: number; y: number; w: number; h: number; z: number };
     nodes: DEF2Node[];
     palettes?: Record<string, Record<string, string>>;
-    /** See DEF2.crossNodeDepth — identical meaning. */
-    crossNodeDepth?: boolean;
 }
 
 /** Returns the color override map for variantName, or undefined when variant is absent or undefined. */

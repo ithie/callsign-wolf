@@ -2,7 +2,9 @@ import { G } from './state';
 import { campaignHandler } from './main';
 import { getGround } from './sim/terrain';
 import { isLightningActive } from './lightning-state';
+import { isNightLit } from './night-light';
 import type { WindState } from './draw-objects';
+import type { DEFInstanceOptions } from './scene-renderer';
 
 type DrawTreeFn = (
     tX: number,
@@ -17,7 +19,7 @@ type DrawTreeFn = (
     snow?: boolean
 ) => void;
 
-type EntryOpts = { x: number; y: number; depth: number; drawFn: (camX: number, camY: number) => void };
+type EntryOpts = Pick<DEFInstanceOptions, 'x' | 'y' | 'z' | 'depth' | 'bounds' | 'drawFn'>;
 
 type SceneAddFn = (def: null, opts: EntryOpts) => void;
 
@@ -77,9 +79,11 @@ export const createFoliage = (opts: {
         G.TREES_MAP.forEach((t: any) => {
             const treeType = t.type || 'pine';
             t._entry = {
-                x: t.x, y: t.y, depth: t.x + t.y,
+                x: t.x, y: t.y, z: t.gz, depth: t.x + t.y,
+                // Same extents as the tree collision box (collision.ts).
+                bounds: { x0: t.x - 0.35 * t.s, x1: t.x + 0.35 * t.s, y0: t.y - 0.35 * t.s, y1: t.y + 0.35 * t.s, z0: t.gz, z1: t.gz + 2.3 * t.s },
                 drawFn: (cx: number, cy: number) => drawTree(t.x, t.y, cx, cy, t.s, t.gz, treeType, G.wind, G.heli, snow),
-            } as EntryOpts;
+            } satisfies EntryOpts;
         });
     };
 
@@ -89,25 +93,12 @@ export const createFoliage = (opts: {
         const yFrom = Math.floor(ry - _tr), yTo = Math.ceil(ry + _tr);
         const night = isNight();
         const lightning = night && isLightningActive();
-        let coneWidth = 0, range2 = 0, haX = 0, haY = 0, haA = 0;
-        if (night && !lightning) {
-            const alt = G.heli.z - getGround(G.heli.x, G.heli.y);
-            coneWidth = 0.3 + alt * 0.05;
-            range2 = (10 + alt * 2.0) ** 2;
-            haX = G.heli.x; haY = G.heli.y; haA = G.heli.angle;
-        }
         for (let tx = xFrom; tx <= xTo; tx++) {
             for (let ty = yFrom; ty <= yTo; ty++) {
                 const bucket = _treeIndex.get(`${tx}_${ty}`);
                 if (!bucket) continue;
                 for (const t of bucket) {
-                    if (night && !lightning) {
-                        let diff = Math.atan2(t.y - haY, t.x - haX) - haA;
-                        while (diff < -Math.PI) diff += Math.PI * 2;
-                        while (diff > Math.PI) diff -= Math.PI * 2;
-                        const dx = t.x - haX, dy = t.y - haY;
-                        if (!(Math.abs(diff) < coneWidth && dx * dx + dy * dy < range2)) continue;
-                    }
+                    if (night && !lightning && !isNightLit(t.x, t.y)) continue;
                     sceneAdd(null, t._entry);
                 }
             }

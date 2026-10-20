@@ -7,6 +7,7 @@ import type { Plugin } from 'vite';
 import { zsongPlugin } from './plugins/zsong';
 import { zdefPlugin } from './plugins/zdef';
 import { zcampaignPlugin } from './plugins/zcampaign';
+import { scriptTypesPlugin } from './plugins/script-types';
 import { zdefTreeShakePlugin } from './plugins/zdef-tree-shake';
 import { makeSingleFile } from './plugins/make-single-file';
 
@@ -92,6 +93,7 @@ export default defineConfig(({ command }) => {
             zdefTreeShakePlugin(resolve(__dirname, 'src/game/campaigns')),
             zdefPlugin(),
             zcampaignPlugin(),
+            scriptTypesPlugin(resolve(__dirname, 'src/game/campaigns')),
             makeSingleFile(),
             stubsPlugin(),
             swapEntry(),

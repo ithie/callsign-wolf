@@ -42,6 +42,10 @@ export interface SnowFlake {
     alpha: number;
 }
 
+// One entry per person on board, in boarding order. `payload` is the original payload
+// record (when known) so campaign scripts can follow a named person to its delivery.
+export type OnboardEntry = { deliverTo?: string; payload?: any };
+
 export const G = {
     goalCount: 0,
     totalRescued: 0,
@@ -64,8 +68,6 @@ export const G = {
     PARTICLE_EMITTERS: [] as ParticleEmitter[],
     LANDING_ZONES: [] as { xMin: number; xMax: number; yMin: number; yMax: number; z: number }[],
     PLANE_WRECKS: [] as any[],
-    BOAT_WRECKS: [] as { x: number; y: number; angle: number }[],
-    FRAGMENTS: [] as import('./sim/fragments').RuntimeFragment[],
     ORNI_RESIDUES: [] as { x: number; y: number; angle: number }[],
     BROKEN_SAILBOATS: [] as any[],
     BAYWATCH_CARS: [] as any[],
@@ -106,7 +108,7 @@ export const G = {
         rotorRPM: 0,
         rotationPos: 0,
         onboard: 0,
-        onboardDeliverQueue: [] as (string | undefined)[],
+        onboardDeliverQueue: [] as OnboardEntry[],
         maxLoad: 5,
         accel: 0.0025,
         friction: 0.99,

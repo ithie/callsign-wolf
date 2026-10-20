@@ -2,7 +2,9 @@ import type { DrawWorldCtx } from './types';
 import { G } from '../state';
 import { VEHICLE_STATE } from '../../shared/types';
 import { applyParts, applyNodes, renderNodes } from '../def-utils';
+import { collapseParams } from '../sim/collapse';
 import { getGround } from '../sim/terrain';
+import { heliBounds, heliShadowBounds } from './heli-bounds';
 import CARRIER_DEF from '../models/carrier.zdef';
 import CARRIER_CAR_DEF from '../models/carrier_car.zdef';
 import CARRIER_DECK_TRACTOR_DEF from '../models/carrier_deck_tractor.zdef';
@@ -10,6 +12,42 @@ import CARRIER_DECK_CRATE_DEF from '../models/carrier_deck_crate.zdef';
 
 export const createCarrierDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, tileW, drawFns: { drawHeli }, isVisible } = dwCtx;
+
+    // Flat shadow rectangle at the vehicle's real footprint (from collisionBoxes),
+    // rotated with the vehicle's own angle — not an ellipse or generic shape.
+    // Takes z explicitly (deck height), unlike structures.ts's terrain-ground version.
+    const _drawVehicleShadow = (x: number, y: number, z: number, angle: number, def: unknown) => {
+        const boxes = (def as { collisionBoxes?: Array<{ xMin: number; xMax: number; yMin: number; yMax: number }> })
+            ?.collisionBoxes;
+        if (!boxes?.length) return;
+        const xMin = Math.min(...boxes.map(b => b.xMin));
+        const xMax = Math.max(...boxes.map(b => b.xMax));
+        const yMin = Math.min(...boxes.map(b => b.yMin));
+        const yMax = Math.max(...boxes.map(b => b.yMax));
+        const cosA = Math.cos(angle), sinA = Math.sin(angle);
+        const corners: [number, number][] = [[xMin, yMin], [xMax, yMin], [xMax, yMax], [xMin, yMax]];
+        const wc = corners.map(([lx, ly]) => [x + lx * cosA - ly * sinA, y + lx * sinA + ly * cosA]);
+        SceneRenderer.add(null, {
+            x, y, z, depth: x + y - 0.001,
+            // Flat on the deck, so it sorts below the vehicle standing on it.
+            bounds: {
+                x0: Math.min(...wc.map(c => c[0])), x1: Math.max(...wc.map(c => c[0])),
+                y0: Math.min(...wc.map(c => c[1])), y1: Math.max(...wc.map(c => c[1])), z0: z, z1: z,
+            },
+            drawFn: (camX: number, camY: number) => {
+                ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                ctx.beginPath();
+                corners.forEach(([lx, ly], i) => {
+                    const wx = x + lx * cosA - ly * sinA;
+                    const wy = y + lx * sinA + ly * cosA;
+                    const p = isoFn(wx, wy, z, camX, camY);
+                    if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                });
+                ctx.closePath();
+                ctx.fill();
+            },
+        });
+    };
 
     const _drawPadLights = (z: number, isCarrier = false) => {
         if (isCarrier) return; // handled by carrier.zdef lights
@@ -35,24 +73,33 @@ export const createCarrierDraw = (dwCtx: DrawWorldCtx) => {
         });
     };
 
-    const _drawVectorCarrier = (cx: number, cy: number, inCone: (x: number, y: number) => boolean) => {
-        renderNodes(CARRIER_DEF as any, {}, { x: G.CARRIER.x, y: G.CARRIER.y, z: G.waterLevel, angle: G.CARRIER.angle }, SceneRenderer, cx, cy, { ctx, isoFn, tileW },
-            (ni) => { if (ni === 1) _queueCarrierDeckObjects(inCone); },
-        );
+    const _drawVectorCarrier = (inCone: (x: number, y: number) => boolean) => {
+        renderNodes(CARRIER_DEF as any, collapseParams(G.CARRIER), { x: G.CARRIER.x, y: G.CARRIER.y, z: G.waterLevel, angle: G.CARRIER.angle }, SceneRenderer, { ctx, isoFn, tileW });
+        _queueCarrierDeckObjects(inCone);
     };
 
-    const _drawNpcHelis = (cx: number, cy: number, visMargin: number, showCarrier: boolean, inCone: (x: number, y: number) => boolean) => {
+    // Shadow and heli are separate items: the shadow lies flat on the deck/ground,
+    // the heli sorts with its own box (in front of the deck, behind the island, …).
+    const _drawNpcHelis = (visMargin: number, showCarrier: boolean, inCone: (x: number, y: number) => boolean) => {
         for (const npc of G.npcHelis) {
             const visible = npc.state === VEHICLE_STATE.PARKED ? showCarrier : isVisible(npc.x, npc.y, visMargin);
             if (!visible) continue;
             if (!inCone(npc.x, npc.y)) continue;
             const groundBelow = npc.state === VEHICLE_STATE.PARKED ? npc.z : getGround(npc.x, npc.y);
-            drawHeli(npc.type, npc.x, npc.y, npc.z, npc.angle, npc.tilt, npc.roll, npc.rotationPos, cx, cy, {
-                isShadow: true, scaleOverride: 1, fillColor: '#556b2f', strokeColor: '#3a4a1f',
-                shadowGetGround: () => groundBelow,
+            SceneRenderer.add(null, {
+                x: npc.x, y: npc.y, z: groundBelow,
+                bounds: heliShadowBounds(npc.type, npc.x, npc.y, groundBelow, npc.angle),
+                drawFn: (cx, cy) => drawHeli(npc.type, npc.x, npc.y, npc.z, npc.angle, npc.tilt, npc.roll, npc.rotationPos, cx, cy, {
+                    isShadow: true, scaleOverride: 1, fillColor: '#556b2f', strokeColor: '#3a4a1f',
+                    shadowGetGround: () => groundBelow,
+                }),
             });
-            drawHeli(npc.type, npc.x, npc.y, npc.z, npc.angle, npc.tilt, npc.roll, npc.rotationPos, cx, cy, {
-                scaleOverride: 1, fillColor: '#556b2f', strokeColor: '#3a4a1f',
+            SceneRenderer.add(null, {
+                x: npc.x, y: npc.y, z: npc.z,
+                bounds: heliBounds(npc.type, npc.x, npc.y, npc.z, npc.angle),
+                drawFn: (cx, cy) => drawHeli(npc.type, npc.x, npc.y, npc.z, npc.angle, npc.tilt, npc.roll, npc.rotationPos, cx, cy, {
+                    scaleOverride: 1, fillColor: '#556b2f', strokeColor: '#3a4a1f',
+                }),
             });
         }
     };
@@ -67,10 +114,6 @@ export const createCarrierDraw = (dwCtx: DrawWorldCtx) => {
             const wx = objX + (tx - 0.36) * cosA - (ty + 0.5) * sinA;
             const wy = objY + (tx - 0.36) * sinA + (ty + 0.5) * cosA;
             if (!inCone(wx, wy)) return;
-            // Injected into the carrier hull's own flush batch via onBeforeFlush (see
-            // _drawVectorCarrier), so this must add faces without flushing — applyNodes()
-            // bakes the D3F node tree into a flat DEF, same pattern as applyParts() below
-            // for the fuel car. renderNodes() would flush on its own and break the batch.
             SceneRenderer.add(applyNodes(CARRIER_DECK_TRACTOR_DEF as any, {}), { x: wx, y: wy, z: deckZ + 0.01, angle: tractorAngle });
         });
         ([{ lx: 6.5, ly: 0.4 }, { lx: 6.0, ly: -0.2 }, { lx: 7.0, ly: -0.1 }] as const).forEach(({ lx, ly }) => {
@@ -80,10 +123,12 @@ export const createCarrierDraw = (dwCtx: DrawWorldCtx) => {
             SceneRenderer.add(applyNodes(CARRIER_DECK_CRATE_DEF as any, {}), { x: wx, y: wy, z: deckZ + 0.01, angle });
         });
         const car = G.carrierFuelCar;
-        if (inCone(car.x, car.y))
+        if (inCone(car.x, car.y)) {
+            _drawVehicleShadow(car.x, car.y, deckZ, car.angle + Math.PI, CARRIER_CAR_DEF as any);
             SceneRenderer.add(applyParts(CARRIER_CAR_DEF as any, { steerAngle: -(car.steerAngle ?? 0) }), {
                 x: car.x, y: car.y, z: deckZ + 0.01, angle: car.angle + Math.PI,
             });
+        }
     };
 
     return { _drawPadLights, _drawVectorCarrier, _drawNpcHelis, _queueCarrierDeckObjects };

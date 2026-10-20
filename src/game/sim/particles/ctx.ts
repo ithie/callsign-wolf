@@ -55,6 +55,11 @@ export type ParticleEmitter = {
     radius?: number;
     particles: EmitterParticle[];
     spawnTimer: number;
+    // Set for emitters belonging to an object (e.g. a turbine fire): they follow the
+    // owner's collapse down onto its rubble. ownerZ = height above the owner's base.
+    owner?: object;
+    ownerBaseZ?: number;
+    ownerZ?: number;
 };
 
 // ─── Minimal structural refs (no import from state.ts → no circular dep) ───────

@@ -2,7 +2,7 @@ import './mission-select.css';
 import '@/ui/nav-screens.css';
 import { I18N, localize } from '../../i18n';
 import { ensureEl } from '@/ui/dom-helpers';
-import { isMissionUnlocked, isMissionPaywalled, type PlayerSession } from '../../session';
+import { isMissionUnlocked, isMissionPaywalled, TEST_UNLOCKED_CAMPAIGN_KEYS, type PlayerSession } from '../../session';
 import type { CampaignExport } from '../../../shared/types';
 import { HELI_TYPES } from '../../heli-types';
 import { showScreenCrtEnter } from '../nav';
@@ -51,7 +51,8 @@ export const show = (deps: MissionSelectDeps) => {
         return {
             level,
             index: i,
-            unlocked: isMissionUnlocked(session, key, i, campaign.type, rankIndex, missionMinRank),
+            unlocked: TEST_UNLOCKED_CAMPAIGN_KEYS.has((campaign as any)._key)
+                || isMissionUnlocked(session, key, i, campaign.type, rankIndex, missionMinRank),
             done: mp?.completed ?? false,
             bestTime: mp?.bestTimeMs ?? null,
             endlessBest: mp?.endlessBest ?? null,

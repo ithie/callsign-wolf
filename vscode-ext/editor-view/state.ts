@@ -67,6 +67,9 @@ export const state = {
     dragStartMY: 0,
     dragOrigX: 0,
     dragOrigY: 0,
+
+    // Letzter abgeschlossener Drag, für Cmd/Ctrl+Z (einstufiges Undo)
+    lastDrag: null as { type: 'payload' | 'object' | 'emitter'; idx: number; x: number; y: number } | null,
 };
 
 export const getCurrentMission = (): Mission | undefined => state.campaign[state.curIdx];

@@ -211,9 +211,10 @@ export const createVolleyballDraw = (dwCtx: DrawWorldCtx) => {
         G.VOLLEYBALL_COURTS.forEach(court => {
             if (!isVisible(court.x, court.y)) return;
             if (!inNightCone(court.x, court.y)) return;
+            // Court (half-length 3, half-width 1.5, any angle) plus players and ball arc.
             SceneRenderer.add(null, {
-                x: 0, y: 0,
-                depth: court.x + court.y,
+                x: court.x, y: court.y, z: court.gz,
+                bounds: { x0: court.x - 3.4, x1: court.x + 3.4, y0: court.y - 3.4, y1: court.y + 3.4, z0: court.gz, z1: court.gz + 2.6 },
                 drawFn: (cx: number, cy: number) => _drawCourt(ctx, isoFn, court, cx, cy),
             });
         });

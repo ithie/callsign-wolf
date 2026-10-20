@@ -707,10 +707,14 @@
                                     <option value="new">Neu (Hangar-Tower)</option>
                                   </select>
                                 </div>
+                                <div style="margin-top:6px">
+                                  <label style="font-size:10px;color:#aaa">Hangar:</label><br>
+                                  <select id="pad_hangar_variant" style="width:100%;margin-top:2px;background:var(--bg3);color:var(--text);border:1px solid var(--border);font-size:11px;padding:2px 4px">
+                                    <option value="classic">Klassisch</option>
+                                    <option value="bunker">Bunker (Halbschale)</option>
+                                  </select>
+                                </div>
                             </div>
-                        <div id="ui_events" class="floating-ui">
-                            <!-- content rendered by events-editor.ts renderEventsPanel() -->
-                        </div>
             </div><!-- end #ed-obj-panel -->
         </div>
 
@@ -794,6 +798,7 @@
             <button id="btn-zoom-in">+</button>
             <button id="btn-zoom-out">-</button>
             <button id="btn-fit">Fit</button>
+            <button id="btn-undo">↺</button>
 
             <input type="text" id="m_headline_de" value="Phase 1" />
             <input type="text" id="m_headline_en" value="" />
@@ -1109,6 +1114,9 @@ Viel Glück, Pilot.</textarea
                         break;
                     case 'zoom-out':
                         clk('btn-zoom-out');
+                        break;
+                    case 'undo':
+                        clk('btn-undo');
                         break;
                     case 'set-headline': {
                         var l = data.lang || 'de';
@@ -1481,6 +1489,7 @@ Viel Glück, Pilot.</textarea
                     (isPaint ? '' : 'disabled ') +
                     "oninput=\"if(document.querySelector('input[name=ed-brush][value=custom]').checked) edDispatch('set-brush',{value:this.value})\">" +
                     '<div style="display:flex;gap:3px;margin-left:auto;align-items:center">' +
+                    '<button class="ed-brush-btn" title="Rückgängig (Cmd/Ctrl+Z)" onclick="edDispatch(\'undo\')">↺</button>' +
                     '<button class="ed-brush-btn" onclick="edDispatch(\'zoom-out\')">−</button>' +
                     '<button class="ed-brush-btn" onclick="edDispatch(\'zoom-in\')">+</button>' +
                     '</div>' +

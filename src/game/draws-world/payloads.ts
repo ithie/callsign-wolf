@@ -2,6 +2,7 @@ import type { DrawWorldCtx } from './types';
 import { G, zstate } from '../state';
 import { PAYLOAD } from '../../shared/types';
 import { getGround } from '../sim/terrain';
+import { isNightLit } from '../night-light';
 
 export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, tileW, drawFns: { drawPerson }, isVisible, isNight } = dwCtx;
@@ -76,6 +77,21 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
         }
     };
 
+    // Sort item for a payload standing somewhere: small upright box at its feet.
+    const _queuePayload = (payload: any) => {
+        const r = payload.type === PAYLOAD.REINDEER ? 0.45 : 0.25;
+        SceneRenderer.add(null, {
+            x: payload.x, y: payload.y, z: payload.z,
+            bounds: {
+                x0: payload.x - r, x1: payload.x + r, y0: payload.y - r, y1: payload.y + r,
+                z0: payload.z, z1: payload.z + 0.8,
+            },
+            drawFn: (cx: number, cy: number) => _drawSinglePayload(payload, cx, cy),
+        });
+    };
+
+    // hangingOnly: called from the winch item's drawFn, paints immediately.
+    // Otherwise payloads on the ground are queued into the frame batch.
     const drawPayloadObjects = (hangingOnly = false, ropeOnly = false) => {
         const night = isNight();
         const { cam } = zstate;
@@ -83,8 +99,7 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
             if (payload.rescued && !payload.hanging) return;
             if (hangingOnly && !payload.hanging) return;
             if (!hangingOnly && payload.hanging) return;
-            // Vessel-deck payloads are queued into the final SceneRenderer flush via
-            // queueAttachedPayloads() so they render correctly on top of their vessel.
+            // Attached payloads are queued by queueAttachedPayloads().
             if (!hangingOnly && payload.attachTo) return;
             if (!payload.hanging && !isVisible(payload.x, payload.y)) return;
 
@@ -92,15 +107,7 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
             // except for rope drawing which falls through to the shared ropeOnly block below.
             if (payload.type === PAYLOAD.ORNI_WRECK && !ropeOnly) return;
 
-            if (night && !payload.hanging && !payload.attachTo) {
-                const dx = payload.x - G.heli.x, dy = payload.y - G.heli.y;
-                const alt = G.heli.z - getGround(G.heli.x, G.heli.y);
-                if (Math.hypot(dx, dy) > 10 + alt * 2.0) return;
-                let diff = Math.atan2(dy, dx) - G.heli.angle;
-                while (diff < -Math.PI) diff += Math.PI * 2;
-                while (diff > Math.PI) diff -= Math.PI * 2;
-                if (Math.abs(diff) > 0.3 + alt * 0.05) return;
-            }
+            if (night && !payload.hanging && !payload.attachTo && !isNightLit(payload.x, payload.y)) return;
 
             if (ropeOnly) {
                 if (!payload.hanging || G.heli.winch < 0.4) return;
@@ -118,14 +125,12 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
 
             if (payload.hanging && G.heli.winch < 0.4) return;
 
-            _drawSinglePayload(payload, cam.x, cam.y);
+            if (hangingOnly) _drawSinglePayload(payload, cam.x, cam.y);
+            else _queuePayload(payload);
         });
     };
 
-    // Enqueues vessel-deck payloads into the shared SceneRenderer batch.
-    // Must be called AFTER vessels are added (lines 76-83 draw-world.ts) and
-    // BEFORE the heli is added (line 95) so that on a depth tie the heli wins
-    // via JS stable sort insertion order.
+    // Enqueues payloads attached to vessels/turbines into the frame batch.
     const queueAttachedPayloads = (inCone: (x: number, y: number) => boolean) => {
         G.payloads.forEach((payload: any) => {
             if (payload.rescued && !payload.hanging) return;
@@ -133,11 +138,7 @@ export const createPayloadsDraw = (dwCtx: DrawWorldCtx) => {
             if (payload.type === PAYLOAD.ORNI_WRECK) return;
             if (!isVisible(payload.x, payload.y)) return;
             if (!inCone(payload.x, payload.y)) return;
-            SceneRenderer.add(null, {
-                x: 0, y: 0,
-                depth: payload.x + payload.y,
-                drawFn: (cx: number, cy: number) => _drawSinglePayload(payload, cx, cy),
-            });
+            _queuePayload(payload);
         });
     };
 

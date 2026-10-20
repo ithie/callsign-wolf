@@ -1,28 +1,33 @@
 import type { DrawWorldCtx } from './types';
 import { G } from '../state';
-import { applyParts, renderNodes } from '../def-utils';
+import { renderNodes } from '../def-utils';
 import { getGround } from '../sim/terrain';
 import { getObjectDef } from '../def-registry';
 import HANGAR_DEF from '../models/objects/hangar.zdef';
+import JET_BUNKER_DEF from '../models/objects/jet_bunker.zdef';
 import TOWER_DEF from '../models/objects/tower.zdef';
 import HANGAR_TOWER_DEF from '../models/objects/hangar_tower.zdef';
 import { VESSEL } from '../../shared/types';
 import { resolvePalette } from '../defs';
 import type { DEFInstanceOptions } from '../scene-renderer';
-import { getActiveDeliveryMarkers } from '../sim/simulation';
+import { collapseParams, type Collapsible } from '../sim/collapse';
 
 export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, SceneRenderer, tileW, tileH, getLighthouse, getWindStr } = dwCtx;
 
-    const _drawWindTurbine = (wt: any) => {
+    const _drawWindTurbine = (wt: any, heliAboveNacelle = false) => {
         const _def = getObjectDef(VESSEL.WIND_TURBINE);
         if (!_def) return;
-        const gz = getGround(wt.x, wt.y);
-        const t = wt.collapseT ?? 0;
-        const rotorAngle = wt.spinning && !wt.collapsing ? (Date.now() * 0.002) % (Math.PI * 2) : 0;
-        const nacelleAngle = t > 0 ? Math.min(1, t / 0.55) * 2.5 : 0;
-        const poleAngle    = t > 0 ? Math.max(0, (t - 0.2) / 0.8) * 1.5 : 0;
-        SceneRenderer.add(applyParts(_def as any, { rotorAngle, nacelleAngle, poleAngle }), { x: wt.x, y: wt.y, z: gz, angle: 0 });
+        // wt.gz is precomputed in world-init.ts (clamped to never sink below the water
+        // surface) — must match collision.ts's checkDef/drawDef and the delivery-zone
+        // check in simulation.ts exactly, so don't recompute it here from raw terrain.
+        const gz = wt.gz ?? getGround(wt.x, wt.y);
+        const rotorAngle = wt.spinning ? (Date.now() * 0.002) % (Math.PI * 2) : 0;
+        // Per node (mast, nacelle + rotor) so each part sorts with its own box.
+        renderNodes(_def as any, { rotorAngle, ...collapseParams(wt) }, {
+            x: wt.x, y: wt.y, z: gz, angle: 0,
+            ...(heliAboveNacelle ? { colors: { n_top: '#707070' } } : {}),
+        }, SceneRenderer);
     };
 
     interface _DefLight {
@@ -36,14 +41,19 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         dutyCycle?: number;
     }
 
-    const _drawDefLights = (x: number, y: number, def: { lights?: _DefLight[] }) => {
+    const _drawDefLights = (x: number, y: number, def: { lights?: _DefLight[] }, entity?: Collapsible) => {
         const lights = def.lights as _DefLight[] | undefined;
-        if (!lights?.length) return;
+        if (!lights?.length || entity?.destroyed) return;
         const gz = getGround(x, y);
+        const lx = lights.map(l => x + l.pos[0]), ly = lights.map(l => y + l.pos[1]), lz = lights.map(l => gz + l.pos[2]);
         SceneRenderer.add(null, {
-            x: 0,
-            y: 0,
+            x, y, z: gz,
+            // Lights sit on the model's surface: same spot, drawn just after it on a tie.
             depth: x + y + 0.001,
+            bounds: {
+                x0: Math.min(...lx), x1: Math.max(...lx), y0: Math.min(...ly), y1: Math.max(...ly),
+                z0: Math.min(...lz), z1: Math.max(...lz),
+            },
             drawFn: (camX, camY) => {
                 ctx.shadowBlur = 0;
                 lights.forEach(l => {
@@ -68,25 +78,26 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         });
     };
 
-    const _drawPlaneWreck = (wx: number, wy: number, angle: number, camX: number, camY: number) => {
+    const _drawPlaneWreck = (pw: any) => {
         const _def = getObjectDef(VESSEL.PLANE_WRECK);
         if (!_def) return;
-        const gz = getGround(wx, wy);
-        _addObjectDef(_def, { x: wx, y: wy, z: gz, angle }, camX, camY);
+        const gz = getGround(pw.x, pw.y);
+        _addObjectDef(_def, { x: pw.x, y: pw.y, z: gz, angle: pw.angle }, pw);
     };
 
-    const _drawBrokenSailboat = (bx: number, by: number, angle: number, camX: number, camY: number) => {
+    const _drawBrokenSailboat = (bs: any) => {
         const _def = getObjectDef(VESSEL.SAILBOAT_BROKEN);
         if (!_def) return;
-        const gz = getGround(bx, by);
-        _addObjectDef(_def, { x: bx, y: by, z: gz, angle: angle - Math.PI / 2 }, camX, camY);
+        const gz = getGround(bs.x, bs.y);
+        _addObjectDef(_def, { x: bs.x, y: bs.y, z: gz, angle: bs.angle - Math.PI / 2 }, bs);
     };
 
-    const _drawHangar = (camX: number, camY: number) => {
-        _addObjectDef(HANGAR_DEF, { x: G.PAD.xMax - 3, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 }, camX, camY);
+    const _drawHangar = () => {
+        const hangarDef = G.PAD.hangarVariant === 'bunker' ? JET_BUNKER_DEF : HANGAR_DEF;
+        _addObjectDef(hangarDef, { x: G.PAD.xMax - 3, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 });
         const towerDef = G.PAD.towerVariant === 'new' ? HANGAR_TOWER_DEF : TOWER_DEF;
         const towerX = G.PAD.towerVariant === 'new' ? G.PAD.xMax : G.PAD.xMax - 0.5;
-        _addObjectDef(towerDef, { x: towerX, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 }, camX, camY);
+        _addObjectDef(towerDef, { x: towerX, y: G.PAD.yMin - 1, z: G.PAD.z, angle: 0 });
     };
 
     const _renderWindsock = (
@@ -143,22 +154,27 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         ctx.fill();
     };
 
-    const _drawWindsock = (cx: number, cy: number) => {
+    // Queued like everything else, so the heli and buildings sort against it.
+    const _drawWindsock = () => {
         const wx = G.PAD.xMin,
             wy = G.PAD.yMin + 8.8;
-        _renderWindsock(cx, cy, wx, wy, getGround(wx, wy), G.wind.angle ?? Math.PI * 0.75, getWindStr());
+        const gz = getGround(wx, wy);
+        SceneRenderer.add(null, {
+            x: wx, y: wy, z: gz,
+            bounds: { x0: wx - 0.5, x1: wx + 0.5, y0: wy - 0.5, y1: wy + 0.5, z0: gz, z1: gz + 1.2 },
+            drawFn: (cx, cy) => _renderWindsock(cx, cy, wx, wy, gz, G.wind.angle ?? Math.PI * 0.75, getWindStr()),
+        });
     };
 
-    const _drawLighthouse = (camX: number, camY: number) => {
+    const _drawLighthouse = () => {
         const lh = getLighthouse();
         if (!lh) return;
         const _lhDef = getObjectDef(VESSEL.LIGHTHOUSE);
         if (!_lhDef) return;
         const lhZ = getGround(lh.x, lh.y);
-        _addObjectDef(_lhDef, { x: lh.x, y: lh.y, z: lhZ, angle: 0 }, camX, camY);
+        _addObjectDef(_lhDef, { x: lh.x, y: lh.y, z: lhZ, angle: 0 });
         SceneRenderer.add(null, {
-            x: 0,
-            y: 0,
+            x: lh.x, y: lh.y, z: lhZ + 8.1,
             depth: lh.x + lh.y + 0.001,
             drawFn: (camX, camY) => {
                 const p = isoFn(lh.x, lh.y, lhZ + 8.1, camX, camY);
@@ -178,88 +194,125 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
 
     // ZDEF2/D3F defs are node-based (no top-level .faces) and can't go through
     // SceneRenderer.add() directly. renderNodes() is the exact same function the
-    // model editor's preview uses — it picks array-order vs. per-face depth-sort
-    // per node (based on moving parts) and cross-node-depth vs. per-node-flush
-    // (based on def.crossNodeDepth) by itself, so editor and game always agree.
-    const _addObjectDef = (def: unknown, instanceProps: DEFInstanceOptions, camX: number, camY: number) => {
+    // model editor's preview uses, so editor and game always agree.
+    // `entity` (the placed object) feeds its collapse state into the model params.
+    const _addObjectDef = (def: unknown, instanceProps: DEFInstanceOptions, entity?: Collapsible) => {
         if (!def) return;
         const version = (def as { version?: number }).version;
-        if (version && version >= 2) renderNodes(def as any, {}, instanceProps, SceneRenderer as any, camX, camY);
+        if (version && version >= 2) renderNodes(def as any, collapseParams(entity), instanceProps, SceneRenderer as any);
         else SceneRenderer.add(def as any, instanceProps);
     };
 
-    const _drawBaywatchObjects = (inCone: (x: number, y: number) => boolean, camX: number, camY: number) => {
+    // Flat shadow rectangle at the vehicle's real footprint (from collisionBoxes),
+    // rotated with the vehicle's own angle — not an ellipse or generic shape.
+    const _drawVehicleShadow = (x: number, y: number, angle: number, def: unknown) => {
+        const boxes = (def as { collisionBoxes?: Array<{ xMin: number; xMax: number; yMin: number; yMax: number }> })
+            ?.collisionBoxes;
+        if (!boxes?.length) return;
+        const xMin = Math.min(...boxes.map(b => b.xMin));
+        const xMax = Math.max(...boxes.map(b => b.xMax));
+        const yMin = Math.min(...boxes.map(b => b.yMin));
+        const yMax = Math.max(...boxes.map(b => b.yMax));
+        const gz = getGround(x, y);
+        const cosA = Math.cos(angle), sinA = Math.sin(angle);
+        const corners: [number, number][] = [[xMin, yMin], [xMax, yMin], [xMax, yMax], [xMin, yMax]];
+        const wc = corners.map(([lx, ly]) => [x + lx * cosA - ly * sinA, y + lx * sinA + ly * cosA]);
+        SceneRenderer.add(null, {
+            x, y, z: gz, depth: x + y - 0.001,
+            // Flat on the ground, so it sorts below the vehicle standing on it.
+            bounds: {
+                x0: Math.min(...wc.map(c => c[0])), x1: Math.max(...wc.map(c => c[0])),
+                y0: Math.min(...wc.map(c => c[1])), y1: Math.max(...wc.map(c => c[1])), z0: gz, z1: gz,
+            },
+            drawFn: (camX: number, camY: number) => {
+                ctx.fillStyle = 'rgba(0,0,0,0.35)';
+                ctx.beginPath();
+                corners.forEach(([lx, ly], i) => {
+                    const wx = x + lx * cosA - ly * sinA;
+                    const wy = y + lx * sinA + ly * cosA;
+                    const p = isoFn(wx, wy, gz, camX, camY);
+                    if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                });
+                ctx.closePath();
+                ctx.fill();
+            },
+        });
+    };
+
+    const _drawBaywatchObjects = (inCone: (x: number, y: number) => boolean) => {
         const _carDef = getObjectDef(VESSEL.BAYWATCH_CAR);
         G.BAYWATCH_CARS.forEach((car: any) => {
             if (!inCone(car.x, car.y) || !_carDef) return;
             const gz = getGround(car.x, car.y);
-            _addObjectDef(_carDef, { x: car.x, y: car.y, z: gz, angle: car.angle }, camX, camY);
+            _drawVehicleShadow(car.x, car.y, car.angle, _carDef);
+            _addObjectDef(_carDef, { x: car.x, y: car.y, z: gz, angle: car.angle }, car);
         });
         G.BAYWATCH_BUILDINGS.forEach((b: any) => {
             if (!inCone(b.x, b.y)) return;
             const _def = getObjectDef(b.type);
             if (!_def) return;
             const gz = getGround(b.x, b.y);
-            _addObjectDef(_def, { x: b.x, y: b.y, z: gz, angle: b.angle }, camX, camY);
+            _addObjectDef(_def, { x: b.x, y: b.y, z: gz, angle: b.angle }, b);
         });
     };
 
-    const _drawBuoys = (inCone: (x: number, y: number) => boolean, camX: number, camY: number) => {
+    const _drawBuoys = (inCone: (x: number, y: number) => boolean) => {
         const _def = getObjectDef(VESSEL.BUOY);
         const t = Date.now() * 0.0018;
         G.BUOYS.forEach((b: any) => {
             if (!inCone(b.x, b.y) || !_def) return;
             const gz = getGround(b.x, b.y);
             const bob = Math.sin(t + b.x * 0.61 + b.y * 0.37) * 0.07;
-            _addObjectDef(_def, { x: b.x, y: b.y, z: gz + bob, angle: 0 }, camX, camY);
+            _addObjectDef(_def, { x: b.x, y: b.y, z: gz + bob, angle: 0 }, b);
         });
     };
 
-    const _drawFestivalObjects = (inCone: (x: number, y: number) => boolean, camX: number, camY: number) => {
+    const _drawFestivalObjects = (inCone: (x: number, y: number) => boolean) => {
         const _stageDef = getObjectDef(VESSEL.CONCERT_STAGE);
         G.CONCERT_STAGES.forEach((s: any) => {
             if (!inCone(s.x, s.y) || !_stageDef) return;
-            _addObjectDef(_stageDef, { x: s.x, y: s.y, z: s.gz, angle: s.angle }, camX, camY);
+            _addObjectDef(_stageDef, { x: s.x, y: s.y, z: s.gz, angle: s.angle }, s);
         });
         G.FESTIVAL_TENTS.forEach((t: any) => {
             if (!inCone(t.x, t.y)) return;
             const _def = getObjectDef(t.type);
             if (!_def) return;
             const colors = resolvePalette(_def as any, t.colorVariant);
-            _addObjectDef(_def, { x: t.x, y: t.y, z: t.gz, angle: t.angle, ...(colors ? { colors } : {}) }, camX, camY);
+            _addObjectDef(_def, { x: t.x, y: t.y, z: t.gz, angle: t.angle, ...(colors ? { colors } : {}) }, t);
         });
         const _carDef = getObjectDef(VESSEL.FESTIVAL_CAR);
         G.FESTIVAL_CARS.forEach((c: any) => {
             if (!inCone(c.x, c.y) || !_carDef) return;
             const colors = resolvePalette(_carDef as any, c.colorVariant);
-            _addObjectDef(_carDef, { x: c.x, y: c.y, z: c.gz, angle: c.angle, ...(colors ? { colors } : {}) }, camX, camY);
+            _drawVehicleShadow(c.x, c.y, c.angle, _carDef);
+            _addObjectDef(_carDef, { x: c.x, y: c.y, z: c.gz, angle: c.angle, ...(colors ? { colors } : {}) }, c);
         });
     };
 
-    const _drawXmasObjects = (inCone: (x: number, y: number) => boolean, camX: number, camY: number) => {
+    const _drawXmasObjects = (inCone: (x: number, y: number) => boolean) => {
         G.XMAS_HOUSES.forEach((h: any) => {
             if (!inCone(h.x, h.y)) return;
             const _def = getObjectDef(h.type) ?? getObjectDef(VESSEL.XMAS_HOUSE_A);
             if (!_def) return;
             const colors = resolvePalette(_def as any, h.colorVariant);
-            _addObjectDef(_def, { x: h.x, y: h.y, z: h.gz, angle: h.angle ?? 0, ...(colors ? { colors } : {}) }, camX, camY);
-            _drawDefLights(h.x, h.y, _def as any);
+            _addObjectDef(_def, { x: h.x, y: h.y, z: h.gz, angle: h.angle ?? 0, ...(colors ? { colors } : {}) }, h);
+            _drawDefLights(h.x, h.y, _def as any, h);
         });
         const _lanternDef = getObjectDef(VESSEL.XMAS_LANTERN);
         G.XMAS_LANTERNS.forEach((l: any) => {
             if (!inCone(l.x, l.y) || !_lanternDef) return;
-            _addObjectDef(_lanternDef, { x: l.x, y: l.y, z: l.gz, angle: l.angle ?? 0 }, camX, camY);
-            _drawDefLights(l.x, l.y, _lanternDef as any);
+            _addObjectDef(_lanternDef, { x: l.x, y: l.y, z: l.gz, angle: l.angle ?? 0 }, l);
+            _drawDefLights(l.x, l.y, _lanternDef as any, l);
         });
         const _sleighDef = getObjectDef(VESSEL.SLEIGH);
         G.SLEIGHS.forEach((s: any) => {
             if (!inCone(s.x, s.y) || !_sleighDef) return;
-            _addObjectDef(_sleighDef, { x: s.x, y: s.y, z: s.gz, angle: s.angle ?? 0 }, camX, camY);
+            _addObjectDef(_sleighDef, { x: s.x, y: s.y, z: s.gz, angle: s.angle ?? 0 }, s);
         });
         const _reindeerDef = getObjectDef(VESSEL.REINDEER);
         G.REINDEER_OBJECTS.forEach((r: any) => {
             if (!inCone(r.x, r.y) || !_reindeerDef) return;
-            _addObjectDef(_reindeerDef, { x: r.x, y: r.y, z: r.gz, angle: r.angle ?? 0 }, camX, camY);
+            _addObjectDef(_reindeerDef, { x: r.x, y: r.y, z: r.gz, angle: r.angle ?? 0 }, r);
         });
     };
 
@@ -270,8 +323,11 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
             if (!inCone(ring.x, ring.y)) return;
             const r = ring.radius;
             const cosA = Math.cos(ring.angle), sinA = Math.sin(ring.angle);
+            // The ring stands upright in the plane through its centre (normal = angle).
+            const rx = r * Math.abs(sinA), ry = r * Math.abs(cosA);
             SceneRenderer.add(null, {
-                x: 0, y: 0, depth: ring.x + ring.y,
+                x: ring.x, y: ring.y, z: ring.z, depth: ring.x + ring.y,
+                bounds: { x0: ring.x - rx, x1: ring.x + rx, y0: ring.y - ry, y1: ring.y + ry, z0: ring.z - r, z1: ring.z + r },
                 drawFn: (cx: number, cy: number) => {
                     const _rDist = Math.hypot(G.heli.x - ring.x, G.heli.y - ring.y, G.heli.z - ring.z);
                     const _rProx = ring.flown ? 0 : Math.max(0, 1 - _rDist / 12);
@@ -339,50 +395,14 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         });
     };
 
-    const _drawScenarioProps = (inCone: (x: number, y: number) => boolean, camX: number, camY: number) => {
+    const _drawScenarioProps = (inCone: (x: number, y: number) => boolean) => {
         G.SCENARIO_PROPS.forEach((p: any) => {
             if (!inCone(p.x, p.y)) return;
             const _def = getObjectDef(p.type);
             if (!_def) return;
-            _addObjectDef(_def, { x: p.x, y: p.y, z: p.gz, angle: p.angle ?? 0 }, camX, camY);
-            _drawDefLights(p.x, p.y, _def as any);
+            _addObjectDef(_def, { x: p.x, y: p.y, z: p.gz, angle: p.angle ?? 0 }, p);
+            _drawDefLights(p.x, p.y, _def as any, p);
         });
-    };
-
-    // Rotating guidance rings at every dropoff zone that currently accepts onboard/winched
-    // cargo — lets the player see exactly where on e.g. a wind turbine nacelle to deliver,
-    // instead of guessing at an invisible, often tiny rescueZone. Disappears once nothing is
-    // left to deliver (getActiveDeliveryMarkers mirrors the real delivery check 1:1).
-    const _drawDeliveryMarkers = (inCone: (x: number, y: number) => boolean) => {
-        const markers = getActiveDeliveryMarkers();
-        for (const m of markers) {
-            if (!inCone(m.x, m.y)) continue;
-            // Ellipse matching the zone's real half-extents (w along x, h along y) —
-            // NOT a uniform circle. Zones like the wind turbine nacelle (w:0.6, h:0.2)
-            // are far narrower in one axis; a circle there would show a much larger,
-            // more forgiving target than what _pointInZone() actually accepts.
-            const rx = Math.max(m.w, 0.15), ry = Math.max(m.h, 0.15);
-            SceneRenderer.add(null, {
-                x: 0, y: 0, depth: m.x + m.y,
-                drawFn: (cx: number, cy: number) => {
-                    const now = performance.now() / 1000;
-                    ctx.save();
-                    ctx.lineWidth = Math.max(2, 2.5 * tileW / 64);
-                    ctx.strokeStyle = '#33e0ff';
-                    ctx.globalAlpha = 0.6 + 0.25 * Math.sin(now * 3);
-                    ctx.setLineDash([tileW * 0.12, tileW * 0.1]);
-                    ctx.lineDashOffset = -now * tileW * 1.2;
-                    ctx.beginPath();
-                    for (let i = 0; i <= 24; i++) {
-                        const t = (i / 24) * Math.PI * 2;
-                        const p = isoFn(m.x + rx * Math.cos(t), m.y + ry * Math.sin(t), m.z, cx, cy);
-                        if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
-                    }
-                    ctx.stroke();
-                    ctx.restore();
-                },
-            });
-        }
     };
 
     return {
@@ -400,6 +420,5 @@ export const createStructuresDraw = (dwCtx: DrawWorldCtx) => {
         _drawXmasObjects,
         _drawRings,
         _drawScenarioProps,
-        _drawDeliveryMarkers,
     };
 };

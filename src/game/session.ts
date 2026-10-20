@@ -113,6 +113,11 @@ export const getCampaignsDone = (s: PlayerSession): number =>
     Object.values(s.campaignProgress).filter(cp => cp.completed).length;
 
 
+// TEMP for testing Zephyr / X-Mas / Demo (scripts) — REMOVE BEFORE RELEASE: campaigns (by .zcampaign
+// file key) whose campaign and missions skip every unlock/paywall check in the
+// campaign- and mission-select screens.
+export const TEST_UNLOCKED_CAMPAIGN_KEYS: ReadonlySet<string> = new Set(['zephyr', 'xmas', 'demo']);
+
 export const isCampaignUnlocked = (
     s: PlayerSession,
     campaigns: ReadonlyArray<{ type: string }>,
@@ -134,15 +139,9 @@ export const isCampaignUnlocked = (
 
     const tutorialIndex = campaigns.findIndex(c => c.type === CAMPAIGN_TYPE.TUTORIAL);
     const tutorialDone = tutorialIndex === -1 || !!s.campaignProgress[String(tutorialIndex)]?.missions[0]?.completed;
-    if (!tutorialDone) return false;
-
-    const regular = campaigns
-        .map((c, i) => ({ type: c.type, i }))
-        .filter(c => c.type !== CAMPAIGN_TYPE.TUTORIAL && c.type !== CAMPAIGN_TYPE.FREE_FLIGHT);
-    const pos = regular.findIndex(c => c.i === index);
-    if (pos <= 0) return true;
-    const prev = regular[pos - 1];
-    return (s.highestUnlockedCampaignIndex ?? 0) > prev.i || !!s.campaignProgress[String(prev.i)]?.completed;
+    // Campaigns don't depend on each other: with the full version and the tutorial done,
+    // every campaign is playable right away.
+    return tutorialDone;
 };
 
 export const isCampaignPaywalled = (

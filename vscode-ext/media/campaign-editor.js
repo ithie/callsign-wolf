@@ -64,328 +64,11 @@
     dragStartMX: 0,
     dragStartMY: 0,
     dragOrigX: 0,
-    dragOrigY: 0
+    dragOrigY: 0,
+    // Letzter abgeschlossener Drag, für Cmd/Ctrl+Z (einstufiges Undo)
+    lastDrag: null
   };
   var getCurrentMission = () => state.campaign[state.curIdx];
-
-  // editor-view/events-editor.ts
-  var _notify = null;
-  var _formOpen = false;
-  var _formObjectIdx = null;
-  var _editIdx = null;
-  var initEventsEditor = (notify) => {
-    _notify = notify;
-    const panel = document.getElementById("ui_events");
-    if (!panel) return;
-    panel.addEventListener("click", _handleClick);
-    panel.addEventListener("change", (e) => {
-      const t = e.target;
-      if (t.id === "ev_trig_type") _renderTriggerFields();
-      if (t.classList.contains("ev-act-type")) _updateActionRow(t.closest(".ev-action-row"));
-    });
-  };
-  var _handleClick = (e) => {
-    const btn = e.target.closest("[data-ev]");
-    if (!btn) return;
-    e.stopPropagation();
-    const m = getCurrentMission();
-    if (!m) return;
-    const action = btn.dataset["ev"];
-    if (action === "add") {
-      _formOpen = true;
-      _editIdx = null;
-      _formObjectIdx = state.selectedObjectIdx;
-      _renderForm();
-    } else if (action === "edit") {
-      const idx = parseInt(btn.dataset["evIdx"] ?? "-1");
-      const events = m.events ?? [];
-      if (idx < 0 || !events[idx]) return;
-      _formOpen = true;
-      _editIdx = idx;
-      _formObjectIdx = state.selectedObjectIdx;
-      _renderForm(events[idx]);
-    } else if (action === "delete") {
-      const idx = parseInt(btn.dataset["evIdx"] ?? "-1");
-      if (idx < 0) return;
-      const events = m.events ?? [];
-      events.splice(idx, 1);
-      m.events = events;
-      _notify?.();
-      renderEventsPanel(state.selectedObjectIdx);
-    } else if (action === "save") {
-      _saveForm();
-    } else if (action === "cancel") {
-      _formOpen = false;
-      _formObjectIdx = null;
-      _editIdx = null;
-      renderEventsPanel(state.selectedObjectIdx);
-    } else if (action === "add-action") {
-      _appendActionRow(state.selectedObjectIdx ?? 0);
-    } else if (action === "remove-action") {
-      btn.closest(".ev-action-row")?.remove();
-    }
-  };
-  var _TRIG_TYPES = [
-    ["objectReaches", "Objekt erreicht Ziel"],
-    ["objectDestroyed", "Objekt zerst\xF6rt"],
-    ["heliNear", "Heli in der N\xE4he"],
-    ["time", "Zeitverz\xF6gerung"],
-    ["rescued", "Gerettete Personen"]
-  ];
-  var _ACT_TYPES = [
-    ["destroy", "Zerst\xF6ren"],
-    ["setOnFire", "In Brand setzen"],
-    ["setOnSmoke", "Rauch erzeugen"],
-    ["startMoving", "Bewegung starten"],
-    ["stopMoving", "Bewegung stoppen"],
-    ["killAttachedPayloads", "Payloads t\xF6ten"],
-    ["failMission", "Mission \xD7"],
-    ["showMessage", "Nachricht anzeigen"],
-    ["setWindStr", "Wind setzen"]
-  ];
-  var _trigOpts = (sel) => _TRIG_TYPES.map(([v, l]) => `<option value="${v}"${v === sel ? " selected" : ""}>${l}</option>`).join("");
-  var _actOpts = (sel) => _ACT_TYPES.map(([v, l]) => `<option value="${v}"${v === sel ? " selected" : ""}>${l}</option>`).join("");
-  var _trigLabel = (t) => {
-    switch (t.type) {
-      case "time":
-        return `\u23F1 Nach ${t.seconds}s`;
-      case "rescued":
-        return `\u{1F3C1} Gerettet: ${t.count}`;
-      case "objectReaches":
-        return `[${t.objectIdx}] \u2192 [${t.nearObjectIdx}] \u2264${t.distance}`;
-      case "objectDestroyed":
-        return `[${t.objectIdx}] zerst\xF6rt`;
-      case "heliNear":
-        return `Heli \u2264${t.distance} von [${t.objectIdx}]`;
-    }
-  };
-  var _actLabel = (a) => {
-    switch (a.type) {
-      case "setOnFire":
-        return `Feuer [${a.objectIdx}]`;
-      case "setOnSmoke":
-        return `Rauch [${a.objectIdx}]`;
-      case "destroy":
-        return `Zerst\xF6ren [${a.objectIdx}]`;
-      case "startMoving":
-        return `Start [${a.objectIdx}]`;
-      case "stopMoving":
-        return `Stop [${a.objectIdx}]`;
-      case "killAttachedPayloads":
-        return `Kill [${a.objectIdx}]`;
-      case "failMission":
-        return a.objectIdx !== void 0 ? `Mission \xD7 [${a.objectIdx}]` : "Mission \xD7";
-      case "showMessage":
-        return "\u{1F4AC} Nachricht";
-      case "setWindStr":
-        return `Wind ${a.value}`;
-    }
-  };
-  var _touchesObj = (ev, idx) => {
-    const t = ev.trigger;
-    if (t.objectIdx === idx || t.nearObjectIdx === idx) return true;
-    return ev.actions.some((a) => a.objectIdx === idx);
-  };
-  var renderEventsPanel = (objectIdx) => {
-    const el = document.getElementById("ui_events");
-    if (!el) return;
-    if (_formOpen && _formObjectIdx === objectIdx) return;
-    if (_formOpen) {
-      _formOpen = false;
-      _formObjectIdx = null;
-      _editIdx = null;
-    }
-    const m = getCurrentMission();
-    const allEvents = m?.events ?? [];
-    const relevant = allEvents.map((ev, i) => ({ ev, i })).filter(({ ev }) => objectIdx === null || _touchesObj(ev, objectIdx));
-    const S = 'style="';
-    let html = `<div ${S}font-size:10px;font-weight:700;color:var(--accent);letter-spacing:0.06em;margin-bottom:5px">EVENTS</div>`;
-    for (const { ev, i } of relevant) {
-      const acts = ev.actions.map(_actLabel).join("  \xB7  ");
-      html += `<div ${S}margin:3px 0;background:#111;border:1px solid #1e1e1e;padding:4px 6px;border-radius:3px"><div ${S}display:flex;justify-content:space-between;align-items:flex-start;gap:3px"><div ${S}flex:1;min-width:0"><div ${S}font-size:10px;color:#4af;margin-bottom:2px">${_trigLabel(ev.trigger)}</div><div ${S}font-size:9px;color:#fa8;line-height:1.4">${acts}</div></div><div ${S}display:flex;gap:2px;flex-shrink:0;margin-left:4px"><button data-ev="edit" data-ev-idx="${i}" ${S}background:#223;border:1px solid #335;color:#88f;cursor:pointer;padding:1px 5px;font-size:10px;border-radius:2px">\u270F</button><button data-ev="delete" data-ev-idx="${i}" ${S}background:#400;border:1px solid #622;color:#f88;cursor:pointer;padding:1px 5px;font-size:10px;border-radius:2px">\u2715</button></div></div></div>`;
-    }
-    if (relevant.length === 0) {
-      html += `<div ${S}color:#444;font-size:10px;margin:4px 0;text-align:center">\u2014</div>`;
-    }
-    html += `<button data-ev="add" ${S}width:100%;margin-top:5px;background:var(--accent);border:none;color:#000;cursor:pointer;padding:4px;font-size:11px;font-weight:700;border-radius:2px">\uFF0B Event</button>`;
-    el.innerHTML = html;
-  };
-  var _objRef = () => {
-    const objs = getCurrentMission()?.objects;
-    if (!objs?.length) return "";
-    const MAX = 14;
-    const items = objs.slice(0, MAX).map(
-      (o, i) => `<span style="color:#555;white-space:nowrap">[${i}]<span style="color:#444">${o.type}</span></span>`
-    ).join(" ");
-    const more = objs.length > MAX ? `<span style="color:#333"> +${objs.length - MAX}</span>` : "";
-    return `<div style="font-size:9px;background:#080808;border:1px solid #1a1a1a;padding:3px 6px;border-radius:3px;margin-bottom:6px;display:flex;flex-wrap:wrap;gap:3px;line-height:1.6">${items}${more}</div>`;
-  };
-  var _SI = "font-size:10px;background:#0a0a0a;border:1px solid #2a2a2a;color:#ccc;padding:2px 4px;border-radius:2px";
-  var _ST = `${_SI};width:108px`;
-  var _numInp = (id, val, w = 42) => `<input type="number" id="${id}" value="${val}" style="width:${w}px;${_SI}">`;
-  var _frow = (label, content) => `<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><span style="font-size:9px;color:#666;min-width:108px;text-align:right">${label}</span>${content}</div>`;
-  var _triggerFieldsHTML = (trigType, defOidx, t) => {
-    const tv = t;
-    switch (trigType) {
-      case "time":
-        return _frow("Sekunden:", _numInp("ev_t_seconds", tv?.seconds ?? 5));
-      case "rescued":
-        return _frow("Anzahl:", _numInp("ev_t_count", tv?.count ?? 1));
-      case "objectReaches":
-        return [
-          _frow("Quell-Objekt Nr:", _numInp("ev_t_oidx", tv?.objectIdx ?? defOidx)),
-          _frow("Ziel-Objekt Nr:", _numInp("ev_t_nidx", tv?.nearObjectIdx ?? defOidx)),
-          _frow("Max. Distanz:", _numInp("ev_t_dist", tv?.distance ?? 8) + `<span style="font-size:9px;color:#555;margin-left:3px">Tiles</span>`)
-        ].join("");
-      case "objectDestroyed":
-        return _frow("Objekt Nr:", _numInp("ev_t_oidx", tv?.objectIdx ?? defOidx));
-      case "heliNear":
-        return [
-          _frow("Objekt Nr:", _numInp("ev_t_oidx", tv?.objectIdx ?? defOidx)),
-          _frow("Max. Distanz:", _numInp("ev_t_dist", tv?.distance ?? 10) + `<span style="font-size:9px;color:#555;margin-left:3px">Tiles</span>`)
-        ].join("");
-      default:
-        return "";
-    }
-  };
-  var _ACT_WITH_OBJ = ["destroy", "setOnFire", "setOnSmoke", "startMoving", "stopMoving", "killAttachedPayloads", "failMission"];
-  var _actionRowHTML = (defOidx, existing) => {
-    const type = existing?.type ?? "destroy";
-    const ev = existing;
-    const oidx = ev?.objectIdx ?? defOidx;
-    const val = ev?.value ?? 1;
-    const textDe = typeof ev?.text === "string" ? ev.text : ev?.text?.de ?? "";
-    const textEn = typeof ev?.text === "object" ? ev.text?.en ?? "" : "";
-    const textFr = typeof ev?.text === "object" ? ev.text?.fr ?? "" : "";
-    const textEs = typeof ev?.text === "object" ? ev.text?.es ?? "" : "";
-    const textPt = typeof ev?.text === "object" ? ev.text?.pt ?? "" : "";
-    const showOidx = _ACT_WITH_OBJ.includes(type);
-    const showVal = type === "setWindStr";
-    const showMsg = type === "showMessage";
-    return `<div class="ev-action-row" style="display:flex;align-items:flex-start;gap:3px;margin:2px 0;background:#0c0c0c;padding:3px 4px;border-radius:3px;border:1px solid #1a1a1a"><select class="ev-act-type" style="flex:1;min-width:0;${_SI}">${_actOpts(type)}</select><input class="ev-act-oidx" type="number" value="${oidx}" style="width:36px;${_SI};${showOidx ? "" : "display:none"}"><input class="ev-act-val" type="number" value="${val}" step="0.1" style="width:36px;${_SI};${showVal ? "" : "display:none"}"><span class="ev-act-msg" style="${showMsg ? "display:flex" : "display:none"};flex-direction:column;gap:2px"><input class="ev-act-text-de" type="text" placeholder="DE" value="${textDe}" style="${_ST}"><input class="ev-act-text-en" type="text" placeholder="EN" value="${textEn}" style="${_ST}"><input class="ev-act-text-fr" type="text" placeholder="FR" value="${textFr}" style="${_ST}"><input class="ev-act-text-es" type="text" placeholder="ES" value="${textEs}" style="${_ST}"><input class="ev-act-text-pt" type="text" placeholder="PT" value="${textPt}" style="${_ST}"></span><button data-ev="remove-action" style="background:#400;border:none;color:#f88;cursor:pointer;padding:1px 5px;font-size:10px;border-radius:2px;flex-shrink:0">\u2715</button></div>`;
-  };
-  var _renderForm = (existing) => {
-    const el = document.getElementById("ui_events");
-    if (!el) return;
-    const defOidx = state.selectedObjectIdx ?? 0;
-    const t = existing?.trigger;
-    const trigType = t?.type ?? "objectReaches";
-    const isEdit = _editIdx !== null;
-    const _sect = (title, right, content) => `<div style="background:#0c0c0c;border:1px solid #1e1e1e;border-radius:4px;padding:5px 6px;margin-bottom:5px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><span style="font-size:9px;font-weight:700;letter-spacing:0.08em;color:#555">${title}</span>${right}</div>${content}</div>`;
-    el.innerHTML = `<div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:0.06em;margin-bottom:5px">${isEdit ? "\u270F EVENT BEARBEITEN" : "\u26A1 NEUES EVENT"}</div>` + _objRef() + _sect(
-      "AUSL\xD6SER",
-      "",
-      `<select id="ev_trig_type" style="width:100%;${_SI};margin-bottom:5px">${_trigOpts(trigType)}</select><div id="ev_trig_fields">${_triggerFieldsHTML(trigType, defOidx, t)}</div>`
-    ) + _sect(
-      "AKTIONEN",
-      `<button data-ev="add-action" style="background:#1e1e1e;border:1px solid #2a2a2a;color:#999;cursor:pointer;padding:1px 7px;font-size:10px;border-radius:2px">\uFF0B</button>`,
-      `<div id="ev_action_list">${(existing?.actions?.length ? existing.actions : [void 0]).map((a) => _actionRowHTML(defOidx, a)).join("")}</div>`
-    ) + `<div style="display:flex;gap:4px"><button data-ev="save" style="flex:1;background:var(--accent);border:none;color:#000;cursor:pointer;padding:4px;font-size:11px;font-weight:700;border-radius:2px">\u2713 Speichern</button><button data-ev="cancel" style="background:#1e1e1e;border:1px solid #2a2a2a;color:#999;cursor:pointer;padding:4px 10px;font-size:11px;border-radius:2px">\u2715</button></div>`;
-  };
-  var _renderTriggerFields = () => {
-    const sel = document.getElementById("ev_trig_type");
-    const div = document.getElementById("ev_trig_fields");
-    if (!sel || !div) return;
-    div.innerHTML = _triggerFieldsHTML(sel.value, state.selectedObjectIdx ?? 0);
-  };
-  var _updateActionRow = (row) => {
-    if (!row) return;
-    const type = row.querySelector(".ev-act-type")?.value;
-    const oidx = row.querySelector(".ev-act-oidx");
-    const val = row.querySelector(".ev-act-val");
-    const msg = row.querySelector(".ev-act-msg");
-    if (oidx) oidx.style.display = _ACT_WITH_OBJ.includes(type) ? "" : "none";
-    if (val) val.style.display = type === "setWindStr" ? "" : "none";
-    if (msg) msg.style.display = type === "showMessage" ? "flex" : "none";
-  };
-  var _appendActionRow = (defOidx) => {
-    const list = document.getElementById("ev_action_list");
-    if (!list) return;
-    const tmp = document.createElement("div");
-    tmp.innerHTML = _actionRowHTML(defOidx);
-    while (tmp.firstChild) list.appendChild(tmp.firstChild);
-  };
-  var _saveForm = () => {
-    const m = getCurrentMission();
-    if (!m) return;
-    const trigType = document.getElementById("ev_trig_type")?.value ?? "";
-    const int = (id) => parseInt(document.getElementById(id)?.value ?? "0") || 0;
-    const num = (id) => parseFloat(document.getElementById(id)?.value ?? "0") || 0;
-    let trigger;
-    switch (trigType) {
-      case "time":
-        trigger = { type: "time", seconds: num("ev_t_seconds") };
-        break;
-      case "rescued":
-        trigger = { type: "rescued", count: int("ev_t_count") };
-        break;
-      case "objectReaches":
-        trigger = { type: "objectReaches", objectIdx: int("ev_t_oidx"), nearObjectIdx: int("ev_t_nidx"), distance: num("ev_t_dist") };
-        break;
-      case "objectDestroyed":
-        trigger = { type: "objectDestroyed", objectIdx: int("ev_t_oidx") };
-        break;
-      case "heliNear":
-        trigger = { type: "heliNear", objectIdx: int("ev_t_oidx"), distance: num("ev_t_dist") };
-        break;
-      default:
-        return;
-    }
-    const actions = [];
-    document.querySelectorAll("#ev_action_list .ev-action-row").forEach((row) => {
-      const type = row.querySelector(".ev-act-type")?.value ?? "";
-      const oidx = parseInt(row.querySelector(".ev-act-oidx")?.value ?? "0") || 0;
-      const val = parseFloat(row.querySelector(".ev-act-val")?.value ?? "0") || 0;
-      const de = row.querySelector(".ev-act-text-de")?.value.trim() ?? "";
-      const en = row.querySelector(".ev-act-text-en")?.value.trim() ?? "";
-      const fr = row.querySelector(".ev-act-text-fr")?.value.trim() ?? "";
-      const es = row.querySelector(".ev-act-text-es")?.value.trim() ?? "";
-      const pt = row.querySelector(".ev-act-text-pt")?.value.trim() ?? "";
-      switch (type) {
-        case "setOnFire":
-        case "setOnSmoke":
-        case "destroy":
-        case "startMoving":
-        case "stopMoving":
-        case "killAttachedPayloads":
-          actions.push({ type, objectIdx: oidx });
-          break;
-        case "failMission":
-          actions.push(oidx >= 0 ? { type: "failMission", objectIdx: oidx } : { type: "failMission" });
-          break;
-        case "setWindStr":
-          actions.push({ type: "setWindStr", value: val });
-          break;
-        case "showMessage": {
-          if (!en && !fr && !es && !pt) {
-            actions.push({ type: "showMessage", text: de });
-            break;
-          }
-          const text = { de };
-          if (en) text.en = en;
-          if (fr) text.fr = fr;
-          if (es) text.es = es;
-          if (pt) text.pt = pt;
-          actions.push({ type: "showMessage", text });
-          break;
-        }
-      }
-    });
-    if (actions.length === 0) return;
-    const events = m.events ?? [];
-    const newEvent = { trigger, actions };
-    if (_editIdx !== null && _editIdx < events.length) {
-      events[_editIdx] = newEvent;
-    } else {
-      events.push(newEvent);
-    }
-    m.events = events;
-    _formOpen = false;
-    _formObjectIdx = null;
-    _editIdx = null;
-    _notify?.();
-    renderEventsPanel(state.selectedObjectIdx);
-  };
 
   // ../src/shared/constants.ts
   var COLORS = {
@@ -414,7 +97,7 @@
   };
 
   // ../src/game/scene-renderer.ts
-  var _POOL_SIZE = 512;
+  var _POOL_SIZE = 2048;
   var _makeInst = () => ({
     def: null,
     x: 0,
@@ -423,9 +106,89 @@
     angle: 0,
     colors: void 0,
     depth: 0,
-    drawFn: null
+    drawFn: null,
+    group: 0,
+    box: { x0: 0, x1: 0, y0: 0, y1: 0, z0: 0, z1: 0 },
+    sx0: 0,
+    sx1: 0,
+    sy0: 0,
+    sy1: 0
   });
+  var _EPS = 1e-4;
+  var _CELL = 96;
+  var _behind = (a, b) => a.x1 <= b.x0 + _EPS || a.y1 <= b.y0 + _EPS || a.z1 <= b.z0 + _EPS;
+  var sortByBoxes = (boxes, rects, keys, groups) => {
+    const n = boxes.length;
+    const base = Array.from({ length: n }, (_, i) => i).sort((a, b) => keys[a] - keys[b] || a - b);
+    const rank = new Array(n);
+    base.forEach((idx, r) => {
+      rank[idx] = r;
+    });
+    const preds = Array.from({ length: n }, () => []);
+    const cells = /* @__PURE__ */ new Map();
+    const cellKey = (cx, cy) => cx * 73856093 ^ cy * 19349663;
+    for (let i = 0; i < n; i++) {
+      const r = rects[i];
+      const cx0 = Math.floor(r.sx0 / _CELL), cx1 = Math.floor(r.sx1 / _CELL);
+      const cy0 = Math.floor(r.sy0 / _CELL), cy1 = Math.floor(r.sy1 / _CELL);
+      for (let cx = cx0; cx <= cx1; cx++) {
+        for (let cy = cy0; cy <= cy1; cy++) {
+          const k = cellKey(cx, cy);
+          const list = cells.get(k);
+          if (list) list.push(i);
+          else cells.set(k, [i]);
+        }
+      }
+    }
+    for (const [, list] of cells) {
+      for (let a = 0; a < list.length; a++) {
+        const i = list[a], ri = rects[i];
+        for (let b = a + 1; b < list.length; b++) {
+          const j = list[b], rj = rects[j];
+          if (ri.sx1 <= rj.sx0 || rj.sx1 <= ri.sx0 || ri.sy1 <= rj.sy0 || rj.sy1 <= ri.sy0) continue;
+          const ox = Math.max(ri.sx0, rj.sx0), oy = Math.max(ri.sy0, rj.sy0);
+          const home = cellKey(Math.floor(ox / _CELL), Math.floor(oy / _CELL));
+          if (cells.get(home) !== list) continue;
+          if (groups[i] !== 0 && groups[i] === groups[j]) continue;
+          const ib = _behind(boxes[i], boxes[j]);
+          const jb = _behind(boxes[j], boxes[i]);
+          if (ib && !jb) preds[j].push(i);
+          else if (jb && !ib) preds[i].push(j);
+        }
+      }
+    }
+    const order = [];
+    const mark = new Uint8Array(n);
+    const visit = (start) => {
+      const stack = [start];
+      const iter = [0];
+      mark[start] = 1;
+      while (stack.length) {
+        const top = stack[stack.length - 1];
+        const p = preds[top];
+        if (iter[iter.length - 1] === 0 && p.length > 1) p.sort((a, b) => rank[a] - rank[b]);
+        const k = iter[iter.length - 1];
+        if (k < p.length) {
+          iter[iter.length - 1] = k + 1;
+          const nxt = p[k];
+          if (mark[nxt] === 0) {
+            mark[nxt] = 1;
+            stack.push(nxt);
+            iter.push(0);
+          }
+          continue;
+        }
+        mark[top] = 2;
+        order.push(top);
+        stack.pop();
+        iter.pop();
+      }
+    };
+    for (const idx of base) if (mark[idx] === 0) visit(idx);
+    return order;
+  };
   var _scratchPts = Array.from({ length: 64 }, () => ({ x: 0, y: 0 }));
+  var _scratchIso = { x: 0, y: 0 };
   var createSceneRenderer = (ctx, iso2) => {
     const _instances = [];
     const _pool = Array.from({ length: _POOL_SIZE }, _makeInst);
@@ -477,11 +240,112 @@
       ctx.setLineDash([]);
       ctx.restore();
     };
+    const _defBox = (inst, out) => {
+      const def = inst.def;
+      const pivot = def.pivot ?? [0, 0, 0];
+      const cosA = Math.cos(inst.angle), sinA = Math.sin(inst.angle);
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const face of def.faces) {
+        for (const v of face.verts) {
+          const dx = v[0] - pivot[0], dy = v[1] - pivot[1];
+          const wx = dx * cosA - dy * sinA + inst.x;
+          const wy = dx * sinA + dy * cosA + inst.y;
+          const wz = v[2] - pivot[2] + inst.z;
+          if (wx < x0) x0 = wx;
+          if (wx > x1) x1 = wx;
+          if (wy < y0) y0 = wy;
+          if (wy > y1) y1 = wy;
+          if (wz < z0) z0 = wz;
+          if (wz > z1) z1 = wz;
+        }
+      }
+      if (x0 === Infinity) {
+        x0 = x1 = inst.x;
+        y0 = y1 = inst.y;
+        z0 = z1 = inst.z;
+      }
+      out.x0 = x0;
+      out.x1 = x1;
+      out.y0 = y0;
+      out.y1 = y1;
+      out.z0 = z0;
+      out.z1 = z1;
+    };
+    const _screenRect = (inst, camX, camY) => {
+      const b = inst.box;
+      let sx0 = Infinity, sx1 = -Infinity, sy0 = Infinity, sy1 = -Infinity;
+      for (let c = 0; c < 8; c++) {
+        const p = iso2(c & 1 ? b.x1 : b.x0, c & 2 ? b.y1 : b.y0, c & 4 ? b.z1 : b.z0, camX, camY, _scratchIso);
+        if (p.x < sx0) sx0 = p.x;
+        if (p.x > sx1) sx1 = p.x;
+        if (p.y < sy0) sy0 = p.y;
+        if (p.y > sy1) sy1 = p.y;
+      }
+      inst.sx0 = sx0 - 2;
+      inst.sx1 = sx1 + 2;
+      inst.sy0 = sy0 - 2;
+      inst.sy1 = sy1 + 2;
+    };
+    const _drawInstance = (inst, camX, camY) => {
+      if (inst.def) {
+        const def = inst.def;
+        const pivot = def.pivot ?? [0, 0, 0];
+        const cosA = Math.cos(inst.angle), sinA = Math.sin(inst.angle);
+        const p0 = pivot[0], p1 = pivot[1], p2 = pivot[2];
+        for (const face of def.faces) {
+          if (face.normal) {
+            const [nx, ny] = face.normal;
+            if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;
+          } else if (face.normal3d) {
+            const [nx, ny, nz] = face.normal3d;
+            if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) + nz <= 0) continue;
+          }
+          const verts = face.verts;
+          for (let i = 0; i < verts.length; i++) {
+            const lx = verts[i][0], ly = verts[i][1], lz = verts[i][2];
+            const dx = lx - p0, dy = ly - p1;
+            iso2(
+              dx * cosA - dy * sinA + inst.x,
+              dx * sinA + dy * cosA + inst.y,
+              lz - p2 + inst.z,
+              camX,
+              camY,
+              _scratchPts[i]
+            );
+          }
+          let _fcx = 0, _fcy = 0;
+          const _fn = verts.length;
+          for (let i = 0; i < _fn; i++) {
+            _fcx += _scratchPts[i].x;
+            _fcy += _scratchPts[i].y;
+          }
+          _fcx /= _fn;
+          _fcy /= _fn;
+          ctx.beginPath();
+          for (let i = 0; i < _fn; i++) {
+            const _dx = _scratchPts[i].x - _fcx, _dy = _scratchPts[i].y - _fcy;
+            const _d = Math.hypot(_dx, _dy) || 1;
+            const _ex = _fcx + _dx * (1 + 0.5 / _d);
+            const _ey = _fcy + _dy * (1 + 0.5 / _d);
+            i === 0 ? ctx.moveTo(_ex, _ey) : ctx.lineTo(_ex, _ey);
+          }
+          ctx.closePath();
+          ctx.fillStyle = (inst.colors && inst.colors[face.id]) ?? face.color;
+          ctx.fill();
+          if (face.stroke) {
+            ctx.strokeStyle = face.stroke;
+            ctx.lineWidth = face.strokeWidth ?? 1;
+            ctx.stroke();
+          }
+        }
+      }
+      if (inst.drawFn) inst.drawFn(camX, camY);
+    };
     const renderer = {
       drawCollisionBox(camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color) {
         _drawCollisionBox(camX, camY, wX, wY, angle, xMin, xMax, yMin, yMax, zMin, zMax, color);
       },
-      add(def, { x, y, z = 0, angle = 0, colors, drawFn, depth: depthOverride } = {}) {
+      add(def, { x, y, z = 0, angle = 0, colors, drawFn, depth: depthOverride, bounds, group } = {}) {
         const inst = _poolNext < _POOL_SIZE ? _pool[_poolNext++] : _makeInst();
         inst.def = def;
         inst.x = x;
@@ -491,70 +355,32 @@
         inst.colors = colors;
         inst.depth = depthOverride ?? x + y;
         inst.drawFn = drawFn ?? null;
+        inst.group = group ?? 0;
+        if (bounds) Object.assign(inst.box, bounds);
+        else if (def) _defBox(inst, inst.box);
+        else Object.assign(inst.box, { x0: x, x1: x, y0: y, y1: y, z0: z, z1: z });
         _instances.push(inst);
       },
       flush(camX, camY) {
-        _instances.sort((a, b) => a.depth - b.depth);
-        for (const inst of _instances) {
-          if (inst.def) {
-            const def = inst.def;
-            const pivot = def.pivot ?? [0, 0, 0];
-            const cosA = Math.cos(inst.angle), sinA = Math.sin(inst.angle);
-            const p0 = pivot[0], p1 = pivot[1], p2 = pivot[2];
-            for (const face of def.faces) {
-              if (face.normal) {
-                const [nx, ny] = face.normal;
-                if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) <= 0) continue;
-              } else if (face.normal3d) {
-                const [nx, ny, nz] = face.normal3d;
-                if (nx * cosA - ny * sinA + (nx * sinA + ny * cosA) + nz <= 0) continue;
-              }
-              const verts = face.verts;
-              for (let i = 0; i < verts.length; i++) {
-                const lx = verts[i][0], ly = verts[i][1], lz = verts[i][2];
-                const dx = lx - p0, dy = ly - p1;
-                iso2(
-                  dx * cosA - dy * sinA + inst.x,
-                  dx * sinA + dy * cosA + inst.y,
-                  lz - p2 + inst.z,
-                  camX,
-                  camY,
-                  _scratchPts[i]
-                );
-              }
-              let _fcx = 0, _fcy = 0;
-              const _fn = verts.length;
-              for (let i = 0; i < _fn; i++) {
-                _fcx += _scratchPts[i].x;
-                _fcy += _scratchPts[i].y;
-              }
-              _fcx /= _fn;
-              _fcy /= _fn;
-              ctx.beginPath();
-              for (let i = 0; i < _fn; i++) {
-                const _dx = _scratchPts[i].x - _fcx, _dy = _scratchPts[i].y - _fcy;
-                const _d = Math.hypot(_dx, _dy) || 1;
-                const _ex = _fcx + _dx * (1 + 0.5 / _d);
-                const _ey = _fcy + _dy * (1 + 0.5 / _d);
-                i === 0 ? ctx.moveTo(_ex, _ey) : ctx.lineTo(_ex, _ey);
-              }
-              ctx.closePath();
-              ctx.fillStyle = (inst.colors && inst.colors[face.id]) ?? face.color;
-              ctx.fill();
-              if (face.stroke) {
-                ctx.strokeStyle = face.stroke;
-                ctx.lineWidth = face.strokeWidth ?? 1;
-                ctx.stroke();
-              }
-            }
-          }
-          if (inst.drawFn) inst.drawFn(camX, camY);
-        }
+        const n = _instances.length;
+        for (const inst of _instances) _screenRect(inst, camX, camY);
+        const order = sortByBoxes(
+          _instances.map((i) => i.box),
+          _instances,
+          _instances.map((i) => i.depth),
+          _instances.map((i) => i.group)
+        );
+        for (let k = 0; k < n; k++) _drawInstance(_instances[order[k]], camX, camY);
         _instances.length = 0;
         _poolNext = 0;
       }
     };
     return renderer;
+  };
+  var _nextGroup = 1;
+  var newRenderGroup = () => {
+    _nextGroup = _nextGroup >= 1073741823 ? 1 : _nextGroup + 1;
+    return _nextGroup;
   };
 
   // ../src/game/render.ts
@@ -587,62 +413,6 @@
         pz + dz * cos + (ax * dy - ay * dx) * sin + az * dot * t
       ];
     });
-  };
-  var _buildRotFnCache = (def, params) => {
-    const partMap = new Map(def.parts.map((p) => [p.id, p]));
-    const cache = /* @__PURE__ */ new Map();
-    const getRotFn = (partId) => {
-      if (cache.has(partId)) return cache.get(partId);
-      const part = partMap.get(partId);
-      if (!part) {
-        const identity = (v) => v;
-        cache.set(partId, identity);
-        return identity;
-      }
-      let fn;
-      if (part.parent) {
-        const parentFn = getRotFn(part.parent);
-        if (part.rotate) {
-          const angle = params[part.rotate.param] ?? 0;
-          const tPivot = parentFn([part.rotate.pivot])[0];
-          const { axis } = part.rotate;
-          fn = (verts) => _rotateVerts(parentFn(verts), tPivot, axis, angle);
-        } else {
-          fn = parentFn;
-        }
-      } else if (part.rotate) {
-        const angle = params[part.rotate.param] ?? 0;
-        const { pivot, axis } = part.rotate;
-        fn = (verts) => _rotateVerts(verts, pivot, axis, angle);
-      } else {
-        fn = (verts) => verts;
-      }
-      cache.set(partId, fn);
-      return fn;
-    };
-    return getRotFn;
-  };
-  var applyParts = (def, params, opts) => {
-    const extraFaces = [];
-    if (def.parts?.length) {
-      const getRotFn = _buildRotFnCache(def, params);
-      for (const part of def.parts) {
-        if (opts?.only && !opts.only.includes(part.id)) continue;
-        const rotFn = getRotFn(part.id);
-        for (const face of part.faces) {
-          extraFaces.push({ ...face, verts: rotFn(face.verts) });
-        }
-      }
-    }
-    if (def.rotateNodes?.length) {
-      for (const node of def.rotateNodes) {
-        const angle = params[node.param] ?? 0;
-        for (const face of node.faces) {
-          extraFaces.push({ ...face, verts: _rotateVerts(face.verts, node.pivot, node.axis, angle) });
-        }
-      }
-    }
-    return { ...def, faces: [...def.faces, ...extraFaces] };
   };
   var _id2 = (v) => v;
   var _LIGHT = [-0.267, 0.535, 0.802];
@@ -693,14 +463,78 @@
     const tPivot = parentFn([r.pivot])[0];
     return (verts) => _rotateVerts(parentFn(verts), tPivot, r.axis, angle);
   };
-  var _collectNode = (node, params, parentFn, outFaces, outSpecial, autoNormal = false) => {
-    const rotFn = node.rotate ? _makeRotFn2(node, params, parentFn) : parentFn;
+  var COLLAPSE_PARAM = "__collapse";
+  var COLLAPSE_DIR_PARAM = "__collapseDir";
+  var COLLAPSE_WIND_PARAM = "__collapseWind";
+  var COLLAPSE_BURST_PARAM = "__collapseBurst";
+  var COLLAPSE_DROP = 0.92;
+  var collapseEase = (t) => t * t * (3 - 2 * t);
+  var _hash01 = (i) => {
+    const s = Math.sin(i * 12.9898 + 78.233) * 43758.5453;
+    return s - Math.floor(s);
+  };
+  var _makeCollapseFn = (verts, c, idx) => {
+    const { e, windDir, wind } = c;
+    let cx = 0, cy = 0, minZ = Infinity;
+    for (const v of verts) {
+      cx += v[0];
+      cy += v[1];
+      if (v[2] < minZ) minZ = v[2];
+    }
+    cx /= verts.length;
+    cy /= verts.length;
+    const dir = wind > 0 ? windDir + (_hash01(idx) - 0.5) * Math.PI * 2 * (1 - 0.8 * wind) : _hash01(idx) * Math.PI * 2;
+    const tilt = e * (0.2 + 0.35 * _hash01(idx + 17));
+    const axis = [-Math.sin(dir), Math.cos(dir), 0];
+    const pivot = [cx, cy, minZ];
+    const squash = 1 - COLLAPSE_DROP * e;
+    const spread = 1 + 0.15 * e;
+    return (vs) => _rotateVerts(vs, pivot, axis, tilt).map(([x, y, z]) => [x * spread, y * spread, z * squash]);
+  };
+  var _makeBurstFn = (verts, c, idx) => {
+    const { t, e } = c;
+    let cx = 0, cy = 0, cz = 0;
+    for (const v of verts) {
+      cx += v[0];
+      cy += v[1];
+      cz += v[2];
+    }
+    cx /= verts.length;
+    cy /= verts.length;
+    cz /= verts.length;
+    const out = 1 - Math.pow(1 - t, 3);
+    const len = Math.hypot(cx, cy);
+    const dirA = len > 0.05 ? Math.atan2(cy, cx) + (_hash01(idx) - 0.5) * 0.8 : _hash01(idx) * Math.PI * 2;
+    const dist = out * (1 + 2 * _hash01(idx + 3));
+    const dx = Math.cos(dirA) * dist, dy = Math.sin(dirA) * dist;
+    const hop = Math.sin(Math.PI * t) * (0.6 + 1.2 * _hash01(idx + 5));
+    const spinA = _hash01(idx + 7) * Math.PI * 2;
+    const axis = [Math.cos(spinA), Math.sin(spinA), 0];
+    const spin = out * (0.8 + 2 * _hash01(idx + 11));
+    const pivot = [cx, cy, cz];
+    const squash = 1 - COLLAPSE_DROP * e;
+    return (vs) => _rotateVerts(vs, pivot, axis, spin).map(([x, y, z]) => [x + dx, y + dy, z * squash + hop]);
+  };
+  var _collectNode = (node, params, parentFn, outFaces, outSpecial, autoNormal = false, collapse) => {
+    const nodeFn = node.rotate ? _makeRotFn2(node, params, parentFn) : parentFn;
+    let rotFn = nodeFn;
+    if (collapse && node.faces?.length) {
+      const own = node.faces.flatMap((f) => nodeFn(f.verts));
+      const cFn = _makeCollapseFn(own, collapse, collapse.idx++);
+      rotFn = (verts) => cFn(nodeFn(verts));
+    }
     for (const face of node.faces ?? []) {
       if (face.type === "line") {
         const [v0, v1] = rotFn([face.verts[0], face.verts[1]]);
         outSpecial.push({ kind: "line", v0, v1, face });
       } else {
-        const rotVerts = rotFn(face.verts);
+        let rotVerts;
+        if (collapse?.burst) {
+          const base = nodeFn(face.verts);
+          rotVerts = _makeBurstFn(base, collapse, collapse.idx++)(base);
+        } else {
+          rotVerts = rotFn(face.verts);
+        }
         const shade = face.shade ?? _autoShade(rotVerts);
         const color = _applyShade(face.color, shade);
         const normal = face.normal ? _rotNorm(face.normal, rotFn) : void 0;
@@ -719,51 +553,60 @@
       outSpecial.push({ kind: "light", lx: rl[0], ly: rl[1], lz: rl[2], light });
     }
     for (const child of node.children ?? []) {
-      _collectNode(child, params, rotFn, outFaces, outSpecial, autoNormal);
+      _collectNode(child, params, nodeFn, outFaces, outSpecial, autoNormal, collapse);
     }
   };
+  var _collapseState = (params) => {
+    const t = params[COLLAPSE_PARAM] ?? 0;
+    if (t <= 0) return void 0;
+    const wind = Math.max(0, Math.min(1, params[COLLAPSE_WIND_PARAM] ?? 0));
+    return {
+      t,
+      e: collapseEase(t),
+      idx: 0,
+      windDir: params[COLLAPSE_DIR_PARAM] ?? 0,
+      wind,
+      burst: (params[COLLAPSE_BURST_PARAM] ?? 0) > 0
+    };
+  };
   var _hasRotate = (node) => !!node.rotate || (node.children ?? []).some(_hasRotate);
-  var renderNodes = (def, params, instanceProps, renderer, camX, camY, drawCtx, onBeforeFlush) => {
+  var renderNodes = (def, params, instanceProps, renderer, drawCtx) => {
     const { x: ix, y: iy, z: iz = 0, angle: iAngle = 0 } = instanceProps;
     const cosA = Math.cos(iAngle), sinA = Math.sin(iAngle);
     const autoNormal = def.version === 3;
-    const crossNodeDepth = def.crossNodeDepth === true;
+    const collapse = _collapseState(params);
     for (const topNode of def.nodes) {
       const faces = [];
       const special = [];
-      _collectNode(topNode, params, _id2, faces, special, autoNormal);
-      let baseDepth;
+      _collectNode(topNode, params, _id2, faces, special, autoNormal, collapse);
+      let baseDepth = ix + iy;
       if (topNode.depthAnchor) {
         const [dx, dy, dz = 0] = topNode.depthAnchor;
         baseDepth = ix + dx * cosA - dy * sinA + (iy + dx * sinA + dy * cosA) + (iz + dz);
-        for (let fi = 0; fi < faces.length; fi++) {
-          renderer.add({ id: def.id, faces: [faces[fi]] }, { ...instanceProps, depth: baseDepth + fi * 1e-7 });
-        }
-      } else {
-        baseDepth = ix + iy;
-        if (_hasRotate(topNode)) {
-          const cApS = cosA + sinA, cAmS = cosA - sinA;
-          const allFaces = [];
-          faces.forEach((face, fi) => {
-            const verts = face.verts;
-            let lcx = 0, lcy = 0, lcz = 0;
-            for (const v of verts) {
-              lcx += v[0];
-              lcy += v[1];
-              lcz += v[2];
-            }
-            lcx /= verts.length;
-            lcy /= verts.length;
-            lcz /= verts.length;
-            allFaces.push({ face, key: lcx * cApS + lcy * cAmS + lcz + fi * 1e-9 });
-          });
-          allFaces.sort((a, b) => a.key - b.key);
-          for (let si = 0; si < allFaces.length; si++) {
-            renderer.add({ id: def.id, faces: [allFaces[si].face] }, { ...instanceProps, depth: baseDepth + si * 1e-7 });
+      }
+      if (collapse || _hasRotate(topNode)) {
+        const cApS = cosA + sinA, cAmS = cosA - sinA;
+        const allFaces = [];
+        faces.forEach((face, fi) => {
+          const verts = face.verts;
+          let lcx = 0, lcy = 0, lcz = 0;
+          for (const v of verts) {
+            lcx += v[0];
+            lcy += v[1];
+            lcz += v[2];
           }
-        } else {
-          renderer.add({ id: def.id, faces }, { ...instanceProps, depth: baseDepth });
+          lcx /= verts.length;
+          lcy /= verts.length;
+          lcz /= verts.length;
+          allFaces.push({ face, key: lcx * cApS + lcy * cAmS + lcz + fi * 1e-9 });
+        });
+        allFaces.sort((a, b) => a.key - b.key);
+        const group = newRenderGroup();
+        for (let si = 0; si < allFaces.length; si++) {
+          renderer.add({ id: def.id, faces: [allFaces[si].face] }, { ...instanceProps, depth: baseDepth + si * 1e-7, group });
         }
+      } else if (faces.length) {
+        renderer.add({ id: def.id, faces }, { ...instanceProps, depth: baseDepth });
       }
       if (drawCtx) {
         const { ctx, isoFn, tileW } = drawCtx;
@@ -796,6 +639,14 @@
               x: (wx0 + wx1) / 2,
               y: (wy0 + wy1) / 2,
               z: (wz0 + wz1) / 2,
+              bounds: {
+                x0: Math.min(wx0, wx1),
+                x1: Math.max(wx0, wx1),
+                y0: Math.min(wy0, wy1),
+                y1: Math.max(wy0, wy1),
+                z0: Math.min(wz0, wz1),
+                z1: Math.max(wz0, wz1)
+              },
               drawFn: (cx, cy) => {
                 const p0 = isoFn(wx0, wy0, wz0, cx, cy);
                 const p1 = isoFn(wx1, wy1, wz1, cx, cy);
@@ -811,18 +662,15 @@
           }
         }
       }
-      if (crossNodeDepth || !onBeforeFlush) continue;
-      onBeforeFlush(def.nodes.indexOf(topNode));
-      renderer.flush(camX, camY);
     }
-    if (crossNodeDepth || !onBeforeFlush) renderer.flush(camX, camY);
   };
   var applyNodes = (def, params) => {
     const faces = [];
     const discard = [];
     const autoNormal = def.version === 3;
+    const collapse = _collapseState(params);
     for (const node of def.nodes) {
-      _collectNode(node, params, _id2, faces, discard, autoNormal);
+      _collectNode(node, params, _id2, faces, discard, autoNormal, collapse);
     }
     return { ...def, faces };
   };
@@ -2300,7 +2148,6 @@
     label: "Fuel Truck",
     static: false,
     movementType: "auto",
-    crossNodeDepth: true,
     collisionBoxes: [
       {
         id: "body",
@@ -3919,22 +3766,24 @@
         }
       });
     };
-    const drawFuelTruck = (tX, tY, angle, camX, camY, opts = {}) => {
+    const drawFuelTruck = (tX, tY, angle, opts = {}) => {
       const { z = 0, armExtend = 0, armTarget = null, getFuelingState, steerAngle = 0 } = opts;
       const cosA = Math.cos(angle), sinA = Math.sin(angle);
       const cabDepth = tX + tY + 1.85 * (cosA + sinA);
       const pivotWX = tX + 0.3 * cosA;
       const pivotWY = tY + 0.3 * sinA;
-      renderNodes(fuel_truck_default, { steerAngle }, { x: tX, y: tY, z, angle }, SceneRenderer, camX, camY);
+      renderNodes(fuel_truck_default, { steerAngle }, { x: tX, y: tY, z, angle }, SceneRenderer);
       SceneRenderer.add(null, {
         x: pivotWX,
         y: pivotWY,
         z,
         depth: cabDepth,
-        drawFn: (camX2, camY2) => {
+        // The arm swings up to ~1.5 around its pivot on the cab.
+        bounds: { x0: pivotWX - 1.5, x1: pivotWX + 1.5, y0: pivotWY - 1.5, y1: pivotWY + 1.5, z0: z, z1: z + 1.5 },
+        drawFn: (camX, camY) => {
           if (armExtend <= 0) return;
           const pivotZ = z + 0.98;
-          const pivotIso = iso2(pivotWX, pivotWY, pivotZ, camX2, camY2);
+          const pivotIso = iso2(pivotWX, pivotWY, pivotZ, camX, camY);
           let elbowWX, elbowWY;
           if (armTarget) {
             const dx = armTarget.x - pivotWX, dy = armTarget.y - pivotWY;
@@ -3946,7 +3795,7 @@
             elbowWY = pivotWY - sinA * 0.65 * armExtend;
           }
           const elbowZ = pivotZ + 0.25 * Math.sin(armExtend * Math.PI * 0.7);
-          const elbowIso = iso2(elbowWX, elbowWY, elbowZ, camX2, camY2);
+          const elbowIso = iso2(elbowWX, elbowWY, elbowZ, camX, camY);
           let nozzleWX, nozzleWY;
           if (armTarget) {
             const dx = armTarget.x - pivotWX, dy = armTarget.y - pivotWY;
@@ -3958,7 +3807,7 @@
             nozzleWY = elbowWY - sinA * 0.5 * armExtend;
           }
           const nozzleZ = elbowZ - 0.7 * armExtend;
-          const nozzleIso = iso2(nozzleWX, nozzleWY, nozzleZ, camX2, camY2);
+          const nozzleIso = iso2(nozzleWX, nozzleWY, nozzleZ, camX, camY);
           ctx.lineCap = "round";
           ctx.lineJoin = "round";
           ctx.strokeStyle = "#777";
@@ -5202,6 +5051,8 @@
     xmas_lantern: { path: "src/game/models/objects/xmas_lantern.zdef", v2: false },
     xmas_candy_cane: { path: "src/game/models/objects/xmas_candy_cane.zdef", v2: false },
     xmas_tree: { path: "src/game/models/objects/xmas_tree.zdef", v2: false },
+    phone_booth: { path: "src/game/models/objects/phone_booth.zdef", v2: false },
+    jet_bunker: { path: "src/game/models/objects/jet_bunker.zdef", v2: false },
     sleigh: { path: "src/game/models/objects/sleigh.zdef", v2: false },
     reindeer: { path: "src/game/models/objects/reindeer.zdef", v2: false },
     volleyball_court: { path: "src/game/models/objects/volleyball_court.zdef", v2: false },
@@ -5356,16 +5207,43 @@
     }, flush: () => {
     } };
     const { drawTree, drawPerson } = createDrawObjects(ctx, defIso, defTW, hh * 2, _noSR);
+    const _sr = createSceneRenderer(ctx, defIso);
+    const _overlays = [];
+    let _glow = false;
     const _renderDEF = (def, _v2, wx, wy, wz, angle, colors, params = {}) => {
-      const sr = createSceneRenderer(ctx, defIso);
       const version = def?.version;
       const nodeBased = typeof version === "number" && version >= 2;
-      if (nodeBased) {
-        renderNodes(def, params, { x: wx, y: wy, z: wz, angle }, sr, defCamX, defCamY, defDrawCtx);
-      } else {
-        sr.add(def, { x: wx, y: wy, z: wz, angle, colors });
+      const props = { x: wx, y: wy, z: wz, angle, ...colors ? { colors } : {} };
+      if (_glow) {
+        const flat = nodeBased ? applyNodes(def, params) : def;
+        const one = createSceneRenderer(ctx, defIso);
+        const c = Math.cos(angle), sn = Math.sin(angle);
+        const ws = flat.faces.flatMap((f) => f.verts.map((v) => [wx + v[0] * c - v[1] * sn, wy + v[0] * sn + v[1] * c, wz + v[2]]));
+        if (!ws.length) return;
+        _sr.add(null, {
+          x: wx,
+          y: wy,
+          z: wz,
+          bounds: {
+            x0: Math.min(...ws.map((v) => v[0])),
+            x1: Math.max(...ws.map((v) => v[0])),
+            y0: Math.min(...ws.map((v) => v[1])),
+            y1: Math.max(...ws.map((v) => v[1])),
+            z0: Math.min(...ws.map((v) => v[2])),
+            z1: Math.max(...ws.map((v) => v[2]))
+          },
+          drawFn: (cx, cy) => {
+            ctx.shadowBlur = 14;
+            ctx.shadowColor = "#fff";
+            one.add(flat, props);
+            one.flush(cx, cy);
+            ctx.shadowBlur = 0;
+          }
+        });
+        return;
       }
-      sr.flush(defCamX, defCamY);
+      if (nodeBased) renderNodes(def, params, props, _sr, defDrawCtx);
+      else _sr.add(def, props);
     };
     const corners = [[0, 0], [W, 0], [0, H], [W, H]].map(([sx, sy]) => {
       const dx = sx - ox, dy = sy - oy;
@@ -5414,46 +5292,6 @@
       const fGz = _foliageGz(terrH);
       drawTree(f.x + 0.5, f.y + 0.5, defCamX, defCamY, f.s ?? 1, fGz, f.type, { x: 0, y: 0, phase: 0 });
     });
-    const _evList = m.events ?? [];
-    if (_evList.length > 0) {
-      ctx.save();
-      _evList.forEach((ev) => {
-        const t = ev.trigger;
-        const srcObj = m.objects?.[t.objectIdx];
-        if (!srcObj) return;
-        const sx = toSX(srcObj.x + 0.5, srcObj.y + 0.5);
-        const sy = toSY(srcObj.x + 0.5, srcObj.y + 0.5);
-        if (t.type === "objectReaches") {
-          const dstObj = m.objects?.[t.nearObjectIdx];
-          if (!dstObj) return;
-          const dx = toSX(dstObj.x + 0.5, dstObj.y + 0.5);
-          const dy = toSY(dstObj.x + 0.5, dstObj.y + 0.5);
-          ctx.strokeStyle = "rgba(255,140,0,0.55)";
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([5, 4]);
-          ctx.beginPath();
-          ctx.moveTo(sx, sy);
-          ctx.lineTo(dx, dy);
-          ctx.stroke();
-          const r = (t.distance ?? 8) * hw;
-          ctx.strokeStyle = "rgba(255,140,0,0.2)";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.ellipse(dx, dy, r, r * 0.5, 0, 0, Math.PI * 2);
-          ctx.stroke();
-        } else if (t.type === "heliNear") {
-          const r = (t.distance ?? 10) * hw;
-          ctx.strokeStyle = "rgba(255,230,50,0.35)";
-          ctx.lineWidth = 1.5;
-          ctx.setLineDash([4, 4]);
-          ctx.beginPath();
-          ctx.ellipse(sx, sy, r, r * 0.5, 0, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      });
-      ctx.setLineDash([]);
-      ctx.restore();
-    }
     m.objects.forEach((obj, idx) => {
       const isSel = state.selectedObjectIdx === idx;
       const cx = toSX(obj.x + 0.5, obj.y + 0.5);
@@ -5465,6 +5303,7 @@
         ctx.shadowBlur = 14;
         ctx.shadowColor = "#fff";
       }
+      _glow = isSel;
       if (obj.type === "pad") {
         const towerVariant = obj.towerVariant ?? "classic";
         const _pb = [
@@ -5487,7 +5326,8 @@
           ctx.stroke();
         }
         ctx.shadowBlur = 0;
-        const _hn = _getDefEntry("hangar");
+        const hangarVariant = obj.hangarVariant ?? "classic";
+        const _hn = _getDefEntry(hangarVariant === "bunker" ? "jet_bunker" : "hangar");
         if (_hn) _renderDEF(_hn.def, false, obj.x + 4, obj.y - 1, wl, 0);
         const towerX = towerVariant === "new" ? obj.x + 7 : obj.x + 6.5;
         const _tw = _getDefEntry(towerVariant === "new" ? "hangar_tower" : "tower");
@@ -5505,13 +5345,15 @@
           ctx.fill();
         });
         const mid = defIso(obj.x + 3.5, obj.y + 3.5, wl, defCamX, defCamY);
-        if (m.spawnObject === "pad") _drawDolphin(ctx, mid.x, mid.y, 0, hw, hh);
+        if (m.spawnObject === "pad") _overlays.push(() => _drawDolphin(ctx, mid.x, mid.y, 0, hw, hh));
         if (isSel) _showObjPanel("ui_pad");
         if (isSel) {
           const btn = document.getElementById("btn_spawn_pad");
           if (btn) btn.style.background = m.spawnObject === "pad" ? COLORS.uiHighlight : "var(--accent)";
           const tvSel = document.getElementById("pad_tower_variant");
           if (tvSel) tvSel.value = towerVariant;
+          const hvSel = document.getElementById("pad_hangar_variant");
+          if (hvSel) hvSel.value = hangarVariant;
         }
       } else if (obj.type === "carrier" || obj.type === "boat" || obj.type === "pilot_boat" || obj.type === "sar_boat" || obj.type === "salvage_tug" || obj.type === "supply_vessel" || obj.type === "frigate") {
         const isCarrier = obj.type === "carrier";
@@ -5530,8 +5372,8 @@
             ctx.stroke();
           }
         }
-        _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 2.2, "#fff");
-        if (obj.path === "circle") {
+        _overlays.push(() => _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 2.2, "#fff"));
+        if (obj.path === "circle") _overlays.push(() => {
           const r = obj.radius ?? 40;
           ctx.beginPath();
           ctx.ellipse(cx, cy, r * hw, r * hh * 0.9, 0, 0, Math.PI * 2);
@@ -5540,8 +5382,8 @@
           ctx.setLineDash([4, 4]);
           ctx.stroke();
           ctx.setLineDash([]);
-        }
-        if (m.spawnObject === obj.type) _drawDolphin(ctx, cx, cy, 0, hw, hh);
+        });
+        if (m.spawnObject === obj.type) _overlays.push(() => _drawDolphin(ctx, cx, cy, 0, hw, hh));
         if (isSel) {
           _showObjPanel(isCarrier ? "ui_carrier" : "ui_boat");
           syncVesselUI(obj, isCarrier ? "carrier" : "boat");
@@ -5565,7 +5407,7 @@
             ctx.stroke();
           }
         }
-        _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.8, "#888");
+        _overlays.push(() => _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.8, "#888"));
         if (isSel) {
           _showObjPanel("ui_submarine");
           syncVesselUI(obj, "submarine");
@@ -5580,9 +5422,7 @@
         }
       } else if (obj.type === "wind_turbine") {
         if (defEntry) {
-          const d = defEntry.def;
-          const baked = d.parts?.length ? applyParts(d, {}) : d;
-          _renderDEF(baked, false, obj.x, obj.y, 0, objAngleRad);
+          _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, 0, objAngleRad);
         }
         if (isSel) {
           _showObjPanel("ui_wt");
@@ -5609,43 +5449,45 @@
           reindeer: "ui_reindeer"
         };
         if (obj.type === "ring") {
-          const rr = obj.radius ?? 2.5;
-          const rz = obj.z ?? 4;
-          const rAng = obj.angle ?? 0;
-          const cosA = Math.cos(rAng), sinA = Math.sin(rAng);
-          const SEGS = 24;
-          ctx.strokeStyle = "rgba(0,0,0,0.35)";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          for (let si = 0; si <= SEGS; si++) {
-            const t = si / SEGS * Math.PI * 2;
-            const p = defIso(obj.x + rr * Math.cos(t) * -sinA, obj.y + rr * Math.cos(t) * cosA, 0, defCamX, defCamY);
-            if (si === 0) ctx.moveTo(p.x, p.y);
-            else ctx.lineTo(p.x, p.y);
-          }
-          ctx.closePath();
-          ctx.stroke();
-          ctx.strokeStyle = isSel ? "#fff" : "#FFD700";
-          ctx.lineWidth = isSel ? 2.5 : 1.5;
-          ctx.beginPath();
-          for (let si = 0; si <= SEGS; si++) {
-            const t = si / SEGS * Math.PI * 2;
-            const p = defIso(
-              obj.x + rr * Math.cos(t) * -sinA,
-              obj.y + rr * Math.cos(t) * cosA,
-              rz + rr * Math.sin(t),
-              defCamX,
-              defCamY
-            );
-            if (si === 0) ctx.moveTo(p.x, p.y);
-            else ctx.lineTo(p.x, p.y);
-          }
-          ctx.stroke();
+          _overlays.push(() => {
+            const rr = obj.radius ?? 2.5;
+            const rz = obj.z ?? 4;
+            const rAng = obj.angle ?? 0;
+            const cosA = Math.cos(rAng), sinA = Math.sin(rAng);
+            const SEGS = 24;
+            ctx.strokeStyle = "rgba(0,0,0,0.35)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for (let si = 0; si <= SEGS; si++) {
+              const t = si / SEGS * Math.PI * 2;
+              const p = defIso(obj.x + rr * Math.cos(t) * -sinA, obj.y + rr * Math.cos(t) * cosA, 0, defCamX, defCamY);
+              if (si === 0) ctx.moveTo(p.x, p.y);
+              else ctx.lineTo(p.x, p.y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+            ctx.strokeStyle = isSel ? "#fff" : "#FFD700";
+            ctx.lineWidth = isSel ? 2.5 : 1.5;
+            ctx.beginPath();
+            for (let si = 0; si <= SEGS; si++) {
+              const t = si / SEGS * Math.PI * 2;
+              const p = defIso(
+                obj.x + rr * Math.cos(t) * -sinA,
+                obj.y + rr * Math.cos(t) * cosA,
+                rz + rr * Math.sin(t),
+                defCamX,
+                defCamY
+              );
+              if (si === 0) ctx.moveTo(p.x, p.y);
+              else ctx.lineTo(p.x, p.y);
+            }
+            ctx.stroke();
+          });
         } else if (defEntry) {
           const colors = defEntry.def.palettes && obj.colorVariant ? defEntry.def.palettes[obj.colorVariant] : void 0;
           _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, 0, objAngleRad, colors);
           if (obj.angle !== void 0) {
-            _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.6, "rgba(255,255,255,0.5)");
+            _overlays.push(() => _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.6, "rgba(255,255,255,0.5)"));
           }
         } else {
           const typeColors = {
@@ -5663,7 +5505,7 @@
             ctx.stroke();
           }
           if (obj.angle !== void 0) {
-            _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.6, "#fff");
+            _overlays.push(() => _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.6, "#fff"));
           }
         }
         if (isSel && panelMap[obj.type]) {
@@ -5701,17 +5543,14 @@
         }
       }
       ctx.shadowBlur = 0;
-      if (isSel) {
-        renderEventsPanel(idx);
-        _showObjPanel("ui_events");
-      }
-      if (hw > 10) {
+      _glow = false;
+      if (hw > 10) _overlays.push(() => {
         ctx.fillStyle = isSel ? "#fff" : "rgba(255,255,255,0.65)";
         ctx.font = `${Math.max(8, hw * 0.7)}px monospace`;
         ctx.textAlign = "center";
         ctx.fillText(obj.type, cx, cy - Math.max(6, hw * 0.9));
         ctx.textAlign = "left";
-      }
+      });
     });
     if (m.testTrain) {
       const _drawRail = (points) => {
@@ -5759,6 +5598,8 @@
         }
       }
     }
+    _sr.flush(defCamX, defCamY);
+    _overlays.forEach((f) => f());
     const payloads = m.payloads || [];
     payloads.forEach((p, idx) => {
       const pAny = p;
@@ -6246,17 +6087,37 @@
     }
   };
   var SNAP_RADIUS = 8;
+  var TURBINE_SNAP_RADIUS = 2;
+  var NACELLE_LOCAL_X = 0.1;
+  var SNAP_TYPES = /* @__PURE__ */ new Set(["carrier", "boat", "sar_boat", "submarine", "sailboat_broken", "wind_turbine"]);
   var makePayload = (type, gx, gy, m) => {
+    let turbineIdx = -1, turbineDist = TURBINE_SNAP_RADIUS;
     let nearestIdx = -1, nearestDist = SNAP_RADIUS;
     for (let i = 0; i < m.objects.length; i++) {
       const obj = m.objects[i];
+      const d = Math.hypot(gx - obj.x, gy - obj.y);
+      if (obj.type === "wind_turbine") {
+        if (d <= turbineDist) {
+          turbineDist = d;
+          turbineIdx = i;
+        }
+        continue;
+      }
       if (obj.type !== "carrier" && obj.type !== "boat" && obj.type !== "sar_boat" && obj.type !== "submarine" && obj.type !== "sailboat_broken")
         continue;
-      const d = Math.hypot(gx - obj.x, gy - obj.y);
       if (d <= nearestDist) {
         nearestDist = d;
         nearestIdx = i;
       }
+    }
+    if (turbineIdx >= 0) {
+      const t = m.objects[turbineIdx];
+      return {
+        type,
+        x: t.x,
+        y: t.y,
+        attachTo: { objectType: "wind_turbine", objectIdx: turbineIdx, localX: NACELLE_LOCAL_X, localY: 0 }
+      };
     }
     if (nearestIdx >= 0) {
       const obj = m.objects[nearestIdx];
@@ -6271,6 +6132,19 @@
       };
     }
     return { type, x: gx, y: gy };
+  };
+  var movePayload = (p, x, y, m) => {
+    const att = p.attachTo;
+    if (att?.objectType && !SNAP_TYPES.has(att.objectType)) {
+      const ref = (att.objectIdx !== void 0 ? m.objects[att.objectIdx] : void 0) ?? m.objects.find((o) => o.type === att.objectType);
+      if (ref) {
+        att.localX = x - ref.x;
+        att.localY = y - ref.y;
+      }
+      return p;
+    }
+    const { attachTo: _a, x: _x, y: _y, ...rest } = p;
+    return { ...rest, ...makePayload(p.type, x, y, m) };
   };
   var removeNearestPayload = (m, gx, gy, type) => {
     if (!m.payloads) return;
@@ -7166,6 +7040,13 @@
       if (pad) pad.towerVariant = e.target.value;
       notifyWorkbench();
     });
+    document.getElementById("pad_hangar_variant")?.addEventListener("change", (e) => {
+      const m = getCurrentMission();
+      if (!m) return;
+      const pad = m.objects.find((o) => o.type === "pad");
+      if (pad) pad.hangarVariant = e.target.value;
+      notifyWorkbench();
+    });
     safeClick("btn_spawn_carrier", () => {
       getCurrentMission().spawnObject = "carrier";
       drawMap();
@@ -7355,6 +7236,37 @@
         updateCursor();
       }
     };
+    const doUndo = () => {
+      if (!state.lastDrag) return;
+      const m = getCurrentMission();
+      const { type, idx, x, y } = state.lastDrag;
+      if (type === "payload") {
+        const p = m.payloads[idx];
+        if (p) {
+          m.payloads[idx] = movePayload(p, x, y, m);
+          renderPayloadList();
+        }
+      } else if (type === "object") {
+        const o = m.objects[idx];
+        if (o) {
+          o.x = x;
+          o.y = y;
+          renderObjectList();
+        }
+      } else if (type === "emitter") {
+        const em = m.particleEmitters?.[idx];
+        if (em) {
+          em.x = x;
+          em.y = y;
+        }
+      }
+      state.lastDrag = null;
+      notifyWorkbench();
+      broadcastPreview();
+      drawMap();
+    };
+    const undoBtn = document.getElementById("btn-undo");
+    if (undoBtn) undoBtn.onclick = doUndo;
     window.addEventListener("keydown", (e) => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
       if (e.key === "m" || e.key === "M") {
@@ -7363,6 +7275,11 @@
           updateMoveCursor();
           drawMap();
         }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z" && state.lastDrag) {
+        doUndo();
+        e.preventDefault();
+        return;
       }
       const PAN_STEP = 1.5;
       if (e.key === "ArrowLeft") {
@@ -7470,6 +7387,9 @@
         case "baywatch_tower":
           m.objects.push({ type: "baywatch_tower", x: gx, y: gy });
           break;
+        case "phone_booth":
+          m.objects.push({ type: "phone_booth", x: gx, y: gy });
+          break;
         case "concert_stage":
           m.objects.push({ type: "concert_stage", x: gx, y: gy });
           break;
@@ -7552,47 +7472,48 @@
     };
     if (ctxMenu) {
       const _CTX_GROUPS = [
-        { cat: "Stat.", emoji: "\u{1F3D7}", items: [
-          { v: "pad", l: "\u{1F7E9} Landepad" },
-          { v: "lighthouse", l: "\u{1F526} Leuchtturm" },
-          { v: "research_platform", l: "\u{1F3D7} Plattform" },
-          { v: "ring", l: "\u2B55 Ring" },
-          { v: "dom", l: "\u26EA K\xF6lner Dom" },
-          { v: "messe_halle", l: "\u{1F3DB} Messehalle" }
+        { cat: "Stat.", items: [
+          { v: "pad", l: "Landepad" },
+          { v: "lighthouse", l: "Leuchtturm" },
+          { v: "research_platform", l: "Plattform" },
+          { v: "ring", l: "Ring" },
+          { v: "dom", l: "K\xF6lner Dom" },
+          { v: "messe_halle", l: "Messehalle" }
         ] },
-        { cat: "Fahr.", emoji: "\u{1F6A2}", items: [
-          { v: "carrier", l: "\u{1F6A2} Tr\xE4ger" },
-          { v: "boat", l: "\u26F5 Boot" },
-          { v: "pilot_boat", l: "\u{1F6A4} Lotsenboot" },
-          { v: "sar_boat", l: "\u{1F6E5} SAR-Boot" },
-          { v: "salvage_tug", l: "\u{1F6F3} Schlepper" },
-          { v: "supply_vessel", l: "\u{1F6A2} Versorgungsschiff" },
-          { v: "frigate", l: "\u2693 Fregatte" },
-          { v: "submarine", l: "\u{1F93F} U-Boot" }
+        { cat: "Fahr.", items: [
+          { v: "carrier", l: "Tr\xE4ger" },
+          { v: "boat", l: "Boot" },
+          { v: "pilot_boat", l: "Lotsenboot" },
+          { v: "sar_boat", l: "SAR-Boot" },
+          { v: "salvage_tug", l: "Schlepper" },
+          { v: "supply_vessel", l: "Versorgungsschiff" },
+          { v: "frigate", l: "Fregatte" },
+          { v: "submarine", l: "U-Boot" }
         ] },
-        { cat: "Deko", emoji: "\u{1F300}", items: [
-          { v: "wind_turbine", l: "\u{1F300} Windrad" },
-          { v: "plane_wreck", l: "\u2708\uFE0F Wrack" },
-          { v: "sailboat_broken", l: "\u26F5 Segel (gek.)" },
-          { v: "ornithopter_wreck", l: "\u{1F6F8} Orni-Wrack" },
-          { v: "baywatch_car", l: "\u{1F697} BW-Auto" },
-          { v: "baywatch_hq", l: "\u{1F3E0} BW-HQ" },
-          { v: "baywatch_tower", l: "\u{1F5FC} Wachturm" },
-          { v: "buoy", l: "\u{1F534} Boje" },
-          { v: "concert_stage", l: "\u{1F3B8} B\xFChne" },
-          { v: "festival_tent", l: "\u{1F3AA} Zelt" },
-          { v: "festival_tent_broken", l: "\u{1F3AA} Zelt (kap.)" },
-          { v: "festival_car", l: "\u{1F699} Festival-Auto" },
-          { v: "volleyball_court", l: "\u{1F3D0} Volleyball" }
+        { cat: "Deko", items: [
+          { v: "wind_turbine", l: "Windrad" },
+          { v: "plane_wreck", l: "Wrack" },
+          { v: "sailboat_broken", l: "Segel (gek.)" },
+          { v: "ornithopter_wreck", l: "Orni-Wrack" },
+          { v: "baywatch_car", l: "BW-Auto" },
+          { v: "baywatch_hq", l: "BW-HQ" },
+          { v: "baywatch_tower", l: "Wachturm" },
+          { v: "buoy", l: "Boje" },
+          { v: "phone_booth", l: "Telefonzelle" },
+          { v: "concert_stage", l: "B\xFChne" },
+          { v: "festival_tent", l: "Zelt" },
+          { v: "festival_tent_broken", l: "Zelt (kap.)" },
+          { v: "festival_car", l: "Festival-Auto" },
+          { v: "volleyball_court", l: "Volleyball" }
         ] },
-        { cat: "Load", emoji: "\u{1F4E6}", items: [
-          { v: "person", l: "\u{1F7E1} Person" },
-          { v: "rescuer", l: "\u{1F535} Retter" },
-          { v: "crate", l: "\u{1F7E0} Crate" }
+        { cat: "Load", items: [
+          { v: "person", l: "Person" },
+          { v: "rescuer", l: "Retter" },
+          { v: "crate", l: "Crate" }
         ] },
-        { cat: "Ptcl", emoji: "\u2728", items: [
-          { v: "smoke", l: "\u{1F4A8} Rauch" },
-          { v: "fire", l: "\u{1F525} Feuer + Rauch" }
+        { cat: "Ptcl", items: [
+          { v: "smoke", l: "Rauch" },
+          { v: "fire", l: "Feuer + Rauch" }
         ] }
       ];
       let _ctxTabIdx = 0;
@@ -7627,7 +7548,7 @@
           const btn = document.createElement("button");
           btn.textContent = item.l;
           btn.style.cssText = "background:#1e1e1e;border:1px solid #3a3a3a;color:#ccc;font-size:11px;padding:5px 4px;cursor:pointer;border-radius:3px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis";
-          btn.title = item.l.replace(/^.+? /, "");
+          btn.title = item.l;
           btn.onmouseenter = () => {
             btn.style.background = "#1a3a5a";
             btn.style.borderColor = "#4af";
@@ -7683,6 +7604,44 @@
         }, 0);
       });
     }
+    const _HIT_RADIUS = {
+      lighthouse: 1.6,
+      wind_turbine: 1,
+      research_platform: 3.5,
+      buoy: 0.8,
+      plane_wreck: 3,
+      sailboat_broken: 1.6,
+      ornithopter_wreck: 2,
+      xmas_house_a: 1.1,
+      xmas_house_b: 1.4,
+      xmas_house_c: 1.6,
+      xmas_lantern: 0.7,
+      phone_booth: 0.7,
+      sleigh: 1,
+      reindeer: 1,
+      xmas_candy_cane: 0.6,
+      xmas_tree: 1,
+      baywatch_car: 1.2,
+      baywatch_hq: 3.2,
+      baywatch_tower: 2.9,
+      concert_stage: 3.8,
+      festival_tent: 1.1,
+      festival_tent_broken: 1.2,
+      festival_car: 1.2,
+      volleyball_court: 3.6,
+      carrier: 4.5,
+      frigate: 3.5,
+      submarine: 2.5,
+      salvage_tug: 2.5,
+      supply_vessel: 3,
+      boat: 1.8,
+      pilot_boat: 1.8,
+      sar_boat: 1.8
+    };
+    const _HIT_BOX = {
+      dom: { hx: 3.3, hy: 2.5 },
+      messe_halle: { hx: 3.3, hy: 10.55 }
+    };
     const payloadXY = (p, m) => {
       if (p.x !== void 0 && !isNaN(p.x)) return { x: p.x, y: p.y };
       if (p.attachTo?.objectType) {
@@ -7719,20 +7678,7 @@
           renderObjectList();
         } else if (state.selectedPayloadIdx !== null) {
           const p = m.payloads[state.selectedPayloadIdx];
-          if (p.attachTo?.objectType) {
-            const ref = m.objects.find((o) => o.type === p.attachTo.objectType);
-            if (ref) {
-              p.attachTo.localX = Math.floor(gx) - ref.x;
-              p.attachTo.localY = Math.floor(gy) - ref.y;
-            }
-          } else {
-            const snapped = makePayload(p.type, Math.floor(gx), Math.floor(gy), m);
-            m.payloads[state.selectedPayloadIdx] = {
-              ...snapped,
-              ...p.deliverTo ? { deliverTo: p.deliverTo } : {},
-              ...p.npcTarget ? { npcTarget: p.npcTarget } : {}
-            };
-          }
+          m.payloads[state.selectedPayloadIdx] = movePayload(p, Math.floor(gx), Math.floor(gy), m);
           renderPayloadList();
         }
         state.moveMode = false;
@@ -7786,36 +7732,13 @@
           const obj = m.objects[i];
           let hit = false;
           if (obj.type === "pad") hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
-          else if (["carrier", "boat", "pilot_boat", "sar_boat", "salvage_tug", "supply_vessel", "frigate", "submarine"].includes(obj.type))
-            hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
-          else if (["lighthouse", "research_platform", "wind_turbine", "buoy"].includes(obj.type))
-            hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
-          else if ([
-            "plane_wreck",
-            "sailboat_broken",
-            "ornithopter_wreck",
-            "baywatch_car",
-            "baywatch_hq",
-            "baywatch_tower",
-            "concert_stage",
-            "festival_tent",
-            "festival_tent_broken",
-            "festival_car",
-            "xmas_house_a",
-            "xmas_house_b",
-            "xmas_house_c",
-            "sleigh",
-            "reindeer"
-          ].includes(obj.type))
-            hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
-          else if (obj.type === "volleyball_court")
-            hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
-          else if (obj.type === "xmas_lantern")
-            hit = Math.hypot(gx - obj.x, gy - obj.y) < 2.5;
-          else if (["dom", "messe_halle"].includes(obj.type))
-            hit = Math.hypot(gx - obj.x, gy - obj.y) < 8;
-          else if (obj.type === "ring")
-            hit = Math.hypot(gx - obj.x, gy - obj.y) < (obj.radius ?? 2.5) + 1;
+          else if (obj.type === "ring") hit = Math.hypot(gx - obj.x, gy - obj.y) < (obj.radius ?? 2.5) + 1;
+          else if (_HIT_BOX[obj.type]) {
+            const { hx, hy } = _HIT_BOX[obj.type];
+            hit = Math.abs(gx - obj.x) <= hx && Math.abs(gy - obj.y) <= hy;
+          } else {
+            hit = Math.hypot(gx - obj.x, gy - obj.y) < (_HIT_RADIUS[obj.type] ?? 1.5);
+          }
           if (hit) {
             if (state.selectedObjectIdx !== i) {
               state.selectedObjectIdx = i;
@@ -7960,25 +7883,21 @@
       }
       if (state.isDraggingItem) {
         if (state.dragHasMoved) {
+          state.lastDrag = {
+            type: state.dragItemType,
+            idx: state.dragItemIdx,
+            x: state.dragOrigX,
+            y: state.dragOrigY
+          };
           const m = getCurrentMission();
           if (state.dragItemType === "payload") {
             const p = m.payloads[state.dragItemIdx];
-            if (p.attachTo?.objectType) {
-              const ref = m.objects.find((o) => o.type === p.attachTo.objectType);
-              if (ref) {
-                p.attachTo.localX = p.x - ref.x;
-                p.attachTo.localY = p.y - ref.y;
-              }
+            const moved = movePayload(p, p.x, p.y, m);
+            if (moved === p && p.attachTo) {
               delete p.x;
               delete p.y;
-            } else {
-              const snapped = makePayload(p.type, p.x, p.y, m);
-              m.payloads[state.dragItemIdx] = {
-                ...snapped,
-                ...p.deliverTo ? { deliverTo: p.deliverTo } : {},
-                ...p.npcTarget ? { npcTarget: p.npcTarget } : {}
-              };
             }
+            m.payloads[state.dragItemIdx] = moved;
             renderPayloadList();
           } else if (state.dragItemType === "emitter") {
             notifyWorkbench();
@@ -8181,7 +8100,6 @@
   setOnOpenFile((path) => vscode.postMessage({ type: "open-zdef", path }));
   setDefRequestCallback((name, path, v2) => vscode.postMessage({ type: "getZdef", name, path, v2 }));
   initUI();
-  initEventsEditor(scheduleNotify);
   loadMission(0);
   window.addEventListener("message", (e) => {
     if (e.data.type === "load" && e.data.content !== void 0) {

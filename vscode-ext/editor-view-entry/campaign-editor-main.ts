@@ -5,7 +5,6 @@ const vscode = acquireVsCodeApi();
 import styleContent from '../editor-view/style.css';
 import { initUI, loadMission, syncToData, renderPayloadList, renderObjectList, renderFoliageList, setOnStateChanged, setOnOpenFile } from '../editor-view/ui';
 import { setDefRequestCallback, receiveDefData, drawMap } from '../editor-view/render';
-import { initEventsEditor } from '../editor-view/events-editor';
 import { state } from '../editor-view/state';
 import { compressTerrain, compressFoliage, decompressFoliage, decompressTerrain } from '../../src/shared/utils';
 
@@ -52,7 +51,6 @@ setOnOpenFile(path => vscode.postMessage({ type: 'open-zdef', path }));
 setDefRequestCallback((name, path, v2) => vscode.postMessage({ type: 'getZdef', name, path, v2 }));
 
 initUI();
-initEventsEditor(scheduleNotify);
 loadMission(0);
 
 window.addEventListener('message', (e: MessageEvent<{ type: string; content?: string; name?: string; data?: unknown; v2?: boolean }>) => {

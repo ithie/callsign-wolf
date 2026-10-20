@@ -1,9 +1,8 @@
 import { state, getCurrentMission } from './state';
-import { renderEventsPanel } from './events-editor';
 import { COLORS, getSandColor } from '@/shared/constants';
 import { createSceneRenderer } from '../../src/game/scene-renderer';
 import { createIsoFn } from '../../src/game/render';
-import { renderNodes, applyParts } from '../../src/game/def-utils';
+import { renderNodes, applyNodes } from '../../src/game/def-utils';
 import { createDrawObjects } from '../../src/game/draw-objects';
 import type { DEF, DEF2 } from '../../src/game/defs';
 import { getConsist, getRailSamples, WATER_FLOAT_Z, WAGON_DECK_Z } from '../../src/game/sim/test-train-path';
@@ -33,6 +32,8 @@ const _DEF_REGISTRY: Record<string, { path: string; v2: boolean }> = {
     xmas_lantern:         { path: 'src/game/models/objects/xmas_lantern.zdef',         v2: false },
     xmas_candy_cane:      { path: 'src/game/models/objects/xmas_candy_cane.zdef',      v2: false },
     xmas_tree:            { path: 'src/game/models/objects/xmas_tree.zdef',            v2: false },
+    phone_booth:          { path: 'src/game/models/objects/phone_booth.zdef',          v2: false },
+    jet_bunker:           { path: 'src/game/models/objects/jet_bunker.zdef',           v2: false },
     sleigh:               { path: 'src/game/models/objects/sleigh.zdef',               v2: false },
     reindeer:             { path: 'src/game/models/objects/reindeer.zdef',             v2: false },
     volleyball_court:     { path: 'src/game/models/objects/volleyball_court.zdef',     v2: false },
@@ -250,26 +251,49 @@ export const drawMap = (): void => {
     const _noSR = { add: () => {}, flush: () => {} } as any;
     const { drawTree, drawPerson } = createDrawObjects(ctx, defIso, defTW, hh * 2, _noSR);
 
+    // All models go into ONE batch (flushed once after the objects/test train), so the
+    // renderer's box sort orders them against each other exactly like in the game.
+    // Labels, arrows etc. are collected in _overlays and painted after that flush.
+    const _sr = createSceneRenderer(ctx, defIso);
+    const _overlays: (() => void)[] = [];
+    // Set per object in the loop below: the selected object's model gets a glow.
+    let _glow = false;
+
     const _renderDEF = (
         def: unknown, _v2: boolean, wx: number, wy: number, wz: number, angle: number,
         colors?: Record<string, string>, params: Record<string, number> = {},
     ): void => {
-        const sr = createSceneRenderer(ctx, defIso);
         // Derived from the loaded def's own `version` field rather than the caller's
         // `_v2` flag (kept for signature compatibility, no longer consulted) — that
-        // flag lives in the hand-maintained _DEF_REGISTRY below and drifts out of
-        // sync every time a model is migrated to ZDEF2/D3F (as happened here: 28 of
-        // 34 entries were stale `false` after this session's D3F migration, crashing
-        // drawMap() — and with it the minimap and drag-pan setup that runs after it —
-        // for any placed object whose registry entry was never updated).
+        // flag lives in the hand-maintained _DEF_REGISTRY below and drifts out of sync.
         const version = (def as { version?: number } | null)?.version;
         const nodeBased = typeof version === 'number' && version >= 2;
-        if (nodeBased) {
-            renderNodes(def as DEF2, params, { x: wx, y: wy, z: wz, angle }, sr, defCamX, defCamY, defDrawCtx);
-        } else {
-            sr.add(def as DEF, { x: wx, y: wy, z: wz, angle, colors });
+        const props = { x: wx, y: wy, z: wz, angle, ...(colors ? { colors } : {}) };
+        if (_glow) {
+            // One item for the whole model so the glow can wrap its drawing.
+            const flat = (nodeBased ? applyNodes(def as DEF2, params) : def) as DEF;
+            const one = createSceneRenderer(ctx, defIso);
+            const c = Math.cos(angle), sn = Math.sin(angle);
+            const ws = flat.faces.flatMap(f => f.verts.map(v => [wx + v[0] * c - v[1] * sn, wy + v[0] * sn + v[1] * c, wz + v[2]]));
+            if (!ws.length) return;
+            _sr.add(null, {
+                x: wx, y: wy, z: wz,
+                bounds: {
+                    x0: Math.min(...ws.map(v => v[0])), x1: Math.max(...ws.map(v => v[0])),
+                    y0: Math.min(...ws.map(v => v[1])), y1: Math.max(...ws.map(v => v[1])),
+                    z0: Math.min(...ws.map(v => v[2])), z1: Math.max(...ws.map(v => v[2])),
+                },
+                drawFn: (cx, cy) => {
+                    ctx.shadowBlur = 14; ctx.shadowColor = '#fff';
+                    one.add(flat, props);
+                    one.flush(cx, cy);
+                    ctx.shadowBlur = 0;
+                },
+            });
+            return;
         }
-        sr.flush(defCamX, defCamY);
+        if (nodeBased) renderNodes(def as DEF2, params, props, _sr, defDrawCtx);
+        else _sr.add(def as DEF, props);
     };
 
     // ── Visible range (4 corners → grid coords) ───────────────────────────────
@@ -342,41 +366,6 @@ export const drawMap = (): void => {
         drawTree(f.x + 0.5, f.y + 0.5, defCamX, defCamY, f.s ?? 1, fGz, f.type, { x: 0, y: 0, phase: 0 });
     });
 
-    // ── Event connections ─────────────────────────────────────────────────────
-    const _evList: any[] = (m as any).events ?? [];
-    if (_evList.length > 0) {
-        ctx.save();
-        _evList.forEach((ev: any) => {
-            const t = ev.trigger;
-            const srcObj = m.objects?.[t.objectIdx];
-            if (!srcObj) return;
-            const sx = toSX(srcObj.x + 0.5, srcObj.y + 0.5);
-            const sy = toSY(srcObj.x + 0.5, srcObj.y + 0.5);
-            if (t.type === 'objectReaches') {
-                const dstObj = m.objects?.[t.nearObjectIdx];
-                if (!dstObj) return;
-                const dx = toSX(dstObj.x + 0.5, dstObj.y + 0.5);
-                const dy = toSY(dstObj.x + 0.5, dstObj.y + 0.5);
-                ctx.strokeStyle = 'rgba(255,140,0,0.55)';
-                ctx.lineWidth   = 1.5;
-                ctx.setLineDash([5, 4]);
-                ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(dx, dy); ctx.stroke();
-                const r = (t.distance ?? 8) * hw;
-                ctx.strokeStyle = 'rgba(255,140,0,0.2)';
-                ctx.lineWidth   = 1;
-                ctx.beginPath(); ctx.ellipse(dx, dy, r, r * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
-            } else if (t.type === 'heliNear') {
-                const r = (t.distance ?? 10) * hw;
-                ctx.strokeStyle = 'rgba(255,230,50,0.35)';
-                ctx.lineWidth   = 1.5;
-                ctx.setLineDash([4, 4]);
-                ctx.beginPath(); ctx.ellipse(sx, sy, r, r * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
-            }
-        });
-        ctx.setLineDash([]);
-        ctx.restore();
-    }
-
     // ── Objects ───────────────────────────────────────────────────────────────
     m.objects.forEach((obj, idx) => {
         const isSel = state.selectedObjectIdx === idx;
@@ -387,6 +376,7 @@ export const drawMap = (): void => {
         const defEntry = obj.type !== 'pad' ? _getDefEntry(obj.type) : null;
 
         if (isSel) { ctx.shadowBlur = 14; ctx.shadowColor = '#fff'; }
+        _glow = isSel;
 
         if (obj.type === 'pad') {
             const towerVariant = (obj as any).towerVariant ?? 'classic';
@@ -408,7 +398,8 @@ export const drawMap = (): void => {
             if (isSel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
             ctx.shadowBlur = 0;
             // Hangar building — same offset as game: xMax-3 = obj.x+4, yMin-1 = obj.y-1
-            const _hn = _getDefEntry('hangar');
+            const hangarVariant = (obj as any).hangarVariant ?? 'classic';
+            const _hn = _getDefEntry(hangarVariant === 'bunker' ? 'jet_bunker' : 'hangar');
             if (_hn) _renderDEF(_hn.def, false, obj.x + 4, obj.y - 1, wl, 0);
             // Tower (variant-dependent)
             const towerX  = towerVariant === 'new' ? obj.x + 7 : obj.x + 6.5;
@@ -426,13 +417,15 @@ export const drawMap = (): void => {
                 ctx.fill();
             });
             const mid = defIso(obj.x + 3.5, obj.y + 3.5, wl, defCamX, defCamY);
-            if (m.spawnObject === 'pad') _drawDolphin(ctx, mid.x, mid.y, 0, hw, hh);
+            if (m.spawnObject === 'pad') _overlays.push(() => _drawDolphin(ctx, mid.x, mid.y, 0, hw, hh));
             if (isSel) _showObjPanel('ui_pad');
             if (isSel) {
                 const btn = document.getElementById('btn_spawn_pad');
                 if (btn) btn.style.background = m.spawnObject === 'pad' ? COLORS.uiHighlight : 'var(--accent)';
                 const tvSel = document.getElementById('pad_tower_variant') as HTMLSelectElement | null;
                 if (tvSel) tvSel.value = towerVariant;
+                const hvSel = document.getElementById('pad_hangar_variant') as HTMLSelectElement | null;
+                if (hvSel) hvSel.value = hangarVariant;
             }
 
         } else if (
@@ -457,10 +450,10 @@ export const drawMap = (): void => {
                 if (isSel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
             }
 
-            _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 2.2, '#fff');
+            _overlays.push(() => _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 2.2, '#fff'));
 
             // Path preview
-            if ((obj as any).path === 'circle') {
+            if ((obj as any).path === 'circle') _overlays.push(() => {
                 const r  = ((obj as any).radius ?? 40);
                 ctx.beginPath();
                 ctx.ellipse(cx, cy, r * hw, r * hh * 0.9, 0, 0, Math.PI * 2);
@@ -469,9 +462,9 @@ export const drawMap = (): void => {
                 ctx.setLineDash([4, 4]);
                 ctx.stroke();
                 ctx.setLineDash([]);
-            }
+            });
 
-            if (m.spawnObject === obj.type) _drawDolphin(ctx, cx, cy, 0, hw, hh);
+            if (m.spawnObject === obj.type) _overlays.push(() => _drawDolphin(ctx, cx, cy, 0, hw, hh));
             if (isSel) {
                 _showObjPanel(isCarrier ? 'ui_carrier' : 'ui_boat');
                 syncVesselUI(obj, isCarrier ? 'carrier' : 'boat');
@@ -492,7 +485,7 @@ export const drawMap = (): void => {
                 ctx.fill();
                 if (isSel) { ctx.strokeStyle = '#aaa'; ctx.lineWidth = 1.5; ctx.stroke(); }
             }
-            _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.8, '#888');
+            _overlays.push(() => _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.8, '#888'));
             if (isSel) { _showObjPanel('ui_submarine'); syncVesselUI(obj, 'submarine'); }
 
         } else if (obj.type === 'lighthouse') {
@@ -507,9 +500,7 @@ export const drawMap = (): void => {
 
         } else if (obj.type === 'wind_turbine') {
             if (defEntry) {
-                const d = defEntry.def as DEF;
-                const baked = d.parts?.length ? applyParts(d, {}) : d;
-                _renderDEF(baked, false, obj.x, obj.y, 0, objAngleRad);
+                _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, 0, objAngleRad);
             }
             if (isSel) {
                 _showObjPanel('ui_wt');
@@ -529,36 +520,38 @@ export const drawMap = (): void => {
             };
 
             if (obj.type === 'ring') {
-                const rr    = (obj as any).radius ?? 2.5;
-                const rz    = (obj as any).z ?? 4;
-                const rAng  = (obj as any).angle ?? 0;  // radians, same as game
-                const cosA  = Math.cos(rAng), sinA = Math.sin(rAng);
-                const SEGS  = 24;
-                // Ground shadow
-                ctx.strokeStyle = 'rgba(0,0,0,0.35)';
-                ctx.lineWidth   = 1;
-                ctx.beginPath();
-                for (let si = 0; si <= SEGS; si++) {
-                    const t = (si / SEGS) * Math.PI * 2;
-                    const p = defIso(obj.x + rr * Math.cos(t) * (-sinA), obj.y + rr * Math.cos(t) * cosA, 0, defCamX, defCamY);
-                    if (si === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
-                }
-                ctx.closePath(); ctx.stroke();
-                // 3-D ring
-                ctx.strokeStyle = isSel ? '#fff' : '#FFD700';
-                ctx.lineWidth   = isSel ? 2.5 : 1.5;
-                ctx.beginPath();
-                for (let si = 0; si <= SEGS; si++) {
-                    const t = (si / SEGS) * Math.PI * 2;
-                    const p = defIso(
-                        obj.x + rr * Math.cos(t) * (-sinA),
-                        obj.y + rr * Math.cos(t) * cosA,
-                        rz  + rr * Math.sin(t),
-                        defCamX, defCamY,
-                    );
-                    if (si === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
-                }
-                ctx.stroke();
+                _overlays.push(() => {
+                    const rr    = (obj as any).radius ?? 2.5;
+                    const rz    = (obj as any).z ?? 4;
+                    const rAng  = (obj as any).angle ?? 0;  // radians, same as game
+                    const cosA  = Math.cos(rAng), sinA = Math.sin(rAng);
+                    const SEGS  = 24;
+                    // Ground shadow
+                    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+                    ctx.lineWidth   = 1;
+                    ctx.beginPath();
+                    for (let si = 0; si <= SEGS; si++) {
+                        const t = (si / SEGS) * Math.PI * 2;
+                        const p = defIso(obj.x + rr * Math.cos(t) * (-sinA), obj.y + rr * Math.cos(t) * cosA, 0, defCamX, defCamY);
+                        if (si === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                    }
+                    ctx.closePath(); ctx.stroke();
+                    // 3-D ring
+                    ctx.strokeStyle = isSel ? '#fff' : '#FFD700';
+                    ctx.lineWidth   = isSel ? 2.5 : 1.5;
+                    ctx.beginPath();
+                    for (let si = 0; si <= SEGS; si++) {
+                        const t = (si / SEGS) * Math.PI * 2;
+                        const p = defIso(
+                            obj.x + rr * Math.cos(t) * (-sinA),
+                            obj.y + rr * Math.cos(t) * cosA,
+                            rz  + rr * Math.sin(t),
+                            defCamX, defCamY,
+                        );
+                        if (si === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+                    }
+                    ctx.stroke();
+                });
             } else if (defEntry) {
                 const colors: Record<string, string> | undefined =
                     (defEntry.def as any).palettes && (obj as any).colorVariant
@@ -566,7 +559,7 @@ export const drawMap = (): void => {
                         : undefined;
                 _renderDEF(defEntry.def, defEntry.v2, obj.x, obj.y, 0, objAngleRad, colors);
                 if ((obj as any).angle !== undefined) {
-                    _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.6, 'rgba(255,255,255,0.5)');
+                    _overlays.push(() => _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.6, 'rgba(255,255,255,0.5)'));
                 }
             } else {
                 // Fallback colored circle for types without a DEF model
@@ -581,7 +574,7 @@ export const drawMap = (): void => {
                 ctx.fill();
                 if (isSel) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke(); }
                 if ((obj as any).angle !== undefined) {
-                    _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.6, '#fff');
+                    _overlays.push(() => _isoArrow(ctx, cx, cy, objAngle, hw, hh, hw * 1.6, '#fff'));
                 }
             }
 
@@ -618,20 +611,16 @@ export const drawMap = (): void => {
         }
 
         ctx.shadowBlur = 0;
-
-        if (isSel) {
-            renderEventsPanel(idx);
-            _showObjPanel('ui_events');
-        }
+        _glow = false;
 
         // Object type label (only when reasonably zoomed in)
-        if (hw > 10) {
+        if (hw > 10) _overlays.push(() => {
             ctx.fillStyle = isSel ? '#fff' : 'rgba(255,255,255,0.65)';
             ctx.font      = `${Math.max(8, hw * 0.7)}px monospace`;
             ctx.textAlign = 'center';
             ctx.fillText(obj.type, cx, cy - Math.max(6, hw * 0.9));
             ctx.textAlign = 'left';
-        }
+        });
     });
 
     // ── Test track + train (gamescom prototype) ───────────────────────────────
@@ -683,6 +672,9 @@ export const drawMap = (): void => {
             }
         }
     }
+
+    _sr.flush(defCamX, defCamY);
+    _overlays.forEach(f => f());
 
     // ── Payloads ──────────────────────────────────────────────────────────────
     const payloads = m.payloads || [];

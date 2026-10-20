@@ -112,31 +112,9 @@ const getTransformedPivots = (def: DEF, params: Record<string, number>): Map<str
     return result;
 };
 
-import type { DEFInstanceOptions, IsoFn } from './scene-renderer';
+import { newRenderGroup, type DEFInstanceOptions, type IsoFn } from './scene-renderer';
 import type { DEF2, DEF3, DEF2Node, DEF2Face, DEF2Light } from './defs';
-type _Renderer = { add: (def: DEF | null, opts: DEFInstanceOptions) => void; flush: (cx: number, cy: number) => void };
-
-/**
- * Renders a DEF using its declared "passes" array (each pass = one applyParts + flush).
- * Falls back to a single applyParts add (no flush) when no passes are declared.
- */
-const renderPasses = (
-    def: DEF,
-    params: Record<string, number>,
-    instanceProps: DEFInstanceOptions,
-    renderer: _Renderer,
-    cx: number,
-    cy: number,
-): void => {
-    if (!def.passes?.length) {
-        renderer.add(applyParts(def, params), instanceProps);
-        return;
-    }
-    for (const pass of def.passes) {
-        renderer.add(applyParts(def, params, { only: pass.parts }), instanceProps);
-        renderer.flush(cx, cy);
-    }
-};
+type _Renderer = { add: (def: DEF | null, opts: DEFInstanceOptions) => void };
 
 // ─── ZDEF2 renderNodes ────────────────────────────────────────────────────────
 
@@ -208,6 +186,70 @@ const _makeRotFn2 = (node: DEF2Node, params: Record<string, number>, parentFn: _
     return verts => _rotateVerts(parentFn(verts), tPivot, r.axis, angle);
 };
 
+// ─── Generic collapse ─────────────────────────────────────────────────────────
+// params[COLLAPSE_PARAM] = 0..1 (see sim/collapse.ts). Every node tilts around its
+// own foot point in a pseudo-random direction and the whole model sinks towards
+// its base, so upper parts end up piled into the lower ones.
+
+const COLLAPSE_PARAM = '__collapse';
+// Optional: model-local direction (radians) the wind blows towards, and its
+// strength 0..1. Parts then mostly fall downwind; calm = random directions.
+const COLLAPSE_DIR_PARAM = '__collapseDir';
+const COLLAPSE_WIND_PARAM = '__collapseWind';
+// 1 = burst instead of folding in: every face becomes its own piece of debris that
+// flies outwards, tumbles and ends up lying flat (used for vessels).
+const COLLAPSE_BURST_PARAM = '__collapseBurst';
+// Fraction of its original height a part ends up lowered by.
+const COLLAPSE_DROP = 0.92;
+const collapseEase = (t: number): number => t * t * (3 - 2 * t);
+
+const _hash01 = (i: number): number => {
+    const s = Math.sin(i * 12.9898 + 78.233) * 43758.5453;
+    return s - Math.floor(s);
+};
+
+// verts: the node's own faces, already in model space. idx: stable per-node seed.
+const _makeCollapseFn = (verts: number[][], c: _CollapseState, idx: number): _RotFn2 => {
+    const { e, windDir, wind } = c;
+    let cx = 0, cy = 0, minZ = Infinity;
+    for (const v of verts) { cx += v[0]; cy += v[1]; if (v[2] < minZ) minZ = v[2]; }
+    cx /= verts.length; cy /= verts.length;
+    // Spread around the downwind direction narrows with wind strength (±36° at full wind).
+    const dir = wind > 0
+        ? windDir + (_hash01(idx) - 0.5) * Math.PI * 2 * (1 - 0.8 * wind)
+        : _hash01(idx) * Math.PI * 2;
+    // Moderate tilt: parts lean over and sink into the lower ones rather than toppling far out.
+    const tilt = e * (0.2 + 0.35 * _hash01(idx + 17));
+    const axis: [number, number, number] = [-Math.sin(dir), Math.cos(dir), 0];
+    const pivot: [number, number, number] = [cx, cy, minZ];
+    const squash = 1 - COLLAPSE_DROP * e;
+    const spread = 1 + 0.15 * e;
+    return vs => _rotateVerts(vs, pivot, axis, tilt).map(([x, y, z]) => [x * spread, y * spread, z * squash]);
+};
+
+// Burst: one face = one piece. Flies out from the model centre, hops, tumbles about its
+// own centre and settles flat around the base (z = 0, the waterline for vessels).
+const _makeBurstFn = (verts: number[][], c: _CollapseState, idx: number): _RotFn2 => {
+    const { t, e } = c;
+    let cx = 0, cy = 0, cz = 0;
+    for (const v of verts) { cx += v[0]; cy += v[1]; cz += v[2]; }
+    cx /= verts.length; cy /= verts.length; cz /= verts.length;
+    const out = 1 - Math.pow(1 - t, 3); // fast start, slow end
+    const len = Math.hypot(cx, cy);
+    const dirA = len > 0.05 ? Math.atan2(cy, cx) + (_hash01(idx) - 0.5) * 0.8 : _hash01(idx) * Math.PI * 2;
+    const dist = out * (1.0 + 2.0 * _hash01(idx + 3));
+    const dx = Math.cos(dirA) * dist, dy = Math.sin(dirA) * dist;
+    const hop = Math.sin(Math.PI * t) * (0.6 + 1.2 * _hash01(idx + 5));
+    const spinA = _hash01(idx + 7) * Math.PI * 2;
+    const axis: [number, number, number] = [Math.cos(spinA), Math.sin(spinA), 0];
+    const spin = out * (0.8 + 2.0 * _hash01(idx + 11));
+    const pivot: [number, number, number] = [cx, cy, cz];
+    const squash = 1 - COLLAPSE_DROP * e;
+    return vs => _rotateVerts(vs, pivot, axis, spin).map(([x, y, z]) => [x + dx, y + dy, z * squash + hop]);
+};
+
+type _CollapseState = { t: number; e: number; idx: number; windDir: number; wind: number; burst: boolean };
+
 const _collectNode = (
     node: DEF2Node,
     params: Record<string, number>,
@@ -215,14 +257,29 @@ const _collectNode = (
     outFaces: DEFFace[],
     outSpecial: _Special[],
     autoNormal = false,
+    collapse?: _CollapseState,
 ): void => {
-    const rotFn = node.rotate ? _makeRotFn2(node, params, parentFn) : parentFn;
+    const nodeFn = node.rotate ? _makeRotFn2(node, params, parentFn) : parentFn;
+    // Collapse only deforms this node's own output — children get the plain
+    // nodeFn and compute their own foot point, so tilts don't compound.
+    let rotFn = nodeFn;
+    if (collapse && node.faces?.length) {
+        const own = node.faces.flatMap(f => nodeFn(f.verts));
+        const cFn = _makeCollapseFn(own, collapse, collapse.idx++);
+        rotFn = verts => cFn(nodeFn(verts));
+    }
     for (const face of node.faces ?? []) {
         if (face.type === 'line') {
             const [v0, v1] = rotFn([face.verts[0], face.verts[1]]);
             outSpecial.push({ kind: 'line', v0, v1, face });
         } else {
-            const rotVerts = rotFn(face.verts);
+            let rotVerts: number[][];
+            if (collapse?.burst) {
+                const base = nodeFn(face.verts);
+                rotVerts = _makeBurstFn(base, collapse, collapse.idx++)(base);
+            } else {
+                rotVerts = rotFn(face.verts);
+            }
             const shade = face.shade ?? _autoShade(rotVerts);
             const color = _applyShade(face.color, shade);
             const normal = face.normal ? _rotNorm(face.normal, rotFn) : undefined;
@@ -241,8 +298,18 @@ const _collectNode = (
         outSpecial.push({ kind: 'light', lx: rl[0], ly: rl[1], lz: rl[2], light });
     }
     for (const child of node.children ?? []) {
-        _collectNode(child, params, rotFn, outFaces, outSpecial, autoNormal);
+        _collectNode(child, params, nodeFn, outFaces, outSpecial, autoNormal, collapse);
     }
+};
+
+const _collapseState = (params: Record<string, number>): _CollapseState | undefined => {
+    const t = params[COLLAPSE_PARAM] ?? 0;
+    if (t <= 0) return undefined;
+    const wind = Math.max(0, Math.min(1, params[COLLAPSE_WIND_PARAM] ?? 0));
+    return {
+        t, e: collapseEase(t), idx: 0, windDir: params[COLLAPSE_DIR_PARAM] ?? 0, wind,
+        burst: (params[COLLAPSE_BURST_PARAM] ?? 0) > 0,
+    };
 };
 
 // True if this node or any descendant animates/rotates at runtime. Only such
@@ -254,60 +321,52 @@ const _collectNode = (
 const _hasRotate = (node: DEF2Node): boolean =>
     !!node.rotate || (node.children ?? []).some(_hasRotate);
 
+// Queues a ZDEF2/D3F model into the frame's single batch — never flushes. Each top-level
+// node becomes its own sort item (its own bounding box), so e.g. a hull and a mast of
+// one model sort independently against the heli and other objects. Faces of a node
+// with moving parts (or while collapsing) are queued one by one in a per-face order,
+// kept together as one render group.
 const renderNodes = (
     def: DEF2 | DEF3,
     params: Record<string, number>,
     instanceProps: DEFInstanceOptions,
     renderer: _Renderer,
-    camX: number,
-    camY: number,
     drawCtx?: _DrawCtx,
-    onBeforeFlush?: (nodeIndex: number) => void,
 ): void => {
     const { x: ix, y: iy, z: iz = 0, angle: iAngle = 0 } = instanceProps;
     const cosA = Math.cos(iAngle), sinA = Math.sin(iAngle);
     const autoNormal = def.version === 3;
-    // Read from the file, never taken as a call-site parameter — renderNodes()
-    // fully owns whether/when it flushes, so no caller can forget a required
-    // follow-up call (see docs/D3F_SPEC.md § crossNodeDepth).
-    const crossNodeDepth = def.crossNodeDepth === true;
+    const collapse = _collapseState(params);
 
     for (const topNode of def.nodes) {
         const faces: DEFFace[] = [];
         const special: _Special[] = [];
-        _collectNode(topNode, params, _id2, faces, special, autoNormal);
+        _collectNode(topNode, params, _id2, faces, special, autoNormal, collapse);
 
-        let baseDepth: number;
+        // Fallback depth key (only used where bounding boxes intersect).
+        let baseDepth = ix + iy;
         if (topNode.depthAnchor) {
             const [dx, dy, dz = 0] = topNode.depthAnchor;
-            // dz is NOT rotated (Z-axis instance rotation never touches Z) — it gives
-            // a rotation-invariant depth separation, unlike dx/dy which flip relative
-            // order depending on the sign of (cosA+sinA) at different instance angles.
             baseDepth = (ix + dx * cosA - dy * sinA) + (iy + dx * sinA + dy * cosA) + (iz + dz);
-            for (let fi = 0; fi < faces.length; fi++) {
-                renderer.add({ id: def.id, faces: [faces[fi]] } as DEF, { ...instanceProps, depth: baseDepth + fi * 1e-7 });
+        }
+        if (collapse || _hasRotate(topNode)) {
+            const cApS = cosA + sinA, cAmS = cosA - sinA;
+            const allFaces: { face: DEFFace; key: number }[] = [];
+            faces.forEach((face, fi) => {
+                const verts = face.verts;
+                let lcx = 0, lcy = 0, lcz = 0;
+                for (const v of verts) { lcx += v[0]; lcy += v[1]; lcz += v[2]; }
+                lcx /= verts.length; lcy /= verts.length; lcz /= verts.length;
+                allFaces.push({ face, key: lcx * cApS + lcy * cAmS + lcz + fi * 1e-9 });
+            });
+            allFaces.sort((a, b) => a.key - b.key);
+            const group = newRenderGroup();
+            for (let si = 0; si < allFaces.length; si++) {
+                renderer.add({ id: def.id, faces: [allFaces[si].face] } as DEF, { ...instanceProps, depth: baseDepth + si * 1e-7, group });
             }
-        } else {
-            baseDepth = ix + iy;
-            if (_hasRotate(topNode)) {
-                const cApS = cosA + sinA, cAmS = cosA - sinA;
-                const allFaces: { face: DEFFace; key: number }[] = [];
-                faces.forEach((face, fi) => {
-                    const verts = face.verts;
-                    let lcx = 0, lcy = 0, lcz = 0;
-                    for (const v of verts) { lcx += v[0]; lcy += v[1]; lcz += v[2]; }
-                    lcx /= verts.length; lcy /= verts.length; lcz /= verts.length;
-                    allFaces.push({ face, key: lcx * cApS + lcy * cAmS + lcz + fi * 1e-9 });
-                });
-                allFaces.sort((a, b) => a.key - b.key);
-                for (let si = 0; si < allFaces.length; si++) {
-                    renderer.add({ id: def.id, faces: [allFaces[si].face] } as DEF, { ...instanceProps, depth: baseDepth + si * 1e-7 });
-                }
-            } else {
-                // No moving parts anywhere in this node: authored array order,
-                // one instance, same semantics as a plain v1 DEF.
-                renderer.add({ id: def.id, faces } as DEF, { ...instanceProps, depth: baseDepth });
-            }
+        } else if (faces.length) {
+            // No moving parts anywhere in this node: authored array order, one item.
+            renderer.add({ id: def.id, faces } as DEF, { ...instanceProps, depth: baseDepth });
         }
 
         if (drawCtx) {
@@ -337,6 +396,11 @@ const renderNodes = (
                     const wx1 = ix + v1[0] * cosA - v1[1] * sinA, wy1 = iy + v1[0] * sinA + v1[1] * cosA, wz1 = iz + v1[2];
                     renderer.add(null, {
                         x: (wx0 + wx1) / 2, y: (wy0 + wy1) / 2, z: (wz0 + wz1) / 2,
+                        bounds: {
+                            x0: Math.min(wx0, wx1), x1: Math.max(wx0, wx1),
+                            y0: Math.min(wy0, wy1), y1: Math.max(wy0, wy1),
+                            z0: Math.min(wz0, wz1), z1: Math.max(wz0, wz1),
+                        },
                         drawFn: (cx: number, cy: number) => {
                             const p0 = isoFn(wx0, wy0, wz0, cx, cy);
                             const p1 = isoFn(wx1, wy1, wz1, cx, cy);
@@ -352,28 +416,7 @@ const renderNodes = (
                 }
             }
         }
-
-        // Per-node flush is only for the onBeforeFlush contract (Carrier/Frigate/
-        // research platform inject the heli between two specific nodes) — it must
-        // NOT fire as a side effect for plain multi-node objects, because
-        // renderer.flush() flushes the entire SHARED batch, not just this def's own
-        // faces. Firing it unconditionally here was prematurely flushing whatever
-        // unrelated geometry (e.g. wind turbines) another caller had already queued
-        // but not yet flushed, splitting them from the heli into an earlier batch
-        // and breaking their depth-sort against it (see feedback thread, Oct 2026).
-        if (crossNodeDepth || !onBeforeFlush) continue; // single shared flush after the loop instead — see below
-        onBeforeFlush(def.nodes.indexOf(topNode));
-        renderer.flush(camX, camY);
     }
-    // crossNodeDepth (or no onBeforeFlush at all): this def's top-level nodes are
-    // fully self-contained — nothing outside this file injects geometry into one of
-    // them via onBeforeFlush — so renderNodes() can safely sort and flush ALL of
-    // them together, itself, right here, without touching the caller's shared batch
-    // more than once. Each node already got its own correct depth above
-    // (depthAnchor's dz, or the per-face sort), so this single shared flush paints
-    // every face from every node in one correctly-ordered pass instead of the
-    // "later node always wins" layering a per-node flush would give.
-    if (crossNodeDepth || !onBeforeFlush) renderer.flush(camX, camY);
 };
 
 /**
@@ -384,12 +427,13 @@ const applyNodes = (def: DEF2 | DEF3, params: Record<string, number>): DEF => {
     const faces: DEFFace[] = [];
     const discard: _Special[] = [];
     const autoNormal = def.version === 3;
+    const collapse = _collapseState(params);
     for (const node of def.nodes) {
-        _collectNode(node, params, _id2, faces, discard, autoNormal);
+        _collectNode(node, params, _id2, faces, discard, autoNormal, collapse);
     }
     // Preserve top-level fields (collisionBoxes, palettes, ...) — only `nodes` is
     // replaced by the baked flat `faces` list.
     return { ...def, faces } as unknown as DEF;
 };
 
-export { applyParts, applyRotateNodes, getTransformedPivots, renderPasses, renderNodes, applyNodes };
+export { applyParts, applyRotateNodes, getTransformedPivots, renderNodes, applyNodes, COLLAPSE_PARAM, COLLAPSE_DIR_PARAM, COLLAPSE_WIND_PARAM, COLLAPSE_BURST_PARAM, COLLAPSE_DROP, collapseEase };

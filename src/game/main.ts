@@ -3,6 +3,10 @@ import Tutorial from './campaigns/tutorial.zcampaign';
 import FreeFlight from './campaigns/freeFlight.zcampaign';
 import CallsignWolf from './campaigns/callsignwolf.zcampaign';
 import Zephyr from './campaigns/zephyr.zcampaign';
+import Xmas from './campaigns/xmas.zcampaign';
+// TEMP for testing campaign scripts — REMOVE BEFORE RELEASE (appended last so the
+// progress indices of all real campaigns stay unchanged).
+import Demo from './campaigns/demo.zcampaign';
 import { decompressTerrain } from '../shared/utils';
 import ZsynthPlayer from '../shared/ZsynthPlayer';
 import SoundSuccess from './music/success.zsong';
@@ -119,6 +123,8 @@ const createCampaignHandler = () => {
         FreeFlight as unknown as CampaignExport,
         CallsignWolf as unknown as CampaignExport,
         Zephyr as unknown as CampaignExport,
+        Xmas as unknown as CampaignExport,
+        Demo as unknown as CampaignExport,
     ];
 
     let campaignMap = new Map<string, CampaignExport>(campaigns.map(c => [(c as any)._key as string, c]));
@@ -220,7 +226,11 @@ const createCampaignHandler = () => {
 
     const getCampaignByKey = (key: string): CampaignExport | undefined => campaignMap.get(key);
 
-    // Decompresses compressed objects/payloads/events for the current level (build mode only).
+    // File name of the active .zcampaign (set by plugins/zcampaign.ts) — keys its optional script.
+    const getActiveCampaignKey = (): string =>
+        ((campaigns[campaignState.activeCampaign] as any)?._key as string | undefined) ?? '';
+
+    // Decompresses compressed objects/payloads for the current level (build mode only).
     const prewarmLevel = async (): Promise<void> => {
         const level = campaigns[campaignState.activeCampaign]?.levels[campaignState.activeMission] as any;
         if (!level || typeof level._ops !== 'string' || !_isCompressed(level._ops)) return;
@@ -232,6 +242,7 @@ const createCampaignHandler = () => {
     return {
         getCampaigns,
         getCampaignByKey,
+        getActiveCampaignKey,
         campaign: {
             getNextMission,
             setActiveCampaign,

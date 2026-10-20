@@ -4,7 +4,6 @@
   "label": "Fuel Truck",
   "static": false,
   "movementType": "auto",
-  "crossNodeDepth": true,
   "collisionBoxes": [
     {
       "id": "body",

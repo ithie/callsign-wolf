@@ -1,6 +1,7 @@
 import { G } from './state';
 import { getGround } from './sim/terrain';
 import { isLightningActive } from './lightning-state';
+import { isHeliLit, isBeamLit, beamIntensityAt } from './night-light';
 
 export interface DrawTerrainCtx {
     ctx: CanvasRenderingContext2D;
@@ -183,20 +184,17 @@ export const createDrawTerrain = (dtCtx: DrawTerrainCtx) => {
                 return;
             }
             const alt = G.heli.z - getGround(G.heli.x, G.heli.y, G.points, G.CARRIER);
-            const coneWidth = 0.3 + alt * 0.05;
-            const range = 10 + alt * 2.0;
-            const range2 = range * range;
-            const intensity = Math.floor(255 * Math.max(0.1, 1.0 - alt / 15));
-            const haX = G.heli.x, haY = G.heli.y, haA = G.heli.angle;
+            const heliIntensity = Math.floor(255 * Math.max(0.1, 1.0 - alt / 15));
             _renderTerrainBatched(canvas.width, canvas.height, camX, camY, xFrom, xTo, yFrom, yTo, (x, y, h0) => {
                 const _isPad = isPadTile(x, y);
                 const _isSvc = isServiceTile(x, y);
-                let diff = Math.atan2(y - haY, x - haX) - haA;
-                while (diff < -Math.PI) diff += Math.PI * 2;
-                while (diff > Math.PI) diff -= Math.PI * 2;
-                const dx = x - haX, dy = y - haY;
-                const inLight = Math.abs(diff) < coneWidth && dx * dx + dy * dy < range2;
-                if (!inLight) return '#020205';
+                const heliLit = isHeliLit(x, y);
+                const beamLit = isBeamLit(x, y);
+                if (!heliLit && !beamLit) return '#020205';
+                const intensity = Math.max(
+                    heliLit ? heliIntensity : 0,
+                    beamLit ? Math.floor(255 * beamIntensityAt(x, y)) : 0,
+                );
                 if (_isPad) return `rgb(${intensity - 30},${intensity - 30},${intensity - 30})`;
                 if (_isSvc) return `rgb(${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)},${Math.floor(intensity * 0.55)})`;
                 if (h0 > G.waterLevel && (G.pavementPoints[x]?.[y] ?? 0) > 0)

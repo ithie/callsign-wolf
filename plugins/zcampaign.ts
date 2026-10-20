@@ -26,9 +26,9 @@ export const zcampaignPlugin = (): Plugin => {
                     if (typeof level.sand === 'string') level.sand = compressTerrain(level.sand);
                     if (typeof level.pavement === 'string') level.pavement = compressTerrain(level.pavement);
                     if (typeof level.foliage === 'string') level.foliage = _compress(level.foliage);
-                    // Compress mission-only data (objects/payloads/events) — decompressed at launchMission
+                    // Compress mission-only data (objects/payloads) — decompressed at launchMission
                     const _ops: Record<string, unknown> = {};
-                    for (const k of ['objects', 'payloads', 'events'] as const) {
+                    for (const k of ['objects', 'payloads'] as const) {
                         if (level[k]) { _ops[k] = level[k]; delete level[k]; }
                     }
                     if (Object.keys(_ops).length) level._ops = _compress(JSON.stringify(_ops));

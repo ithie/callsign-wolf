@@ -14,7 +14,7 @@ const _railSamples = getRailSamples();
 export const createMiscDraw = (dwCtx: DrawWorldCtx) => {
     const { ctx, isoFn, tileW, isVisible, isMissionRain, SceneRenderer } = dwCtx;
 
-    const drawTestTrain = (camX: number, camY: number) => {
+    const drawTestTrain = () => {
         if (!testTrainState.active) return;
         for (const car of testTrainState.cars) {
             // Bogies first (fully independent objects, each at its own track pose)
@@ -22,19 +22,19 @@ export const createMiscDraw = (dwCtx: DrawWorldCtx) => {
             renderNodes(
                 FREIGHT_BOGIE_DEF as any, {},
                 { x: car.pose.rearBogie.x, y: car.pose.rearBogie.y, z: car.rearBogieZ, angle: car.pose.rearBogie.angle },
-                SceneRenderer, camX, camY,
+                SceneRenderer,
             );
             renderNodes(
                 FREIGHT_BOGIE_DEF as any, {},
                 { x: car.pose.frontBogie.x, y: car.pose.frontBogie.y, z: car.frontBogieZ, angle: car.pose.frontBogie.angle },
-                SceneRenderer, camX, camY,
+                SceneRenderer,
             );
 
             const instanceProps = { x: car.pose.bodyX, y: car.pose.bodyY, z: car.z, angle: car.pose.bodyAngle };
             if (car.kind === 'locomotive') {
-                renderNodes(FREIGHT_LOCOMOTIVE_DEF as any, {}, instanceProps, SceneRenderer, camX, camY);
+                renderNodes(FREIGHT_LOCOMOTIVE_DEF as any, {}, instanceProps, SceneRenderer);
             } else {
-                renderNodes(FREIGHT_WAGON_DEF as any, {}, instanceProps, SceneRenderer, camX, camY);
+                renderNodes(FREIGHT_WAGON_DEF as any, {}, instanceProps, SceneRenderer);
                 const color = car.containerColor!;
                 renderNodes(
                     FREIGHT_CONTAINER_DEF as any, {},
@@ -42,7 +42,7 @@ export const createMiscDraw = (dwCtx: DrawWorldCtx) => {
                         ...instanceProps, z: car.z + WAGON_DECK_Z,
                         colors: { ctop: color, cfront: color, cback: color, cleft: color, cright: color },
                     },
-                    SceneRenderer, camX, camY,
+                    SceneRenderer,
                 );
             }
         }

@@ -2,11 +2,11 @@ import type { DrawWorldCtx } from './types';
 import { G } from '../state';
 import { VESSEL } from '../../shared/types';
 import { renderNodes } from '../def-utils';
+import { collapseParams } from '../sim/collapse';
 import SAILBOAT_DEF from '../models/sailboat.zdef';
 import PILOT_BOAT_DEF from '../models/pilot_boat.zdef';
 import SAR_BOAT_DEF from '../models/sar_boat.zdef';
 import SALVAGE_TUG_DEF from '../models/supply_vessel.zdef';
-import SUPPLY_VESSEL_WRECK_DEF from '../models/supply_vessel_wreck.zdef';
 import SUBMARINE_DEF from '../models/submarine.zdef';
 import RESEARCH_PLATFORM_DEF from '../models/research_platform.zdef';
 import FRIGATE_DEF from '../models/frigate.zdef';
@@ -47,40 +47,28 @@ export const createVesselsDraw = (dwCtx: DrawWorldCtx) => {
         ctx.globalAlpha = 1.0;
     };
 
-    const _drawBoatModel = (b: any, cx: number, cy: number, onBeforeFlush?: (ni: number) => void) => {
+    const _drawBoatModel = (b: any) => {
+        const p = collapseParams(b);
         if (b.objectType === VESSEL.PILOT_BOAT) {
-            renderNodes(PILOT_BOAT_DEF as any, {}, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer, cx, cy);
+            renderNodes(PILOT_BOAT_DEF as any, p, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer);
         } else if (b.objectType === VESSEL.SAR_BOAT) {
-            renderNodes(SAR_BOAT_DEF as any, {}, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer, cx, cy);
+            renderNodes(SAR_BOAT_DEF as any, p, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer);
         } else if (b.objectType === VESSEL.FRIGATE) {
-            renderNodes(FRIGATE_DEF as any, {}, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer, cx, cy, undefined, onBeforeFlush);
+            renderNodes(FRIGATE_DEF as any, p, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer);
         } else if (b.objectType === VESSEL.SALVAGE_TUG || b.objectType === VESSEL.SUPPLY_VESSEL) {
-            renderNodes(SALVAGE_TUG_DEF as any, {}, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer, cx, cy);
+            renderNodes(SALVAGE_TUG_DEF as any, p, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer);
         } else {
-            renderNodes(SAILBOAT_DEF as any, {}, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer, cx, cy);
+            renderNodes(SAILBOAT_DEF as any, p, { x: b.x, y: b.y, z: G.waterLevel, angle: b.angle }, SceneRenderer);
         }
     };
 
-    const _drawSubmarine = (s: any, cx: number, cy: number) => {
-        // The -5.6 rearward offset used to be a manual `depth` override on the
-        // SceneRenderer.add() call; renderNodes() computes its own depth and ignores
-        // an external override, so it now lives as submarine.zdef's depthAnchor
-        // instead — same tuned value, same effect, just read from the model.
-        renderNodes(SUBMARINE_DEF as any, {}, { x: s.x, y: s.y, z: G.waterLevel, angle: s.angle }, SceneRenderer, cx, cy);
+    const _drawSubmarine = (s: any) => {
+        renderNodes(SUBMARINE_DEF as any, collapseParams(s), { x: s.x, y: s.y, z: G.waterLevel, angle: s.angle }, SceneRenderer);
     };
 
-    const _drawResearchPlatform = (
-        rX: number, rY: number, cx: number, cy: number, onBeforeFlush?: (nodeIndex: number) => void,
-    ) => {
-        // Same as submarine: the -4 offset now lives as research_platform.zdef's depthAnchor.
-        // Split into two nodes (base/deck, then mast) so the heli can be interleaved between
-        // them — same mechanism as the frigate's hull/superstructure split below.
-        renderNodes(RESEARCH_PLATFORM_DEF as any, {}, { x: rX, y: rY, z: G.waterLevel, angle: 0 }, SceneRenderer, cx, cy, undefined, onBeforeFlush);
+    const _drawResearchPlatform = (rp: any) => {
+        renderNodes(RESEARCH_PLATFORM_DEF as any, collapseParams(rp), { x: rp.x, y: rp.y, z: G.waterLevel, angle: 0 }, SceneRenderer);
     };
 
-    const _drawBoatWreck = (w: { x: number; y: number; angle: number }, cx: number, cy: number) => {
-        renderNodes(SUPPLY_VESSEL_WRECK_DEF as any, {}, { x: w.x, y: w.y, z: G.waterLevel, angle: w.angle }, SceneRenderer, cx, cy);
-    };
-
-    return { _drawBowWave, _drawBoatModel, _drawBoatWreck, _drawSubmarine, _drawResearchPlatform };
+    return { _drawBowWave, _drawBoatModel, _drawSubmarine, _drawResearchPlatform };
 };

@@ -1,9 +1,10 @@
 import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
 import { zdefPlugin } from './plugins/zdef';
+import { scriptTypesPlugin } from './plugins/script-types';
 
 export default defineConfig({
-    plugins: [zdefPlugin()],
+    plugins: [zdefPlugin(), scriptTypesPlugin(resolve(__dirname, 'src/game/campaigns'))],
     resolve: {
         alias: { '@': resolve(__dirname, 'src') },
     },

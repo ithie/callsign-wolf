@@ -314,11 +314,12 @@ describe('applyNodes — D3F auto-normal', () => {
     });
 });
 
-describe('renderNodes — depthAnchor dz (rotation-invariant depth)', () => {
+type _AddOpts = { depth?: number; group?: number };
+
+describe('renderNodes — depthAnchor dz (rotation-invariant fallback depth)', () => {
     const anchoredDef = (dz: number): DEF3 => ({
         version: 3,
         id: 'test',
-        crossNodeDepth: true,
         nodes: [{
             depthAnchor: [0, 0, dz],
             faces: [{ id: 'f', verts: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], color: '#fff' }],
@@ -327,98 +328,70 @@ describe('renderNodes — depthAnchor dz (rotation-invariant depth)', () => {
 
     it('dz is not rotated by instance angle (unlike dx/dy)', () => {
         const depths: number[] = [];
-        const renderer = { add: (_d: unknown, opts: { depth?: number }) => depths.push(opts.depth!), flush: () => {} };
         for (const angle of [0, Math.PI / 3, Math.PI, 4.7]) {
-            renderer.add = (_d, opts) => depths.push(opts.depth!);
-            renderNodes(anchoredDef(-3), {}, { x: 0, y: 0, angle }, renderer, 0, 0);
+            const renderer = { add: (_d: unknown, opts: _AddOpts) => { depths.push(opts.depth!); } };
+            renderNodes(anchoredDef(-3), {}, { x: 0, y: 0, angle }, renderer);
         }
         depths.forEach(d => expect(d).toBeCloseTo(-3, CLOSE));
     });
 
     it('a large negative dz keeps a node behind others at every angle, unlike a dx-only epsilon', () => {
-        // Regression case: fuel_truck's chassis node used to sort in FRONT of the
-        // tank at some rotations because [dx,dy]-only depth flips sign with
-        // (cosA+sinA) — a dz-pinned node must win regardless of angle.
-        const low: DEF3 = { version: 3, id: 'low', crossNodeDepth: true, nodes: [{ depthAnchor: [0, 0, -3], faces: [{ id: 'a', verts: [[0,0,0]], color: '#fff' }] }] };
-        const high: DEF3 = { version: 3, id: 'high', crossNodeDepth: true, nodes: [{ depthAnchor: [1.85, 0, 0.55], faces: [{ id: 'b', verts: [[0,0,0]], color: '#fff' }] }] };
+        const low: DEF3 = { version: 3, id: 'low', nodes: [{ depthAnchor: [0, 0, -3], faces: [{ id: 'a', verts: [[0,0,0]], color: '#fff' }] }] };
+        const high: DEF3 = { version: 3, id: 'high', nodes: [{ depthAnchor: [1.85, 0, 0.55], faces: [{ id: 'b', verts: [[0,0,0]], color: '#fff' }] }] };
         for (const angle of [0, 1, 2, 3, 4, 5, 6]) {
             let lowDepth = 0, highDepth = 0;
-            const renderer = { add: (_d: unknown, opts: { depth?: number }) => { lowDepth = opts.depth!; }, flush: () => {} };
-            renderNodes(low, {}, { x: 0, y: 0, angle }, renderer, 0, 0);
-            renderer.add = (_d, opts) => { highDepth = opts.depth!; };
-            renderNodes(high, {}, { x: 0, y: 0, angle }, renderer, 0, 0);
+            renderNodes(low, {}, { x: 0, y: 0, angle }, { add: (_d: unknown, opts: _AddOpts) => { lowDepth = opts.depth!; } });
+            renderNodes(high, {}, { x: 0, y: 0, angle }, { add: (_d: unknown, opts: _AddOpts) => { highDepth = opts.depth!; } });
             expect(lowDepth).toBeLessThan(highDepth);
         }
     });
 });
 
-describe('renderNodes — crossNodeDepth (read from the def, not a call-site flag)', () => {
-    const flatDef = (crossNodeDepth?: boolean): DEF3 => ({
+describe('renderNodes — queues into the frame batch, never flushes', () => {
+    const twoNodeDef: DEF3 = {
         version: 3,
         id: 'test',
-        ...(crossNodeDepth !== undefined ? { crossNodeDepth } : {}),
-        nodes: [{
-            faces: [
-                { id: 'low', verts: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], color: '#fff' },
-                { id: 'high', verts: [[0, 0, 5], [1, 0, 5], [1, 1, 5], [0, 1, 5]], color: '#fff' },
-            ],
-        }],
-    });
-
-    // Two top-level nodes, so per-node-flush vs. one-shared-flush actually differ.
-    const twoNodeDef = (crossNodeDepth?: boolean): DEF3 => ({
-        version: 3,
-        id: 'test',
-        ...(crossNodeDepth !== undefined ? { crossNodeDepth } : {}),
         nodes: [
-            { depthAnchor: [0, 0, 0], faces: [{ id: 'a', verts: [[0,0,0]], color: '#fff' }] },
-            { depthAnchor: [1, 0, 0], faces: [{ id: 'b', verts: [[0,0,0]], color: '#fff' }] },
+            { faces: [{ id: 'a', verts: [[0,0,0]], color: '#fff' }] },
+            { faces: [{ id: 'b', verts: [[0,0,0]], color: '#fff' }] },
         ],
+    };
+
+    it('the renderer it is given needs no flush() at all', () => {
+        const calls: string[] = [];
+        renderNodes(twoNodeDef, {}, { x: 0, y: 0, angle: 0 }, { add: () => { calls.push('add'); } });
+        expect(calls).toEqual(['add', 'add']);
     });
 
-    it('flushes exactly once, after both nodes, when def.crossNodeDepth is true — no caller follow-up needed', () => {
-        let flushCount = 0;
-        const renderer = { add: () => {}, flush: () => { flushCount++; } };
-        renderNodes(twoNodeDef(true), {}, { x: 0, y: 0, angle: 0 }, renderer, 0, 0);
-        expect(flushCount).toBe(1);
-    });
-
-    it('flushes exactly once when crossNodeDepth is absent and no onBeforeFlush is given (no caller-visible side effect on the shared batch)', () => {
-        let flushCount = 0;
-        const renderer = { add: () => {}, flush: () => { flushCount++; } };
-        renderNodes(twoNodeDef(), {}, { x: 0, y: 0, angle: 0 }, renderer, 0, 0);
-        expect(flushCount).toBe(1);
-    });
-
-    it('flushes once per node when onBeforeFlush is given, calling it between nodes (Carrier/Frigate/research-platform heli-interleave contract)', () => {
-        let flushCount = 0;
-        const seenIndices: number[] = [];
-        const renderer = { add: () => {}, flush: () => { flushCount++; } };
-        renderNodes(twoNodeDef(), {}, { x: 0, y: 0, angle: 0 }, renderer, 0, 0, undefined, (ni) => seenIndices.push(ni));
-        expect(flushCount).toBe(2);
-        expect(seenIndices).toEqual([0, 1]);
-    });
-
-    it('with crossNodeDepth:true, both nodes are added before the single flush() call fires', () => {
-        const events: string[] = [];
-        const renderer = { add: () => { events.push('add'); }, flush: () => { events.push('flush'); } };
-        renderNodes(twoNodeDef(true), {}, { x: 0, y: 0, angle: 0 }, renderer, 0, 0);
-        expect(events).toEqual(['add', 'add', 'flush']);
+    it('each top-level node becomes its own sort item', () => {
+        const ids: string[][] = [];
+        renderNodes(twoNodeDef, {}, { x: 0, y: 0, angle: 0 }, {
+            add: (d: unknown) => { ids.push((d as { faces: { id: string }[] }).faces.map(f => f.id)); },
+        });
+        expect(ids).toEqual([['a'], ['b']]);
     });
 
     it('a node with no moving parts gets one add() call in authored array order (not a per-face centroid sort)', () => {
+        const flatDef: DEF3 = {
+            version: 3,
+            id: 'test',
+            nodes: [{
+                faces: [
+                    { id: 'low', verts: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], color: '#fff' },
+                    { id: 'high', verts: [[0, 0, 5], [1, 0, 5], [1, 1, 5], [0, 1, 5]], color: '#fff' },
+                ],
+            }],
+        };
         const calls: { faces: { id: string }[] }[] = [];
-        const renderer = { add: (d: unknown) => calls.push(d as { faces: { id: string }[] }), flush: () => {} };
-        renderNodes(flatDef(true), {}, { x: 0, y: 0, angle: 0 }, renderer, 0, 0);
+        renderNodes(flatDef, {}, { x: 0, y: 0, angle: 0 }, { add: (d: unknown) => { calls.push(d as { faces: { id: string }[] }); } });
         expect(calls.length).toBe(1);
         expect(calls[0].faces.map(f => f.id)).toEqual(['low', 'high']);
     });
 
-    it('a node WITH a rotating part still gets a per-face centroid depth sort (needed for moving sub-parts)', () => {
+    it('a node WITH a rotating part gets a per-face depth order, all faces in one render group', () => {
         const rotatingDef: DEF3 = {
             version: 3,
             id: 'test',
-            crossNodeDepth: true,
             nodes: [{
                 faces: [{ id: 'low', verts: [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], color: '#fff' }],
                 children: [{
@@ -427,16 +400,16 @@ describe('renderNodes — crossNodeDepth (read from the def, not a call-site fla
                 }],
             }],
         };
-        const depths: { id: string; depth?: number }[] = [];
-        const renderer = {
-            add: (d: unknown, opts: { depth?: number }) => depths.push({ id: (d as { faces: { id: string }[] }).faces[0].id, depth: opts.depth }),
-            flush: () => {},
-        };
-        renderNodes(rotatingDef, {}, { x: 0, y: 0, angle: 0 }, renderer, 0, 0);
-        expect(depths.length).toBe(2);
-        const low = depths.find(d => d.id === 'low')!;
-        const high = depths.find(d => d.id === 'high')!;
+        const items: { id: string; depth?: number; group?: number }[] = [];
+        renderNodes(rotatingDef, {}, { x: 0, y: 0, angle: 0 }, {
+            add: (d: unknown, opts: _AddOpts) => { items.push({ id: (d as { faces: { id: string }[] }).faces[0].id, ...opts }); },
+        });
+        expect(items.length).toBe(2);
+        const low = items.find(d => d.id === 'low')!;
+        const high = items.find(d => d.id === 'high')!;
         expect(high.depth).toBeGreaterThan(low.depth!);
+        expect(low.group).toBeGreaterThan(0);
+        expect(high.group).toBe(low.group);
     });
 });
 

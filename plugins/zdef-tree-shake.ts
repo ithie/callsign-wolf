@@ -5,7 +5,7 @@ import { resolve, basename } from 'path';
 // DEFs in models/objects/ that are not campaign object types but must always be bundled
 // (consumed via a direct import elsewhere, never placed as a campaign `objects[]` entry)
 const _CORE_TYPES = new Set([
-    'tower', 'hangar_tower', 'hangar',
+    'tower', 'hangar_tower', 'hangar', 'jet_bunker',
     'freight_locomotive', 'freight_wagon', 'freight_container', 'freight_bogie',
 ]);
 

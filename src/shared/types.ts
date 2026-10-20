@@ -1,31 +1,6 @@
 /** Text field that can be a plain string (legacy/DE-only) or a fully localized object. */
 export type LocalizedString = string | { de: string; en?: string; fr?: string; es?: string; pt?: string };
 
-// ── Script Events ─────────────────────────────────────────────────────────────
-
-export type EventTrigger =
-    | { type: 'time'; seconds: number }
-    | { type: 'rescued'; count: number }
-    | { type: 'objectReaches'; objectIdx: number; nearObjectIdx: number; distance: number }
-    | { type: 'objectDestroyed'; objectIdx: number }
-    | { type: 'heliNear'; objectIdx: number; distance: number };
-
-export type EventAction =
-    | { type: 'setOnFire'; objectIdx: number }
-    | { type: 'setOnSmoke'; objectIdx: number }
-    | { type: 'destroy'; objectIdx: number }
-    | { type: 'startMoving'; objectIdx: number }
-    | { type: 'stopMoving'; objectIdx: number }
-    | { type: 'killAttachedPayloads'; objectIdx: number }
-    | { type: 'failMission'; objectIdx?: number }
-    | { type: 'showMessage'; text: LocalizedString }
-    | { type: 'setWindStr'; value: number };
-
-export type MissionEvent = {
-    trigger: EventTrigger;
-    actions: EventAction[];
-};
-
 export const VESSEL = {
     CARRIER:            'carrier',
     BOAT:               'boat',
@@ -56,6 +31,7 @@ export const VESSEL = {
     XMAS_LANTERN:       'xmas_lantern',
     XMAS_CANDY_CANE:    'xmas_candy_cane',
     XMAS_TREE:          'xmas_tree',
+    PHONE_BOOTH:        'phone_booth',
     SLEIGH:             'sleigh',
     REINDEER:           'reindeer',
     VOLLEYBALL_COURT:   'volleyball_court',
@@ -126,7 +102,7 @@ export const PARTICLE_EMITTER_TYPE = {
 export type ParticleEmitterType = typeof PARTICLE_EMITTER_TYPE[keyof typeof PARTICLE_EMITTER_TYPE];
 export type ParticleEmitter = { type: ParticleEmitterType; x: number; y: number };
 
-type PadObject = { type: 'pad'; x: number; y: number; towerVariant?: 'classic' | 'new' };
+type PadObject = { type: 'pad'; x: number; y: number; towerVariant?: 'classic' | 'new'; hangarVariant?: 'classic' | 'bunker' };
 type CarrierObject = {
     type: 'carrier';
     x: number;
@@ -213,7 +189,8 @@ type XmasTreeObject      = { type: 'xmas_tree'; x: number; y: number; angle?: nu
 type RingObject = { type: 'ring'; x: number; y: number; z: number; radius?: number; angle?: number };
 type DomObject       = { type: 'dom'; x: number; y: number };
 type MesseHalleObject = { type: 'messe_halle'; x: number; y: number };
-type MissionObject = PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | SupplyVesselObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject | FrigateObject | XmasHouseAObject | XmasHouseBObject | XmasHouseCObject | XmasLanternObject | SleighObject | ReindeerObject | RingObject | DomObject | MesseHalleObject | XmasCandyCaneObject | XmasTreeObject;
+// Optional `name` lets a campaign script address the object (see docs/SCRIPTING.md).
+type MissionObject = (PadObject | CarrierObject | BoatObject | SubmarineObject | LighthouseObject | PilotBoatObject | SalvageTugObject | ResearchPlatformObject | WindTurbineObject | SupplyVesselObject | PlaneWreckObject | SailboatBrokenObject | OrnithopterWreckObject | FrigateObject | XmasHouseAObject | XmasHouseBObject | XmasHouseCObject | XmasLanternObject | SleighObject | ReindeerObject | RingObject | DomObject | MesseHalleObject | XmasCandyCaneObject | XmasTreeObject) & { name?: string };
 
 export type Objective =
     | { type: 'rescue_all' }
@@ -222,6 +199,8 @@ export type Objective =
     | { type: 'max_altitude'; limit: number };
 
 export type MissionPayload = {
+    /** Optional, addressable from the campaign script (unique per mission across objects and payloads). */
+    name?: string;
     type: 'person' | 'crate' | 'rescuer' | 'orni_wreck' | 'reindeer';
     x: number;
     y: number;
@@ -234,6 +213,8 @@ export type MissionPayload = {
 };
 
 export interface Mission {
+    /** Stable id a campaign script keys this mission by (indices shift when missions are removed). */
+    id?: string;
     headline: LocalizedString;
     sublines?: LocalizedString[];
     briefing: LocalizedString;
@@ -261,7 +242,6 @@ export interface Mission {
     typeRatingFor?: string;   // heliId: grant type rating on successful completion
     heliOverride?: string;    // force this heli for the mission (tutorial ring missions)
     terrainRef?: number;      // index into campaign.levels — share terrain with that mission
-    events?: MissionEvent[];
     endless?: boolean;
     /** Test-only: spawns the hardcoded freight train loop (see sim/test-train.ts). Not editor-exposed. */
     testTrain?: boolean;

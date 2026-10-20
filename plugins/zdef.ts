@@ -18,8 +18,7 @@ const C: Record<string, string> = {
     // ZDEF2
     nodes: 'nd', children: 'ch', lights: 'li', depthAnchor: 'da',
     animate: 'an', type: 'ty', speed: 'sp', amplitude: 'am',
-    lineWidth: 'lw', fragments: 'fr', faceIds: 'fd', impulse: 'ip',
-    torque: 'tq', colorOff: 'cf', blink: 'bk', radius: 'ra',
+    lineWidth: 'lw', colorOff: 'cf', blink: 'bk', radius: 'ra',
     landingZone: 'lz', palettes: 'pa', version: 've',
     glowColor: 'gc', glowRadius: 'gr', blinkHz: 'bh',
 };

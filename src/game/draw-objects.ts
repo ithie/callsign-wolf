@@ -617,26 +617,17 @@ export const createDrawObjects = (
     }
 
     // ── drawFuelTruck ──────────────────────────────────────────────────────────
-    // EXCEPTION to the module's "no flush, caller is responsible" rule: the model
-    // has crossNodeDepth:true (chassis/tank/box/cab need to be depth-sorted against
-    // EACH OTHER, not against anything external — no other object is ever mounted
-    // on/inside a fuel truck), so renderNodes() sorts and flushes all four itself.
-    // Same accepted tradeoff as the Carrier's early, isolated flush: whatever was
-    // queued earlier in the same frame gets drawn now too, and anything queued
-    // after draws in a separate, later-wins batch. Fine here — nothing else in the
-    // scene needs to interleave with a fuel truck at the sub-face level.
-    const drawFuelTruck = (tX: number, tY: number, angle: number, camX: number, camY: number, opts: DrawFuelTruckOpts = {}) => {
+    // Queues the truck's model nodes (chassis/tank/box/cab, each its own sort item)
+    // plus the tanker arm — no flush, like every other draw function.
+    const drawFuelTruck = (tX: number, tY: number, angle: number, opts: DrawFuelTruckOpts = {}) => {
         const { z = 0, armExtend = 0, armTarget = null, getFuelingState, steerAngle = 0 } = opts;
         const cosA = Math.cos(angle),
             sinA = Math.sin(angle);
-        // Chassis/tank/cab depth ordering now lives in the model itself (per-node
-        // depthAnchor: [0.815,0]/[0.825,0]/[1.85,0]) instead of being computed here —
-        // renderNodes() reproduces exactly these three depths from one file.
         const cabDepth = tX + tY + 1.85 * (cosA + sinA);
         const pivotWX = tX + 0.3 * cosA;
         const pivotWY = tY + 0.3 * sinA;
 
-        renderNodes(FUEL_TRUCK_DEF as any, { steerAngle }, { x: tX, y: tY, z, angle }, SceneRenderer as any, camX, camY);
+        renderNodes(FUEL_TRUCK_DEF as any, { steerAngle }, { x: tX, y: tY, z, angle }, SceneRenderer as any);
 
         // The tanker arm is pure drawFn (Zeewolf homage) — not part of any .zdef,
         // kept as its own depth-sorted item at the cab's depth.
@@ -645,6 +636,8 @@ export const createDrawObjects = (
             y: pivotWY,
             z,
             depth: cabDepth,
+            // The arm swings up to ~1.5 around its pivot on the cab.
+            bounds: { x0: pivotWX - 1.5, x1: pivotWX + 1.5, y0: pivotWY - 1.5, y1: pivotWY + 1.5, z0: z, z1: z + 1.5 },
             drawFn: (camX, camY) => {
                 if (armExtend <= 0) return;
                 const pivotZ = z + 0.98;

@@ -209,18 +209,40 @@ const smoothCoast = (m: Mission, cx: number, cy: number, radius: number) => {
 };
 
 const SNAP_RADIUS = 8;
+// Persons/crates set onto a wind turbine stand on its nacelle (the game resolves the
+// height): only snap when placed right at the tower, not merely somewhere nearby.
+const TURBINE_SNAP_RADIUS = 2;
+const NACELLE_LOCAL_X = 0.1;
+// Object types makePayload() snaps onto by itself — dragging such a payload re-snaps it.
+const SNAP_TYPES = new Set(['carrier', 'boat', 'sar_boat', 'submarine', 'sailboat_broken', 'wind_turbine']);
+
 const makePayload = (type: 'person' | 'crate' | 'rescuer', gx: number, gy: number, m: Mission) => {
+    let turbineIdx = -1,
+        turbineDist = TURBINE_SNAP_RADIUS;
     let nearestIdx = -1,
         nearestDist = SNAP_RADIUS;
     for (let i = 0; i < m.objects.length; i++) {
         const obj = m.objects[i];
+        const d = Math.hypot(gx - obj.x, gy - obj.y);
+        if (obj.type === 'wind_turbine') {
+            if (d <= turbineDist) { turbineDist = d; turbineIdx = i; }
+            continue;
+        }
         if (obj.type !== 'carrier' && obj.type !== 'boat' && obj.type !== 'sar_boat' && obj.type !== 'submarine' && obj.type !== 'sailboat_broken')
             continue;
-        const d = Math.hypot(gx - obj.x, gy - obj.y);
         if (d <= nearestDist) {
             nearestDist = d;
             nearestIdx = i;
         }
+    }
+    if (turbineIdx >= 0) {
+        const t = m.objects[turbineIdx];
+        return {
+            type,
+            x: t.x,
+            y: t.y,
+            attachTo: { objectType: 'wind_turbine' as const, objectIdx: turbineIdx, localX: NACELLE_LOCAL_X, localY: 0 },
+        };
     }
     if (nearestIdx >= 0) {
         const obj = m.objects[nearestIdx] as any;
@@ -235,6 +257,22 @@ const makePayload = (type: 'person' | 'crate' | 'rescuer', gx: number, gy: numbe
         };
     }
     return { type, x: gx, y: gy };
+};
+
+// Moves an existing payload to (x, y). Snap attachments (vessels, turbines) are
+// re-snapped — so dragging off a turbine detaches — other attachments (dom roof, or a
+// hand-set vessel offset) keep their object and get a new local offset relative to
+// THEIR object. All other fields (name, deliverTo, swimwear, …) are kept.
+const movePayload = (p: any, x: number, y: number, m: Mission): any => {
+    const att = p.attachTo;
+    if (att?.objectType && !SNAP_TYPES.has(att.objectType)) {
+        const ref = (att.objectIdx !== undefined ? m.objects[att.objectIdx] : undefined)
+            ?? (m.objects as any[]).find((o: any) => o.type === att.objectType);
+        if (ref) { att.localX = x - ref.x; att.localY = y - ref.y; }
+        return p;
+    }
+    const { attachTo: _a, x: _x, y: _y, ...rest } = p;
+    return { ...rest, ...makePayload(p.type, x, y, m) };
 };
 
 const removeNearestPayload = (m: Mission, gx: number, gy: number, type: 'person' | 'crate' | 'rescuer') => {
@@ -1118,6 +1156,13 @@ export const initUI = () => {
         if (pad) pad.towerVariant = (e.target as HTMLSelectElement).value as 'classic' | 'new';
         notifyWorkbench();
     });
+    document.getElementById('pad_hangar_variant')?.addEventListener('change', (e) => {
+        const m = getCurrentMission();
+        if (!m) return;
+        const pad = m.objects.find((o: any) => o.type === 'pad') as any;
+        if (pad) pad.hangarVariant = (e.target as HTMLSelectElement).value as 'classic' | 'bunker';
+        notifyWorkbench();
+    });
     safeClick('btn_spawn_carrier', () => {
         getCurrentMission()!.spawnObject = 'carrier';
         drawMap();
@@ -1307,6 +1352,31 @@ export const initUI = () => {
         }
     };
 
+    const doUndo = () => {
+        if (!state.lastDrag) return;
+        const m = getCurrentMission()!;
+        const { type, idx, x, y } = state.lastDrag;
+        if (type === 'payload') {
+            const p = m.payloads[idx] as any;
+            if (p) {
+                m.payloads[idx] = movePayload(p, x, y, m);
+                renderPayloadList();
+            }
+        } else if (type === 'object') {
+            const o = m.objects[idx] as any;
+            if (o) { o.x = x; o.y = y; renderObjectList(); }
+        } else if (type === 'emitter') {
+            const em = (m as any).particleEmitters?.[idx];
+            if (em) { em.x = x; em.y = y; }
+        }
+        state.lastDrag = null;
+        notifyWorkbench();
+        broadcastPreview();
+        drawMap();
+    };
+    const undoBtn = document.getElementById('btn-undo');
+    if (undoBtn) undoBtn.onclick = doUndo;
+
     window.addEventListener('keydown', e => {
         if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'TEXTAREA') return;
         if (e.key === 'm' || e.key === 'M') {
@@ -1315,6 +1385,11 @@ export const initUI = () => {
                 updateMoveCursor();
                 drawMap();
             }
+        }
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && state.lastDrag) {
+            doUndo();
+            e.preventDefault();
+            return;
         }
         const PAN_STEP = 1.5;
         if (e.key === 'ArrowLeft')  { state.panX -= PAN_STEP; state.panY += PAN_STEP; clampCamera(); drawMap(); e.preventDefault(); }
@@ -1399,6 +1474,9 @@ export const initUI = () => {
             case 'baywatch_tower':
                 m.objects.push({ type: 'baywatch_tower' as any, x: gx, y: gy });
                 break;
+            case 'phone_booth':
+                m.objects.push({ type: 'phone_booth' as any, x: gx, y: gy });
+                break;
             case 'concert_stage':
                 m.objects.push({ type: 'concert_stage' as any, x: gx, y: gy });
                 break;
@@ -1482,47 +1560,48 @@ export const initUI = () => {
 
     if (ctxMenu) {
         const _CTX_GROUPS = [
-            { cat: 'Stat.', emoji: '🏗', items: [
-                { v: 'pad', l: '🟩 Landepad' },
-                { v: 'lighthouse', l: '🔦 Leuchtturm' },
-                { v: 'research_platform', l: '🏗 Plattform' },
-                { v: 'ring', l: '⭕ Ring' },
-                { v: 'dom', l: '⛪ Kölner Dom' },
-                { v: 'messe_halle', l: '🏛 Messehalle' },
+            { cat: 'Stat.', items: [
+                { v: 'pad', l: 'Landepad' },
+                { v: 'lighthouse', l: 'Leuchtturm' },
+                { v: 'research_platform', l: 'Plattform' },
+                { v: 'ring', l: 'Ring' },
+                { v: 'dom', l: 'Kölner Dom' },
+                { v: 'messe_halle', l: 'Messehalle' },
             ]},
-            { cat: 'Fahr.', emoji: '🚢', items: [
-                { v: 'carrier', l: '🚢 Träger' },
-                { v: 'boat', l: '⛵ Boot' },
-                { v: 'pilot_boat', l: '🚤 Lotsenboot' },
-                { v: 'sar_boat', l: '🛥 SAR-Boot' },
-                { v: 'salvage_tug', l: '🛳 Schlepper' },
-                { v: 'supply_vessel', l: '🚢 Versorgungsschiff' },
-                { v: 'frigate', l: '⚓ Fregatte' },
-                { v: 'submarine', l: '🤿 U-Boot' },
+            { cat: 'Fahr.', items: [
+                { v: 'carrier', l: 'Träger' },
+                { v: 'boat', l: 'Boot' },
+                { v: 'pilot_boat', l: 'Lotsenboot' },
+                { v: 'sar_boat', l: 'SAR-Boot' },
+                { v: 'salvage_tug', l: 'Schlepper' },
+                { v: 'supply_vessel', l: 'Versorgungsschiff' },
+                { v: 'frigate', l: 'Fregatte' },
+                { v: 'submarine', l: 'U-Boot' },
             ]},
-            { cat: 'Deko', emoji: '🌀', items: [
-                { v: 'wind_turbine', l: '🌀 Windrad' },
-                { v: 'plane_wreck', l: '✈️ Wrack' },
-                { v: 'sailboat_broken', l: '⛵ Segel (gek.)' },
-                { v: 'ornithopter_wreck', l: '🛸 Orni-Wrack' },
-                { v: 'baywatch_car', l: '🚗 BW-Auto' },
-                { v: 'baywatch_hq', l: '🏠 BW-HQ' },
-                { v: 'baywatch_tower', l: '🗼 Wachturm' },
-                { v: 'buoy', l: '🔴 Boje' },
-                { v: 'concert_stage', l: '🎸 Bühne' },
-                { v: 'festival_tent', l: '🎪 Zelt' },
-                { v: 'festival_tent_broken', l: '🎪 Zelt (kap.)' },
-                { v: 'festival_car', l: '🚙 Festival-Auto' },
-                { v: 'volleyball_court', l: '🏐 Volleyball' },
+            { cat: 'Deko', items: [
+                { v: 'wind_turbine', l: 'Windrad' },
+                { v: 'plane_wreck', l: 'Wrack' },
+                { v: 'sailboat_broken', l: 'Segel (gek.)' },
+                { v: 'ornithopter_wreck', l: 'Orni-Wrack' },
+                { v: 'baywatch_car', l: 'BW-Auto' },
+                { v: 'baywatch_hq', l: 'BW-HQ' },
+                { v: 'baywatch_tower', l: 'Wachturm' },
+                { v: 'buoy', l: 'Boje' },
+                { v: 'phone_booth', l: 'Telefonzelle' },
+                { v: 'concert_stage', l: 'Bühne' },
+                { v: 'festival_tent', l: 'Zelt' },
+                { v: 'festival_tent_broken', l: 'Zelt (kap.)' },
+                { v: 'festival_car', l: 'Festival-Auto' },
+                { v: 'volleyball_court', l: 'Volleyball' },
             ]},
-            { cat: 'Load', emoji: '📦', items: [
-                { v: 'person', l: '🟡 Person' },
-                { v: 'rescuer', l: '🔵 Retter' },
-                { v: 'crate', l: '🟠 Crate' },
+            { cat: 'Load', items: [
+                { v: 'person', l: 'Person' },
+                { v: 'rescuer', l: 'Retter' },
+                { v: 'crate', l: 'Crate' },
             ]},
-            { cat: 'Ptcl', emoji: '✨', items: [
-                { v: 'smoke', l: '💨 Rauch' },
-                { v: 'fire', l: '🔥 Feuer + Rauch' },
+            { cat: 'Ptcl', items: [
+                { v: 'smoke', l: 'Rauch' },
+                { v: 'fire', l: 'Feuer + Rauch' },
             ]},
         ];
 
@@ -1557,7 +1636,7 @@ export const initUI = () => {
                 const btn = document.createElement('button');
                 btn.textContent = item.l;
                 btn.style.cssText = 'background:#1e1e1e;border:1px solid #3a3a3a;color:#ccc;font-size:11px;padding:5px 4px;cursor:pointer;border-radius:3px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
-                btn.title = item.l.replace(/^.+? /, '');
+                btn.title = item.l;
                 btn.onmouseenter = () => { btn.style.background = '#1a3a5a'; btn.style.borderColor = '#4af'; btn.style.color = '#fff'; };
                 btn.onmouseleave = () => { btn.style.background = '#1e1e1e'; btn.style.borderColor = '#3a3a3a'; btn.style.color = '#ccc'; };
                 btn.onclick = (ev) => { ev.stopPropagation(); _placeItem(item.v, _ctxGx, _ctxGy); hideCtxMenu(); };
@@ -1605,6 +1684,49 @@ export const initUI = () => {
         });
     }
 
+    // Click-Radien pro Objekttyp, abgeleitet aus den echten collisionBoxes der Modelle
+    // (Umkreisradius der XY-Bounding-Box + kleine Toleranz), statt pauschaler Großflächen.
+    // Objekte mit `angle` können rotieren, daher Kreis statt achsengebundener Box.
+    const _HIT_RADIUS: Record<string, number> = {
+        lighthouse: 1.6,
+        wind_turbine: 1.0,
+        research_platform: 3.5,
+        buoy: 0.8,
+        plane_wreck: 3.0,
+        sailboat_broken: 1.6,
+        ornithopter_wreck: 2.0,
+        xmas_house_a: 1.1,
+        xmas_house_b: 1.4,
+        xmas_house_c: 1.6,
+        xmas_lantern: 0.7,
+        phone_booth: 0.7,
+        sleigh: 1.0,
+        reindeer: 1.0,
+        xmas_candy_cane: 0.6,
+        xmas_tree: 1.0,
+        baywatch_car: 1.2,
+        baywatch_hq: 3.2,
+        baywatch_tower: 2.9,
+        concert_stage: 3.8,
+        festival_tent: 1.1,
+        festival_tent_broken: 1.2,
+        festival_car: 1.2,
+        volleyball_court: 3.6,
+        carrier: 4.5,
+        frigate: 3.5,
+        submarine: 2.5,
+        salvage_tug: 2.5,
+        supply_vessel: 3.0,
+        boat: 1.8,
+        pilot_boat: 1.8,
+        sar_boat: 1.8,
+    };
+    // dom/messe_halle rotieren nie (kein `angle`-Feld) → echte achsengebundene Box statt Kreis
+    const _HIT_BOX: Record<string, { hx: number; hy: number }> = {
+        dom: { hx: 3.3, hy: 2.5 },
+        messe_halle: { hx: 3.3, hy: 10.55 },
+    };
+
     // Resolve effective world x,y for a payload (handles attachTo with no absolute position)
     const payloadXY = (p: any, m: Mission): { x: number; y: number } | null => {
         if (p.x !== undefined && !isNaN(p.x)) return { x: p.x, y: p.y };
@@ -1650,17 +1772,7 @@ export const initUI = () => {
                 renderObjectList();
             } else if (state.selectedPayloadIdx !== null) {
                 const p = m.payloads[state.selectedPayloadIdx] as any;
-                if (p.attachTo?.objectType) {
-                    const ref = (m.objects as any[]).find((o: any) => o.type === p.attachTo.objectType);
-                    if (ref) { p.attachTo.localX = Math.floor(gx) - ref.x; p.attachTo.localY = Math.floor(gy) - ref.y; }
-                } else {
-                    const snapped = makePayload(p.type, Math.floor(gx), Math.floor(gy), m);
-                    m.payloads[state.selectedPayloadIdx] = {
-                        ...snapped,
-                        ...(p.deliverTo ? { deliverTo: p.deliverTo } : {}),
-                        ...(p.npcTarget ? { npcTarget: p.npcTarget } : {}),
-                    } as any;
-                }
+                m.payloads[state.selectedPayloadIdx] = movePayload(p, Math.floor(gx), Math.floor(gy), m);
                 renderPayloadList();
             }
             state.moveMode = false;
@@ -1719,23 +1831,13 @@ export const initUI = () => {
                 const obj = m.objects[i] as any;
                 let hit = false;
                 if (obj.type === 'pad') hit = gx >= obj.x && gx <= obj.x + 8 && gy >= obj.y && gy <= obj.y + 8;
-                else if (['carrier', 'boat', 'pilot_boat', 'sar_boat', 'salvage_tug', 'supply_vessel', 'frigate', 'submarine'].includes(obj.type))
-                    hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
-                else if (['lighthouse', 'research_platform', 'wind_turbine', 'buoy'].includes(obj.type))
-                    hit = Math.hypot(gx - obj.x, gy - obj.y) < 2;
-                else if (['plane_wreck', 'sailboat_broken', 'ornithopter_wreck', 'baywatch_car', 'baywatch_hq', 'baywatch_tower',
-                    'concert_stage',
-                    'festival_tent', 'festival_tent_broken', 'festival_car',
-                    'xmas_house_a', 'xmas_house_b', 'xmas_house_c', 'sleigh', 'reindeer'].includes(obj.type))
-                    hit = Math.hypot(gx - obj.x, gy - obj.y) < 3;
-                else if (obj.type === 'volleyball_court')
-                    hit = Math.hypot(gx - obj.x, gy - obj.y) < 6;
-                else if (obj.type === 'xmas_lantern')
-                    hit = Math.hypot(gx - obj.x, gy - obj.y) < 2.5;
-                else if (['dom', 'messe_halle'].includes(obj.type))
-                    hit = Math.hypot(gx - obj.x, gy - obj.y) < 8;
-                else if ((obj as any).type === 'ring')
-                    hit = Math.hypot(gx - obj.x, gy - obj.y) < ((obj as any).radius ?? 2.5) + 1;
+                else if (obj.type === 'ring') hit = Math.hypot(gx - obj.x, gy - obj.y) < ((obj as any).radius ?? 2.5) + 1;
+                else if (_HIT_BOX[obj.type]) {
+                    const { hx, hy } = _HIT_BOX[obj.type];
+                    hit = Math.abs(gx - obj.x) <= hx && Math.abs(gy - obj.y) <= hy;
+                } else {
+                    hit = Math.hypot(gx - obj.x, gy - obj.y) < (_HIT_RADIUS[obj.type] ?? 1.5);
+                }
                 if (hit) {
                     if (state.selectedObjectIdx !== i) {
                         state.selectedObjectIdx = i;
@@ -1902,22 +2004,19 @@ export const initUI = () => {
 
         if (state.isDraggingItem) {
             if (state.dragHasMoved) {
+                state.lastDrag = {
+                    type: state.dragItemType!,
+                    idx: state.dragItemIdx!,
+                    x: state.dragOrigX,
+                    y: state.dragOrigY,
+                };
                 const m = getCurrentMission()!;
                 if (state.dragItemType === 'payload') {
                     const p = m.payloads[state.dragItemIdx!] as any;
-                    if (p.attachTo?.objectType) {
-                        // Update local offset relative to the reference object; drop temp absolute x/y
-                        const ref = (m.objects as any[]).find((o: any) => o.type === p.attachTo.objectType);
-                        if (ref) { p.attachTo.localX = p.x - ref.x; p.attachTo.localY = p.y - ref.y; }
-                        delete p.x; delete p.y;
-                    } else {
-                        const snapped = makePayload(p.type, p.x, p.y, m);
-                        m.payloads[state.dragItemIdx!] = {
-                            ...snapped,
-                            ...(p.deliverTo ? { deliverTo: p.deliverTo } : {}),
-                            ...(p.npcTarget ? { npcTarget: p.npcTarget } : {}),
-                        } as any;
-                    }
+                    const moved = movePayload(p, p.x, p.y, m);
+                    // Object-relative attachments (dom roof, …) carry no absolute position.
+                    if (moved === p && p.attachTo) { delete p.x; delete p.y; }
+                    m.payloads[state.dragItemIdx!] = moved;
                     renderPayloadList();
                 } else if (state.dragItemType === 'emitter') {
                     // emitters just need save + redraw, no list rebuild

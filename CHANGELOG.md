@@ -1,5 +1,43 @@
 # SAR: Callsign WOLF — Changelog
 
+## v33.0.0 — Zephyr, X-Mas & D3F
+
+### Added
+
+- **Zephyr campaign** — New 4-mission campaign, "Project: Zephyr" (Morning Shift, Onshore Wind, Blackout, Icarus), set on an offshore wind farm. The finale takes place in a night storm with a lightning-struck nacelle on fire. Introduces winching rescue targets directly onto wind turbine nacelles (`attachTo`) and persons who start already on board the helicopter (`spawnOnboard`).
+- **X-Mas Special campaign** — Consolidated into 3 missions (Crash, Salvage, December 24th) released all at once instead of one per Advent day. The Crash mission has players track down 9 reindeer scattered across the map with no beacon guidance. Pine trees get snow-dusted tips and the campaign-select tile shows a falling-snow effect in snow missions. New red phone booth decoration.
+- **D3F model format (ZDEF v3)** — New 3D model format for isometric props: face normals are computed automatically from vertex winding instead of being hand-authored, reducing a recurring source of rendering glitches in new models. Several core models (helicopters, carrier) migrated to it.
+- **Rotating lighthouse beam at night** — In night missions the lighthouse now sweeps a rotating light beam (about 9 s per revolution) that lights up terrain, objects, trees and people it passes over, in addition to the helicopter's searchlight.
+- **Jet Bunker hangar variant** — New selectable PAD hangar option (half-shell bunker, open on both ends) alongside the classic hangar, chosen per mission in the campaign editor. Set as the default hangar on all Zephyr missions.
+- **Campaign scripts** — Missions can now be scripted in TypeScript: one optional `<key>.script.ts` per campaign next to its `.zcampaign`, keyed by a stable mission `id`. Map objects and payloads get optional names and become typed objects in the script (a misspelled or missing name is a compile error); scripts can steer vessels (heading, course and speed, so a vessel can also drift sideways), detect 3D contact between objects, destroy objects, send radio messages in all five languages, react to pickups/deliveries, hide minimap markers and win or fail the mission. Scripts also run in endless mode and in the campaign editor preview. The "Icarus" finale and the demo drop-off test map are now scripted. See `docs/SCRIPTING.md`.
+- **Rescue targets on wind turbine nacelles** — Persons and crates placed onto a wind turbine in the campaign editor are now bound to it automatically and stand on its nacelle roof (dragging them off unbinds them again). Previously they stood at the foot of the tower.
+- **Generic collapse** — Any placed object can now collapse in on itself (animated over a few seconds, with explosion and a spray or dust cloud at its base depending on the ground). Fire and smoke belonging to the object stay on the rubble; anyone still waiting on it goes down with it and counts as not rescued; destroyed objects no longer have a collision box.
+- **Speed-sensitive minimap zoom** — The minimap now zooms in continuously as the helicopter slows down (full map at ≥140 km/h, tightest view around the helicopter at ≤15 km/h), making precise placement easier on large maps such as Zephyr. Markers outside the current zoomed view (pad, carrier, vessels, rescue targets, rings) are clamped to the edge of the minimap to indicate their direction instead of disappearing.
+
+### Changed
+
+- **Campaigns no longer unlock one after another** — With the full version and the flight school done, every campaign is playable right away; Project Zephyr no longer requires finishing Callsign Wolf first. Missions within a campaign still unlock in order.
+- **X-Mas Special is a full-version campaign** — It was configured as a free scenario campaign by mistake; it now requires the full version like the other campaigns. Its texts are now available in all five languages.
+
+- **One depth-sorted scene per frame** — The renderer used to draw the world in several separate batches, so objects from different batches could not sort against each other (e.g. a turbine mast showing through a supply vessel, or a vessel through the carrier in the campaign editor). Every object part, the helicopter, people, lights and particles now go into a single batch per frame, ordered by their 3D bounding boxes (classic isometric box sort). This replaces the per-object workarounds for slotting the helicopter between parts of the carrier, frigate and research platform. Game, campaign editor and model editor use the same path.
+
+### Fixed
+
+- **Wind turbine nacelle delivery zone** — The drop zone for rescue targets on wind turbine nacelles was too narrow to actually land a delivery in; widened to the area in which the nacelle roof darkens as a placement aid (±1.5 around the tower), and the turbine's rotor now stops spinning while a delivery zone is active on it.
+- **Endless mode respawn stacking** — Endless mode previously picked a random rescue position (with repeats possible) each time someone was picked up, so the same spot could spawn multiple people in a row. It now reveals the mission's rescue positions one at a time in their placed order, looping back (reshuffled) once all have been collected.
+
+### Removed
+
+- **JSON mission events** — The declarative `events` array in `.zcampaign` levels, its runtime and the editor's events panel have been replaced by campaign scripts. The hard-wired "vessel hits turbine" rule and the separate wreck model are gone as well — what happens on contact is now decided by the script alone.
+
+### Tools
+
+- **Campaign editor: tighter click hitboxes** — Object click/selection areas on the map now match each object's real footprint (derived from its model's collision box) instead of an oversized generic radius, cutting down on accidental drags.
+- **Campaign editor: undo last drag** — Cmd/Ctrl+Z (or the new ↺ toolbar button) reverts the last accidental object/payload/emitter drag.
+- **Campaign editor: text-only context menu** — Removed emoji icons from the object-placement right-click menu in favour of plain text labels.
+
+---
+
 ## v32.0.1 — Colour Consistency
 
 ### Changed

@@ -322,36 +322,6 @@ This lets outer segments of a wing, arm, or antenna follow their inner segment's
 
 ---
 
-## Destruction Fragments (`fragments`)
-
-When a scripted `destroy` event fires on an object, the engine spawns physics fragments that fly apart and vanish after ~4 s. Each fragment group is a named subset of faces.
-
-```typescript
-interface DEFFragment {
-    id: string;                         // unique name (shown in model editor)
-    faceIds: string[];                  // face ids that form this chunk
-    pivot: [number, number, number];    // local-space origin the chunk flies from
-    impulse?: [number, number, number]; // initial velocity in local space (default [0,0,0])
-    torque?: number;                    // total self-rotation over lifetime in radians (default: random ±3)
-}
-```
-
-`fragments` is a top-level array on the DEF. Faces in parts and (for ZDEF2) nodes are supported — face ids are resolved from all sources. A face not listed in any fragment is invisible during the destruction animation.
-
-**Physics (per tick at 30 fps):**
-
-| Property | Value |
-|----------|-------|
-| Gravity | `vz -= 0.018` per tick |
-| Upward pop at spawn | `+0.04 … +0.10` added to `vz` |
-| Lifetime | `MAX_AGE = 120` ticks (~4 s) |
-| Impulse | rotated by the object's world angle at destruction time |
-| Face vertices | baked into pivot-relative world space at spawn — no further deformation |
-
-The model editor supports adding, editing, and previewing fragment groups via **+ Gruppe**, **PLAY**, and **RESET**.
-
----
-
 ## Instance Schema
 
 ```typescript
@@ -440,9 +410,26 @@ The special variant `"disco"` is **not** declared in `palettes` — it is a rend
 
 ---
 
+## Sorting
+
+All objects of a frame go into **one** batch; `SceneRenderer.flush()` is called once at the end
+of the frame (game and editors). Every item has a world-space bounding box:
+
+- DEF instances: computed from their transformed faces.
+- `drawFn` items: pass `bounds: { x0, x1, y0, y1, z0, z1 }` (otherwise the point `x, y, z`).
+
+Classic isometric box sort: the camera looks from +x/+y/+z, so of two items whose screen
+rectangles overlap, the one lying completely behind the other along x, y **or** z is painted
+first (a shadow flat on the deck before the car on it, a heli above a deck after the deck,
+a mast behind a hull before the hull). Only where boxes really intersect does the fallback
+`depth` key decide (default `x + y`). Items sharing a `group` id keep their key order among
+themselves (used for the per-face items of a moving model part).
+
+---
+
 ## Draw Callbacks (`drawFn`)
 
-For elements that cannot be expressed as static geometry — animated parts, sprites, procedural shapes — attach a `drawFn` to the instance. It is called **after the instance's own faces**, depth-sorted alongside them in the same flush pass.
+For elements that cannot be expressed as static geometry — animated parts, sprites, procedural shapes — attach a `drawFn` to the instance. It is called **after the instance's own faces**. For a `drawFn`-only item, give `bounds` so it sorts correctly (see § Sorting).
 
 ```javascript
 SceneRenderer.add(HELI_DEF, {
@@ -590,7 +577,7 @@ F {id} {c} [{nx} {ny}]  [S {sc} [{sw}]]
 |--------|--------|-------|
 | `ZD1 {id}` | id | Header; must be first line |
 | `P {hex} ...` | space-separated `#rrggbb` | Color palette, 0-indexed |
-| `M {json}` | single JSON object | Optional; carries `pivot`, `collisionBoxes`, `lights`, `rescueZones`, `landingZone`, `fragments` |
+| `M {json}` | single JSON object | Optional; carries `pivot`, `collisionBoxes`, `lights`, `rescueZones`, `landingZone` |
 | `F {id} {c} [{nx} {ny}] [S {sc} [{sw}]]` | face-id, color idx, optional normal, optional stroke (palette idx + optional strokeWidth) | Face header |
 | *(next line after F)* | `{x},{y},{z}` ... | Vertex triples, space-separated |
 | `PART {id} [{parent}] [R …]` | part-id, optional parent-id, optional rotate | Opens an animated part group; faces follow on subsequent lines |

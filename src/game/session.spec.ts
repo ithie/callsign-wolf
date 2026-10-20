@@ -160,22 +160,12 @@ describe('isCampaignUnlocked', () => {
         expect(isCampaignUnlocked(s, campaigns, 2)).toBe(true);
     });
 
-    it('second regular locked until first regular is done', () => {
+    it('every regular campaign is unlocked after the tutorial, without finishing the others', () => {
         const s = mkSession({
             campaignProgress: { '0': { completed: true, missions: [{ completed: true, bestTimeMs: null, count: 1 }] } },
             typeRatings: { coasthawk: true },
         });
-        expect(isCampaignUnlocked(s, campaigns, 3)).toBe(false);
-    });
-
-    it('second regular unlocked after first regular is done', () => {
-        const s = mkSession({
-            campaignProgress: {
-                '0': { completed: true, missions: [{ completed: true, bestTimeMs: null, count: 1 }] },
-                '2': { completed: true, missions: [] },
-            },
-            typeRatings: { coasthawk: true },
-        });
+        expect(isCampaignUnlocked(s, campaigns, 2)).toBe(true);
         expect(isCampaignUnlocked(s, campaigns, 3)).toBe(true);
     });
 

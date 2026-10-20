@@ -144,7 +144,7 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
         const showCB = getShowCollisionBoxes();
 
         // ── Carrier ───────────────────────────────────────────────────────────────
-        if (hasCarrier()) {
+        if (hasCarrier() && !G.CARRIER.destroyed) {
             const cx = G.CARRIER.x, cy = G.CARRIER.y, ca = G.CARRIER.angle;
             const deckZ = G.CARRIER.zDeck;
             if (showCB) drawCollisionBox(cx, cy, ca, -8.7, 8.7, -4.2, 4.2, 0, deckZ, 'rgba(0,200,255,0.8)');
@@ -203,6 +203,7 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
 
         // ── Boats ─────────────────────────────────────────────────────────────────
         G.BOATS.forEach((b: any) => {
+            if (b.destroyed) return;
             const wl = G.waterLevel;
             const def =
                 b.objectType === VESSEL.PILOT_BOAT    ? PILOT_BOAT_DEF  :
@@ -216,18 +217,21 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
 
         // ── Submarines ────────────────────────────────────────────────────────────
         G.SUBMARINES.forEach((s: any) => {
+            if (s.destroyed) return;
             if (showCB) drawDef(SUBMARINE_DEF, s.x, s.y, s.angle, G.waterLevel, 'rgba(0,200,255,0.8)');
             if (!zstate.crashed && checkDef(SUBMARINE_DEF, s.x, s.y, s.angle, G.waterLevel)) triggerCrash();
         });
 
         // ── Research platforms ────────────────────────────────────────────────────
         G.RESEARCH_PLATFORMS.forEach((rp: any) => {
+            if (rp.destroyed) return;
             if (showCB) drawDef(RESEARCH_PLATFORM_DEF, rp.x, rp.y, 0, G.waterLevel, 'rgba(0,200,255,0.8)');
             if (!zstate.crashed && checkDef(RESEARCH_PLATFORM_DEF, rp.x, rp.y, 0, G.waterLevel)) triggerCrash();
         });
 
         // ── Wind turbines ─────────────────────────────────────────────────────────
         G.WIND_TURBINES.forEach((wt: any) => {
+            if (wt.destroyed) return;
             const gz = wt.gz ?? 0;
             const _def = getObjectDef(VESSEL.WIND_TURBINE);
             if (!_def) return;
@@ -237,6 +241,7 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
 
         // ── Baywatch objects ──────────────────────────────────────────────────────
         G.BAYWATCH_CARS.forEach((c: any) => {
+            if (c.destroyed) return;
             const gz = c.gz ?? 0;
             const _def = getObjectDef(VESSEL.BAYWATCH_CAR);
             if (!_def) return;
@@ -244,6 +249,7 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
             if (!zstate.crashed && checkDef(_def, c.x, c.y, c.angle, gz)) triggerCrash();
         });
         G.BAYWATCH_BUILDINGS.forEach((b: any) => {
+            if (b.destroyed) return;
             const gz = b.gz ?? 0;
             const _def = getObjectDef(b.type);
             if (!_def) return;
@@ -253,6 +259,7 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
 
         // ── Festival objects ──────────────────────────────────────────────────────
         G.CONCERT_STAGES.forEach((s: any) => {
+            if (s.destroyed) return;
             const gz = s.gz ?? 0;
             const _def = getObjectDef(VESSEL.CONCERT_STAGE);
             if (!_def) return;
@@ -260,6 +267,7 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
             if (!zstate.crashed && checkDef(_def, s.x, s.y, s.angle, gz)) triggerCrash();
         });
         G.FESTIVAL_TENTS.forEach((t: any) => {
+            if (t.destroyed) return;
             const gz = t.gz ?? 0;
             const _def = getObjectDef(t.type);
             if (!_def) return;
@@ -267,6 +275,7 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
             if (!zstate.crashed && checkDef(_def, t.x, t.y, t.angle, gz)) triggerCrash();
         });
         G.FESTIVAL_CARS.forEach((c: any) => {
+            if (c.destroyed) return;
             const gz = c.gz ?? 0;
             const _def = getObjectDef(VESSEL.FESTIVAL_CAR);
             if (!_def) return;
@@ -276,7 +285,7 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
 
         // ── Scenario Props (Dom, Messe Halle, Xmas Deco) ─────────────────────────
         G.SCENARIO_PROPS.forEach((p: any) => {
-            if (!isVisible(p.x, p.y)) return;
+            if (p.destroyed || !isVisible(p.x, p.y)) return;
             const _def = getObjectDef(p.type);
             if (!_def) return;
             if (showCB) drawDef(_def, p.x, p.y, p.angle ?? 0, p.gz, 'rgba(180,140,255,0.8)');
@@ -285,6 +294,7 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
 
         // ── Xmas objects ──────────────────────────────────────────────────────────
         G.XMAS_HOUSES.forEach((h: any) => {
+            if (h.destroyed) return;
             const gz = h.gz ?? 0;
             const _def = getObjectDef(h.type) ?? getObjectDef(VESSEL.XMAS_HOUSE_A);
             if (!_def) return;
@@ -292,6 +302,7 @@ export const createCollisionDraw = (dwCtx: DrawWorldCtx) => {
             if (!zstate.crashed && checkDef(_def, h.x, h.y, h.angle ?? 0, gz)) triggerCrash();
         });
         G.XMAS_LANTERNS.forEach((l: any) => {
+            if (l.destroyed) return;
             const gz = l.gz ?? 0;
             const _def = getObjectDef(VESSEL.XMAS_LANTERN);
             if (!_def) return;

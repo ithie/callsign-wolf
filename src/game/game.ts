@@ -8,11 +8,14 @@ import { initAppStorage, storageGet, storageSet } from './storage';
 import { G, zstate } from './state';
 import { initHeliSound, stopHeliSound, setSfxEnabled, isSfxEnabled, updateHeliSound } from './heli-sound';
 import { createDrawWorld } from './draws-world/draw-world';
+import { updateNightLight } from './night-light';
 import { createSceneRenderer } from './scene-renderer';
+import { heliBounds } from './draws-world/heli-bounds';
 import { HELI_TYPES } from './heli-types';
 import { getGround, initGrid } from './sim/terrain';
 import { spawnExplosion } from './sim/particles';
 import { updatePhysics } from './sim/simulation';
+import { updateMissionScript } from './script/runtime';
 import { mountVoiceLine } from './ui/voice-line/voice-line';
 import { createDrawObjects } from './draw-objects';
 import { createFoliage } from './foliage';
@@ -245,7 +248,6 @@ const _physicsCtx = createPhysicsCtx({
     },
     getTriggerCrash: () => _getPreviewTriggerCrash() ?? Flow.triggerCrash,
     orniWreckDelivered: Flow.orniWreckDelivered,
-    onBoatTurbineCollision: Flow.onBoatTurbineCollision,
     onPersonPickedUp: () => { if (Flow.endlessMode) Flow.spawnEndlessPerson(); },
 });
 
@@ -279,7 +281,10 @@ const _drawSceneInner = () => {
     const gridSize = Flow.missionGridSize;
 
     if (!zstate.gameStarted) return;
-    if (!zstate.crashed && !Flow.briefingActive) updatePhysics(dt, _physicsCtx);
+    if (!zstate.crashed && !Flow.briefingActive) {
+        updatePhysics(dt, _physicsCtx);
+        updateMissionScript(dt);
+    }
     if (!zstate.gameStarted) return;
 
     if (Flow.missionMaxTime !== null && Flow.missionStartTime > 0 && !Flow.briefingActive && !zstate.crashed) {
@@ -325,6 +330,7 @@ const _drawSceneInner = () => {
     const rx = camX / tileW + camY / tileH;
     const ry = camY / tileH - camX / tileW;
 
+    updateNightLight(Flow.missionHasLighthouse ? { x: Flow.lighthouseX, y: Flow.lighthouseY } : null);
     drawTerrain(camX, camY, rx, ry, isNight, rain);
     Flow.updateSnowDrift();
 
@@ -371,57 +377,62 @@ const _drawSceneInner = () => {
     });
     ctx.globalAlpha = 1.0;
 
+    // The heli and what hangs below it (rope, rescuer, payload) are two sort items.
+    const _winchItem = (() => {
+        const ap: any = G.activePayload;
+        const rs = G.rescuerSwing;
+        const showRescuer = G.heli.winch > 0.3;
+        const showRope = !ap && G.heli.winch > 0.05 && Math.hypot(rs.x - G.heli.x, rs.y - G.heli.y) <= G.heli.winch + 3;
+        if (!ap && !showRescuer && !showRope) return undefined;
+        const lowZ = ap ? ap.z : Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
+        const xs = [G.heli.x, rs.x, ...(ap ? [ap.x] : [])], ys = [G.heli.y, rs.y, ...(ap ? [ap.y] : [])];
+        return {
+            bounds: {
+                x0: Math.min(...xs) - 0.4, x1: Math.max(...xs) + 0.4,
+                y0: Math.min(...ys) - 0.4, y1: Math.max(...ys) + 0.4,
+                z0: lowZ, z1: G.heli.z,
+            },
+            fn: (cx: number, cy: number) => {
+                drawPayloadObjects(true, true);
+                drawPayloadObjects(true, false);
+                if (showRope) {
+                    const hP = isoFn(G.heli.x, G.heli.y, G.heli.z, cx, cy);
+                    const wP = isoFn(rs.x, rs.y, lowZ, cx, cy);
+                    ctx.strokeStyle = '#bbb';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(hP.x, hP.y);
+                    ctx.lineTo(wP.x, wP.y);
+                    ctx.stroke();
+                }
+                if (showRescuer) {
+                    const winchTipZ = ap
+                        ? ap.z + (ap.type === PAYLOAD.PERSON || ap.type === PAYLOAD.RESCUER ? 0.35 : 0)
+                        : lowZ;
+                    drawPerson(rs.x, rs.y, winchTipZ, 0, false, cx, cy, PAYLOAD.RESCUER,
+                        G.heli.type === 'spinner' ? { shirt: '#0044cc', pants: '#001f80' } : undefined);
+                }
+            },
+        };
+    })();
     drawWorldObjects(
         camX, camY, _visMargin,
         !zstate.crashed
             ? {
-                  x: G.heli.x,
-                  y: G.heli.y,
-                  fn: (cx, cy) => {
-                      drawPayloadObjects(true, true);
-                      drawPayloadObjects(true, false);
-
-                      if (
-                          !G.activePayload &&
-                          G.heli.winch > 0.05 &&
-                          Math.hypot(G.rescuerSwing.x - G.heli.x, G.rescuerSwing.y - G.heli.y) <= G.heli.winch + 3
-                      ) {
-                          const rs = G.rescuerSwing;
-                          const winchTipZ = Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
-                          const hP = isoFn(G.heli.x, G.heli.y, G.heli.z, cx, cy);
-                          const wP = isoFn(rs.x, rs.y, winchTipZ, cx, cy);
-                          ctx.strokeStyle = '#bbb';
-                          ctx.lineWidth = 1;
-                          ctx.beginPath();
-                          ctx.moveTo(hP.x, hP.y);
-                          ctx.lineTo(wP.x, wP.y);
-                          ctx.stroke();
+                  bounds: heliBounds(G.heli.type, G.heli.x, G.heli.y, G.heli.z, G.heli.angle),
+                  fn: (cx, cy) => drawHeli(
+                      G.heli.type,
+                      G.heli.x, G.heli.y, G.heli.z,
+                      G.heli.angle, G.heli.tilt, G.heli.roll, G.heli.rotationPos,
+                      cx, cy,
+                      {
+                          shadowGetGround: (x, y) => getGround(x, y),
+                          flapRate: _flapRate,
+                          tailRotorRate: 1.0 + Math.abs(G.heli.roll) * 4,
+                          ..._heliColorOpts,
                       }
-                      if (G.heli.winch > 0.3) {
-                          const rs = G.rescuerSwing;
-                          const winchTipZ = G.activePayload
-                              ? G.activePayload.z +
-                                (G.activePayload.type === PAYLOAD.PERSON || G.activePayload.type === PAYLOAD.RESCUER
-                                    ? 0.35
-                                    : 0)
-                              : Math.max(getGround(rs.x, rs.y), G.heli.z - G.heli.winch);
-                          drawPerson(rs.x, rs.y, winchTipZ, 0, false, cx, cy, PAYLOAD.RESCUER,
-                              G.heli.type === 'spinner' ? { shirt: '#0044cc', pants: '#001f80' } : undefined);
-                      }
-
-                      drawHeli(
-                          G.heli.type,
-                          G.heli.x, G.heli.y, G.heli.z,
-                          G.heli.angle, G.heli.tilt, G.heli.roll, G.heli.rotationPos,
-                          cx, cy,
-                          {
-                              shadowGetGround: (x, y) => getGround(x, y),
-                              flapRate: _flapRate,
-                              tailRotorRate: 1.0 + Math.abs(G.heli.roll) * 4,
-                              ..._heliColorOpts,
-                          }
-                      );
-                  },
+                  ),
+                  ...(_winchItem ? { winch: _winchItem } : {}),
               }
             : undefined,
         (cx, cy) => drawTrees(cx, cy, rx, ry)
@@ -496,14 +507,15 @@ const _drawSceneInner = () => {
             gridSize,
             pad: hasPad() ? G.PAD : null,
             carrier: hasCarrier() ? G.CARRIER : null,
+            // minimapHidden: set by campaign scripts (object.minimap.hidden).
             vessels: [
-                ...G.SUBMARINES.map((s: any) => ({ x: s.x, y: s.y, type: VESSEL.SUBMARINE })),
-                ...G.BOATS.map((b: any) => ({ x: b.x, y: b.y, type: b.objectType ?? VESSEL.BOAT })),
-                ...G.WIND_TURBINES.map((wt: any) => ({ x: wt.x, y: wt.y, type: VESSEL.WIND_TURBINE })),
-                ...G.RESEARCH_PLATFORMS.map((rp: any) => ({ x: rp.x, y: rp.y, type: VESSEL.RESEARCH_PLATFORM })),
-            ],
+                ...G.SUBMARINES.map((s: any) => ({ x: s.x, y: s.y, type: VESSEL.SUBMARINE, hidden: s.minimapHidden })),
+                ...G.BOATS.map((b: any) => ({ x: b.x, y: b.y, type: b.objectType ?? VESSEL.BOAT, hidden: b.minimapHidden })),
+                ...G.WIND_TURBINES.map((wt: any) => ({ x: wt.x, y: wt.y, type: VESSEL.WIND_TURBINE, hidden: wt.minimapHidden })),
+                ...G.RESEARCH_PLATFORMS.map((rp: any) => ({ x: rp.x, y: rp.y, type: VESSEL.RESEARCH_PLATFORM, hidden: rp.minimapHidden })),
+            ].filter(v => !v.hidden),
+            payloads: G.payloads.filter((p: any) => !p.minimapHidden),
             heli: G.heli,
-            payloads: G.payloads,
             windBft: Flow.missionWindBft,
             windAngle: Flow.missionWindDir * (Math.PI / 180),
             rings: G.RINGS.map(r => ({ x: r.x, y: r.y, flown: r.flown })),
@@ -583,7 +595,7 @@ const _previewLaunch = !import.meta.env.DEV
           const objs = missionData.objects || [];
           const padObj = objs.find((o: any) => o.type === VESSEL.PAD) ||
               objs.find((o: any) => o.type === VESSEL.CARRIER) || { x: 10, y: 10 };
-          G.PAD = { xMin: padObj.x, xMax: padObj.x + 7, yMin: padObj.y, yMax: padObj.y + 7, z: 0.5, towerVariant: padObj.towerVariant };
+          G.PAD = { xMin: padObj.x, xMax: padObj.x + 7, yMin: padObj.y, yMax: padObj.y + 7, z: 0.5, towerVariant: padObj.towerVariant, hangarVariant: padObj.hangarVariant };
           G.START_POS = { x: padObj.x + 4, y: padObj.y + 4 };
           initGrid(missionData.gridSize, G.points);
 
