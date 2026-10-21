@@ -59,6 +59,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    text-align: center;
     gap: 52px;
     padding: calc(50vh - 57px) 32px 55vh;
 }
@@ -124,7 +125,7 @@
 }
 
 #campaign-end-screen .ced-name {
-    font-size: var(--ps-6);
+    font-size: var(--ps-3);
     color: #ccc;
     letter-spacing: 1px;
 }
@@ -139,6 +140,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    text-align: center;
     gap: 12px;
     opacity: 0;
     pointer-events: none;
@@ -173,7 +175,7 @@
 }
 
 #campaign-end-screen .ced-copyright {
-    font-size: var(--ps-2);
+    font-size: var(--ps-1);
     letter-spacing: 1px;
     color: #555;
 }

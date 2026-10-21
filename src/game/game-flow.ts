@@ -464,9 +464,7 @@ export const missionComplete = (): void => {
         soundHandler.play('success');
         const showEndScreen = isStoryCampaign
             ? () => {
-                const campaignTitle = campaignHandler.getCampaigns()[selectedCampaignIndex]?.campaignTitle;
-                const name =
-                    typeof campaignTitle === 'string' ? campaignTitle : (campaignTitle?.de ?? campaignTitle?.en ?? '');
+                const name = localize(campaignHandler.getCampaigns()[selectedCampaignIndex]?.campaignTitle);
                 CampaignEndScreen.show(name, () => soundHandler.play('destroid'));
             }
             : () => CampaignCompleteScreen.show('');
